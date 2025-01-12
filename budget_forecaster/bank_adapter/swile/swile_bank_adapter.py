@@ -1,0 +1,78 @@
+"""Module for the Swile bank adapter"""
+import json
+from datetime import datetime
+from pathlib import Path
+
+from budget_forecaster.amount import Amount
+from budget_forecaster.bank_adapter.bank_adapter import BankAdapterBase
+from budget_forecaster.operation_range.historic_operation_factory import (
+    HistoricOperationFactory,
+)
+from budget_forecaster.types import Category
+
+
+class SwileBankAdapter(BankAdapterBase):
+    """Adapter for the Swile Me al-Vouchers acount"""
+
+    def __init__(self) -> None:
+        super().__init__("swile")
+
+    def load_bank_export(
+        self, bank_export: Path, operation_factory: HistoricOperationFactory
+    ) -> None:
+        """
+        Load export from operations.json and wallets.json files retrieved from swile website
+        The path must be a folder containing these two files
+        """
+        operations_json = json.loads(
+            (bank_export / "operations.json").read_text(encoding="utf-8")
+        )
+        wallets_json = json.loads(
+            (bank_export / "wallets.json").read_text(encoding="utf-8")
+        )
+
+        for wallet in wallets_json["wallets"]:
+            if wallet["type"] == "meal_voucher":
+                self._balance = wallet["balance"]["value"]
+                if not isinstance(self._balance, float):
+                    raise ValueError("The balance field should be a float")
+                break
+
+        for operation in operations_json["items"]:
+            for transaction in operation["transactions"]:
+                if transaction["status"] not in ("AUTHORIZED", "VALIDATED", "CAPTURED"):
+                    break
+
+                if transaction["payment_method"] != "Wallets::MealVoucherWallet":
+                    # we only consider meal vouchers as the other transactions are deduced from the
+                    # main account
+                    continue
+
+                amount = transaction["amount"]["value"] / 100.0
+                # date has format "2025-01-24T13:50:50.073+01:00"
+                date = datetime.strptime(transaction["date"][:10], "%Y-%m-%d")
+                self._operations.append(
+                    operation_factory.create_operation(
+                        description=operation["name"],
+                        amount=Amount(
+                            amount, transaction["amount"]["currency"]["iso_3"]
+                        ),
+                        category=Category.OTHER,
+                        date=date,
+                    )
+                )
+
+        if not self._operations:
+            raise ValueError(
+                "No meal voucher transactions found in the operations.json file"
+            )
+
+        self._export_date = max(op.date for op in self._operations)
+
+    @classmethod
+    def match(cls, bank_export: Path) -> bool:
+        return (
+            bank_export.is_dir()
+            and (bank_export / "operations.json").is_file()
+            and (bank_export / "wallets.json").is_file()
+        )
