@@ -1,0 +1,6 @@
+_*/
+env
+*.egg-info
+venv
+.config
+.idea

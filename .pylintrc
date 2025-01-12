@@ -1,0 +1,28 @@
+[MASTER]
+py-version=3.11
+load-plugins=pylint_pytest
+max-args=6
+max-positional-arguments=6
+
+[MESSAGES CONTROL]
+disable=duplicate-code
+
+[SPELLING]
+
+spelling-dict=en_US
+spelling-private-dict-file=.custom.dic
+spelling-store-unknown-words=yes
+
+enable=consider-using-augmented-assign
+
+load-plugins=
+    pylint.extensions.dict_init_mutate,
+    pylint.extensions.dunder,
+    pylint.extensions.code_style,
+
+[BASIC]
+
+# Good variable names which should always be accepted, separated by a comma
+good-names=i,j,k,ex,Run,_,e
+
+extension-pkg-whitelist=lxml

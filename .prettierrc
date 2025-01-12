@@ -1,0 +1,15 @@
+{
+  "printWidth": 88,
+  "proseWrap": "always",
+  "overrides": [
+    {
+      "files": ["*.ts", "*.scss", "*.css", "*.html", "*.js"],
+      "options": {
+        "printWidth": 120,
+        "proseWrap": "always",
+        "singleQuote": true,
+        "jsxSingleQuote": true
+      }
+    }
+  ]
+}
