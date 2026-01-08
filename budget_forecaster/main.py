@@ -110,7 +110,7 @@ def load_persistent_account(
     Load the persistent account from the backup file.
     If the file does not exist, create a new account.
     """
-    persistent_account = PersistentAccount(backup_path=config.backup_path)
+    persistent_account = PersistentAccount(database_path=config.database_path)
     try:
         persistent_account.load()
         account = persistent_account.aggregated_account.account

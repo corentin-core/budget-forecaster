@@ -18,7 +18,7 @@ class Config:  # pylint: disable=too-few-public-methods
     def __init__(self) -> None:
         # Account config
         self.account = AccountConfig(name="Main Account", currency="EUR")
-        self.backup_path = Path("account.json")
+        self.database_path = Path("budget.db")
         # Forecast config
         self.budgets_path = Path("budgets.json")
         self.planned_operations_path = Path("planned_operations.json")
@@ -27,7 +27,7 @@ class Config:  # pylint: disable=too-few-public-methods
         """Parse a YAML configuration file."""
         with open(yaml_path, encoding="utf-8") as file:
             config = yaml.safe_load(file)
-            self.backup_path = Path(config["backup_path"])
+            self.database_path = Path(config["database_path"])
             self.budgets_path = Path(config["budgets_path"])
             self.planned_operations_path = Path(config["planned_operations_path"])
             self.account = AccountConfig(
