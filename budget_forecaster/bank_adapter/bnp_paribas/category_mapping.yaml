@@ -1,0 +1,122 @@
+# BNP Paribas category mapping to internal categories
+# Format: "BNP Subcategory": "Internal category"
+#
+# To add a new mapping:
+# 1. Copy the exact subcategory from the error message or BNP export
+# 2. Choose an internal category from the list below
+#
+# Available internal categories:
+#   Income: Salaire, Crédit d'impot, Allocations
+#   Housing: Prêt maison, Prêt travaux, Loyer, Assurance prêt, Travaux,
+#            Mobilier, electromenager, deco.
+#   Savings: Epargne
+#   Insurance: Assurance auto, Assurance habitation, Autre assurance
+#   Children: Enfants, Pension alimentaire
+#   Leisure: Divertissement, Loisirs, Voyages, vacances, Cadeaux
+#   Utilities: Electricité, Eau, Internet, Téléphone
+#   Daily: Courses, Habillement, Santé, Coiffeur, cosmétique, soins,
+#          Transports publics, Carburant, Stationnement, Péage,
+#          Entretien automobile, Crédit auto
+#   Other: Frais professionnels, Autre, Dons, Commissions bancaires, Impôts, taxes
+
+# Income
+"Salaires et revenus d'activité": Salaire
+"Aides et allocations": Allocations
+"Autres revenus": Autre
+
+# Housing
+"Remboursement emprunt": Prêt maison
+"Prêt immobilier": Prêt maison
+"Loyer": Loyer
+"Travaux, reparation, entretien": Travaux
+"Travaux, réparations, entretien": Travaux
+"Bricolage et jardinage": Travaux
+"Chauffage": Travaux
+"Mobilier, electromenager, deco.": "Mobilier, electromenager, deco."
+"Mobilier, electroménager, déco.": "Mobilier, electromenager, deco."
+"Assurance habitation": Assurance habitation
+
+# Transportation
+"Carburant": Carburant
+"Entretien vehicule": Entretien automobile
+"Entretien véhicule": Entretien automobile
+"Assurance vehicule": Assurance auto
+"Transports en commun": Transports publics
+"Billet d'avion, Billet de train": Transports publics
+"Billet d'avion, billet de train": Transports publics
+"Transports et vehicules - Autres": Transports publics
+"Transports et véhicules - Autres": Autre
+"Stationnement": Stationnement
+"Peage": Péage
+"Péage": Péage
+"Crédit auto": Crédit auto
+"Location de vehicule": "Voyages, vacances"
+
+# Utilities
+"Eau": Eau
+"Electricite, gaz": Electricité
+"Électricité, gaz": Electricité
+"Internet, TV": Internet
+"Telephone": Téléphone
+"Téléphone": Téléphone
+
+# Daily life
+"Alimentation, supermarche": Courses
+"Alimentation, supermarché": Courses
+"Habillement": Habillement
+"Coiffeur, cosmetique, soins": "Coiffeur, cosmétique, soins"
+"Coiffeur, cosmétique, soins": "Coiffeur, cosmétique, soins"
+"Medecins": Santé
+"Médecins": Santé
+"Pharmacie": Santé
+"Sante - Autres": Santé
+"Santé - Autres": Santé
+"Mutuelle": Santé
+"Restaurants, bars": Loisirs
+"Sport": Loisirs
+"Achat multimedia, hightech": Divertissement
+"Achat multimédia, high-tech": Divertissement
+"Musique, livres, films": Divertissement
+"Tabac, presse": Autre
+"Achats, shopping": Autre
+"Vie Quotidienne - Autres": Autre
+"Vie quotidienne - Autres": Autre
+"Frais postaux": Autre
+
+# Leisure
+"Divertissements, sorties culturelles": Loisirs
+"Loisirs et sorties - Autres": Loisirs
+"Voyages, vacances": "Voyages, vacances"
+"Cadeaux": Cadeaux
+
+# Children
+"Crèche, baby-sitter": Enfants
+"Activites enfants": Enfants
+"Activités enfants": Enfants
+"Scolarite, etudes": Enfants
+"Scolarité, études": Enfants
+"Enfants - Autres": Enfants
+"Pension alimentaire": Pension alimentaire
+
+# Insurance
+"Assurances": Autre assurance
+
+# Other
+"Frais bancaires": Commissions bancaires
+"Epargne": Epargne
+"Épargne": Epargne
+"Taxe foncière": "Impôts, taxes"
+"Impôts et taxes - Autres": "Impôts, taxes"
+"Impôt sur le revenu": "Impôts, taxes"
+"Dons caritatifs": Dons
+"Frais professionnels": Frais professionnels
+
+# Generic operations (transfers, checks, withdrawals)
+"Remboursement": Autre
+"Chèque reçu": Autre
+"Virement reçu": Autre
+"Chèque emis": Autre
+"Retrait d'espèces": Autre
+"Autres depenses à categoriser": Autre
+"Virement emis": Autre
+"Virement interne": Autre
