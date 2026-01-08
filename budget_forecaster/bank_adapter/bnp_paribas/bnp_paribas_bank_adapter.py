@@ -27,6 +27,7 @@ CATEGORY_MAPPING: dict[str, Category] = {
     "Bricolage et jardinage": Category.HOUSE_WORKS,
     "Cadeaux": Category.GIFTS,
     "Carburant": Category.CAR_FUEL,
+    "Chauffage": Category.HOUSE_WORKS,
     "Coiffeur, cosmetique, soins": Category.CARE,
     "Coiffeur, cosmétique, soins": Category.CARE,
     "Crèche, baby-sitter": Category.CHILDCARE,
@@ -93,6 +94,8 @@ CATEGORY_MAPPING: dict[str, Category] = {
     "Péage": Category.TOLL,
     "Aides et allocations": Category.BENEFITS,
     "Impôt sur le revenu": Category.TAXES,
+    "Crédit auto": Category.CAR_LOAN,
+    "Virement interne": Category.OTHER,
 }
 
 

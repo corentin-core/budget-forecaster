@@ -159,33 +159,43 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
 
         return tuple(actualized_planned_operations)
 
+    def __compute_consumed_budget_amount(
+        self, operation_amount: float, budget_amount: float
+    ) -> float:
+        return (
+            min(operation_amount, budget_amount)
+            if budget_amount > 0.0
+            else max(operation_amount, budget_amount)
+        )
+
     def __actualize_budget(self, budget: Budget) -> Budget | None:
         updated_amount = budget.amount
         matcher = budget.matcher
         for operation in sorted(
             matcher.matches(self.__account.operations), key=lambda op: op.date
         ):
+            if operation.amount * updated_amount < 0.0:
+                continue
+
             if operation.unique_id not in self.__assigned_operations:
                 self.__assign_operation(operation)
-                consumed_amount = (
-                    min(operation.amount, updated_amount)
-                    if updated_amount > 0.0
-                    else max(operation.amount, updated_amount)
+                consumed_amount = self.__compute_consumed_budget_amount(
+                    operation.amount, updated_amount
                 )
             else:
                 unassigned_operation_amount = (
                     operation.amount
                     - self.__assigned_operations[operation.unique_id].amount
                 )
-                consumed_amount = (
-                    min(unassigned_operation_amount, updated_amount)
-                    if updated_amount > 0.0
-                    else max(unassigned_operation_amount, updated_amount)
+                consumed_amount = self.__compute_consumed_budget_amount(
+                    unassigned_operation_amount, updated_amount
                 )
             updated_amount -= consumed_amount
             self.__assigned_operations[operation.unique_id] = operation.replace(
                 amount=Amount(consumed_amount, operation.currency)
             )
+            if updated_amount == 0.0:
+                return None
         if updated_amount == 0.0:
             # budget is fully consumed
             return None
