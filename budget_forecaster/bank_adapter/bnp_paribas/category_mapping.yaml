@@ -1,122 +1,114 @@
-# BNP Paribas category mapping to internal categories
-# Format: "BNP Subcategory": "Internal category"
+# BNP Paribas category mapping using keywords
 #
-# To add a new mapping:
-# 1. Copy the exact subcategory from the error message or BNP export
-# 2. Choose an internal category from the list below
+# How it works:
+# - Each keyword is searched in the BNP category (case-insensitive, accent-insensitive)
+# - If multiple keywords match, the longest one wins (more specific)
+# - If no keyword matches, the category falls back to "Autre" with a warning
+#
+# To add a new keyword:
+# 1. Check the warning message for unmapped categories
+# 2. Add a keyword that matches the BNP category
 #
 # Available internal categories:
 #   Income: Salaire, Crédit d'impot, Allocations
-#   Housing: Prêt maison, Prêt travaux, Loyer, Assurance prêt, Travaux,
-#            Mobilier, electromenager, deco.
-#   Savings: Epargne
+#   Housing: Prêt maison, Loyer, Travaux, Mobilier, electromenager, deco.
 #   Insurance: Assurance auto, Assurance habitation, Autre assurance
 #   Children: Enfants, Pension alimentaire
 #   Leisure: Divertissement, Loisirs, Voyages, vacances, Cadeaux
 #   Utilities: Electricité, Eau, Internet, Téléphone
-#   Daily: Courses, Habillement, Santé, Coiffeur, cosmétique, soins,
-#          Transports publics, Carburant, Stationnement, Péage,
-#          Entretien automobile, Crédit auto
+#   Daily: Courses, Habillement, Santé, Transports publics, Carburant, etc.
 #   Other: Frais professionnels, Autre, Dons, Commissions bancaires, Impôts, taxes
 
-# Income
-"Salaires et revenus d'activité": Salaire
-"Aides et allocations": Allocations
-"Autres revenus": Autre
+keywords:
+  # Income
+  salaire: Salaire
+  revenu: Salaire
+  aides: Allocations
+  allocations: Allocations
 
-# Housing
-"Remboursement emprunt": Prêt maison
-"Prêt immobilier": Prêt maison
-"Loyer": Loyer
-"Travaux, reparation, entretien": Travaux
-"Travaux, réparations, entretien": Travaux
-"Bricolage et jardinage": Travaux
-"Chauffage": Travaux
-"Mobilier, electromenager, deco.": "Mobilier, electromenager, deco."
-"Mobilier, electroménager, déco.": "Mobilier, electromenager, deco."
-"Assurance habitation": Assurance habitation
+  # Housing
+  emprunt: Prêt maison
+  immobilier: Prêt maison
+  loyer: Loyer
+  travaux: Travaux
+  reparation: Travaux
+  bricolage: Travaux
+  jardinage: Travaux
+  chauffage: Travaux
+  mobilier: "Mobilier, electromenager, deco."
+  electromenager: "Mobilier, electromenager, deco."
+  deco: "Mobilier, electromenager, deco."
 
-# Transportation
-"Carburant": Carburant
-"Entretien vehicule": Entretien automobile
-"Entretien véhicule": Entretien automobile
-"Assurance vehicule": Assurance auto
-"Transports en commun": Transports publics
-"Billet d'avion, Billet de train": Transports publics
-"Billet d'avion, billet de train": Transports publics
-"Transports et vehicules - Autres": Transports publics
-"Transports et véhicules - Autres": Autre
-"Stationnement": Stationnement
-"Peage": Péage
-"Péage": Péage
-"Crédit auto": Crédit auto
-"Location de vehicule": "Voyages, vacances"
+  # Transportation
+  carburant: Carburant
+  essence: Carburant
+  entretien vehicule: Entretien automobile
+  transport: Transports publics
+  train: Transports publics
+  avion: Transports publics
+  stationnement: Stationnement
+  parking: Stationnement
+  peage: Péage
+  credit auto: Crédit auto
+  location vehicule: "Voyages, vacances"
 
-# Utilities
-"Eau": Eau
-"Electricite, gaz": Electricité
-"Électricité, gaz": Electricité
-"Internet, TV": Internet
-"Telephone": Téléphone
-"Téléphone": Téléphone
+  # Insurance
+  assurance vehicule: Assurance auto
+  assurance auto: Assurance auto
+  assurance habitation: Assurance habitation
+  assurance: Autre assurance
 
-# Daily life
-"Alimentation, supermarche": Courses
-"Alimentation, supermarché": Courses
-"Habillement": Habillement
-"Coiffeur, cosmetique, soins": "Coiffeur, cosmétique, soins"
-"Coiffeur, cosmétique, soins": "Coiffeur, cosmétique, soins"
-"Medecins": Santé
-"Médecins": Santé
-"Pharmacie": Santé
-"Sante - Autres": Santé
-"Santé - Autres": Santé
-"Mutuelle": Santé
-"Restaurants, bars": Loisirs
-"Sport": Loisirs
-"Achat multimedia, hightech": Divertissement
-"Achat multimédia, high-tech": Divertissement
-"Musique, livres, films": Divertissement
-"Tabac, presse": Autre
-"Achats, shopping": Autre
-"Vie Quotidienne - Autres": Autre
-"Vie quotidienne - Autres": Autre
-"Frais postaux": Autre
+  # Utilities
+  eau: Eau
+  electricite: Electricité
+  gaz: Electricité
+  internet: Internet
+  tv: Internet
+  telephone: Téléphone
 
-# Leisure
-"Divertissements, sorties culturelles": Loisirs
-"Loisirs et sorties - Autres": Loisirs
-"Voyages, vacances": "Voyages, vacances"
-"Cadeaux": Cadeaux
+  # Daily life
+  alimentation: Courses
+  supermarche: Courses
+  habillement: Habillement
+  vetement: Habillement
+  coiffeur: "Coiffeur, cosmétique, soins"
+  cosmetique: "Coiffeur, cosmétique, soins"
+  soins: "Coiffeur, cosmétique, soins"
+  medecin: Santé
+  pharmacie: Santé
+  sante: Santé
+  mutuelle: Santé
+  restaurant: Loisirs
+  bar: Loisirs
+  sport: Loisirs
+  multimedia: Divertissement
+  high-tech: Divertissement
+  hightech: Divertissement
+  musique: Divertissement
+  livre: Divertissement
+  film: Divertissement
 
-# Children
-"Crèche, baby-sitter": Enfants
-"Activites enfants": Enfants
-"Activités enfants": Enfants
-"Scolarite, etudes": Enfants
-"Scolarité, études": Enfants
-"Enfants - Autres": Enfants
-"Pension alimentaire": Pension alimentaire
+  # Leisure
+  divertissement: Loisirs
+  sortie: Loisirs
+  loisir: Loisirs
+  voyage: "Voyages, vacances"
+  vacances: "Voyages, vacances"
+  cadeau: Cadeaux
 
-# Insurance
-"Assurances": Autre assurance
+  # Children
+  creche: Enfants
+  baby-sitter: Enfants
+  scolarite: Enfants
+  etude: Enfants
+  enfant: Enfants
+  pension alimentaire: Pension alimentaire
 
-# Other
-"Frais bancaires": Commissions bancaires
-"Epargne": Epargne
-"Épargne": Epargne
-"Taxe foncière": "Impôts, taxes"
-"Impôts et taxes - Autres": "Impôts, taxes"
-"Impôt sur le revenu": "Impôts, taxes"
-"Dons caritatifs": Dons
-"Frais professionnels": Frais professionnels
-
-# Generic operations (transfers, checks, withdrawals)
-"Remboursement": Autre
-"Chèque reçu": Autre
-"Virement reçu": Autre
-"Chèque emis": Autre
-"Retrait d'espèces": Autre
-"Autres depenses à categoriser": Autre
-"Virement emis": Autre
-"Virement interne": Autre
+  # Other
+  frais bancaire: Commissions bancaires
+  epargne: Epargne
+  taxe: "Impôts, taxes"
+  impot: "Impôts, taxes"
+  don: Dons
+  caritatif: Dons
+  frais professionnel: Frais professionnels

@@ -29,5 +29,6 @@ réel
 str
 swile
 timedelta
+unicode
 upsert
 upserting
