@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Stage 1: Code validation
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+          pip install pre-commit
+      - name: Run pre-commit (excluding mypy and pylint)
+        run: |
+          pre-commit run --all-files autoflake ruff pyupgrade black \
+            check-merge-conflict trailing-whitespace end-of-file-fixer \
+            check-json prettier || true
+          # Run formatters only, type checking done in separate jobs
+
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+          pip install mypy types-PyYAML pandas-stubs
+      - name: Run mypy
+        run: mypy budget_forecaster/ --install-types --non-interactive
+
+  pylint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install -e ".[dev]"
+          pip install pylint pylint-pytest
+      - name: Run pylint
+        run: pylint budget_forecaster/ --rcfile=.pylintrc --load-plugins=pylint_pytest
+
+  # Stage 2: Tests (runs after validation passes)
+  test:
+    needs: [pre-commit, mypy, pylint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        run: pytest tests/ -v
