@@ -34,7 +34,7 @@ class SwileBankAdapter(BankAdapterBase):
         for wallet in wallets_json["wallets"]:
             if wallet["type"] == "meal_voucher":
                 self._balance = wallet["balance"]["value"]
-                if not isinstance(self._balance, float):
+                if not isinstance(self._balance, (float, int)):
                     raise ValueError("The balance field should be a float")
                 break
 
