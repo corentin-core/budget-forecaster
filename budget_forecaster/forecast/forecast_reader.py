@@ -54,6 +54,7 @@ DEFAULT_CATEGORY_MAPPING: dict[str, Category] = {
     "Santé": Category.HEALTH_CARE,
     "Cadeaux": Category.GIFTS,
     "Autres": Category.OTHER,
+    "Ameublement": Category.FURNITURE,
 }
 
 
