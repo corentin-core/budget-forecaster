@@ -8,6 +8,7 @@ bool
 budgetinterface
 cli
 config
+conn
 csv
 dataframe
 datetime
@@ -26,3 +27,5 @@ réel
 str
 swile
 timedelta
+upsert
+upserting
