@@ -22,6 +22,8 @@ class Config:  # pylint: disable=too-few-public-methods
         # Forecast config
         self.budgets_path = Path("budgets.json")
         self.planned_operations_path = Path("planned_operations.json")
+        # Import config
+        self.inbox_path = Path("inbox")
 
     def __parse_yaml(self, yaml_path: Path) -> None:
         """Parse a YAML configuration file."""
@@ -34,6 +36,8 @@ class Config:  # pylint: disable=too-few-public-methods
                 name=config["account_name"],
                 currency=config["account_currency"],
             )
+            if "inbox_path" in config:
+                self.inbox_path = Path(config["inbox_path"])
 
     def parse(self, config_path: Path) -> None:
         """Parse a configuration file."""

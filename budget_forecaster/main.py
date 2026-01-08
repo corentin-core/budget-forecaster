@@ -1,5 +1,6 @@
 """Main module for the Budget Forecaster application."""
 import argparse
+import shutil
 import sys
 from datetime import date, datetime, time
 from pathlib import Path
@@ -66,11 +67,12 @@ def create_parser() -> argparse.ArgumentParser:
     )
     sub_parser = parser.add_subparsers(dest="command")
 
-    load_parser = sub_parser.add_parser("load", help="Load a bank export")
+    load_parser = sub_parser.add_parser("load", help="Load bank export(s)")
     load_parser.add_argument(
         "bank_export",
-        help="Path to the bank export",
+        help="Path to bank export (file or folder). If omitted, loads from inbox.",
         type=Path,
+        nargs="?",
     )
 
     forecast_parser = sub_parser.add_parser("forecast", help="Forecast the budget")
@@ -100,6 +102,7 @@ def create_parser() -> argparse.ArgumentParser:
         type=int,
         nargs="?",
     )
+
     return parser
 
 
@@ -232,6 +235,74 @@ def handle_categorize_command(
     sys.exit(0)
 
 
+def handle_load_inbox_command(
+    inbox_path: Path,
+    persistent_account: PersistentAccount,
+    operation_factory: HistoricOperationFactory,
+) -> None:
+    """Handle the load-inbox command.
+
+    Loads all bank exports from the inbox folder and moves them to processed/.
+    Supports any format recognized by a bank adapter.
+    """
+    if not inbox_path.exists():
+        print(f"Inbox folder not found: {inbox_path}")
+        print("Creating it...")
+        inbox_path.mkdir(parents=True)
+        sys.exit(0)
+
+    processed_path = inbox_path / "processed"
+    processed_path.mkdir(exist_ok=True)
+
+    # Find all files and directories in inbox (excluding processed/)
+    bank_adapter_factory = BankAdapterFactory()
+    export_items: list[Path] = []
+
+    for item in sorted(inbox_path.iterdir()):
+        if item.name == "processed":
+            continue
+        try:
+            bank_adapter_factory.create_bank_adapter(item)
+            export_items.append(item)
+        except RuntimeError:
+            # No adapter found for this item, skip it
+            pass
+
+    if not export_items:
+        print(f"No supported bank exports found in {inbox_path}")
+        sys.exit(0)
+
+    print(f"Found {len(export_items)} export(s) to import:")
+    for item in export_items:
+        print(f"  - {item.name}")
+    print()
+
+    loaded_count = 0
+    for export_item in export_items:
+        try:
+            print(f"Loading {export_item.name}...")
+            persistent_account.aggregated_account.upsert_account(
+                load_bank_export(export_item, operation_factory)
+            )
+            persistent_account.save()
+
+            # Move to processed folder
+            dest = processed_path / export_item.name
+            shutil.move(str(export_item), str(dest))
+            print(f"  Moved to {dest}")
+            loaded_count += 1
+        except (ValueError, OSError, KeyError) as e:
+            print(f"  Error: {e}")
+
+    account = persistent_account.aggregated_account.account
+    print()
+    print(f"Imported {loaded_count} export(s)")
+    print("Account state:")
+    print(f"  Balance: {account.balance} {account.currency}")
+    print(f"  Operations: {len(account.operations)}")
+    sys.exit(0)
+
+
 def main() -> None:
     """
     Command Line Interface for the Budget Forecaster application.
@@ -258,12 +329,19 @@ def main() -> None:
     match args.command:
         case "load":
             if args.bank_export is None:
-                raise ValueError("The bank export path is required for the load action")
-            handle_load_command(
-                args.bank_export,
-                persistent_account,
-                operation_factory,
-            )
+                # No argument: load from inbox
+                handle_load_inbox_command(
+                    config.inbox_path,
+                    persistent_account,
+                    operation_factory,
+                )
+            else:
+                # Argument provided: load specific file/folder
+                handle_load_command(
+                    args.bank_export,
+                    persistent_account,
+                    operation_factory,
+                )
 
         case "forecast":
             handle_forecast_command(
