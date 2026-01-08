@@ -1,5 +1,6 @@
 """Module for the BNP Paribas bank adapter."""
 import re
+import unicodedata
 import warnings
 from datetime import datetime
 from pathlib import Path
@@ -22,14 +23,32 @@ DEFAULT_MAPPING_PATH = Path(__file__).parent / "category_mapping.yaml"
 _CATEGORY_BY_VALUE: dict[str, Category] = {cat.value: cat for cat in Category}
 
 
-def load_category_mapping(mapping_path: Path | None = None) -> dict[str, Category]:
-    """Load category mapping from YAML file.
+def normalize_text(text: str) -> str:
+    """Normalize text by removing accents and converting to lowercase.
+
+    Args:
+        text: The text to normalize.
+
+    Returns:
+        Normalized text without accents, in lowercase.
+    """
+    # Normalize unicode to decomposed form (é -> e + combining accent)
+    normalized = unicodedata.normalize("NFD", text)
+    # Remove combining characters (accents)
+    without_accents = "".join(c for c in normalized if unicodedata.category(c) != "Mn")
+    return without_accents.lower()
+
+
+def load_category_keywords(
+    mapping_path: Path | None = None,
+) -> list[tuple[str, Category]]:
+    """Load category keywords from YAML file.
 
     Args:
         mapping_path: Path to the YAML mapping file. Uses default if None.
 
     Returns:
-        Dictionary mapping BNP subcategories to Category enum values.
+        List of (keyword, Category) tuples, sorted by keyword length (longest first).
     """
     path = mapping_path or DEFAULT_MAPPING_PATH
     if not path.exists():
@@ -37,21 +56,29 @@ def load_category_mapping(mapping_path: Path | None = None) -> dict[str, Categor
             f"Category mapping file not found: {path}. Using empty mapping.",
             stacklevel=2,
         )
-        return {}
+        return []
 
     with open(path, encoding="utf-8") as f:
-        raw_mapping: dict[str, str] = yaml.safe_load(f) or {}
+        raw_config: dict = yaml.safe_load(f) or {}
 
-    result: dict[str, Category] = {}
-    for bnp_category, internal_category in raw_mapping.items():
+    raw_keywords: dict[str, str] = raw_config.get("keywords", {})
+
+    result: list[tuple[str, Category]] = []
+    for keyword, internal_category in raw_keywords.items():
         if internal_category in _CATEGORY_BY_VALUE:
-            result[bnp_category] = _CATEGORY_BY_VALUE[internal_category]
+            # Normalize keyword for matching
+            result.append(
+                (normalize_text(keyword), _CATEGORY_BY_VALUE[internal_category])
+            )
         else:
             warnings.warn(
-                f"Unknown internal category '{internal_category}' for BNP category "
-                f"'{bnp_category}'. Valid categories: {list(_CATEGORY_BY_VALUE.keys())}",
+                f"Unknown internal category '{internal_category}' for keyword "
+                f"'{keyword}'. Valid categories: {list(_CATEGORY_BY_VALUE.keys())}",
                 stacklevel=2,
             )
+
+    # Sort by keyword length (longest first) for more specific matches
+    result.sort(key=lambda x: len(x[0]), reverse=True)
     return result
 
 
@@ -60,7 +87,7 @@ class BnpParibasBankAdapter(BankAdapterBase):
 
     def __init__(self, category_mapping_path: Path | None = None) -> None:
         super().__init__("bnp")
-        self._category_mapping = load_category_mapping(category_mapping_path)
+        self._category_keywords = load_category_keywords(category_mapping_path)
         self._unknown_categories: set[str] = set()
 
     def load_bank_export(
@@ -105,9 +132,18 @@ class BnpParibasBankAdapter(BankAdapterBase):
             )
 
     def _get_category(self, bnp_category: str) -> Category:
-        """Get internal category for a BNP category, with fallback to OTHER."""
-        if bnp_category in self._category_mapping:
-            return self._category_mapping[bnp_category]
+        """Get internal category for a BNP category using keyword matching.
+
+        Searches for keywords in the normalized BNP category string.
+        Returns the category for the first (longest) matching keyword.
+        Falls back to OTHER if no keyword matches.
+        """
+        normalized = normalize_text(bnp_category)
+
+        for keyword, category in self._category_keywords:
+            if keyword in normalized:
+                return category
+
         self._unknown_categories.add(bnp_category)
         return Category.OTHER
 
@@ -122,7 +158,7 @@ class BnpParibasBankAdapter(BankAdapterBase):
 
     @classmethod
     def find_unmapped_categories(cls, bank_export: Path) -> set[str]:
-        """Find BNP categories in an export file that are not in the mapping."""
+        """Find BNP categories in an export file that don't match any keyword."""
         operation_df = pd.read_excel(bank_export, header=2)
 
         if "Sous Categorie operation" not in operation_df.columns:
@@ -132,6 +168,13 @@ class BnpParibasBankAdapter(BankAdapterBase):
                 f"found: {list(operation_df.columns)}"
             )
 
-        category_mapping = load_category_mapping()
+        keywords = load_category_keywords()
         bnp_categories = set(operation_df["Sous Categorie operation"].dropna().unique())
-        return bnp_categories - set(category_mapping.keys())
+
+        unmapped: set[str] = set()
+        for bnp_category in bnp_categories:
+            normalized = normalize_text(bnp_category)
+            if not any(keyword in normalized for keyword, _ in keywords):
+                unmapped.add(bnp_category)
+
+        return unmapped
