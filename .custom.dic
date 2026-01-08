@@ -3,6 +3,7 @@ abstractmethod
 acount
 actualisé
 al
+args
 bnp
 bool
 budgetinterface
@@ -13,6 +14,7 @@ csv
 dataframe
 datetime
 deserialize
+enum
 historicoperation
 iterable
 json

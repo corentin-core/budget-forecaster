@@ -1,9 +1,11 @@
 """Module for the BNP Paribas bank adapter."""
 import re
+import warnings
 from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+import yaml
 
 from budget_forecaster.amount import Amount
 from budget_forecaster.bank_adapter.bank_adapter import BankAdapterBase
@@ -13,97 +15,53 @@ from budget_forecaster.operation_range.historic_operation_factory import (
 )
 from budget_forecaster.types import Category
 
-CATEGORY_MAPPING: dict[str, Category] = {
-    "Achat multimedia, hightech": Category.ENTERTAINMENT,
-    "Achat multimédia, high-tech": Category.ENTERTAINMENT,
-    "Achats, shopping": Category.OTHER,
-    "Activites enfants": Category.CHILDCARE,
-    "Activités enfants": Category.CHILDCARE,
-    "Alimentation, supermarche": Category.GROCERIES,
-    "Alimentation, supermarché": Category.GROCERIES,
-    "Assurances": Category.OTHER_INSURANCE,
-    "Billet d'avion, Billet de train": Category.PUBLIC_TRANSPORT,
-    "Billet d'avion, billet de train": Category.PUBLIC_TRANSPORT,
-    "Bricolage et jardinage": Category.HOUSE_WORKS,
-    "Cadeaux": Category.GIFTS,
-    "Carburant": Category.CAR_FUEL,
-    "Chauffage": Category.HOUSE_WORKS,
-    "Coiffeur, cosmetique, soins": Category.CARE,
-    "Coiffeur, cosmétique, soins": Category.CARE,
-    "Crèche, baby-sitter": Category.CHILDCARE,
-    "Divertissements, sorties culturelles": Category.LEISURE,
-    "Dons caritatifs": Category.CHARITY,
-    "Eau": Category.WATER,
-    "Electricite, gaz": Category.ELECTRICITY,
-    "Électricité, gaz": Category.ELECTRICITY,
-    "Enfants - Autres": Category.CHILDCARE,
-    "Entretien vehicule": Category.CAR_MAINTENANCE,
-    "Entretien véhicule": Category.CAR_MAINTENANCE,
-    "Epargne": Category.SAVINGS,
-    "Épargne": Category.SAVINGS,
-    "Frais bancaires": Category.BANK_FEES,
-    "Frais professionnels": Category.PROFESSIONAL_EXPENSES,
-    "Frais postaux": Category.OTHER,
-    "Habillement": Category.CLOTHING,
-    "Internet, TV": Category.INTERNET,
-    "Loisirs et sorties - Autres": Category.LEISURE,
-    "Medecins": Category.HEALTH_CARE,
-    "Médecins": Category.HEALTH_CARE,
-    "Mobilier, electromenager, deco.": Category.FURNITURE,
-    "Mobilier, electroménager, déco.": Category.FURNITURE,
-    "Musique, livres, films": Category.ENTERTAINMENT,
-    "Pension alimentaire": Category.CHILD_SUPPORT,
-    "Pharmacie": Category.HEALTH_CARE,
-    "Remboursement emprunt": Category.HOUSE_LOAN,
-    "Restaurants, bars": Category.LEISURE,
-    "Salaires et revenus d'activité": Category.SALARY,
-    "Sante - Autres": Category.HEALTH_CARE,
-    "Santé - Autres": Category.HEALTH_CARE,
-    "Scolarite, etudes": Category.CHILDCARE,
-    "Scolarité, études": Category.CHILDCARE,
-    "Sport": Category.LEISURE,
-    "Stationnement": Category.PARKING,
-    "Tabac, presse": Category.OTHER,
-    "Telephone": Category.PHONE,
-    "Téléphone": Category.PHONE,
-    "Transports en commun": Category.PUBLIC_TRANSPORT,
-    "Transports et vehicules - Autres": Category.PUBLIC_TRANSPORT,
-    "Travaux, reparation, entretien": Category.HOUSE_WORKS,
-    "Travaux, réparations, entretien": Category.HOUSE_WORKS,
-    "Voyages, vacances": Category.HOLIDAYS,
-    "Vie Quotidienne - Autres": Category.OTHER,
-    "Mutuelle": Category.HEALTH_CARE,
-    "Prêt immobilier": Category.HOUSE_LOAN,
-    "Assurance vehicule": Category.CAR_INSURANCE,
-    "Remboursement": Category.OTHER,
-    "Chèque reçu": Category.OTHER,
-    "Virement reçu": Category.OTHER,
-    "Chèque emis": Category.OTHER,
-    "Retrait d'espèces": Category.OTHER,
-    "Autres depenses à categoriser": Category.OTHER,
-    "Loyer": Category.RENT,
-    "Location de vehicule": Category.HOLIDAYS,
-    "Taxe foncière": Category.TAXES,
-    "Impôts et taxes - Autres": Category.TAXES,
-    "Autres revenus": Category.OTHER,
-    "Virement emis": Category.OTHER,
-    "Peage": Category.TOLL,
-    "Assurance habitation": Category.HOUSE_INSURANCE,
-    "Vie quotidienne - Autres": Category.OTHER,
-    "Transports et véhicules - Autres": Category.OTHER,
-    "Péage": Category.TOLL,
-    "Aides et allocations": Category.BENEFITS,
-    "Impôt sur le revenu": Category.TAXES,
-    "Crédit auto": Category.CAR_LOAN,
-    "Virement interne": Category.OTHER,
-}
+# Path to the external category mapping file
+DEFAULT_MAPPING_PATH = Path(__file__).parent / "category_mapping.yaml"
+
+# Build reverse lookup from Category values to Category enum
+_CATEGORY_BY_VALUE: dict[str, Category] = {cat.value: cat for cat in Category}
+
+
+def load_category_mapping(mapping_path: Path | None = None) -> dict[str, Category]:
+    """Load category mapping from YAML file.
+
+    Args:
+        mapping_path: Path to the YAML mapping file. Uses default if None.
+
+    Returns:
+        Dictionary mapping BNP subcategories to Category enum values.
+    """
+    path = mapping_path or DEFAULT_MAPPING_PATH
+    if not path.exists():
+        warnings.warn(
+            f"Category mapping file not found: {path}. Using empty mapping.",
+            stacklevel=2,
+        )
+        return {}
+
+    with open(path, encoding="utf-8") as f:
+        raw_mapping: dict[str, str] = yaml.safe_load(f) or {}
+
+    result: dict[str, Category] = {}
+    for bnp_category, internal_category in raw_mapping.items():
+        if internal_category in _CATEGORY_BY_VALUE:
+            result[bnp_category] = _CATEGORY_BY_VALUE[internal_category]
+        else:
+            warnings.warn(
+                f"Unknown internal category '{internal_category}' for BNP category "
+                f"'{bnp_category}'. Valid categories: {list(_CATEGORY_BY_VALUE.keys())}",
+                stacklevel=2,
+            )
+    return result
 
 
 class BnpParibasBankAdapter(BankAdapterBase):
     """Adapter for the BNP Paribas bank export operations."""
 
-    def __init__(self) -> None:
+    def __init__(self, category_mapping_path: Path | None = None) -> None:
         super().__init__("bnp")
+        self._category_mapping = load_category_mapping(category_mapping_path)
+        self._unknown_categories: set[str] = set()
 
     def load_bank_export(
         self, bank_export: Path, operation_factory: HistoricOperationFactory
@@ -126,15 +84,54 @@ class BnpParibasBankAdapter(BankAdapterBase):
         self._operations: list[HistoricOperation] = []
         operation_df = pd.read_excel(bank_export, header=2)
         for _, row in operation_df.iterrows():
+            bnp_category = row["Sous Categorie operation"]
+            category = self._get_category(bnp_category)
             self._operations.append(
                 operation_factory.create_operation(
                     description=row["Libelle operation"],
                     amount=Amount(row["Montant operation"]),
-                    category=CATEGORY_MAPPING[row["Sous Categorie operation"]],
+                    category=category,
                     date=datetime.strptime(row["Date operation"], "%d-%m-%Y"),
                 )
             )
 
+        # Report unknown categories at the end
+        if self._unknown_categories:
+            warnings.warn(
+                f"Unknown BNP categories (assigned to 'Autre'): "
+                f"{sorted(self._unknown_categories)}. "
+                f"Add them to category_mapping.yaml to map them correctly.",
+                stacklevel=2,
+            )
+
+    def _get_category(self, bnp_category: str) -> Category:
+        """Get internal category for a BNP category, with fallback to OTHER."""
+        if bnp_category in self._category_mapping:
+            return self._category_mapping[bnp_category]
+        self._unknown_categories.add(bnp_category)
+        return Category.OTHER
+
+    @property
+    def unknown_categories(self) -> set[str]:
+        """Return the set of unknown BNP categories encountered during import."""
+        return self._unknown_categories
+
     @classmethod
     def match(cls, bank_export: Path) -> bool:
         return bank_export.suffix == ".xls"
+
+    @classmethod
+    def find_unmapped_categories(cls, bank_export: Path) -> set[str]:
+        """Find BNP categories in an export file that are not in the mapping."""
+        operation_df = pd.read_excel(bank_export, header=2)
+
+        if "Sous Categorie operation" not in operation_df.columns:
+            raise ValueError(
+                f"Not a valid BNP export file. "
+                f"Expected column 'Sous Categorie operation', "
+                f"found: {list(operation_df.columns)}"
+            )
+
+        category_mapping = load_category_mapping()
+        bnp_categories = set(operation_df["Sous Categorie operation"].dropna().unique())
+        return bnp_categories - set(category_mapping.keys())
