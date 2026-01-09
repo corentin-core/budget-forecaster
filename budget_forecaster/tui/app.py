@@ -24,7 +24,13 @@ from textual.widgets.option_list import Option
 from budget_forecaster.account.persistent_account import PersistentAccount
 from budget_forecaster.config import Config
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.services import ImportService, OperationFilter, OperationService
+from budget_forecaster.services import (
+    ForecastService,
+    ImportService,
+    OperationFilter,
+    OperationService,
+)
+from budget_forecaster.tui.screens.forecast import ForecastWidget
 from budget_forecaster.tui.screens.imports import ImportWidget
 from budget_forecaster.tui.widgets.operation_table import OperationTable
 from budget_forecaster.types import Category
@@ -348,6 +354,7 @@ class BudgetApp(App[None]):
         self._persistent_account: PersistentAccount | None = None
         self._operation_service: OperationService | None = None
         self._import_service: ImportService | None = None
+        self._forecast_service: ForecastService | None = None
         self._categorizing_operation_id: int | None = None
 
     def _load_config(self) -> None:
@@ -369,6 +376,11 @@ class BudgetApp(App[None]):
             self._persistent_account,
             self._config.inbox_path,
             self._config.inbox_exclude_patterns,
+        )
+        self._forecast_service = ForecastService(
+            self._persistent_account.account,
+            self._config.planned_operations_path,
+            self._config.budgets_path,
         )
 
     @property
@@ -392,6 +404,13 @@ class BudgetApp(App[None]):
             raise RuntimeError("Application not initialized")
         return self._import_service
 
+    @property
+    def forecast_service(self) -> ForecastService:
+        """Get the forecast service."""
+        if self._forecast_service is None:
+            raise RuntimeError("Application not initialized")
+        return self._forecast_service
+
     def compose(self) -> ComposeResult:
         """Create the UI layout."""
         yield Header()
@@ -413,6 +432,8 @@ class BudgetApp(App[None]):
                 yield OperationTable(id="categorize-table")
             with TabPane("Import", id="import"):
                 yield ImportWidget(id="import-widget")
+            with TabPane("Prévisions", id="forecast"):
+                yield ForecastWidget(id="forecast-widget")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -466,6 +487,10 @@ class BudgetApp(App[None]):
         # Refresh import widget
         import_widget = self.query_one("#import-widget", ImportWidget)
         import_widget.set_service(self.import_service)
+
+        # Refresh forecast widget
+        forecast_widget = self.query_one("#forecast-widget", ForecastWidget)
+        forecast_widget.set_service(self.forecast_service)
 
     def action_refresh_data(self) -> None:
         """Refresh data from the database."""

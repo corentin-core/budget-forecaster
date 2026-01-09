@@ -5,6 +5,7 @@ This module provides business logic services that can be used by any UI
 and provide a clean API for presentation layers.
 """
 
+from budget_forecaster.services.forecast_service import ForecastService
 from budget_forecaster.services.import_service import (
     ImportResult,
     ImportService,
@@ -16,6 +17,7 @@ from budget_forecaster.services.operation_service import (
 )
 
 __all__ = [
+    "ForecastService",
     "ImportResult",
     "ImportService",
     "ImportSummary",
