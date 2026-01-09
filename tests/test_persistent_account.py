@@ -231,28 +231,24 @@ class TestPersistentAccount:  # pylint: disable=protected-access
         persistent2 = PersistentAccount(temp_db_path)
         persistent2.load()
 
-        assert persistent2.aggregated_account.account.name == "Mes comptes"
-        assert len(persistent2.aggregated_account.accounts) == 1
-        assert persistent2.aggregated_account.accounts[0].name == "Compte courant"
-        assert len(persistent2.aggregated_account.accounts[0].operations) == 3
+        assert persistent2.account.name == "Mes comptes"
+        assert len(persistent2.accounts) == 1
+        assert persistent2.accounts[0].name == "Compte courant"
+        assert len(persistent2.accounts[0].operations) == 3
 
         persistent2.close()
 
-    def test_aggregated_account_raises_when_not_loaded(
-        self, temp_db_path: Path
-    ) -> None:
-        """Test that accessing aggregated_account raises when not loaded."""
+    def test_account_raises_when_not_loaded(self, temp_db_path: Path) -> None:
+        """Test that accessing account raises when not loaded."""
         persistent = PersistentAccount(temp_db_path)
 
         with pytest.raises(FileNotFoundError):
-            _ = persistent.aggregated_account
+            _ = persistent.account
 
         persistent.close()
 
-    def test_upsert_account_via_aggregated(
-        self, temp_db_path: Path, sample_account: Account
-    ) -> None:
-        """Test upserting account through aggregated account interface."""
+    def test_upsert_account(self, temp_db_path: Path, sample_account: Account) -> None:
+        """Test upserting account through the interface."""
         persistent = PersistentAccount(temp_db_path)
         persistent._repository.initialize()
         persistent._aggregated_account = AggregatedAccount(
@@ -275,7 +271,7 @@ class TestPersistentAccount:  # pylint: disable=protected-access
             balance_date=datetime(2024, 2, 1),
             operations=(new_operation,),
         )
-        persistent.aggregated_account.upsert_account(new_account_params)
+        persistent.upsert_account(new_account_params)
         persistent.save()
         persistent.close()
 
@@ -283,7 +279,7 @@ class TestPersistentAccount:  # pylint: disable=protected-access
         persistent2 = PersistentAccount(temp_db_path)
         persistent2.load()
 
-        account = persistent2.aggregated_account.accounts[0]
+        account = persistent2.accounts[0]
         assert len(account.operations) == 4
 
         persistent2.close()
