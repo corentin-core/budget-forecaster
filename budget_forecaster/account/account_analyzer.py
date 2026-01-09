@@ -248,8 +248,8 @@ class AccountAnalyzer:
 
         # convert columns and sort dates
         new_index = [
-            (pd.to_datetime(month, format="%Y-%m-%d"), col)
-            for month, col in df.columns  # type: ignore[misc,has-type]
+            (pd.to_datetime(col_tuple[0], format="%Y-%m-%d"), col_tuple[1])
+            for col_tuple in df.columns
         ]
         new_index = sorted(new_index, key=lambda x: x[0])
         df.columns = pd.MultiIndex.from_tuples(new_index)
