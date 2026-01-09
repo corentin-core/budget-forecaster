@@ -317,8 +317,7 @@ class CategorizeScreen(Container):
             return
 
         # Get suggested category
-        suggested = self._service.suggest_category(self._current_operation)
-        if not suggested:
+        if not (suggested := self._service.suggest_category(self._current_operation)):
             self.app.notify("Pas de suggestion disponible", severity="warning")
             return
 
@@ -338,6 +337,7 @@ class CategorizeScreen(Container):
 
     def _save_and_refresh(self) -> None:
         """Save changes and refresh the view."""
+        # pylint: disable=import-outside-toplevel
         from budget_forecaster.tui.app import BudgetApp
 
         app = self.app

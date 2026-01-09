@@ -80,25 +80,22 @@ class OperationTable(DataTable[str]):
             return None
         try:
             # _row_locations maps row index to RowKey
-            row_key = self._row_locations.get_key(self.cursor_row)
-            if row_key is None:
+            if (row_key := self._row_locations.get_key(self.cursor_row)) is None:
                 return None
             return self._operations.get(str(row_key.value))
-        except Exception:
+        except (KeyError, IndexError):
             return None
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle row selection."""
         if event.row_key is not None:
-            operation = self._operations.get(str(event.row_key.value))
-            if operation:
+            if operation := self._operations.get(str(event.row_key.value)):
                 self.post_message(self.OperationSelected(operation))
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         """Handle row highlight."""
         if event.row_key is not None:
-            operation = self._operations.get(str(event.row_key.value))
-            if operation:
+            if operation := self._operations.get(str(event.row_key.value)):
                 self.post_message(self.OperationHighlighted(operation))
 
     @property
@@ -109,8 +106,7 @@ class OperationTable(DataTable[str]):
     def get_operation_by_row(self, row_index: int) -> HistoricOperation | None:
         """Get operation at a specific row index."""
         try:
-            row_key = self.get_row_at(row_index)
-            if row_key is not None:
+            if (row_key := self.get_row_at(row_index)) is not None:
                 return self._operations.get(str(row_key))
         except IndexError:
             pass

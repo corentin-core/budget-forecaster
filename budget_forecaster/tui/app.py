@@ -6,7 +6,7 @@ from typing import Any
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal
+from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Footer, Header, OptionList, Static, TabbedContent, TabPane
 from textual.widgets.option_list import Option
@@ -72,8 +72,6 @@ class CategoryModal(ModalScreen[Category | None]):
 
     def compose(self) -> ComposeResult:
         """Create the modal layout."""
-        from textual.containers import Vertical
-
         op = self._operation
         amount_class = "amount-negative" if op.amount < 0 else "amount-positive"
 
@@ -216,28 +214,23 @@ class BudgetApp(App[None]):
             self.notify(f"Erreur: {e}", severity="error")
             self.exit()
 
-    def _refresh_screens(self) -> None:
+    def _refresh_screens(self) -> None:  # pylint: disable=too-many-locals
         """Refresh all screens with current data."""
         service = self.operation_service
 
         # Update dashboard stats
         balance = service.balance
-        balance_class = "stat-negative" if balance < 0 else "stat-positive"
         stat_balance = self.query_one("#stat-balance", Static)
         stat_balance.update(f"Solde: {balance:,.2f} {service.currency}")
         stat_balance.remove_class("stat-positive", "stat-negative")
-        stat_balance.add_class(balance_class)
+        stat_balance.add_class("stat-negative" if balance < 0 else "stat-positive")
 
         # Last 3 months operations
         now = datetime.now()
-        # Calculate 3 months ago (handle year boundary)
-        month = now.month - 3
-        year = now.year
+        month, year = now.month - 3, now.year
         if month <= 0:
-            month += 12
-            year -= 1
-        three_months_ago = datetime(year, month, 1)
-        recent_filter = OperationFilter(date_from=three_months_ago)
+            month, year = month + 12, year - 1
+        recent_filter = OperationFilter(date_from=datetime(year, month, 1))
         recent_ops = service.get_operations(recent_filter)
         self.query_one("#stat-month-ops", Static).update(
             f"3 derniers mois: {len(recent_ops)} opérations"
@@ -250,17 +243,14 @@ class BudgetApp(App[None]):
         stat_uncat.remove_class("stat-positive", "stat-negative")
         stat_uncat.add_class("stat-negative" if uncategorized else "stat-positive")
 
-        # Refresh dashboard table with recent operations (last 3 months)
-        dashboard_table = self.query_one("#dashboard-table", OperationTable)
-        dashboard_table.load_operations(recent_ops)
-
-        # Refresh operations table with all operations
-        operations_table = self.query_one("#operations-table", OperationTable)
-        operations_table.load_operations(service.get_operations())
-
-        # Refresh categorize table with uncategorized operations
-        categorize_table = self.query_one("#categorize-table", OperationTable)
-        categorize_table.load_operations(uncategorized)
+        # Refresh tables
+        self.query_one("#dashboard-table", OperationTable).load_operations(recent_ops)
+        self.query_one("#operations-table", OperationTable).load_operations(
+            service.get_operations()
+        )
+        self.query_one("#categorize-table", OperationTable).load_operations(
+            uncategorized
+        )
 
     def action_refresh_data(self) -> None:
         """Refresh data from the database."""
@@ -289,14 +279,13 @@ class BudgetApp(App[None]):
 
         # Try active tab's table first, then others
         table_order = [tab_to_table.get(active_tab, "#categorize-table")]
-        for table_id in ["#categorize-table", "#operations-table", "#dashboard-table"]:
+        for table_id in ("#categorize-table", "#operations-table", "#dashboard-table"):
             if table_id not in table_order:
                 table_order.append(table_id)
 
         for table_id in table_order:
             table = self.query_one(table_id, OperationTable)
-            operation = table.get_selected_operation()
-            if operation:
+            if operation := table.get_selected_operation():
                 self._categorizing_operation_id = operation.unique_id
                 self.push_screen(CategoryModal(operation), self._on_category_selected)
                 return

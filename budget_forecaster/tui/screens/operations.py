@@ -84,8 +84,7 @@ class OperationDetailPanel(Vertical):
         if not self._service:
             return
 
-        operation = self._service.get_operation_by_id(operation_id)
-        if not operation:
+        if not (operation := self._service.get_operation_by_id(operation_id)):
             self._clear()
             return
 
@@ -105,13 +104,13 @@ class OperationDetailPanel(Vertical):
     def _clear(self) -> None:
         """Clear the detail panel."""
         self._operation_id = None
-        for widget_id in [
+        for widget_id in (
             "detail-id",
             "detail-date",
             "detail-description",
             "detail-amount",
             "detail-category",
-        ]:
+        ):
             self.query_one(f"#{widget_id}", Static).update("-")
         self.query_one("#edit-category-container").add_class("hidden")
 
@@ -129,6 +128,7 @@ class OperationDetailPanel(Vertical):
         if result and self._operation_id:
             self.show_operation(self._operation_id)
             # Refresh parent app
+            # pylint: disable=import-outside-toplevel
             from budget_forecaster.tui.app import BudgetApp
 
             if isinstance(self.app, BudgetApp):
@@ -181,8 +181,7 @@ class CategoryEditModal(ModalScreen[bool]):
             # Get suggested category
             suggested = None
             if self._service:
-                operation = self._service.get_operation_by_id(self._operation_id)
-                if operation:
+                if operation := self._service.get_operation_by_id(self._operation_id):
                     suggested = self._service.suggest_category(operation)
 
             yield CategorySelect(suggested=suggested)
@@ -195,6 +194,7 @@ class CategoryEditModal(ModalScreen[bool]):
         if self._service:
             self._service.categorize_operation(self._operation_id, event.category)
             # Save changes
+            # pylint: disable=import-outside-toplevel
             from budget_forecaster.tui.app import BudgetApp
 
             if isinstance(self.app, BudgetApp):

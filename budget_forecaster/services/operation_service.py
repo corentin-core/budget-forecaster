@@ -25,11 +25,12 @@ class OperationFilter:
     max_amount: float | None = None
     uncategorized_only: bool = False
 
-    def matches(self, operation: HistoricOperation) -> bool:
+    def matches(  # pylint: disable=too-many-return-statements
+        self, operation: HistoricOperation
+    ) -> bool:
         """Check if an operation matches this filter."""
         if self.search_text:
-            search_lower = self.search_text.lower()
-            if search_lower not in operation.description.lower():
+            if self.search_text.lower() not in operation.description.lower():
                 return False
 
         if self.category is not None and operation.category != self.category:
@@ -147,8 +148,7 @@ class OperationService:
         Returns:
             The updated operation, or None if not found.
         """
-        operation = self.get_operation_by_id(operation_id)
-        if operation is None:
+        if (operation := self.get_operation_by_id(operation_id)) is None:
             return None
 
         kwargs: dict[str, object] = {}
@@ -192,8 +192,7 @@ class OperationService:
         """
         updated = []
         for op_id in operation_ids:
-            result = self.categorize_operation(op_id, category)
-            if result is not None:
+            if (result := self.categorize_operation(op_id, category)) is not None:
                 updated.append(result)
         return updated
 
@@ -241,13 +240,15 @@ class OperationService:
             The most common category among similar operations,
             or None if no suggestion can be made.
         """
-        similar = self.find_similar_operations(operation)
-        if not similar:
+        if not (similar := self.find_similar_operations(operation)):
             return None
 
         # Find the most common category (excluding OTHER)
-        categories = [op.category for op in similar if op.category != Category.OTHER]
-        if not categories:
+        if not (
+            categories := [
+                op.category for op in similar if op.category != Category.OTHER
+            ]
+        ):
             return None
 
         # Return the most frequent category
@@ -289,8 +290,7 @@ class OperationService:
         totals: dict[str, float] = {}
 
         for op in operations:
-            month_key = op.date.strftime("%Y-%m")
-            if month_key not in totals:
+            if (month_key := op.date.strftime("%Y-%m")) not in totals:
                 totals[month_key] = 0.0
             totals[month_key] += op.amount
 

@@ -364,6 +364,7 @@ def main() -> None:
             )
 
         case "tui":
+            # pylint: disable=import-outside-toplevel
             from budget_forecaster.tui.app import run_app
 
             persistent_account.close()

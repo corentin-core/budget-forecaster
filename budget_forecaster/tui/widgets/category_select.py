@@ -90,8 +90,7 @@ class CategorySelect(Vertical):
         if event.input.id != "category-search":
             return
 
-        search = event.value.lower()
-        if not search:
+        if not (search := event.value.lower()):
             self._filtered_categories = self._all_categories.copy()
         else:
             self._filtered_categories = [
