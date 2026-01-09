@@ -103,6 +103,8 @@ def create_parser() -> argparse.ArgumentParser:
         nargs="?",
     )
 
+    sub_parser.add_parser("tui", help="Launch interactive TUI interface")
+
     return parser
 
 
@@ -360,6 +362,13 @@ def main() -> None:
                 persistent_account,
                 args.operation,
             )
+
+        case "tui":
+            from budget_forecaster.tui.app import run_app
+
+            persistent_account.close()
+            run_app(Path(args.config))
+            sys.exit(0)
 
         case _:
             parser.print_help()

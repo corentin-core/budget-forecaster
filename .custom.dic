@@ -5,6 +5,7 @@ actualisé
 al
 args
 bnp
+bookmarklet
 bool
 budgetinterface
 cli
@@ -20,6 +21,8 @@ iterable
 json
 kwargs
 matcher
+minification
+minifies
 mypy
 params
 paribas
@@ -29,6 +32,11 @@ réel
 str
 swile
 timedelta
+tui
+ui
+uncategorized
 unicode
 upsert
 upserting
+whitespace
+yaml
