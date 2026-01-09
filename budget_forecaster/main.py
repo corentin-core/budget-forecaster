@@ -116,7 +116,7 @@ def load_persistent_account(
     persistent_account = PersistentAccount(database_path=config.database_path)
     try:
         persistent_account.load()
-        account = persistent_account.aggregated_account.account
+        account = persistent_account.account
         print("Loaded account:")
         print("Name:", account.name)
         print("Balance:", account.balance)
@@ -129,7 +129,7 @@ def load_persistent_account(
             f"Creating account {config.account.name} with currency {config.account.currency}"
         )
         # Save the account
-        persistent_account.aggregated_account.upsert_account(
+        persistent_account.upsert_account(
             AccountParameters(
                 name=config.account.name,
                 balance=0.0,
@@ -149,11 +149,11 @@ def handle_load_command(
     operation_factory: HistoricOperationFactory,
 ) -> None:
     """Handle the load command."""
-    persistent_account.aggregated_account.upsert_account(
+    persistent_account.upsert_account(
         load_bank_export(bank_export_path, operation_factory)
     )
     persistent_account.save()
-    account = persistent_account.aggregated_account.account
+    account = persistent_account.account
     print("New account state:")
     print("Name:", account.name)
     print("Balance:", account.balance)
@@ -223,14 +223,14 @@ def handle_categorize_command(
             print(f"No operation found with ID {operation_id}")
             sys.exit(1)
         new_operation = categorize_operation(operation)
-        persistent_account.aggregated_account.replace_operation(new_operation)
+        persistent_account.replace_operation(new_operation)
         persistent_account.save()
         sys.exit(0)
 
     for operation in sorted(account.operations, key=lambda op: op.date, reverse=True):
         if operation.category == Category.OTHER:
             new_operation = categorize_operation(operation)
-            persistent_account.aggregated_account.replace_operation(new_operation)
+            persistent_account.replace_operation(new_operation)
             persistent_account.save()
     sys.exit(0)
 
@@ -281,7 +281,7 @@ def handle_load_inbox_command(
     for export_item in export_items:
         try:
             print(f"Loading {export_item.name}...")
-            persistent_account.aggregated_account.upsert_account(
+            persistent_account.upsert_account(
                 load_bank_export(export_item, operation_factory)
             )
             persistent_account.save()
@@ -294,7 +294,7 @@ def handle_load_inbox_command(
         except (ValueError, OSError, KeyError) as e:
             print(f"  Error: {e}")
 
-    account = persistent_account.aggregated_account.account
+    account = persistent_account.account
     print()
     print(f"Imported {loaded_count} export(s)")
     print("Account state:")
@@ -319,7 +319,7 @@ def main() -> None:
     config.parse(Path(args.config))
 
     persistent_account = load_persistent_account(config)
-    account = persistent_account.aggregated_account.account
+    account = persistent_account.account
 
     # Create an operation factory
     operation_factory = HistoricOperationFactory(
