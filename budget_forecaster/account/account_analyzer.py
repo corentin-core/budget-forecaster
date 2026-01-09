@@ -227,8 +227,8 @@ class AccountAnalyzer:
         )
 
         df.index = pd.MultiIndex.from_tuples(df.index, names=["Catégorie", "Mois"])
-        df = df.unstack(level=-1).fillna(0)
-        df.columns = df.columns.swaplevel(0, 1)
+        df = df.unstack(level=-1).fillna(0)  # type: ignore[assignment]
+        df.columns = df.columns.swaplevel(0, 1)  # type: ignore[attr-defined]
         df.sort_index(axis=1, level=0, inplace=True)
 
         # Filter out "Actualisé" columns for dates before the current balance date
@@ -248,7 +248,8 @@ class AccountAnalyzer:
 
         # convert columns and sort dates
         new_index = [
-            (pd.to_datetime(month, format="%Y-%m-%d"), col) for month, col in df.columns
+            (pd.to_datetime(month, format="%Y-%m-%d"), col)
+            for month, col in df.columns  # type: ignore[misc,has-type]
         ]
         new_index = sorted(new_index, key=lambda x: x[0])
         df.columns = pd.MultiIndex.from_tuples(new_index)
