@@ -47,10 +47,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Install system dependencies for spell checking
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libenchant-2-dev aspell-en
       - name: Install dependencies
         run: |
           pip install -e ".[dev]"
-          pip install pylint pylint-pytest
+          pip install pylint pylint-pytest pyenchant
       - name: Run pylint
         run: pylint budget_forecaster/ --rcfile=.pylintrc --load-plugins=pylint_pytest
 
