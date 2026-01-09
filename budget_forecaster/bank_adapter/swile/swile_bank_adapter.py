@@ -12,7 +12,7 @@ from budget_forecaster.types import Category
 
 
 class SwileBankAdapter(BankAdapterBase):
-    """Adapter for the Swile Me al-Vouchers acount"""
+    """Adapter for the Swile Meal-Vouchers account"""
 
     def __init__(self) -> None:
         super().__init__("swile")
@@ -33,15 +33,15 @@ class SwileBankAdapter(BankAdapterBase):
 
         for wallet in wallets_json["wallets"]:
             if wallet["type"] == "meal_voucher":
-                self._balance = wallet["balance"]["value"]
-                if not isinstance(self._balance, (float, int)):
+                if not isinstance(wallet["balance"]["value"], (float, int)):
                     raise ValueError("The balance field should be a float")
+                self._balance = wallet["balance"]["value"]
                 break
 
         for operation in operations_json["items"]:
             for transaction in operation["transactions"]:
                 if transaction["status"] not in ("AUTHORIZED", "VALIDATED", "CAPTURED"):
-                    break
+                    continue
 
                 if transaction["payment_method"] != "Wallets::MealVoucherWallet":
                     # we only consider meal vouchers as the other transactions are deduced from the
