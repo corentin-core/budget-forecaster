@@ -1,5 +1,6 @@
 """Main TUI application for budget forecaster."""
 
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -8,15 +9,168 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Footer, Header, OptionList, Static, TabbedContent, TabPane
+from textual.widgets import (
+    Button,
+    DataTable,
+    Footer,
+    Header,
+    OptionList,
+    Static,
+    TabbedContent,
+    TabPane,
+)
 from textual.widgets.option_list import Option
 
 from budget_forecaster.account.persistent_account import PersistentAccount
 from budget_forecaster.config import Config
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.services import OperationFilter, OperationService
+from budget_forecaster.services import ImportService, OperationFilter, OperationService
+from budget_forecaster.tui.screens.imports import ImportWidget
 from budget_forecaster.tui.widgets.operation_table import OperationTable
 from budget_forecaster.types import Category
+
+# Logger instance (configured via Config.setup_logging)
+logger = logging.getLogger("budget_forecaster")
+
+
+class FileBrowserModal(ModalScreen[Path | None]):
+    """Modal for browsing and selecting files."""
+
+    DEFAULT_CSS = """
+    FileBrowserModal {
+        align: center middle;
+    }
+
+    FileBrowserModal #browser-container {
+        width: 90;
+        height: 35;
+        border: solid $primary;
+        background: $surface;
+        padding: 1;
+    }
+
+    FileBrowserModal #current-path {
+        height: 1;
+        margin-bottom: 1;
+        color: $text-muted;
+    }
+
+    FileBrowserModal #file-list {
+        height: 1fr;
+    }
+
+    FileBrowserModal #button-row {
+        height: 3;
+        margin-top: 1;
+    }
+
+    FileBrowserModal .dir-entry {
+        color: $primary;
+    }
+
+    FileBrowserModal .file-entry {
+        color: $text;
+    }
+    """
+
+    BINDINGS = [
+        ("escape", "cancel", "Annuler"),
+        ("backspace", "go_up", "Dossier parent"),
+    ]
+
+    def __init__(self, start_path: Path | None = None, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._current_path = (start_path or Path.home()).resolve()
+        if not self._current_path.is_dir():
+            self._current_path = self._current_path.parent
+
+    def compose(self) -> ComposeResult:
+        """Create the modal layout."""
+        with Vertical(id="browser-container"):
+            yield Static(str(self._current_path), id="current-path")
+            yield DataTable(id="file-list")
+            with Horizontal(id="button-row"):
+                yield Button("← Parent", id="btn-parent", variant="default")
+                yield Button("Sélectionner", id="btn-select", variant="primary")
+                yield Button("Annuler", id="btn-cancel", variant="default")
+
+    def on_mount(self) -> None:
+        """Initialize the file list."""
+        table = self.query_one("#file-list", DataTable)
+        table.add_columns("Type", "Nom")
+        table.cursor_type = "row"
+        self._refresh_file_list()
+
+    def _refresh_file_list(self) -> None:
+        """Refresh the file list with current directory contents."""
+        table = self.query_one("#file-list", DataTable)
+        table.clear()
+
+        self.query_one("#current-path", Static).update(str(self._current_path))
+
+        try:
+            entries = sorted(
+                self._current_path.iterdir(),
+                key=lambda p: (not p.is_dir(), p.name.lower()),
+            )
+        except PermissionError:
+            self.app.notify("Permission refusée", severity="error")
+            return
+
+        for entry in entries:
+            if entry.name.startswith("."):
+                continue  # Skip hidden files
+            if entry.is_dir():
+                table.add_row("📁", entry.name, key=str(entry))
+            else:
+                table.add_row("📄", entry.name, key=str(entry))
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Handle double-click or Enter on a row."""
+        if event.row_key is None:
+            return
+        selected_path = Path(str(event.row_key.value))
+        if selected_path.is_dir():
+            self._current_path = selected_path
+            self._refresh_file_list()
+        else:
+            self.dismiss(selected_path)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle button presses."""
+        if event.button.id == "btn-parent":
+            self.action_go_up()
+        elif event.button.id == "btn-select":
+            self._select_current()
+        elif event.button.id == "btn-cancel":
+            self.dismiss(None)
+
+    def action_cancel(self) -> None:
+        """Cancel selection."""
+        self.dismiss(None)
+
+    def action_go_up(self) -> None:
+        """Go to parent directory."""
+        if (parent := self._current_path.parent) != self._current_path:
+            self._current_path = parent
+            self._refresh_file_list()
+
+    def _select_current(self) -> None:
+        """Select the currently highlighted item (file or directory)."""
+        table = self.query_one("#file-list", DataTable)
+        if table.cursor_row is None or table.row_count == 0:
+            # Select current directory
+            self.dismiss(self._current_path)
+            return
+
+        try:
+            # pylint: disable=protected-access
+            if row_key := table._row_locations.get_key(table.cursor_row):
+                selected_path = Path(str(row_key.value))
+                # Select the highlighted item (file or directory)
+                self.dismiss(selected_path)
+        except (KeyError, IndexError):
+            self.dismiss(self._current_path)
 
 
 class CategoryModal(ModalScreen[Category | None]):
@@ -131,6 +285,44 @@ class BudgetApp(App[None]):
         height: 1fr;
         max-height: 100%;
     }
+
+    #import-header {
+        height: 3;
+        margin-bottom: 1;
+    }
+
+    #inbox-info {
+        width: 1fr;
+        padding: 0 1;
+    }
+
+    #pending-title {
+        text-style: bold;
+        margin-bottom: 1;
+    }
+
+    #pending-table {
+        height: 1fr;
+        max-height: 100%;
+    }
+
+    #manual-title {
+        text-style: bold;
+        margin-top: 1;
+        margin-bottom: 1;
+    }
+
+    #file-input-row {
+        height: 3;
+    }
+
+    #file-path-input {
+        width: 1fr;
+    }
+
+    #btn-import-file {
+        margin-left: 1;
+    }
     """
 
     BINDINGS = [
@@ -155,6 +347,7 @@ class BudgetApp(App[None]):
         self._config: Config | None = None
         self._persistent_account: PersistentAccount | None = None
         self._operation_service: OperationService | None = None
+        self._import_service: ImportService | None = None
         self._categorizing_operation_id: int | None = None
 
     def _load_config(self) -> None:
@@ -162,12 +355,21 @@ class BudgetApp(App[None]):
         self._config = Config()
         self._config.parse(self._config_path)
 
+        # Setup logging from config
+        self._config.setup_logging()
+        logger.info("Starting Budget Forecaster TUI")
+
         self._persistent_account = PersistentAccount(
             database_path=self._config.database_path
         )
         self._persistent_account.load()
 
         self._operation_service = OperationService(self._persistent_account)
+        self._import_service = ImportService(
+            self._persistent_account,
+            self._config.inbox_path,
+            self._config.inbox_exclude_patterns,
+        )
 
     @property
     def operation_service(self) -> OperationService:
@@ -182,6 +384,13 @@ class BudgetApp(App[None]):
         if self._persistent_account is None:
             raise RuntimeError("Application not initialized")
         return self._persistent_account
+
+    @property
+    def import_service(self) -> ImportService:
+        """Get the import service."""
+        if self._import_service is None:
+            raise RuntimeError("Application not initialized")
+        return self._import_service
 
     def compose(self) -> ComposeResult:
         """Create the UI layout."""
@@ -202,6 +411,8 @@ class BudgetApp(App[None]):
                     id="categorize-help",
                 )
                 yield OperationTable(id="categorize-table")
+            with TabPane("Import", id="import"):
+                yield ImportWidget(id="import-widget")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -252,6 +463,10 @@ class BudgetApp(App[None]):
             uncategorized
         )
 
+        # Refresh import widget
+        import_widget = self.query_one("#import-widget", ImportWidget)
+        import_widget.set_service(self.import_service)
+
     def action_refresh_data(self) -> None:
         """Refresh data from the database."""
         if self._persistent_account is not None:
@@ -263,6 +478,35 @@ class BudgetApp(App[None]):
         if self._persistent_account:
             self._persistent_account.save()
             self.notify("Modifications enregistrées")
+
+    def on_import_widget_browse_requested(
+        self, event: ImportWidget.BrowseRequested
+    ) -> None:
+        """Handle browse request from import widget."""
+        event.stop()
+        # Start in inbox directory if it exists, otherwise home
+        start_path = self.import_service.inbox_path
+        if not start_path.exists():
+            start_path = Path.home()
+        self.push_screen(FileBrowserModal(start_path), self._on_file_selected)
+
+    def on_import_widget_import_completed(
+        self, event: ImportWidget.ImportCompleted
+    ) -> None:
+        """Handle import completion from import widget."""
+        event.stop()
+        if event.success:
+            # Reload data from database and refresh all screens
+            if self._persistent_account:
+                self._persistent_account.load()
+            self._refresh_screens()
+
+    def _on_file_selected(self, path: Path | None) -> None:
+        """Handle file selection from browser."""
+        if path is None:
+            return
+        import_widget = self.query_one("#import-widget", ImportWidget)
+        import_widget.set_file_path(path)
 
     def action_categorize(self) -> None:
         """Open category selection for the currently selected operation."""

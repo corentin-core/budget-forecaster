@@ -1,6 +1,8 @@
 """Module for the Config class."""
+import logging
+import logging.config
 from pathlib import Path
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 import yaml
 
@@ -24,6 +26,9 @@ class Config:  # pylint: disable=too-few-public-methods
         self.planned_operations_path = Path("planned_operations.json")
         # Import config
         self.inbox_path = Path("inbox")
+        self.inbox_exclude_patterns: list[str] = []
+        # Logging config (native Python logging dictConfig format)
+        self.logging_config: dict[str, Any] | None = None
 
     def __parse_yaml(self, yaml_path: Path) -> None:
         """Parse a YAML configuration file."""
@@ -38,6 +43,29 @@ class Config:  # pylint: disable=too-few-public-methods
             )
             if "inbox_path" in config:
                 self.inbox_path = Path(config["inbox_path"])
+            if "inbox_exclude_patterns" in config:
+                self.inbox_exclude_patterns = config["inbox_exclude_patterns"] or []
+            # Parse logging config (native dictConfig format)
+            if "logging" in config:
+                self.logging_config = config["logging"]
+
+    def setup_logging(self) -> None:
+        """Initialize Python's logging system using the configuration."""
+        if not self.logging_config:
+            # Default basic configuration
+            logging.basicConfig(
+                level=logging.INFO,
+                format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            )
+        else:
+            try:
+                logging.config.dictConfig(self.logging_config)
+            except (ValueError, TypeError, AttributeError, ImportError) as e:
+                # Fallback to basic config on error
+                logging.basicConfig(level=logging.DEBUG)
+                logging.error("Invalid logging configuration: %s", e)
+
+        logging.debug("Logging initialized")
 
     def parse(self, config_path: Path) -> None:
         """Parse a configuration file."""
