@@ -1,0 +1,161 @@
+{
+  "items_count": 6,
+  "has_more": false,
+  "next_cursor": null,
+  "items": [
+    {
+      "id": "op-001",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Restaurant Test",
+      "amount": {
+        "value": -1500,
+        "currency": { "iso_3": "EUR", "symbol": "€", "title": "Euro" }
+      },
+      "date": "2025-01-15T12:30:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-001",
+          "status": "CAPTURED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-01-15T12:30:01.000+01:00",
+          "amount": {
+            "value": -1500,
+            "currency": { "iso_3": "EUR", "symbol": "€", "title": "Euro" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-002",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Supermarche Test",
+      "amount": {
+        "value": -2500,
+        "currency": { "iso_3": "EUR", "symbol": "€", "title": "Euro" }
+      },
+      "date": "2025-01-14T18:00:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-002",
+          "status": "VALIDATED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-01-14T18:00:01.000+01:00",
+          "amount": {
+            "value": -2500,
+            "currency": { "iso_3": "EUR", "symbol": "€", "title": "Euro" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-003",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Empreinte bancaire",
+      "name": "Boulangerie Test",
+      "amount": {
+        "value": -800,
+        "currency": { "iso_3": "EUR", "symbol": "€", "title": "Euro" }
+      },
+      "date": "2025-01-16T08:00:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-003",
+          "status": "AUTHORIZED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-01-16T08:00:01.000+01:00",
+          "amount": {
+            "value": -800,
+            "currency": { "iso_3": "EUR", "symbol": "€", "title": "Euro" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-004",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Erreur lors du paiement",
+      "name": "Marchand Echec",
+      "amount": {
+        "value": -1000,
+        "currency": { "iso_3": "EUR", "symbol": "€", "title": "Euro" }
+      },
+      "date": "2025-01-13T12:00:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-004",
+          "status": "DECLINED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-01-13T12:00:01.000+01:00",
+          "amount": {
+            "value": -1000,
+            "currency": { "iso_3": "EUR", "symbol": "€", "title": "Euro" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-005",
+      "object": "operation",
+      "type": "Operations::Emission",
+      "display_type": "Versement",
+      "name": "Credit titres-resto",
+      "amount": {
+        "value": 18900,
+        "currency": { "iso_3": "EUR", "symbol": "€", "title": "Euro" }
+      },
+      "date": "2025-01-01T02:00:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-005",
+          "status": "VALIDATED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-01-01T02:00:01.000+01:00",
+          "amount": {
+            "value": 18900,
+            "currency": { "iso_3": "EUR", "symbol": "€", "title": "Euro" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-006",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Paiement mixte",
+      "amount": {
+        "value": -3000,
+        "currency": { "iso_3": "EUR", "symbol": "€", "title": "Euro" }
+      },
+      "date": "2025-01-10T19:00:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-006a",
+          "status": "CAPTURED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-01-10T19:00:01.000+01:00",
+          "amount": {
+            "value": -2500,
+            "currency": { "iso_3": "EUR", "symbol": "€", "title": "Euro" }
+          }
+        },
+        {
+          "id": "tx-006b",
+          "status": "CAPTURED",
+          "payment_method": "CreditCard",
+          "date": "2025-01-10T19:00:02.000+01:00",
+          "amount": {
+            "value": -500,
+            "currency": { "iso_3": "EUR", "symbol": "€", "title": "Euro" }
+          }
+        }
+      ]
+    }
+  ]
+}
