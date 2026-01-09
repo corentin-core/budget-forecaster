@@ -35,7 +35,8 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
             date_format="dd/mm/yyyy",
         )
         workbook = self.__writer.book
-        self.__money_format = workbook.add_format({"num_format": "#,##0.00 €"})
+        money_fmt = {"num_format": "#,##0.00 €"}
+        self.__money_format = workbook.add_format(money_fmt)  # type: ignore[union-attr]
         self.__saved_plots: list[pathlib.Path] = []
 
     def render_report(self, report: AccountAnalysisReport) -> None:
@@ -54,7 +55,8 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         # hack: we can't set multiple date formats in the same workbook
         # convert datetime to date to avoid the datetime format
         operations_reformatted = operations.copy()
-        operations_reformatted.index = operations_reformatted.index.date
+        idx = operations_reformatted.index
+        operations_reformatted.index = idx.date  # type: ignore[attr-defined]
         operations_reformatted.index.name = "Date"
         operations_reformatted = operations_reformatted.sort_index(ascending=False)
 
@@ -199,10 +201,11 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         # compare "Prévu" and "Réel" columns
         # and highlight the cells where the "Réel" value is lower than the "Prévu" value
         date_to_header_column: dict[str, dict[str, int]] = {}
-        for i, (date, header_to_column) in enumerate(expenses_forecast.columns):
-            date_to_header_column.setdefault(date, {}).setdefault(header_to_column, i)
+        for i, col_tuple in enumerate(expenses_forecast.columns):
+            date, header = col_tuple[0], col_tuple[1]
+            date_to_header_column.setdefault(date, {}).setdefault(header, i)
 
-        for date, header_to_column in date_to_header_column.items():
+        for date, header_to_column in date_to_header_column.items():  # noqa: B020
             if "Prévu" not in header_to_column or "Réel" not in header_to_column:
                 continue
 
@@ -213,7 +216,9 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
                 {
                     "type": "formula",
                     "criteria": f"={real_column_letter}2<{forecast_column_letter}2",
-                    "format": self.__writer.book.add_format({"bg_color": "red"}),
+                    "format": self.__writer.book.add_format(  # type: ignore[union-attr]
+                        {"bg_color": "red"}
+                    ),
                 },
             )
 
@@ -234,7 +239,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         plt.figure(figsize=(15, 10))
         plt.pie(
             filtered_expenses["Total"],
-            labels=filtered_expenses.index,
+            labels=list(filtered_expenses.index),
             autopct="%1.1f%%",
         )
         plt.title("Répartition des dépenses")
