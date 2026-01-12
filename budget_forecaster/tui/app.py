@@ -32,7 +32,7 @@ from budget_forecaster.services import (
 )
 from budget_forecaster.tui.screens.forecast import ForecastWidget
 from budget_forecaster.tui.screens.imports import ImportWidget
-from budget_forecaster.tui.widgets.operation_table import OperationTable
+from budget_forecaster.tui.widgets import OperationTable, get_row_key_at_cursor
 from budget_forecaster.types import Category
 
 # Logger instance (configured via Config.setup_logging)
@@ -164,19 +164,14 @@ class FileBrowserModal(ModalScreen[Path | None]):
     def _select_current(self) -> None:
         """Select the currently highlighted item (file or directory)."""
         table = self.query_one("#file-list", DataTable)
-        if table.cursor_row is None or table.row_count == 0:
-            # Select current directory
+        if (row_key := get_row_key_at_cursor(table)) is None:
+            # No selection, use current directory
             self.dismiss(self._current_path)
             return
 
-        try:
-            # pylint: disable=protected-access
-            if row_key := table._row_locations.get_key(table.cursor_row):
-                selected_path = Path(str(row_key.value))
-                # Select the highlighted item (file or directory)
-                self.dismiss(selected_path)
-        except (KeyError, IndexError):
-            self.dismiss(self._current_path)
+        selected_path = Path(str(row_key.value))
+        # Select the highlighted item (file or directory)
+        self.dismiss(selected_path)
 
 
 class CategoryModal(ModalScreen[Category | None]):

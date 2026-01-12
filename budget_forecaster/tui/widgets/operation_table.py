@@ -4,8 +4,30 @@ from typing import Any
 
 from textual.message import Message
 from textual.widgets import DataTable
+from textual.widgets.data_table import RowKey
 
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
+
+
+def get_row_key_at_cursor(table: DataTable) -> RowKey | None:  # type: ignore[type-arg]
+    """Get the RowKey at the current cursor position.
+
+    This helper encapsulates access to Textual's private _row_locations API.
+    If Textual changes its internal API, only this function needs updating.
+
+    Args:
+        table: The DataTable widget.
+
+    Returns:
+        The RowKey at cursor position, or None if not found.
+    """
+    if table.cursor_row is None or table.row_count == 0:
+        return None
+    try:
+        # pylint: disable=protected-access
+        return table._row_locations.get_key(table.cursor_row)
+    except (KeyError, IndexError, AttributeError):
+        return None
 
 
 class OperationTable(DataTable[str]):
@@ -76,15 +98,9 @@ class OperationTable(DataTable[str]):
 
     def get_selected_operation(self) -> HistoricOperation | None:
         """Get the currently selected operation."""
-        if self.cursor_row is None or self.row_count == 0:
+        if (row_key := get_row_key_at_cursor(self)) is None:
             return None
-        try:
-            # _row_locations maps row index to RowKey
-            if (row_key := self._row_locations.get_key(self.cursor_row)) is None:
-                return None
-            return self._operations.get(str(row_key.value))
-        except (KeyError, IndexError):
-            return None
+        return self._operations.get(str(row_key.value))
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle row selection."""

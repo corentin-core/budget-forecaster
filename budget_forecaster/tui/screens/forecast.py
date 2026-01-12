@@ -267,7 +267,7 @@ class ForecastWidget(Vertical):
             self.app.notify(f"Fichier non trouvé: {e}", severity="error")
             self._update_status()
         except Exception as e:  # pylint: disable=broad-except
-            logger.error("Error computing forecast: %s", e)
+            logger.exception("Error computing forecast")
             self.app.notify(f"Erreur: {e}", severity="error")
             self._update_status()
         finally:
@@ -436,5 +436,5 @@ class ForecastWidget(Vertical):
             logger.info("Exported forecast to %s", output_path)
             self.app.notify(f"Exporté vers {output_path}")
         except Exception as e:  # pylint: disable=broad-except
-            logger.error("Error exporting forecast: %s", e)
+            logger.exception("Error exporting forecast")
             self.app.notify(f"Erreur d'export: {e}", severity="error")

@@ -3,6 +3,7 @@
 import logging
 from datetime import date, datetime, time
 from pathlib import Path
+from typing import Any, TypedDict
 
 from dateutil.relativedelta import relativedelta
 
@@ -13,6 +14,21 @@ from budget_forecaster.forecast.forecast import Forecast
 from budget_forecaster.forecast.forecast_reader import ForecastReader
 
 logger = logging.getLogger(__name__)
+
+
+class CategoryBudget(TypedDict):
+    """Budget values for a category."""
+
+    real: float
+    predicted: float
+    actualized: float
+
+
+class MonthlySummary(TypedDict):
+    """Monthly budget summary."""
+
+    month: Any  # pandas Timestamp
+    categories: dict[str, CategoryBudget]
 
 
 class ForecastService:
@@ -61,12 +77,13 @@ class ForecastService:
         Raises:
             FileNotFoundError: If the forecast files don't exist.
         """
-        if not self._planned_operations_path.exists():
-            raise FileNotFoundError(
-                f"Planned operations file not found: {self._planned_operations_path}"
-            )
-        if not self._budgets_path.exists():
-            raise FileNotFoundError(f"Budgets file not found: {self._budgets_path}")
+        if not self.has_forecast_files:
+            missing = []
+            if not self._planned_operations_path.exists():
+                missing.append(str(self._planned_operations_path))
+            if not self._budgets_path.exists():
+                missing.append(str(self._budgets_path))
+            raise FileNotFoundError(f"Forecast files not found: {', '.join(missing)}")
 
         logger.info(
             "Loading forecast from %s and %s",
@@ -106,6 +123,9 @@ class ForecastService:
         if self._forecast is None:
             self.load_forecast()
 
+        # After load_forecast(), _forecast is guaranteed to be set
+        assert self._forecast is not None
+
         if start_date is None:
             start_date = date.today() - relativedelta(months=4)
         if end_date is None:
@@ -113,7 +133,7 @@ class ForecastService:
 
         logger.info("Computing forecast report from %s to %s", start_date, end_date)
 
-        analyzer = AccountAnalyzer(self._account, self._forecast)  # type: ignore[arg-type]
+        analyzer = AccountAnalyzer(self._account, self._forecast)
         self._report = analyzer.compute_report(
             datetime.combine(start_date, time()),
             datetime.combine(end_date, time()),
@@ -144,7 +164,7 @@ class ForecastService:
             for d, row in sampled.iterrows()
         ]
 
-    def get_monthly_summary(self) -> list[dict]:
+    def get_monthly_summary(self) -> list[MonthlySummary]:
         """Get monthly budget summary.
 
         Returns:
@@ -154,36 +174,41 @@ class ForecastService:
             return []
 
         df = self._report.budget_forecast
-        summaries: list[dict] = []
+        summaries: list[MonthlySummary] = []
 
         # Get unique months from columns
         months = sorted({col[0] for col in df.columns})
 
         for month in months:
-            categories: dict = {}
+            categories: dict[str, CategoryBudget] = {}
             for category in df.index:
                 if category == "Total":
                     continue
-                try:
-                    real = df.loc[category, (month, "Réel")]
-                except KeyError:
-                    real = 0
-                try:
-                    predicted = df.loc[category, (month, "Prévu")]
-                except KeyError:
-                    predicted = 0
-                try:
-                    actualized = df.loc[category, (month, "Actualisé")]
-                except KeyError:
-                    actualized = 0
 
-                if real != 0 or predicted != 0 or actualized != 0:
-                    categories[category] = {
-                        "real": float(real),
-                        "predicted": float(predicted),
-                        "actualized": float(actualized),
-                    }
-            summaries.append({"month": month, "categories": categories})
+                # Use 'in' to check column existence instead of try/except KeyError
+                real = (
+                    df.loc[category, (month, "Réel")]
+                    if (month, "Réel") in df.columns
+                    else 0
+                )
+                predicted = (
+                    df.loc[category, (month, "Prévu")]
+                    if (month, "Prévu") in df.columns
+                    else 0
+                )
+                actualized = (
+                    df.loc[category, (month, "Actualisé")]
+                    if (month, "Actualisé") in df.columns
+                    else 0
+                )
+
+                if any((real != 0, predicted != 0, actualized != 0)):
+                    categories[str(category)] = CategoryBudget(
+                        real=float(real),
+                        predicted=float(predicted),
+                        actualized=float(actualized),
+                    )
+            summaries.append(MonthlySummary(month=month, categories=categories))
 
         return summaries
 

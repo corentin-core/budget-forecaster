@@ -6,7 +6,6 @@ This service provides a UI-agnostic API for importing bank statements.
 import fnmatch
 import logging
 import shutil
-import traceback
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -108,12 +107,8 @@ class ImportService:
                 continue
             if self._is_excluded(item):
                 continue
-            try:
-                self._bank_adapter_factory.create_bank_adapter(item)
+            if self.is_supported_export(item):
                 exports.append(item)
-            except RuntimeError:
-                # No adapter found for this item
-                pass
 
         return exports
 
@@ -174,9 +169,8 @@ class ImportService:
                 operations_count=operations_count,
             )
 
-        except (ValueError, OSError, KeyError, RuntimeError) as e:
-            logger.error("Import failed for %s: %s", path, e)
-            logger.debug("Full traceback:\n%s", traceback.format_exc())
+        except Exception as e:  # pylint: disable=broad-except
+            logger.exception("Import failed for %s", path)
             return ImportResult(
                 path=path,
                 success=False,
