@@ -61,6 +61,12 @@ python -m budget_forecaster.main -c config.yaml categorize
 - Amounts are in EUR by default
 - Always ask for review before committing
 
+## Git workflow
+
+- **Never use `git add -A` or `git add .`** - always stage files explicitly to avoid
+  committing untracked files (venv, data files, etc.)
+- Use `git add <file1> <file2>` to stage only the files you intend to commit
+
 ## PR review workflow
 
 When addressing PR review comments:
