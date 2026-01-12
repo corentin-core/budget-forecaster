@@ -12,9 +12,11 @@ cli
 config
 conn
 csv
+dataclass
 dataframe
 datetime
 deserialize
+dialogs
 enum
 historicoperation
 iterable
@@ -40,4 +42,5 @@ unicode
 upsert
 upserting
 whitespace
+xlsx
 yaml
