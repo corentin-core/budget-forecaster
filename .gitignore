@@ -5,3 +5,4 @@ venv
 .config
 .idea
 *.db
+agent-os/
