@@ -286,8 +286,13 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
             except ValueError:
                 raise ValueError("Le montant doit être un nombre")
 
-            category_name = self.query_one("#select-category", Select).value
-            category = Category[str(category_name)]
+            category_select = self.query_one("#select-category", Select)
+            if category_select.value == Select.BLANK:
+                raise ValueError("La catégorie est requise")
+            try:
+                category = Category[str(category_select.value)]
+            except KeyError:
+                raise ValueError("Catégorie invalide")
 
             date_str = self.query_one("#input-date", Input).value.strip()
             try:
