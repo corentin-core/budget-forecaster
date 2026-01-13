@@ -72,7 +72,7 @@ python -m budget_forecaster.main -c config.yaml categorize
 When addressing PR review comments:
 
 - **Always reply inline** to each comment using
-  `gh api repos/.../pulls/{pr}/comments/{id}/replies -X POST -f body="..."`
+  `gh api repos/{owner}/{repo}/pulls/{pr}/comments/{id}/replies -X POST -f body="..."`
 - **Never post global comments** summarizing changes - each comment deserves its own
   inline response
 - Reference commit hashes and issue numbers in replies (e.g., "✅ Fixed in commit
@@ -117,7 +117,8 @@ All issues must be created in **English** with the following structure:
 ### Example
 
 ```bash
-gh issue create --title "feat: add multi-currency support" --body "## Context
+# Create issue and capture its number
+ISSUE_NUM=$(gh issue create --title "feat: add multi-currency support" --body "## Context
 Currently all amounts are hardcoded in EUR.
 
 ## Proposed solution
@@ -132,6 +133,7 @@ Currently all amounts are hardcoded in EUR.
 
 ## Related issues
 - Related to #36 (import filtering)
-"
-gh issue edit {id} --add-label "enhancement" --add-label "P2-medium"
+" | grep -oE '[0-9]+$')
+
+gh issue edit $ISSUE_NUM --add-label "enhancement" --add-label "P2-medium"
 ```

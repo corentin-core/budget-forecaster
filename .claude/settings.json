@@ -33,6 +33,6 @@
       "Bash(gh api *)",
       "Bash(pre-commit*)"
     ],
-    "deny": []
+    "deny": ["Bash(git add -A*)", "Bash(git add .*)"]
   }
 }
