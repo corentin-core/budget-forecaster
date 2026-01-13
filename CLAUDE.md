@@ -63,6 +63,11 @@ python -m budget_forecaster.main -c config.yaml categorize
 
 ## Git workflow
 
+- **NEVER commit directly to main** - always create a feature branch and submit a PR
+- When working on an issue:
+  1. Create a branch from up-to-date main: `git checkout main && git pull && git checkout -b issue/<number>-<short-description>`
+  2. Make commits on the feature branch
+  3. Push the branch and create a PR with `gh pr create`
 - **Never use `git add -A` or `git add .`** - always stage files explicitly to avoid
   committing untracked files (venv, data files, etc.)
 - Use `git add <file1> <file2>` to stage only the files you intend to commit
