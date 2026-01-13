@@ -185,7 +185,6 @@ class ForecastService:
                 if category == "Total":
                     continue
 
-                # Use 'in' to check column existence instead of try/except KeyError
                 real = (
                     df.loc[category, (month, "Réel")]
                     if (month, "Réel") in df.columns
