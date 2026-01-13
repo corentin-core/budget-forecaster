@@ -166,17 +166,6 @@ class ForecastWidget(Vertical):
             status.add_class("status-error")
             return
 
-        if not self._forecast_service.has_forecast_files:
-            status.update(
-                f"Fichiers de prévision manquants:\n"
-                f"  - {self._forecast_service.planned_operations_path}\n"
-                f"  - {self._forecast_service.budgets_path}"
-            )
-            status.add_class("status-warning")
-            self.query_one("#btn-compute", Button).disabled = True
-            self.query_one("#btn-export", Button).disabled = True
-            return
-
         self.query_one("#btn-compute", Button).disabled = False
 
         if self._forecast_service.report is None:
@@ -420,8 +409,7 @@ class ForecastWidget(Vertical):
             return
 
         # Import here to avoid circular imports
-        # pylint: disable=import-outside-toplevel
-        from pathlib import Path
+        from pathlib import Path  # noqa: E402,C0415
 
         from budget_forecaster.account.account_analysis_renderer import (
             AccountAnalysisRendererExcel,

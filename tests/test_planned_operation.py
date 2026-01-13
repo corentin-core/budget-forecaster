@@ -15,6 +15,7 @@ from budget_forecaster.types import Category
 def recurring_planned_operation() -> PlannedOperation:
     """Return a recurring planned operation."""
     return PlannedOperation(
+        id=1,
         description="Test Operation",
         amount=Amount(100.0),
         category=Category.GROCERIES,
@@ -119,6 +120,7 @@ class TestRecurringPlannedOperation:
 def isolated_planned_operation() -> PlannedOperation:
     """Return an isolated planned operation."""
     return PlannedOperation(
+        id=2,
         description="Test Operation",
         amount=Amount(100.0),
         category=Category.GROCERIES,

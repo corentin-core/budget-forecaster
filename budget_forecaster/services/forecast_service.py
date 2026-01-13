@@ -2,7 +2,6 @@
 
 import logging
 from datetime import date, datetime, time
-from pathlib import Path
 from typing import Any, TypedDict
 
 from dateutil.relativedelta import relativedelta
@@ -10,8 +9,10 @@ from dateutil.relativedelta import relativedelta
 from budget_forecaster.account.account import Account
 from budget_forecaster.account.account_analysis_report import AccountAnalysisReport
 from budget_forecaster.account.account_analyzer import AccountAnalyzer
+from budget_forecaster.account.sqlite_repository import SqliteRepository
 from budget_forecaster.forecast.forecast import Forecast
-from budget_forecaster.forecast.forecast_reader import ForecastReader
+from budget_forecaster.operation_range.budget import Budget
+from budget_forecaster.operation_range.planned_operation import PlannedOperation
 
 logger = logging.getLogger(__name__)
 
@@ -37,65 +38,29 @@ class ForecastService:
     def __init__(
         self,
         account: Account,
-        planned_operations_path: Path,
-        budgets_path: Path,
+        repository: SqliteRepository,
     ) -> None:
         """Initialize the forecast service.
 
         Args:
             account: The account to forecast.
-            planned_operations_path: Path to the planned operations CSV file.
-            budgets_path: Path to the budgets CSV file.
+            repository: SQLite repository for data persistence.
         """
         self._account = account
-        self._planned_operations_path = planned_operations_path
-        self._budgets_path = budgets_path
+        self._repository = repository
         self._forecast: Forecast | None = None
         self._report: AccountAnalysisReport | None = None
 
-    @property
-    def has_forecast_files(self) -> bool:
-        """Check if forecast files exist."""
-        return self._planned_operations_path.exists() and self._budgets_path.exists()
-
-    @property
-    def planned_operations_path(self) -> Path:
-        """Get the planned operations file path."""
-        return self._planned_operations_path
-
-    @property
-    def budgets_path(self) -> Path:
-        """Get the budgets file path."""
-        return self._budgets_path
-
     def load_forecast(self) -> Forecast:
-        """Load forecast data from CSV files.
+        """Load forecast data from the database.
 
         Returns:
             The loaded Forecast object.
-
-        Raises:
-            FileNotFoundError: If the forecast files don't exist.
         """
-        if not self.has_forecast_files:
-            missing = []
-            if not self._planned_operations_path.exists():
-                missing.append(str(self._planned_operations_path))
-            if not self._budgets_path.exists():
-                missing.append(str(self._budgets_path))
-            raise FileNotFoundError(f"Forecast files not found: {', '.join(missing)}")
+        logger.info("Loading forecast from database")
 
-        logger.info(
-            "Loading forecast from %s and %s",
-            self._planned_operations_path,
-            self._budgets_path,
-        )
-
-        reader = ForecastReader()
-        planned_operations = reader.read_planned_operations(
-            self._planned_operations_path
-        )
-        budgets = reader.read_budgets(self._budgets_path)
+        planned_operations = tuple(self._repository.get_all_planned_operations())
+        budgets = tuple(self._repository.get_all_budgets())
 
         self._forecast = Forecast(planned_operations, budgets)
         logger.info(
@@ -105,6 +70,102 @@ class ForecastService:
         )
 
         return self._forecast
+
+    def reload_forecast(self) -> Forecast:
+        """Force reload forecast data from the database.
+
+        Returns:
+            The reloaded Forecast object.
+        """
+        self._forecast = None
+        self._report = None
+        return self.load_forecast()
+
+    # Budget CRUD methods
+
+    def get_all_budgets(self) -> list[Budget]:
+        """Get all budgets from the database."""
+        return self._repository.get_all_budgets()
+
+    def get_budget_by_id(self, budget_id: int) -> Budget | None:
+        """Get a budget by ID."""
+        return self._repository.get_budget_by_id(budget_id)
+
+    def add_budget(self, budget: Budget) -> int:
+        """Add a new budget.
+
+        Args:
+            budget: Budget to add (id should be -1).
+
+        Returns:
+            The ID of the newly created budget.
+        """
+        budget_id = self._repository.upsert_budget(budget)
+        self._forecast = None  # Invalidate cached forecast
+        return budget_id
+
+    def update_budget(self, budget: Budget) -> None:
+        """Update an existing budget.
+
+        Args:
+            budget: Budget with updated values (id must be > 0).
+        """
+        if budget.id <= 0:
+            raise ValueError("Budget must have a valid ID for update")
+        self._repository.upsert_budget(budget)
+        self._forecast = None  # Invalidate cached forecast
+
+    def delete_budget(self, budget_id: int) -> None:
+        """Delete a budget.
+
+        Args:
+            budget_id: ID of the budget to delete.
+        """
+        self._repository.delete_budget(budget_id)
+        self._forecast = None  # Invalidate cached forecast
+
+    # Planned Operation CRUD methods
+
+    def get_all_planned_operations(self) -> list[PlannedOperation]:
+        """Get all planned operations from the database."""
+        return self._repository.get_all_planned_operations()
+
+    def get_planned_operation_by_id(self, op_id: int) -> PlannedOperation | None:
+        """Get a planned operation by ID."""
+        return self._repository.get_planned_operation_by_id(op_id)
+
+    def add_planned_operation(self, op: PlannedOperation) -> int:
+        """Add a new planned operation.
+
+        Args:
+            op: Planned operation to add (id should be -1).
+
+        Returns:
+            The ID of the newly created planned operation.
+        """
+        op_id = self._repository.upsert_planned_operation(op)
+        self._forecast = None  # Invalidate cached forecast
+        return op_id
+
+    def update_planned_operation(self, op: PlannedOperation) -> None:
+        """Update an existing planned operation.
+
+        Args:
+            op: Planned operation with updated values (id must be > 0).
+        """
+        if op.id <= 0:
+            raise ValueError("Planned operation must have a valid ID for update")
+        self._repository.upsert_planned_operation(op)
+        self._forecast = None  # Invalidate cached forecast
+
+    def delete_planned_operation(self, op_id: int) -> None:
+        """Delete a planned operation.
+
+        Args:
+            op_id: ID of the planned operation to delete.
+        """
+        self._repository.delete_planned_operation(op_id)
+        self._forecast = None  # Invalidate cached forecast
 
     def compute_report(
         self,

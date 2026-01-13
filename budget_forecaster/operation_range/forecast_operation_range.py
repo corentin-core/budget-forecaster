@@ -1,5 +1,7 @@
 """Module for the ForecastOperationRange class."""
 
+# pylint: disable=redefined-builtin
+
 from budget_forecaster.amount import Amount
 from budget_forecaster.operation_range.operation_matcher import OperationMatcher
 from budget_forecaster.operation_range.operation_range import OperationRange
@@ -12,6 +14,7 @@ class ForecastOperationRange(OperationRange):
 
     def __init__(
         self,
+        id: int,
         description: str,
         amount: Amount,
         category: Category,
@@ -23,9 +26,15 @@ class ForecastOperationRange(OperationRange):
             category=category,
             time_range=time_range,
         )
+        self.__id = id
         self.__operation_matcher = OperationMatcher(
             operation_range=self,
         )
+
+    @property
+    def id(self) -> int:
+        """The database ID of the operation range. -1 if not persisted yet."""
+        return self.__id
 
     @property
     def matcher(self) -> OperationMatcher:

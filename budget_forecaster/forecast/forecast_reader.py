@@ -198,6 +198,7 @@ class ForecastReader:
 
             budgets.append(
                 Budget(
+                    id=-1,
                     description=description,
                     amount=Amount(amount_euros, "EUR"),
                     category=category,
@@ -223,6 +224,7 @@ class ForecastReader:
 
             planned_operations.append(
                 PlannedOperation(
+                    id=-1,
                     description=description,
                     amount=Amount(amount_euros, "EUR"),
                     category=category,

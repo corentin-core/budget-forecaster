@@ -21,22 +21,29 @@ def forecast() -> Forecast:
     return Forecast(
         operations=(
             PlannedOperation(
-                "Planned Operation 1",
-                Amount(100.0, "EUR"),
-                Category.GROCERIES,
-                DailyTimeRange(datetime(2023, 1, 15)),
+                id=1,
+                description="Planned Operation 1",
+                amount=Amount(100.0, "EUR"),
+                category=Category.GROCERIES,
+                time_range=DailyTimeRange(datetime(2023, 1, 15)),
             ).set_matcher_params(description_hints={"Operation 1"}),
             PlannedOperation(
-                "Planned Operation 2",
-                Amount(200.0, "EUR"),
-                Category.OTHER,
-                PeriodicDailyTimeRange(datetime(2023, 2, 15), relativedelta(months=1)),
+                id=2,
+                description="Planned Operation 2",
+                amount=Amount(200.0, "EUR"),
+                category=Category.OTHER,
+                time_range=PeriodicDailyTimeRange(
+                    datetime(2023, 2, 15), relativedelta(months=1)
+                ),
             ).set_matcher_params(description_hints={"Operation 2"}),
             PlannedOperation(
-                "Planned Operation 3",
-                Amount(200.0, "EUR"),
-                Category.SALARY,
-                PeriodicDailyTimeRange(datetime(2023, 2, 15), relativedelta(months=1)),
+                id=3,
+                description="Planned Operation 3",
+                amount=Amount(200.0, "EUR"),
+                category=Category.SALARY,
+                time_range=PeriodicDailyTimeRange(
+                    datetime(2023, 2, 15), relativedelta(months=1)
+                ),
             ),
         ),
         budgets=(),

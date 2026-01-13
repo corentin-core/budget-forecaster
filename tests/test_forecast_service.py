@@ -1,19 +1,26 @@
 """Tests for the ForecastService."""
 
-# pylint: disable=redefined-outer-name,import-outside-toplevel
+# pylint: disable=redefined-outer-name,too-few-public-methods
 
 from datetime import date, datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
+from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.account.account import Account
+from budget_forecaster.account.sqlite_repository import SqliteRepository
+from budget_forecaster.amount import Amount
+from budget_forecaster.operation_range.budget import Budget
+from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.services.forecast_service import (
     CategoryBudget,
     ForecastService,
     MonthlySummary,
 )
+from budget_forecaster.time_range import DailyTimeRange, TimeRange
+from budget_forecaster.types import Category
 
 
 @pytest.fixture
@@ -29,162 +36,293 @@ def mock_account() -> Account:
 
 
 @pytest.fixture
-def temp_forecast_files(tmp_path: Path) -> tuple[Path, Path]:
-    """Create temporary forecast files."""
-    planned_ops = tmp_path / "planned_operations.csv"
-    budgets = tmp_path / "budgets.csv"
-
-    # Create minimal valid CSV files
-    planned_ops.write_text(
-        "description,amount,category,start_date,end_date,periodicity\n"
-        "Test Op,100,Courses,2025-01-01,,monthly\n"
-    )
-    budgets.write_text(
-        "category,amount,start_date,end_date,periodicity\n"
-        "Courses,-500,2025-01-01,,monthly\n"
-    )
-
-    return planned_ops, budgets
+def temp_db_path(tmp_path: Path) -> Path:
+    """Create a temporary database path."""
+    return tmp_path / "test.db"
 
 
 @pytest.fixture
-def service(
-    mock_account: Account, temp_forecast_files: tuple[Path, Path]
-) -> ForecastService:
+def repository(temp_db_path: Path) -> SqliteRepository:
+    """Create an initialized repository."""
+    repo = SqliteRepository(temp_db_path)
+    repo.initialize()
+    return repo
+
+
+@pytest.fixture
+def service(mock_account: Account, repository: SqliteRepository) -> ForecastService:
     """Create a ForecastService with mock data."""
-    planned_ops, budgets = temp_forecast_files
     return ForecastService(
         account=mock_account,
-        planned_operations_path=planned_ops,
-        budgets_path=budgets,
+        repository=repository,
     )
 
 
 class TestForecastServiceInit:
     """Tests for ForecastService initialization."""
 
-    def test_planned_operations_path_property(
-        self, service: ForecastService, temp_forecast_files: tuple[Path, Path]
-    ) -> None:
-        """planned_operations_path returns the correct path."""
-        planned_ops, _ = temp_forecast_files
-        assert service.planned_operations_path == planned_ops
-
-    def test_budgets_path_property(
-        self, service: ForecastService, temp_forecast_files: tuple[Path, Path]
-    ) -> None:
-        """budgets_path returns the correct path."""
-        _, budgets = temp_forecast_files
-        assert service.budgets_path == budgets
-
     def test_report_initially_none(self, service: ForecastService) -> None:
         """report is None before computation."""
         assert service.report is None
 
 
-class TestHasForecastFiles:
-    """Tests for has_forecast_files property."""
-
-    def test_returns_true_when_both_exist(self, service: ForecastService) -> None:
-        """has_forecast_files returns True when both files exist."""
-        assert service.has_forecast_files is True
-
-    def test_returns_false_when_planned_ops_missing(
-        self, mock_account: Account, tmp_path: Path
-    ) -> None:
-        """has_forecast_files returns False when planned_operations missing."""
-        budgets = tmp_path / "budgets.csv"
-        budgets.write_text("header\ndata\n")
-
-        service = ForecastService(
-            account=mock_account,
-            planned_operations_path=tmp_path / "nonexistent.csv",
-            budgets_path=budgets,
-        )
-        assert service.has_forecast_files is False
-
-    def test_returns_false_when_budgets_missing(
-        self, mock_account: Account, tmp_path: Path
-    ) -> None:
-        """has_forecast_files returns False when budgets missing."""
-        planned_ops = tmp_path / "planned_operations.csv"
-        planned_ops.write_text("header\ndata\n")
-
-        service = ForecastService(
-            account=mock_account,
-            planned_operations_path=planned_ops,
-            budgets_path=tmp_path / "nonexistent.csv",
-        )
-        assert service.has_forecast_files is False
-
-    def test_returns_false_when_both_missing(
-        self, mock_account: Account, tmp_path: Path
-    ) -> None:
-        """has_forecast_files returns False when both files missing."""
-        service = ForecastService(
-            account=mock_account,
-            planned_operations_path=tmp_path / "nonexistent1.csv",
-            budgets_path=tmp_path / "nonexistent2.csv",
-        )
-        assert service.has_forecast_files is False
-
-
 class TestLoadForecast:
     """Tests for load_forecast method."""
 
-    def test_raises_when_files_missing(
-        self, mock_account: Account, tmp_path: Path
+    def test_loads_empty_forecast(self, service: ForecastService) -> None:
+        """load_forecast works with empty database."""
+        forecast = service.load_forecast()
+        assert len(forecast.operations) == 0
+        assert len(forecast.budgets) == 0
+
+    def test_loads_budgets_from_db(
+        self, mock_account: Account, repository: SqliteRepository
     ) -> None:
-        """load_forecast raises FileNotFoundError when files are missing."""
-        service = ForecastService(
-            account=mock_account,
-            planned_operations_path=tmp_path / "missing1.csv",
-            budgets_path=tmp_path / "missing2.csv",
+        """load_forecast loads budgets from database."""
+        # Add a budget to the database
+        budget = Budget(
+            id=-1,
+            description="Test Budget",
+            amount=Amount(-500.0, "EUR"),
+            category=Category.GROCERIES,
+            time_range=TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
+        )
+        repository.upsert_budget(budget)
+
+        service = ForecastService(account=mock_account, repository=repository)
+        forecast = service.load_forecast()
+
+        assert len(forecast.budgets) == 1
+        assert forecast.budgets[0].description == "Test Budget"
+
+    def test_loads_planned_operations_from_db(
+        self, mock_account: Account, repository: SqliteRepository
+    ) -> None:
+        """load_forecast loads planned operations from database."""
+        # Add a planned operation to the database
+        op = PlannedOperation(
+            id=-1,
+            description="Test Op",
+            amount=Amount(100.0, "EUR"),
+            category=Category.SALARY,
+            time_range=DailyTimeRange(datetime(2025, 1, 15)),
+        )
+        repository.upsert_planned_operation(op)
+
+        service = ForecastService(account=mock_account, repository=repository)
+        forecast = service.load_forecast()
+
+        assert len(forecast.operations) == 1
+        assert forecast.operations[0].description == "Test Op"
+
+
+class TestReloadForecast:
+    """Tests for reload_forecast method."""
+
+    def test_invalidates_cached_forecast(
+        self, mock_account: Account, repository: SqliteRepository
+    ) -> None:
+        """reload_forecast invalidates cached forecast."""
+        service = ForecastService(account=mock_account, repository=repository)
+
+        # Load initial forecast
+        service.load_forecast()
+
+        # Add a budget
+        budget = Budget(
+            id=-1,
+            description="New Budget",
+            amount=Amount(-100.0, "EUR"),
+            category=Category.OTHER,
+            time_range=TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
+        )
+        repository.upsert_budget(budget)
+
+        # Reload should pick up the new budget
+        forecast = service.reload_forecast()
+        assert len(forecast.budgets) == 1
+
+
+class TestBudgetCrud:
+    """Tests for budget CRUD methods."""
+
+    def test_add_budget(self, service: ForecastService) -> None:
+        """add_budget adds a budget and returns its ID."""
+        budget = Budget(
+            id=-1,
+            description="Test Budget",
+            amount=Amount(-200.0, "EUR"),
+            category=Category.GROCERIES,
+            time_range=TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
         )
 
-        with pytest.raises(FileNotFoundError) as exc_info:
-            service.load_forecast()
+        budget_id = service.add_budget(budget)
+        assert budget_id > 0
 
-        assert "Forecast files not found" in str(exc_info.value)
+        # Verify it was added
+        retrieved = service.get_budget_by_id(budget_id)
+        assert retrieved is not None
+        assert retrieved.description == "Test Budget"
 
-    def test_raises_with_specific_missing_file(
-        self, mock_account: Account, tmp_path: Path
-    ) -> None:
-        """load_forecast error message includes missing file paths."""
-        missing_planned = tmp_path / "missing_planned.csv"
-        budgets = tmp_path / "budgets.csv"
-        budgets.write_text("header\n")
+    def test_update_budget(self, service: ForecastService) -> None:
+        """update_budget updates an existing budget."""
+        # Add a budget first
+        budget = Budget(
+            id=-1,
+            description="Original",
+            amount=Amount(-100.0, "EUR"),
+            category=Category.OTHER,
+            time_range=TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
+        )
+        budget_id = service.add_budget(budget)
 
-        service = ForecastService(
-            account=mock_account,
-            planned_operations_path=missing_planned,
-            budgets_path=budgets,
+        # Update it
+        updated_budget = budget.replace(id=budget_id, description="Updated")
+        service.update_budget(updated_budget)
+
+        # Verify the update
+        retrieved = service.get_budget_by_id(budget_id)
+        assert retrieved is not None
+        assert retrieved.description == "Updated"
+
+    def test_update_budget_requires_valid_id(self, service: ForecastService) -> None:
+        """update_budget raises error for invalid ID."""
+        budget = Budget(
+            id=-1,
+            description="Test",
+            amount=Amount(-100.0, "EUR"),
+            category=Category.OTHER,
+            time_range=TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
         )
 
-        with pytest.raises(FileNotFoundError) as exc_info:
-            service.load_forecast()
+        with pytest.raises(ValueError, match="valid ID"):
+            service.update_budget(budget)
 
-        assert "missing_planned.csv" in str(exc_info.value)
+    def test_delete_budget(self, service: ForecastService) -> None:
+        """delete_budget removes a budget."""
+        budget = Budget(
+            id=-1,
+            description="To Delete",
+            amount=Amount(-100.0, "EUR"),
+            category=Category.OTHER,
+            time_range=TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
+        )
+        budget_id = service.add_budget(budget)
+
+        service.delete_budget(budget_id)
+
+        assert service.get_budget_by_id(budget_id) is None
+
+    def test_get_all_budgets(self, service: ForecastService) -> None:
+        """get_all_budgets returns all budgets."""
+        for i in range(3):
+            budget = Budget(
+                id=-1,
+                description=f"Budget {i}",
+                amount=Amount(-100.0 * (i + 1), "EUR"),
+                category=Category.OTHER,
+                time_range=TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
+            )
+            service.add_budget(budget)
+
+        budgets = service.get_all_budgets()
+        assert len(budgets) == 3
+
+
+class TestPlannedOperationCrud:
+    """Tests for planned operation CRUD methods."""
+
+    def test_add_planned_operation(self, service: ForecastService) -> None:
+        """add_planned_operation adds an operation and returns its ID."""
+        op = PlannedOperation(
+            id=-1,
+            description="Test Op",
+            amount=Amount(100.0, "EUR"),
+            category=Category.SALARY,
+            time_range=DailyTimeRange(datetime(2025, 1, 15)),
+        )
+
+        op_id = service.add_planned_operation(op)
+        assert op_id > 0
+
+        retrieved = service.get_planned_operation_by_id(op_id)
+        assert retrieved is not None
+        assert retrieved.description == "Test Op"
+
+    def test_update_planned_operation(self, service: ForecastService) -> None:
+        """update_planned_operation updates an existing operation."""
+        op = PlannedOperation(
+            id=-1,
+            description="Original",
+            amount=Amount(100.0, "EUR"),
+            category=Category.SALARY,
+            time_range=DailyTimeRange(datetime(2025, 1, 15)),
+        )
+        op_id = service.add_planned_operation(op)
+
+        updated_op = op.replace(id=op_id, description="Updated")
+        service.update_planned_operation(updated_op)
+
+        retrieved = service.get_planned_operation_by_id(op_id)
+        assert retrieved is not None
+        assert retrieved.description == "Updated"
+
+    def test_update_planned_operation_requires_valid_id(
+        self, service: ForecastService
+    ) -> None:
+        """update_planned_operation raises error for invalid ID."""
+        op = PlannedOperation(
+            id=-1,
+            description="Test",
+            amount=Amount(100.0, "EUR"),
+            category=Category.SALARY,
+            time_range=DailyTimeRange(datetime(2025, 1, 15)),
+        )
+
+        with pytest.raises(ValueError, match="valid ID"):
+            service.update_planned_operation(op)
+
+    def test_delete_planned_operation(self, service: ForecastService) -> None:
+        """delete_planned_operation removes an operation."""
+        op = PlannedOperation(
+            id=-1,
+            description="To Delete",
+            amount=Amount(100.0, "EUR"),
+            category=Category.SALARY,
+            time_range=DailyTimeRange(datetime(2025, 1, 15)),
+        )
+        op_id = service.add_planned_operation(op)
+
+        service.delete_planned_operation(op_id)
+
+        assert service.get_planned_operation_by_id(op_id) is None
+
+    def test_get_all_planned_operations(self, service: ForecastService) -> None:
+        """get_all_planned_operations returns all operations."""
+        for i in range(3):
+            op = PlannedOperation(
+                id=-1,
+                description=f"Op {i}",
+                amount=Amount(100.0 * (i + 1), "EUR"),
+                category=Category.SALARY,
+                time_range=DailyTimeRange(datetime(2025, 1, 15 + i)),
+            )
+            service.add_planned_operation(op)
+
+        ops = service.get_all_planned_operations()
+        assert len(ops) == 3
 
 
 class TestComputeReport:
     """Tests for compute_report method."""
 
     @patch("budget_forecaster.services.forecast_service.AccountAnalyzer")
-    @patch("budget_forecaster.services.forecast_service.ForecastReader")
     def test_uses_default_dates(
         self,
-        mock_reader_class: MagicMock,
         mock_analyzer_class: MagicMock,
         service: ForecastService,
     ) -> None:
         """compute_report uses default date range when not specified."""
-        # Setup mocks
-        mock_reader = MagicMock()
-        mock_reader.read_planned_operations.return_value = []
-        mock_reader.read_budgets.return_value = []
-        mock_reader_class.return_value = mock_reader
-
         mock_report = MagicMock()
         mock_analyzer = MagicMock()
         mock_analyzer.compute_report.return_value = mock_report
@@ -196,20 +334,12 @@ class TestComputeReport:
         mock_analyzer.compute_report.assert_called_once()
 
     @patch("budget_forecaster.services.forecast_service.AccountAnalyzer")
-    @patch("budget_forecaster.services.forecast_service.ForecastReader")
     def test_uses_custom_dates(
         self,
-        mock_reader_class: MagicMock,
         mock_analyzer_class: MagicMock,
         service: ForecastService,
     ) -> None:
         """compute_report uses provided date range."""
-        # Setup mocks
-        mock_reader = MagicMock()
-        mock_reader.read_planned_operations.return_value = []
-        mock_reader.read_budgets.return_value = []
-        mock_reader_class.return_value = mock_reader
-
         mock_analyzer = MagicMock()
         mock_analyzer_class.return_value = mock_analyzer
 
@@ -222,28 +352,6 @@ class TestComputeReport:
         assert call_args[0][0].date() == start
         assert call_args[0][1].date() == end
 
-    @patch("budget_forecaster.services.forecast_service.AccountAnalyzer")
-    @patch("budget_forecaster.services.forecast_service.ForecastReader")
-    def test_lazy_loads_forecast(
-        self,
-        mock_reader_class: MagicMock,
-        mock_analyzer_class: MagicMock,
-        service: ForecastService,
-    ) -> None:
-        """compute_report loads forecast if not already loaded."""
-        mock_reader = MagicMock()
-        mock_reader.read_planned_operations.return_value = []
-        mock_reader.read_budgets.return_value = []
-        mock_reader_class.return_value = mock_reader
-
-        mock_analyzer = MagicMock()
-        mock_analyzer_class.return_value = mock_analyzer
-
-        # First call should load forecast
-        service.compute_report()
-        assert mock_reader.read_planned_operations.called
-        assert mock_reader.read_budgets.called
-
 
 class TestGetBalanceEvolutionSummary:
     """Tests for get_balance_evolution_summary method."""
@@ -254,21 +362,13 @@ class TestGetBalanceEvolutionSummary:
         assert result == []
 
     @patch("budget_forecaster.services.forecast_service.AccountAnalyzer")
-    @patch("budget_forecaster.services.forecast_service.ForecastReader")
     def test_returns_date_balance_tuples(
         self,
-        mock_reader_class: MagicMock,
         mock_analyzer_class: MagicMock,
         service: ForecastService,
     ) -> None:
         """get_balance_evolution_summary returns (date, balance) tuples."""
         import pandas as pd
-
-        # Setup mock report with balance evolution data
-        mock_reader = MagicMock()
-        mock_reader.read_planned_operations.return_value = []
-        mock_reader.read_budgets.return_value = []
-        mock_reader_class.return_value = mock_reader
 
         # Create a simple DataFrame for balance evolution
         dates = pd.date_range("2025-01-01", periods=10, freq="D")
@@ -299,21 +399,13 @@ class TestGetMonthlySummary:
         assert result == []
 
     @patch("budget_forecaster.services.forecast_service.AccountAnalyzer")
-    @patch("budget_forecaster.services.forecast_service.ForecastReader")
     def test_returns_typed_monthly_summary(
         self,
-        mock_reader_class: MagicMock,
         mock_analyzer_class: MagicMock,
         service: ForecastService,
     ) -> None:
         """get_monthly_summary returns correctly typed MonthlySummary list."""
         import pandas as pd
-
-        # Setup mocks
-        mock_reader = MagicMock()
-        mock_reader.read_planned_operations.return_value = []
-        mock_reader.read_budgets.return_value = []
-        mock_reader_class.return_value = mock_reader
 
         # Create mock budget forecast DataFrame
         month = pd.Timestamp("2025-01-01")
@@ -360,21 +452,13 @@ class TestGetCategoryStatistics:
         assert result == []
 
     @patch("budget_forecaster.services.forecast_service.AccountAnalyzer")
-    @patch("budget_forecaster.services.forecast_service.ForecastReader")
     def test_returns_category_stats_tuples(
         self,
-        mock_reader_class: MagicMock,
         mock_analyzer_class: MagicMock,
         service: ForecastService,
     ) -> None:
         """get_category_statistics returns (category, total, avg) tuples."""
         import pandas as pd
-
-        # Setup mocks
-        mock_reader = MagicMock()
-        mock_reader.read_planned_operations.return_value = []
-        mock_reader.read_budgets.return_value = []
-        mock_reader_class.return_value = mock_reader
 
         # Create mock budget statistics DataFrame
         df = pd.DataFrame(
