@@ -28,8 +28,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
 
     BudgetEditModal #modal-container {
         width: 80;
-        height: auto;
-        max-height: 90%;
+        height: 40;
         border: solid $primary;
         background: $surface;
         padding: 1 2;
@@ -38,11 +37,11 @@ class BudgetEditModal(ModalScreen[Budget | None]):
     BudgetEditModal #modal-title {
         text-style: bold;
         margin-bottom: 1;
+        height: 2;
     }
 
     BudgetEditModal #form-scroll {
-        height: auto;
-        max-height: 100%;
+        height: 1fr;
     }
 
     BudgetEditModal .form-row {
@@ -62,6 +61,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
     BudgetEditModal #buttons-row {
         height: 3;
         margin-top: 1;
+        dock: bottom;
     }
 
     BudgetEditModal Button {
@@ -70,8 +70,9 @@ class BudgetEditModal(ModalScreen[Budget | None]):
 
     BudgetEditModal #error-message {
         color: $error;
-        height: auto;
+        height: 2;
         margin-top: 1;
+        dock: bottom;
     }
     """
 

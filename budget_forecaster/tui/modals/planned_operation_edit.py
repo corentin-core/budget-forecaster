@@ -29,8 +29,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
 
     PlannedOperationEditModal #modal-container {
         width: 80;
-        height: auto;
-        max-height: 90%;
+        height: 45;
         border: solid $primary;
         background: $surface;
         padding: 1 2;
@@ -39,11 +38,11 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
     PlannedOperationEditModal #modal-title {
         text-style: bold;
         margin-bottom: 1;
+        height: 2;
     }
 
     PlannedOperationEditModal #form-scroll {
-        height: auto;
-        max-height: 100%;
+        height: 1fr;
     }
 
     PlannedOperationEditModal .form-row {
@@ -63,6 +62,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
     PlannedOperationEditModal #buttons-row {
         height: 3;
         margin-top: 1;
+        dock: bottom;
     }
 
     PlannedOperationEditModal Button {
@@ -71,8 +71,9 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
 
     PlannedOperationEditModal #error-message {
         color: $error;
-        height: auto;
+        height: 2;
         margin-top: 1;
+        dock: bottom;
     }
     """
 
