@@ -9,7 +9,7 @@ from typing import Any
 
 from dateutil.relativedelta import relativedelta
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Select, Static
 
@@ -39,6 +39,11 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
     PlannedOperationEditModal #modal-title {
         text-style: bold;
         margin-bottom: 1;
+    }
+
+    PlannedOperationEditModal #form-scroll {
+        height: auto;
+        max-height: 100%;
     }
 
     PlannedOperationEditModal .form-row {
@@ -92,124 +97,125 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
         with Vertical(id="modal-container"):
             yield Static(title, id="modal-title")
 
-            # Description
-            with Horizontal(classes="form-row"):
-                yield Label("Description:", classes="form-label")
-                yield Input(
-                    value=self._operation.description if self._operation else "",
-                    id="input-description",
-                    classes="form-input",
-                )
+            with VerticalScroll(id="form-scroll"):
+                # Description
+                with Horizontal(classes="form-row"):
+                    yield Label("Description:", classes="form-label")
+                    yield Input(
+                        value=self._operation.description if self._operation else "",
+                        id="input-description",
+                        classes="form-input",
+                    )
 
-            # Amount
-            with Horizontal(classes="form-row"):
-                yield Label("Montant:", classes="form-label")
-                yield Input(
-                    value=str(self._operation.amount) if self._operation else "100",
-                    id="input-amount",
-                    classes="form-input",
-                )
+                # Amount
+                with Horizontal(classes="form-row"):
+                    yield Label("Montant:", classes="form-label")
+                    yield Input(
+                        value=str(self._operation.amount) if self._operation else "100",
+                        id="input-amount",
+                        classes="form-input",
+                    )
 
-            # Category
-            with Horizontal(classes="form-row"):
-                yield Label("Catégorie:", classes="form-label")
-                categories = [
-                    (cat.value, cat.name)
-                    for cat in sorted(Category, key=lambda c: c.value)
-                ]
-                current = (
-                    self._operation.category.name
-                    if self._operation
-                    else Category.OTHER.name
-                )
-                yield Select(
-                    categories,
-                    value=current,
-                    id="select-category",
-                    classes="form-input",
-                )
+                # Category
+                with Horizontal(classes="form-row"):
+                    yield Label("Catégorie:", classes="form-label")
+                    categories = [
+                        (cat.value, cat.name)
+                        for cat in sorted(Category, key=lambda c: c.value)
+                    ]
+                    current = (
+                        self._operation.category.name
+                        if self._operation
+                        else Category.OTHER.name
+                    )
+                    yield Select(
+                        categories,
+                        value=current,
+                        id="select-category",
+                        classes="form-input",
+                    )
 
-            # Date
-            with Horizontal(classes="form-row"):
-                yield Label("Date:", classes="form-label")
-                start = (
-                    self._operation.time_range.initial_date
-                    if self._operation
-                    else datetime.now()
-                )
-                yield Input(
-                    value=start.strftime("%Y-%m-%d"),
-                    id="input-date",
-                    placeholder="YYYY-MM-DD",
-                    classes="form-input",
-                )
+                # Date
+                with Horizontal(classes="form-row"):
+                    yield Label("Date:", classes="form-label")
+                    start = (
+                        self._operation.time_range.initial_date
+                        if self._operation
+                        else datetime.now()
+                    )
+                    yield Input(
+                        value=start.strftime("%Y-%m-%d"),
+                        id="input-date",
+                        placeholder="YYYY-MM-DD",
+                        classes="form-input",
+                    )
 
-            # Periodic
-            with Horizontal(classes="form-row"):
-                yield Label("Récurrent:", classes="form-label")
-                is_periodic = self._operation and isinstance(
-                    self._operation.time_range, PeriodicDailyTimeRange
-                )
-                yield Select(
-                    [("Non", "no"), ("Oui", "yes")],
-                    value="yes" if is_periodic else "no",
-                    id="select-periodic",
-                    classes="form-input",
-                )
+                # Periodic
+                with Horizontal(classes="form-row"):
+                    yield Label("Récurrent:", classes="form-label")
+                    is_periodic = self._operation and isinstance(
+                        self._operation.time_range, PeriodicDailyTimeRange
+                    )
+                    yield Select(
+                        [("Non", "no"), ("Oui", "yes")],
+                        value="yes" if is_periodic else "no",
+                        id="select-periodic",
+                        classes="form-input",
+                    )
 
-            # Period (months)
-            with Horizontal(classes="form-row"):
-                yield Label("Période (mois):", classes="form-label")
-                period = self._get_period_months()
-                yield Input(
-                    value=str(period) if period else "",
-                    id="input-period",
-                    placeholder="Laisser vide si non récurrent",
-                    classes="form-input",
-                )
+                # Period (months)
+                with Horizontal(classes="form-row"):
+                    yield Label("Période (mois):", classes="form-label")
+                    period = self._get_period_months()
+                    yield Input(
+                        value=str(period) if period else "",
+                        id="input-period",
+                        placeholder="Laisser vide si non récurrent",
+                        classes="form-input",
+                    )
 
-            # End date
-            with Horizontal(classes="form-row"):
-                yield Label("Date fin:", classes="form-label")
-                end_date = self._get_end_date()
-                yield Input(
-                    value=end_date.strftime("%Y-%m-%d") if end_date else "",
-                    id="input-end-date",
-                    placeholder="Laisser vide pour indéfini",
-                    classes="form-input",
-                )
+                # End date
+                with Horizontal(classes="form-row"):
+                    yield Label("Date fin:", classes="form-label")
+                    end_date = self._get_end_date()
+                    yield Input(
+                        value=end_date.strftime("%Y-%m-%d") if end_date else "",
+                        id="input-end-date",
+                        placeholder="Laisser vide pour indéfini",
+                        classes="form-input",
+                    )
 
-            # Description hints
-            with Horizontal(classes="form-row"):
-                yield Label("Mots-clés:", classes="form-label")
-                hints = self._get_hints()
-                yield Input(
-                    value=hints,
-                    id="input-hints",
-                    placeholder="Séparés par des virgules",
-                    classes="form-input",
-                )
+                # Description hints
+                with Horizontal(classes="form-row"):
+                    yield Label("Mots-clés:", classes="form-label")
+                    hints = self._get_hints()
+                    yield Input(
+                        value=hints,
+                        id="input-hints",
+                        placeholder="Séparés par des virgules",
+                        classes="form-input",
+                    )
 
-            # Approximation days
-            with Horizontal(classes="form-row"):
-                yield Label("Tolérance date (j):", classes="form-label")
-                approx_days = self._get_approx_days()
-                yield Input(
-                    value=str(approx_days),
-                    id="input-approx-days",
-                    classes="form-input",
-                )
+                # Approximation days
+                with Horizontal(classes="form-row"):
+                    yield Label("Tolérance date (j):", classes="form-label")
+                    approx_days = self._get_approx_days()
+                    yield Input(
+                        value=str(approx_days),
+                        id="input-approx-days",
+                        classes="form-input",
+                    )
 
-            # Approximation ratio
-            with Horizontal(classes="form-row"):
-                yield Label("Tolérance montant:", classes="form-label")
-                approx_ratio = self._get_approx_ratio()
-                yield Input(
-                    value=str(approx_ratio),
-                    id="input-approx-ratio",
-                    placeholder="Ex: 0.05 pour 5%",
-                    classes="form-input",
-                )
+                # Approximation ratio
+                with Horizontal(classes="form-row"):
+                    yield Label("Tolérance montant:", classes="form-label")
+                    approx_ratio = self._get_approx_ratio()
+                    yield Input(
+                        value=str(approx_ratio),
+                        id="input-approx-ratio",
+                        placeholder="Ex: 0.05 pour 5%",
+                        classes="form-input",
+                    )
 
             yield Static("", id="error-message")
 

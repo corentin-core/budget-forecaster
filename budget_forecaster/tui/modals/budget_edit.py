@@ -8,7 +8,7 @@ from typing import Any
 
 from dateutil.relativedelta import relativedelta
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Select, Static
 
@@ -38,6 +38,11 @@ class BudgetEditModal(ModalScreen[Budget | None]):
     BudgetEditModal #modal-title {
         text-style: bold;
         margin-bottom: 1;
+    }
+
+    BudgetEditModal #form-scroll {
+        height: auto;
+        max-height: 100%;
     }
 
     BudgetEditModal .form-row {
@@ -89,99 +94,102 @@ class BudgetEditModal(ModalScreen[Budget | None]):
         with Vertical(id="modal-container"):
             yield Static(title, id="modal-title")
 
-            # Description
-            with Horizontal(classes="form-row"):
-                yield Label("Description:", classes="form-label")
-                yield Input(
-                    value=self._budget.description if self._budget else "",
-                    id="input-description",
-                    classes="form-input",
-                )
+            with VerticalScroll(id="form-scroll"):
+                # Description
+                with Horizontal(classes="form-row"):
+                    yield Label("Description:", classes="form-label")
+                    yield Input(
+                        value=self._budget.description if self._budget else "",
+                        id="input-description",
+                        classes="form-input",
+                    )
 
-            # Amount
-            with Horizontal(classes="form-row"):
-                yield Label("Montant:", classes="form-label")
-                yield Input(
-                    value=str(self._budget.amount) if self._budget else "-100",
-                    id="input-amount",
-                    classes="form-input",
-                )
+                # Amount
+                with Horizontal(classes="form-row"):
+                    yield Label("Montant:", classes="form-label")
+                    yield Input(
+                        value=str(self._budget.amount) if self._budget else "-100",
+                        id="input-amount",
+                        classes="form-input",
+                    )
 
-            # Category
-            with Horizontal(classes="form-row"):
-                yield Label("Catégorie:", classes="form-label")
-                categories = [
-                    (cat.value, cat.name)
-                    for cat in sorted(Category, key=lambda c: c.value)
-                ]
-                current = (
-                    self._budget.category.name if self._budget else Category.OTHER.name
-                )
-                yield Select(
-                    categories,
-                    value=current,
-                    id="select-category",
-                    classes="form-input",
-                )
+                # Category
+                with Horizontal(classes="form-row"):
+                    yield Label("Catégorie:", classes="form-label")
+                    categories = [
+                        (cat.value, cat.name)
+                        for cat in sorted(Category, key=lambda c: c.value)
+                    ]
+                    current = (
+                        self._budget.category.name
+                        if self._budget
+                        else Category.OTHER.name
+                    )
+                    yield Select(
+                        categories,
+                        value=current,
+                        id="select-category",
+                        classes="form-input",
+                    )
 
-            # Start date
-            with Horizontal(classes="form-row"):
-                yield Label("Date début:", classes="form-label")
-                start = (
-                    self._budget.time_range.initial_date
-                    if self._budget
-                    else datetime.now()
-                )
-                yield Input(
-                    value=start.strftime("%Y-%m-%d"),
-                    id="input-start-date",
-                    placeholder="YYYY-MM-DD",
-                    classes="form-input",
-                )
+                # Start date
+                with Horizontal(classes="form-row"):
+                    yield Label("Date début:", classes="form-label")
+                    start = (
+                        self._budget.time_range.initial_date
+                        if self._budget
+                        else datetime.now()
+                    )
+                    yield Input(
+                        value=start.strftime("%Y-%m-%d"),
+                        id="input-start-date",
+                        placeholder="YYYY-MM-DD",
+                        classes="form-input",
+                    )
 
-            # Duration (months)
-            with Horizontal(classes="form-row"):
-                yield Label("Durée (mois):", classes="form-label")
-                duration = self._get_duration_months()
-                yield Input(
-                    value=str(duration),
-                    id="input-duration",
-                    classes="form-input",
-                )
+                # Duration (months)
+                with Horizontal(classes="form-row"):
+                    yield Label("Durée (mois):", classes="form-label")
+                    duration = self._get_duration_months()
+                    yield Input(
+                        value=str(duration),
+                        id="input-duration",
+                        classes="form-input",
+                    )
 
-            # Periodic checkbox and period
-            with Horizontal(classes="form-row"):
-                yield Label("Récurrent:", classes="form-label")
-                is_periodic = self._budget and isinstance(
-                    self._budget.time_range, PeriodicTimeRange
-                )
-                yield Select(
-                    [("Non", "no"), ("Oui", "yes")],
-                    value="yes" if is_periodic else "no",
-                    id="select-periodic",
-                    classes="form-input",
-                )
+                # Periodic checkbox and period
+                with Horizontal(classes="form-row"):
+                    yield Label("Récurrent:", classes="form-label")
+                    is_periodic = self._budget and isinstance(
+                        self._budget.time_range, PeriodicTimeRange
+                    )
+                    yield Select(
+                        [("Non", "no"), ("Oui", "yes")],
+                        value="yes" if is_periodic else "no",
+                        id="select-periodic",
+                        classes="form-input",
+                    )
 
-            with Horizontal(classes="form-row"):
-                yield Label("Période (mois):", classes="form-label")
-                period = self._get_period_months()
-                yield Input(
-                    value=str(period) if period else "",
-                    id="input-period",
-                    placeholder="Laisser vide si non récurrent",
-                    classes="form-input",
-                )
+                with Horizontal(classes="form-row"):
+                    yield Label("Période (mois):", classes="form-label")
+                    period = self._get_period_months()
+                    yield Input(
+                        value=str(period) if period else "",
+                        id="input-period",
+                        placeholder="Laisser vide si non récurrent",
+                        classes="form-input",
+                    )
 
-            # End date (for periodic)
-            with Horizontal(classes="form-row"):
-                yield Label("Date fin:", classes="form-label")
-                end_date = self._get_end_date()
-                yield Input(
-                    value=end_date.strftime("%Y-%m-%d") if end_date else "",
-                    id="input-end-date",
-                    placeholder="Laisser vide pour indéfini",
-                    classes="form-input",
-                )
+                # End date (for periodic)
+                with Horizontal(classes="form-row"):
+                    yield Label("Date fin:", classes="form-label")
+                    end_date = self._get_end_date()
+                    yield Input(
+                        value=end_date.strftime("%Y-%m-%d") if end_date else "",
+                        id="input-end-date",
+                        placeholder="Laisser vide pour indéfini",
+                        classes="form-input",
+                    )
 
             yield Static("", id="error-message")
 
