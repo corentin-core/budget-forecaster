@@ -60,3 +60,80 @@ python -m budget_forecaster.main -c config.yaml categorize
 - Persistence uses SQLite (`account/sqlite_repository.py`)
 - Amounts are in EUR by default
 - Always ask for review before committing
+
+## Git workflow
+
+- **Never use `git add -A` or `git add .`** - always stage files explicitly to avoid
+  committing untracked files (venv, data files, etc.)
+- Use `git add <file1> <file2>` to stage only the files you intend to commit
+
+## PR review workflow
+
+When addressing PR review comments:
+
+- **Always reply inline** to each comment using
+  `gh api repos/{owner}/{repo}/pulls/{pr}/comments/{id}/replies -X POST -f body="..."`
+- **Never post global comments** summarizing changes - each comment deserves its own
+  inline response
+- Reference commit hashes and issue numbers in replies (e.g., "✅ Fixed in commit
+  abc123" or "📝 Issue created: #42")
+
+## Creating GitHub issues
+
+All issues must be created in **English** with the following structure:
+
+### Required elements
+
+1. **Labels** (add with `gh issue edit {id} --add-label "label"`):
+
+   - Priority: `P0-critical`, `P1-high`, `P2-medium`, `P3-low`
+   - Theme: `enhancement`, `bug`, `refactor`, `documentation`, `testing`
+
+2. **Issue body structure**:
+
+   ```markdown
+   ## Context
+
+   Brief explanation of why this is needed.
+
+   ## Proposed solution
+
+   High-level design/approach (2-5 bullet points).
+
+   ## Acceptance criteria
+
+   - [ ] Criterion 1
+   - [ ] Criterion 2
+
+   ## Related issues
+
+   - Depends on #X
+   - Blocks #Y
+   - Related to #Z
+   ```
+
+3. **Link related issues** using keywords: `depends on`, `blocks`, `related to`
+
+### Example
+
+```bash
+# Create issue and capture its number
+ISSUE_NUM=$(gh issue create --title "feat: add multi-currency support" --body "## Context
+Currently all amounts are hardcoded in EUR.
+
+## Proposed solution
+- Add currency field to Account model
+- Update bank adapters to detect currency from exports
+- Add conversion service for reporting
+
+## Acceptance criteria
+- [ ] Account stores currency
+- [ ] BNP/Swile adapters detect currency
+- [ ] Reports show amounts in original currency
+
+## Related issues
+- Related to #36 (import filtering)
+" | grep -oE '[0-9]+$')
+
+gh issue edit $ISSUE_NUM --add-label "enhancement" --add-label "P2-medium"
+```
