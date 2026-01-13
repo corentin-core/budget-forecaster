@@ -156,6 +156,13 @@ class ForecastWidget(Vertical):
         self._forecast_service = service
         self._update_status()
 
+    def refresh_data(self) -> None:
+        """Refresh the forecast data from the database."""
+        if self._forecast_service is not None:
+            # Reload forecast from DB (budgets and planned operations may have changed)
+            self._forecast_service.load_forecast()
+        self._update_status()
+
     def _update_status(self) -> None:
         """Update the status display."""
         status = self.query_one("#forecast-status", Static)
@@ -409,11 +416,13 @@ class ForecastWidget(Vertical):
             return
 
         # Import here to avoid circular imports
-        from pathlib import Path  # noqa: E402,C0415
+        # pylint: disable=import-outside-toplevel
+        from pathlib import Path
 
         from budget_forecaster.account.account_analysis_renderer import (
             AccountAnalysisRendererExcel,
         )
+        # pylint: enable=import-outside-toplevel
 
         report = self._forecast_service.report
         output_path = Path(f"forecast-{date.today().isoformat()}.xlsx")
