@@ -77,9 +77,13 @@ class ForecastService:
         Returns:
             The reloaded Forecast object.
         """
+        self._invalidate_cache()
+        return self.load_forecast()
+
+    def _invalidate_cache(self) -> None:
+        """Invalidate cached forecast and report data."""
         self._forecast = None
         self._report = None
-        return self.load_forecast()
 
     # Budget CRUD methods
 
@@ -101,7 +105,7 @@ class ForecastService:
             The ID of the newly created budget.
         """
         budget_id = self._repository.upsert_budget(budget)
-        self._forecast = None  # Invalidate cached forecast
+        self._invalidate_cache()
         return budget_id
 
     def update_budget(self, budget: Budget) -> None:
@@ -113,7 +117,7 @@ class ForecastService:
         if budget.id <= 0:
             raise ValueError("Budget must have a valid ID for update")
         self._repository.upsert_budget(budget)
-        self._forecast = None  # Invalidate cached forecast
+        self._invalidate_cache()
 
     def delete_budget(self, budget_id: int) -> None:
         """Delete a budget.
@@ -122,7 +126,7 @@ class ForecastService:
             budget_id: ID of the budget to delete.
         """
         self._repository.delete_budget(budget_id)
-        self._forecast = None  # Invalidate cached forecast
+        self._invalidate_cache()
 
     # Planned Operation CRUD methods
 
@@ -144,7 +148,7 @@ class ForecastService:
             The ID of the newly created planned operation.
         """
         op_id = self._repository.upsert_planned_operation(op)
-        self._forecast = None  # Invalidate cached forecast
+        self._invalidate_cache()
         return op_id
 
     def update_planned_operation(self, op: PlannedOperation) -> None:
@@ -156,7 +160,7 @@ class ForecastService:
         if op.id <= 0:
             raise ValueError("Planned operation must have a valid ID for update")
         self._repository.upsert_planned_operation(op)
-        self._forecast = None  # Invalidate cached forecast
+        self._invalidate_cache()
 
     def delete_planned_operation(self, op_id: int) -> None:
         """Delete a planned operation.
@@ -165,7 +169,7 @@ class ForecastService:
             op_id: ID of the planned operation to delete.
         """
         self._repository.delete_planned_operation(op_id)
-        self._forecast = None  # Invalidate cached forecast
+        self._invalidate_cache()
 
     def compute_report(
         self,

@@ -3,6 +3,7 @@
 # pylint: disable=protected-access,no-else-return
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 
+import json
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -490,7 +491,7 @@ class SqliteRepository:
         conn = self._get_connection()
         time_range_data = self._serialize_planned_op_time_range(op.time_range)
         hints = (
-            ";".join(op.matcher.description_hints)
+            json.dumps(list(op.matcher.description_hints))
             if op.matcher.description_hints
             else None
         )
@@ -563,8 +564,14 @@ class SqliteRepository:
                 datetime.fromisoformat(row["end_date"]) if row["end_date"] else None
             ),
         )
-        hints_str = row["description_hints"]
-        hints = set(hints_str.split(";")) if hints_str else set()
+        if hints_str := row["description_hints"]:
+            # Support both JSON (new) and semicolon-delimited (legacy) formats
+            if hints_str.startswith("["):
+                hints = set(json.loads(hints_str))
+            else:
+                hints = set(hints_str.split(";"))
+        else:
+            hints = set()
 
         op = PlannedOperation(
             id=row["id"],
