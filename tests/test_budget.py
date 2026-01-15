@@ -15,7 +15,7 @@ from budget_forecaster.types import Category
 def recurring_budget() -> Budget:
     """Fixture with a recurring budget."""
     return Budget(
-        id=1,
+        record_id=1,
         description="Test Budget",
         amount=Amount(-100.0),
         category=Category.GROCERIES,
@@ -92,7 +92,7 @@ class TestRecurringBudget:
 def budget_no_period() -> Budget:
     """Fixture with a budget with no renewable period."""
     return Budget(
-        id=2,
+        record_id=2,
         description="Test Budget",
         amount=Amount(-200.0),
         category=Category.GROCERIES,

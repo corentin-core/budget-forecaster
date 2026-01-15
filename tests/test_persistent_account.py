@@ -316,7 +316,7 @@ class TestBudgetRepository:
         repository.initialize()
 
         budget = Budget(
-            id=-1,
+            record_id=-1,
             description="Courses mensuelles",
             amount=Amount(-500.0, "EUR"),
             category=Category.GROCERIES,
@@ -343,7 +343,7 @@ class TestBudgetRepository:
         repository.initialize()
 
         budget = Budget(
-            id=-1,
+            record_id=-1,
             description="Courses mensuelles",
             amount=Amount(-500.0, "EUR"),
             category=Category.GROCERIES,
@@ -352,7 +352,9 @@ class TestBudgetRepository:
         budget_id = repository.upsert_budget(budget)
 
         # Update the budget
-        updated_budget = budget.replace(id=budget_id, amount=Amount(-600.0, "EUR"))
+        updated_budget = budget.replace(
+            record_id=budget_id, amount=Amount(-600.0, "EUR")
+        )
         repository.upsert_budget(updated_budget)
 
         retrieved = repository.get_budget_by_id(budget_id)
@@ -367,7 +369,7 @@ class TestBudgetRepository:
         repository.initialize()
 
         budget = Budget(
-            id=-1,
+            record_id=-1,
             description="Test budget",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
@@ -389,7 +391,7 @@ class TestBudgetRepository:
         # Test simple TimeRange
         # duration of 10 days means last_date = initial + 10 - 1 = initial + 9
         budget = Budget(
-            id=-1,
+            record_id=-1,
             description="Simple budget",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
@@ -413,7 +415,7 @@ class TestBudgetRepository:
         repository.initialize()
 
         budget = Budget(
-            id=-1,
+            record_id=-1,
             description="Periodic budget",
             amount=Amount(-200.0, "EUR"),
             category=Category.GROCERIES,
@@ -455,7 +457,7 @@ class TestPlannedOperationRepository:
         repository.initialize()
 
         op = PlannedOperation(
-            id=-1,
+            record_id=-1,
             description="Salaire mensuel",
             amount=Amount(3000.0, "EUR"),
             category=Category.SALARY,
@@ -485,7 +487,7 @@ class TestPlannedOperationRepository:
         repository.initialize()
 
         op = PlannedOperation(
-            id=-1,
+            record_id=-1,
             description="Loyer",
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
@@ -494,7 +496,7 @@ class TestPlannedOperationRepository:
         op_id = repository.upsert_planned_operation(op)
 
         # Update the operation
-        updated_op = op.replace(id=op_id, amount=Amount(-850.0, "EUR"))
+        updated_op = op.replace(record_id=op_id, amount=Amount(-850.0, "EUR"))
         repository.upsert_planned_operation(updated_op)
 
         retrieved = repository.get_planned_operation_by_id(op_id)
@@ -509,7 +511,7 @@ class TestPlannedOperationRepository:
         repository.initialize()
 
         op = PlannedOperation(
-            id=-1,
+            record_id=-1,
             description="Test op",
             amount=Amount(-50.0, "EUR"),
             category=Category.OTHER,
@@ -531,7 +533,7 @@ class TestPlannedOperationRepository:
         repository.initialize()
 
         op = PlannedOperation(
-            id=-1,
+            record_id=-1,
             description="Test with matcher",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
@@ -560,7 +562,7 @@ class TestPlannedOperationRepository:
         repository.initialize()
 
         op = PlannedOperation(
-            id=-1,
+            record_id=-1,
             description="Test hints",
             amount=Amount(-50.0, "EUR"),
             category=Category.OTHER,

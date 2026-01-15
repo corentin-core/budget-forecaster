@@ -77,7 +77,7 @@ class TestForecastActualizer:
         forecast = Forecast(
             operations=(
                 PlannedOperation(
-                    id=1,
+                    record_id=1,
                     description="Late Operation",
                     amount=Amount(100.0, "EUR"),
                     category=Category.OTHER,
@@ -111,7 +111,7 @@ class TestForecastActualizer:
         forecast = Forecast(
             operations=(
                 PlannedOperation(
-                    id=1,
+                    record_id=1,
                     description="Executed Operation",
                     amount=Amount(50.0, "EUR"),
                     category=Category.GROCERIES,
@@ -147,7 +147,7 @@ class TestForecastActualizer:
         forecast = Forecast(
             operations=(
                 PlannedOperation(
-                    id=1,
+                    record_id=1,
                     description="Anticipated Operation",
                     amount=Amount(50.0, "EUR"),
                     category=Category.GROCERIES,
@@ -185,14 +185,14 @@ class TestForecastActualizer:
             operations=(),
             budgets=(
                 Budget(
-                    id=1,
+                    record_id=1,
                     description="Budget Operation 1",
                     amount=Amount(10.0, "EUR"),
                     category=Category.GROCERIES,
                     time_range=TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
                 ),
                 Budget(
-                    id=2,
+                    record_id=2,
                     description="Budget Operation 2",
                     amount=Amount(100.0, "EUR"),
                     category=Category.GROCERIES,
@@ -202,7 +202,7 @@ class TestForecastActualizer:
                     ),
                 ),
                 Budget(
-                    id=3,
+                    record_id=3,
                     description="Budget Operation 3",
                     amount=Amount(100.0, "EUR"),
                     category=Category.GROCERIES,
@@ -242,14 +242,14 @@ class TestForecastActualizer:
             operations=(),
             budgets=(
                 Budget(
-                    id=1,
+                    record_id=1,
                     description="Expired Budget",
                     amount=Amount(100.0, "EUR"),
                     category=Category.GROCERIES,
                     time_range=TimeRange(datetime(2022, 12, 31), relativedelta(days=1)),
                 ),
                 Budget(
-                    id=2,
+                    record_id=2,
                     description="Budget Operation",
                     amount=Amount(100.0, "EUR"),
                     category=Category.GROCERIES,
@@ -275,14 +275,14 @@ class TestForecastActualizer:
         reported on future periods.
         """
         budget_1 = Budget(
-            id=1,
+            record_id=1,
             description="Expired Budget",
             amount=Amount(10.0, "EUR"),
             category=Category.GROCERIES,
             time_range=TimeRange(datetime(2023, 1, 1), relativedelta(days=1)),
         )
         budget_2 = Budget(
-            id=2,
+            record_id=2,
             description="Budget Operation",
             amount=Amount(50.0, "EUR"),
             category=Category.GROCERIES,

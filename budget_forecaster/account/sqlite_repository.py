@@ -452,7 +452,7 @@ class SqliteRepository:
             ),
         )
         return Budget(
-            id=row["id"],
+            record_id=row["id"],
             description=row["description"],
             amount=Amount(row["amount"], row["currency"]),
             category=Category(row["category"]),
@@ -574,7 +574,7 @@ class SqliteRepository:
             hints = set()
 
         op = PlannedOperation(
-            id=row["id"],
+            record_id=row["id"],
             description=row["description"],
             amount=Amount(row["amount"], row["currency"]),
             category=Category(row["category"]),

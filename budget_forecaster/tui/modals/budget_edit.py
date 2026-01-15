@@ -312,7 +312,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
             # Create budget
             budget_id = self._budget.id if self._budget else -1
             budget = Budget(
-                id=budget_id,
+                record_id=budget_id,
                 description=description,
                 amount=Amount(amount_val, "EUR"),
                 category=category,

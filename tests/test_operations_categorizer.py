@@ -21,14 +21,14 @@ def forecast() -> Forecast:
     return Forecast(
         operations=(
             PlannedOperation(
-                id=1,
+                record_id=1,
                 description="Planned Operation 1",
                 amount=Amount(100.0, "EUR"),
                 category=Category.GROCERIES,
                 time_range=DailyTimeRange(datetime(2023, 1, 15)),
             ).set_matcher_params(description_hints={"Operation 1"}),
             PlannedOperation(
-                id=2,
+                record_id=2,
                 description="Planned Operation 2",
                 amount=Amount(200.0, "EUR"),
                 category=Category.OTHER,
@@ -37,7 +37,7 @@ def forecast() -> Forecast:
                 ),
             ).set_matcher_params(description_hints={"Operation 2"}),
             PlannedOperation(
-                id=3,
+                record_id=3,
                 description="Planned Operation 3",
                 amount=Amount(200.0, "EUR"),
                 category=Category.SALARY,

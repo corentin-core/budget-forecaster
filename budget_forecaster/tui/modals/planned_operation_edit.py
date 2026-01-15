@@ -366,7 +366,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
             # Create operation
             op_id = self._operation.id if self._operation else -1
             operation = PlannedOperation(
-                id=op_id,
+                record_id=op_id,
                 description=description,
                 amount=Amount(amount_val, "EUR"),
                 category=category,

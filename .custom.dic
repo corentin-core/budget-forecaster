@@ -15,6 +15,7 @@ csv
 dataclass
 dataframe
 datetime
+deserialization
 deserialize
 dialogs
 enum

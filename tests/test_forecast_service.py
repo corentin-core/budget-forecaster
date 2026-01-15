@@ -81,7 +81,7 @@ class TestLoadForecast:
         """load_forecast loads budgets from database."""
         # Add a budget to the database
         budget = Budget(
-            id=-1,
+            record_id=-1,
             description="Test Budget",
             amount=Amount(-500.0, "EUR"),
             category=Category.GROCERIES,
@@ -101,7 +101,7 @@ class TestLoadForecast:
         """load_forecast loads planned operations from database."""
         # Add a planned operation to the database
         op = PlannedOperation(
-            id=-1,
+            record_id=-1,
             description="Test Op",
             amount=Amount(100.0, "EUR"),
             category=Category.SALARY,
@@ -130,7 +130,7 @@ class TestReloadForecast:
 
         # Add a budget
         budget = Budget(
-            id=-1,
+            record_id=-1,
             description="New Budget",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
@@ -149,7 +149,7 @@ class TestBudgetCrud:
     def test_add_budget(self, service: ForecastService) -> None:
         """add_budget adds a budget and returns its ID."""
         budget = Budget(
-            id=-1,
+            record_id=-1,
             description="Test Budget",
             amount=Amount(-200.0, "EUR"),
             category=Category.GROCERIES,
@@ -168,7 +168,7 @@ class TestBudgetCrud:
         """update_budget updates an existing budget."""
         # Add a budget first
         budget = Budget(
-            id=-1,
+            record_id=-1,
             description="Original",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
@@ -177,7 +177,7 @@ class TestBudgetCrud:
         budget_id = service.add_budget(budget)
 
         # Update it
-        updated_budget = budget.replace(id=budget_id, description="Updated")
+        updated_budget = budget.replace(record_id=budget_id, description="Updated")
         service.update_budget(updated_budget)
 
         # Verify the update
@@ -188,7 +188,7 @@ class TestBudgetCrud:
     def test_update_budget_requires_valid_id(self, service: ForecastService) -> None:
         """update_budget raises error for invalid ID."""
         budget = Budget(
-            id=-1,
+            record_id=-1,
             description="Test",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
@@ -201,7 +201,7 @@ class TestBudgetCrud:
     def test_delete_budget(self, service: ForecastService) -> None:
         """delete_budget removes a budget."""
         budget = Budget(
-            id=-1,
+            record_id=-1,
             description="To Delete",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
@@ -217,7 +217,7 @@ class TestBudgetCrud:
         """get_all_budgets returns all budgets."""
         for i in range(3):
             budget = Budget(
-                id=-1,
+                record_id=-1,
                 description=f"Budget {i}",
                 amount=Amount(-100.0 * (i + 1), "EUR"),
                 category=Category.OTHER,
@@ -235,7 +235,7 @@ class TestPlannedOperationCrud:
     def test_add_planned_operation(self, service: ForecastService) -> None:
         """add_planned_operation adds an operation and returns its ID."""
         op = PlannedOperation(
-            id=-1,
+            record_id=-1,
             description="Test Op",
             amount=Amount(100.0, "EUR"),
             category=Category.SALARY,
@@ -252,7 +252,7 @@ class TestPlannedOperationCrud:
     def test_update_planned_operation(self, service: ForecastService) -> None:
         """update_planned_operation updates an existing operation."""
         op = PlannedOperation(
-            id=-1,
+            record_id=-1,
             description="Original",
             amount=Amount(100.0, "EUR"),
             category=Category.SALARY,
@@ -260,7 +260,7 @@ class TestPlannedOperationCrud:
         )
         op_id = service.add_planned_operation(op)
 
-        updated_op = op.replace(id=op_id, description="Updated")
+        updated_op = op.replace(record_id=op_id, description="Updated")
         service.update_planned_operation(updated_op)
 
         retrieved = service.get_planned_operation_by_id(op_id)
@@ -272,7 +272,7 @@ class TestPlannedOperationCrud:
     ) -> None:
         """update_planned_operation raises error for invalid ID."""
         op = PlannedOperation(
-            id=-1,
+            record_id=-1,
             description="Test",
             amount=Amount(100.0, "EUR"),
             category=Category.SALARY,
@@ -285,7 +285,7 @@ class TestPlannedOperationCrud:
     def test_delete_planned_operation(self, service: ForecastService) -> None:
         """delete_planned_operation removes an operation."""
         op = PlannedOperation(
-            id=-1,
+            record_id=-1,
             description="To Delete",
             amount=Amount(100.0, "EUR"),
             category=Category.SALARY,
@@ -301,7 +301,7 @@ class TestPlannedOperationCrud:
         """get_all_planned_operations returns all operations."""
         for i in range(3):
             op = PlannedOperation(
-                id=-1,
+                record_id=-1,
                 description=f"Op {i}",
                 amount=Amount(100.0 * (i + 1), "EUR"),
                 category=Category.SALARY,

@@ -1,7 +1,5 @@
 """Module for the planned operation class."""
 
-# pylint: disable=redefined-builtin
-
 from datetime import timedelta
 from typing import Any
 
@@ -26,7 +24,7 @@ class PlannedOperation(ForecastOperationRange):
 
     def __init__(
         self,
-        id: int,
+        record_id: int,
         description: str,
         amount: Amount,
         category: Category,
@@ -36,7 +34,7 @@ class PlannedOperation(ForecastOperationRange):
             time_range, (DailyTimeRange, PeriodicDailyTimeRange)
         ), "Only daily time ranges are supported."
         super().__init__(
-            id=id,
+            record_id=record_id,
             description=description,
             amount=amount,
             category=category,
@@ -57,8 +55,8 @@ class PlannedOperation(ForecastOperationRange):
 
     def replace(self, **kwargs: Any) -> "PlannedOperation":
         """Return a new instance of the planned operation with the given parameters replaced."""
-        new_id = kwargs.get("id", self.id)
-        assert isinstance(new_id, int), "id should be an int"
+        new_id = kwargs.get("record_id", self.id)
+        assert isinstance(new_id, int), "record_id should be an int"
         new_description = kwargs.get("description", self.description)
         assert isinstance(new_description, str), "description should be a string"
         new_amount = kwargs.get("amount", Amount(self.amount, self.currency))
@@ -70,7 +68,7 @@ class PlannedOperation(ForecastOperationRange):
             new_time_range, (DailyTimeRange, PeriodicDailyTimeRange)
         ), "Only daily time ranges are supported."
         return PlannedOperation(
-            id=new_id,
+            record_id=new_id,
             description=new_description,
             amount=new_amount,
             category=new_category,
