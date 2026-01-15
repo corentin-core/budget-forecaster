@@ -9,7 +9,7 @@ from dateutil.relativedelta import relativedelta
 from budget_forecaster.account.account import Account
 from budget_forecaster.account.account_analysis_report import AccountAnalysisReport
 from budget_forecaster.account.account_analyzer import AccountAnalyzer
-from budget_forecaster.account.sqlite_repository import SqliteRepository
+from budget_forecaster.account.repository_interface import RepositoryInterface
 from budget_forecaster.forecast.forecast import Forecast
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
@@ -38,13 +38,13 @@ class ForecastService:
     def __init__(
         self,
         account: Account,
-        repository: SqliteRepository,
+        repository: RepositoryInterface,
     ) -> None:
         """Initialize the forecast service.
 
         Args:
             account: The account to forecast.
-            repository: SQLite repository for data persistence.
+            repository: Repository for data persistence.
         """
         self._account = account
         self._repository = repository

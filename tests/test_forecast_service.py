@@ -10,6 +10,7 @@ import pytest
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.account.account import Account
+from budget_forecaster.account.repository_interface import RepositoryInterface
 from budget_forecaster.account.sqlite_repository import SqliteRepository
 from budget_forecaster.amount import Amount
 from budget_forecaster.operation_range.budget import Budget
@@ -42,7 +43,7 @@ def temp_db_path(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def repository(temp_db_path: Path) -> SqliteRepository:
+def repository(temp_db_path: Path) -> RepositoryInterface:
     """Create an initialized repository."""
     repo = SqliteRepository(temp_db_path)
     repo.initialize()
@@ -50,7 +51,7 @@ def repository(temp_db_path: Path) -> SqliteRepository:
 
 
 @pytest.fixture
-def service(mock_account: Account, repository: SqliteRepository) -> ForecastService:
+def service(mock_account: Account, repository: RepositoryInterface) -> ForecastService:
     """Create a ForecastService with mock data."""
     return ForecastService(
         account=mock_account,
@@ -76,7 +77,7 @@ class TestLoadForecast:
         assert len(forecast.budgets) == 0
 
     def test_loads_budgets_from_db(
-        self, mock_account: Account, repository: SqliteRepository
+        self, mock_account: Account, repository: RepositoryInterface
     ) -> None:
         """load_forecast loads budgets from database."""
         # Add a budget to the database
@@ -96,7 +97,7 @@ class TestLoadForecast:
         assert forecast.budgets[0].description == "Test Budget"
 
     def test_loads_planned_operations_from_db(
-        self, mock_account: Account, repository: SqliteRepository
+        self, mock_account: Account, repository: RepositoryInterface
     ) -> None:
         """load_forecast loads planned operations from database."""
         # Add a planned operation to the database
@@ -120,7 +121,7 @@ class TestReloadForecast:
     """Tests for reload_forecast method."""
 
     def test_invalidates_cached_forecast(
-        self, mock_account: Account, repository: SqliteRepository
+        self, mock_account: Account, repository: RepositoryInterface
     ) -> None:
         """reload_forecast invalidates cached forecast."""
         service = ForecastService(account=mock_account, repository=repository)

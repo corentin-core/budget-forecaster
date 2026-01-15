@@ -12,6 +12,7 @@ from typing import Callable, Iterable
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.account.account import Account
+from budget_forecaster.account.repository_interface import RepositoryInterface
 from budget_forecaster.amount import Amount
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
@@ -101,7 +102,7 @@ CREATE INDEX IF NOT EXISTS idx_planned_operations_start_date ON planned_operatio
 """
 
 
-class SqliteRepository:
+class SqliteRepository(RepositoryInterface):
     """Repository for persisting account data in SQLite."""
 
     # Migration functions: version -> (from_version, migration_sql_or_callable)
