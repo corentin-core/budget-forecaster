@@ -156,6 +156,13 @@ class ForecastWidget(Vertical):
         self._forecast_service = service
         self._update_status()
 
+    def refresh_data(self) -> None:
+        """Refresh the forecast data from the database."""
+        if self._forecast_service is not None:
+            # Reload forecast from DB (budgets and planned operations may have changed)
+            self._forecast_service.load_forecast()
+        self._update_status()
+
     def _update_status(self) -> None:
         """Update the status display."""
         status = self.query_one("#forecast-status", Static)
@@ -164,17 +171,6 @@ class ForecastWidget(Vertical):
         if self._forecast_service is None:
             status.update("Service non initialisé")
             status.add_class("status-error")
-            return
-
-        if not self._forecast_service.has_forecast_files:
-            status.update(
-                f"Fichiers de prévision manquants:\n"
-                f"  - {self._forecast_service.planned_operations_path}\n"
-                f"  - {self._forecast_service.budgets_path}"
-            )
-            status.add_class("status-warning")
-            self.query_one("#btn-compute", Button).disabled = True
-            self.query_one("#btn-export", Button).disabled = True
             return
 
         self.query_one("#btn-compute", Button).disabled = False
@@ -426,6 +422,7 @@ class ForecastWidget(Vertical):
         from budget_forecaster.account.account_analysis_renderer import (
             AccountAnalysisRendererExcel,
         )
+        # pylint: enable=import-outside-toplevel
 
         report = self._forecast_service.report
         output_path = Path(f"forecast-{date.today().isoformat()}.xlsx")

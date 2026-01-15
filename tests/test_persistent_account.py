@@ -1,9 +1,13 @@
 """Module with tests for the PersistentAccount and SqliteRepository classes."""
+
+# pylint: disable=protected-access,redefined-outer-name
+
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
+from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.account.account import Account, AccountParameters
 from budget_forecaster.account.aggregated_account import AggregatedAccount
@@ -13,7 +17,15 @@ from budget_forecaster.account.sqlite_repository import (
     SqliteRepository,
 )
 from budget_forecaster.amount import Amount
+from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
+from budget_forecaster.operation_range.planned_operation import PlannedOperation
+from budget_forecaster.time_range import (
+    DailyTimeRange,
+    PeriodicDailyTimeRange,
+    PeriodicTimeRange,
+    TimeRange,
+)
 from budget_forecaster.types import Category
 
 
@@ -283,3 +295,335 @@ class TestPersistentAccount:  # pylint: disable=protected-access
         assert len(account.operations) == 4
 
         persistent2.close()
+
+
+class TestBudgetRepository:
+    """Tests for budget CRUD operations in SqliteRepository."""
+
+    def test_get_all_budgets_empty(self, temp_db_path: Path) -> None:
+        """Test getting budgets when none exist."""
+        repository = SqliteRepository(temp_db_path)
+        repository.initialize()
+
+        budgets = repository.get_all_budgets()
+        assert budgets == []
+
+        repository.close()
+
+    def test_upsert_budget_insert(self, temp_db_path: Path) -> None:
+        """Test inserting a new budget."""
+        repository = SqliteRepository(temp_db_path)
+        repository.initialize()
+
+        budget = Budget(
+            record_id=-1,
+            description="Courses mensuelles",
+            amount=Amount(-500.0, "EUR"),
+            category=Category.GROCERIES,
+            time_range=PeriodicTimeRange(
+                TimeRange(datetime(2024, 1, 1), relativedelta(months=1)),
+                relativedelta(months=1),
+                datetime(2024, 12, 31),
+            ),
+        )
+        budget_id = repository.upsert_budget(budget)
+
+        assert budget_id > 0
+        retrieved = repository.get_budget_by_id(budget_id)
+        assert retrieved is not None
+        assert retrieved.description == "Courses mensuelles"
+        assert retrieved.amount == -500.0
+        assert retrieved.category == Category.GROCERIES
+
+        repository.close()
+
+    def test_upsert_budget_update(self, temp_db_path: Path) -> None:
+        """Test updating an existing budget."""
+        repository = SqliteRepository(temp_db_path)
+        repository.initialize()
+
+        budget = Budget(
+            record_id=-1,
+            description="Courses mensuelles",
+            amount=Amount(-500.0, "EUR"),
+            category=Category.GROCERIES,
+            time_range=TimeRange(datetime(2024, 1, 1), relativedelta(months=1)),
+        )
+        budget_id = repository.upsert_budget(budget)
+
+        # Update the budget
+        updated_budget = budget.replace(
+            record_id=budget_id, amount=Amount(-600.0, "EUR")
+        )
+        repository.upsert_budget(updated_budget)
+
+        retrieved = repository.get_budget_by_id(budget_id)
+        assert retrieved is not None
+        assert retrieved.amount == -600.0
+
+        repository.close()
+
+    def test_delete_budget(self, temp_db_path: Path) -> None:
+        """Test deleting a budget."""
+        repository = SqliteRepository(temp_db_path)
+        repository.initialize()
+
+        budget = Budget(
+            record_id=-1,
+            description="Test budget",
+            amount=Amount(-100.0, "EUR"),
+            category=Category.OTHER,
+            time_range=TimeRange(datetime(2024, 1, 1), relativedelta(days=30)),
+        )
+        budget_id = repository.upsert_budget(budget)
+
+        repository.delete_budget(budget_id)
+
+        assert repository.get_budget_by_id(budget_id) is None
+
+        repository.close()
+
+    def test_budget_time_range_serialization(self, temp_db_path: Path) -> None:
+        """Test TimeRange serialization/deserialization."""
+        repository = SqliteRepository(temp_db_path)
+        repository.initialize()
+
+        # Test simple TimeRange
+        # duration of 10 days means last_date = initial + 10 - 1 = initial + 9
+        budget = Budget(
+            record_id=-1,
+            description="Simple budget",
+            amount=Amount(-100.0, "EUR"),
+            category=Category.OTHER,
+            time_range=TimeRange(datetime(2024, 3, 15), relativedelta(days=10)),
+        )
+        budget_id = repository.upsert_budget(budget)
+
+        retrieved = repository.get_budget_by_id(budget_id)
+        assert retrieved is not None
+        assert isinstance(retrieved.time_range, TimeRange)
+        assert retrieved.time_range.initial_date == datetime(2024, 3, 15)
+        # TimeRange.last_date = initial_date + duration - 1 day
+        # for 10 days: 2024-03-15 + 10 - 1 = 2024-03-24
+        assert retrieved.time_range.last_date == datetime(2024, 3, 24)
+
+        repository.close()
+
+    def test_budget_periodic_time_range_serialization(self, temp_db_path: Path) -> None:
+        """Test PeriodicTimeRange serialization/deserialization."""
+        repository = SqliteRepository(temp_db_path)
+        repository.initialize()
+
+        budget = Budget(
+            record_id=-1,
+            description="Periodic budget",
+            amount=Amount(-200.0, "EUR"),
+            category=Category.GROCERIES,
+            time_range=PeriodicTimeRange(
+                TimeRange(datetime(2024, 1, 1), relativedelta(months=1)),
+                relativedelta(months=1),
+                datetime(2024, 6, 30),
+            ),
+        )
+        budget_id = repository.upsert_budget(budget)
+
+        retrieved = repository.get_budget_by_id(budget_id)
+        assert retrieved is not None
+        assert isinstance(retrieved.time_range, PeriodicTimeRange)
+        assert retrieved.time_range.initial_date == datetime(2024, 1, 1)
+        assert retrieved.time_range.period == relativedelta(months=1)
+        # PeriodicTimeRange.last_date returns _expiration_date
+        assert retrieved.time_range.last_date == datetime(2024, 6, 30)
+
+        repository.close()
+
+
+class TestPlannedOperationRepository:
+    """Tests for planned operation CRUD operations in SqliteRepository."""
+
+    def test_get_all_planned_operations_empty(self, temp_db_path: Path) -> None:
+        """Test getting planned operations when none exist."""
+        repository = SqliteRepository(temp_db_path)
+        repository.initialize()
+
+        ops = repository.get_all_planned_operations()
+        assert ops == []
+
+        repository.close()
+
+    def test_upsert_planned_operation_insert(self, temp_db_path: Path) -> None:
+        """Test inserting a new planned operation."""
+        repository = SqliteRepository(temp_db_path)
+        repository.initialize()
+
+        op = PlannedOperation(
+            record_id=-1,
+            description="Salaire mensuel",
+            amount=Amount(3000.0, "EUR"),
+            category=Category.SALARY,
+            time_range=PeriodicDailyTimeRange(
+                datetime(2024, 1, 28), relativedelta(months=1), datetime(2024, 12, 31)
+            ),
+        )
+        op.set_matcher_params(
+            description_hints={"VIREMENT", "SALAIRE"},
+            approximation_date_range=timedelta(days=3),
+            approximation_amount_ratio=0.1,
+        )
+        op_id = repository.upsert_planned_operation(op)
+
+        assert op_id > 0
+        retrieved = repository.get_planned_operation_by_id(op_id)
+        assert retrieved is not None
+        assert retrieved.description == "Salaire mensuel"
+        assert retrieved.amount == 3000.0
+        assert retrieved.category == Category.SALARY
+
+        repository.close()
+
+    def test_upsert_planned_operation_update(self, temp_db_path: Path) -> None:
+        """Test updating an existing planned operation."""
+        repository = SqliteRepository(temp_db_path)
+        repository.initialize()
+
+        op = PlannedOperation(
+            record_id=-1,
+            description="Loyer",
+            amount=Amount(-800.0, "EUR"),
+            category=Category.RENT,
+            time_range=DailyTimeRange(datetime(2024, 1, 5)),
+        )
+        op_id = repository.upsert_planned_operation(op)
+
+        # Update the operation
+        updated_op = op.replace(record_id=op_id, amount=Amount(-850.0, "EUR"))
+        repository.upsert_planned_operation(updated_op)
+
+        retrieved = repository.get_planned_operation_by_id(op_id)
+        assert retrieved is not None
+        assert retrieved.amount == -850.0
+
+        repository.close()
+
+    def test_delete_planned_operation(self, temp_db_path: Path) -> None:
+        """Test deleting a planned operation."""
+        repository = SqliteRepository(temp_db_path)
+        repository.initialize()
+
+        op = PlannedOperation(
+            record_id=-1,
+            description="Test op",
+            amount=Amount(-50.0, "EUR"),
+            category=Category.OTHER,
+            time_range=DailyTimeRange(datetime(2024, 2, 15)),
+        )
+        op_id = repository.upsert_planned_operation(op)
+
+        repository.delete_planned_operation(op_id)
+
+        assert repository.get_planned_operation_by_id(op_id) is None
+
+        repository.close()
+
+    def test_planned_operation_matcher_params_serialization(
+        self, temp_db_path: Path
+    ) -> None:
+        """Test that matcher params are serialized correctly."""
+        repository = SqliteRepository(temp_db_path)
+        repository.initialize()
+
+        op = PlannedOperation(
+            record_id=-1,
+            description="Test with matcher",
+            amount=Amount(-100.0, "EUR"),
+            category=Category.OTHER,
+            time_range=DailyTimeRange(datetime(2024, 1, 1)),
+        )
+        op.set_matcher_params(
+            description_hints={"KEYWORD1", "KEYWORD2"},
+            approximation_date_range=timedelta(days=7),
+            approximation_amount_ratio=0.15,
+        )
+        op_id = repository.upsert_planned_operation(op)
+
+        retrieved = repository.get_planned_operation_by_id(op_id)
+        assert retrieved is not None
+        assert retrieved.matcher.description_hints == {"KEYWORD1", "KEYWORD2"}
+        assert retrieved.matcher.approximation_date_range == timedelta(days=7)
+        assert retrieved.matcher.approximation_amount_ratio == 0.15
+
+        repository.close()
+
+    def test_planned_operation_description_hints_serialization(
+        self, temp_db_path: Path
+    ) -> None:
+        """Test that description hints with special chars are handled."""
+        repository = SqliteRepository(temp_db_path)
+        repository.initialize()
+
+        op = PlannedOperation(
+            record_id=-1,
+            description="Test hints",
+            amount=Amount(-50.0, "EUR"),
+            category=Category.OTHER,
+            time_range=DailyTimeRange(datetime(2024, 1, 1)),
+        )
+        # Test with empty hints
+        op.set_matcher_params(description_hints=set())
+        op_id = repository.upsert_planned_operation(op)
+
+        retrieved = repository.get_planned_operation_by_id(op_id)
+        assert retrieved is not None
+        assert retrieved.matcher.description_hints == set()
+
+        repository.close()
+
+
+class TestSchemaMigration:
+    """Tests for schema migration."""
+
+    def test_migration_v1_to_v2(self, temp_db_path: Path) -> None:
+        """Test that migration from v1 to v2 works correctly."""
+        # Create a v1 database
+        repository = SqliteRepository(temp_db_path)
+        repository.initialize()
+
+        # Verify schema version is now 2
+        assert repository._get_schema_version() == CURRENT_SCHEMA_VERSION
+
+        # Verify new tables exist
+        conn = repository._get_connection()
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='budgets'"
+        )
+        assert cursor.fetchone() is not None
+
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='planned_operations'"
+        )
+        assert cursor.fetchone() is not None
+
+        repository.close()
+
+    def test_migration_preserves_existing_data(
+        self, temp_db_path: Path, sample_account: Account
+    ) -> None:
+        """Test that migration preserves existing account data."""
+        repository = SqliteRepository(temp_db_path)
+        repository.initialize()
+        repository.set_aggregated_account_name("Test")
+        repository.upsert_account(sample_account)
+
+        # Close and reopen to simulate migration
+        repository.close()
+
+        repository2 = SqliteRepository(temp_db_path)
+        repository2.initialize()
+
+        # Verify existing data is preserved
+        accounts = repository2.get_all_accounts()
+        assert len(accounts) == 1
+        assert accounts[0].name == "Compte courant"
+        assert len(accounts[0].operations) == 3
+
+        repository2.close()

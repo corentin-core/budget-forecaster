@@ -12,6 +12,7 @@ class ForecastOperationRange(OperationRange):
 
     def __init__(
         self,
+        record_id: int,
         description: str,
         amount: Amount,
         category: Category,
@@ -23,9 +24,15 @@ class ForecastOperationRange(OperationRange):
             category=category,
             time_range=time_range,
         )
+        self.__id = record_id
         self.__operation_matcher = OperationMatcher(
             operation_range=self,
         )
+
+    @property
+    def id(self) -> int:
+        """The database ID of the operation range. -1 if not persisted yet."""
+        return self.__id
 
     @property
     def matcher(self) -> OperationMatcher:

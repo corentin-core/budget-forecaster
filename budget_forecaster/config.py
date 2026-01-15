@@ -21,9 +21,6 @@ class Config:  # pylint: disable=too-few-public-methods
         # Account config
         self.account = AccountConfig(name="Main Account", currency="EUR")
         self.database_path = Path("budget.db")
-        # Forecast config
-        self.budgets_path = Path("budgets.json")
-        self.planned_operations_path = Path("planned_operations.json")
         # Import config
         self.inbox_path = Path("inbox")
         self.inbox_exclude_patterns: list[str] = []
@@ -35,8 +32,6 @@ class Config:  # pylint: disable=too-few-public-methods
         with open(yaml_path, encoding="utf-8") as file:
             config = yaml.safe_load(file)
             self.database_path = Path(config["database_path"])
-            self.budgets_path = Path(config["budgets_path"])
-            self.planned_operations_path = Path(config["planned_operations_path"])
             self.account = AccountConfig(
                 name=config["account_name"],
                 currency=config["account_currency"],

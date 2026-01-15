@@ -12,15 +12,24 @@ from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
 from budget_forecaster.account.persistent_account import PersistentAccount
 from budget_forecaster.config import Config
+from budget_forecaster.operation_range.budget import Budget
+from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.services import (
     ForecastService,
     ImportService,
     OperationFilter,
     OperationService,
 )
-from budget_forecaster.tui.modals import CategoryModal, FileBrowserModal
+from budget_forecaster.tui.modals import (
+    BudgetEditModal,
+    CategoryModal,
+    FileBrowserModal,
+    PlannedOperationEditModal,
+)
+from budget_forecaster.tui.screens.budgets import BudgetsWidget
 from budget_forecaster.tui.screens.forecast import ForecastWidget
 from budget_forecaster.tui.screens.imports import ImportWidget
+from budget_forecaster.tui.screens.planned_operations import PlannedOperationsWidget
 from budget_forecaster.tui.widgets import OperationTable
 from budget_forecaster.types import Category
 
@@ -150,8 +159,7 @@ class BudgetApp(App[None]):
         )
         self._forecast_service = ForecastService(
             self._persistent_account.account,
-            self._config.planned_operations_path,
-            self._config.budgets_path,
+            self._persistent_account.repository,
         )
 
     @property
@@ -205,6 +213,10 @@ class BudgetApp(App[None]):
                 yield ImportWidget(id="import-widget")
             with TabPane("Prévisions", id="forecast"):
                 yield ForecastWidget(id="forecast-widget")
+            with TabPane("Budgets", id="budgets"):
+                yield BudgetsWidget(id="budgets-widget")
+            with TabPane("Op. planifiées", id="planned-ops"):
+                yield PlannedOperationsWidget(id="planned-ops-widget")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -262,6 +274,16 @@ class BudgetApp(App[None]):
         # Refresh forecast widget
         forecast_widget = self.query_one("#forecast-widget", ForecastWidget)
         forecast_widget.set_service(self.forecast_service)
+
+        # Refresh budgets widget
+        budgets_widget = self.query_one("#budgets-widget", BudgetsWidget)
+        budgets_widget.set_service(self.forecast_service)
+
+        # Refresh planned operations widget
+        planned_ops_widget = self.query_one(
+            "#planned-ops-widget", PlannedOperationsWidget
+        )
+        planned_ops_widget.set_service(self.forecast_service)
 
     def action_refresh_data(self) -> None:
         """Refresh data from the database."""
@@ -346,6 +368,107 @@ class BudgetApp(App[None]):
             self._persistent_account.load()
         self._refresh_screens()
         self.notify(f"Catégorie '{category.value}' assignée")
+
+    # Budget event handlers
+
+    def on_budgets_widget_budget_edit_requested(
+        self, event: BudgetsWidget.BudgetEditRequested
+    ) -> None:
+        """Handle budget edit request."""
+        event.stop()
+        self.push_screen(BudgetEditModal(event.budget), self._on_budget_edited)
+
+    def on_budgets_widget_budget_delete_requested(
+        self, event: BudgetsWidget.BudgetDeleteRequested
+    ) -> None:
+        """Handle budget delete request."""
+        event.stop()
+        try:
+            self.forecast_service.delete_budget(event.budget.id)
+            self.notify(f"Budget '{event.budget.description}' supprimé")
+            self._refresh_budgets()
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception("Error deleting budget")
+            self.notify(f"Erreur: {e}", severity="error")
+
+    def _on_budget_edited(self, budget: Budget | None) -> None:
+        """Handle budget edit completion."""
+        if budget is None:
+            return
+
+        try:
+            if budget.id == -1:
+                # New budget
+                self.forecast_service.add_budget(budget)
+                self.notify(f"Budget '{budget.description}' créé")
+            else:
+                # Update existing
+                self.forecast_service.update_budget(budget)
+                self.notify(f"Budget '{budget.description}' modifié")
+            self._refresh_budgets()
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception("Error saving budget")
+            self.notify(f"Erreur: {e}", severity="error")
+
+    def _refresh_budgets(self) -> None:
+        """Refresh budgets and forecast widgets."""
+        budgets_widget = self.query_one("#budgets-widget", BudgetsWidget)
+        budgets_widget.refresh_data()
+        forecast_widget = self.query_one("#forecast-widget", ForecastWidget)
+        forecast_widget.refresh_data()
+
+    # Planned operation event handlers
+
+    def on_planned_operations_widget_operation_edit_requested(
+        self, event: PlannedOperationsWidget.OperationEditRequested
+    ) -> None:
+        """Handle planned operation edit request."""
+        event.stop()
+        self.push_screen(
+            PlannedOperationEditModal(event.operation),
+            self._on_planned_operation_edited,
+        )
+
+    def on_planned_operations_widget_operation_delete_requested(
+        self, event: PlannedOperationsWidget.OperationDeleteRequested
+    ) -> None:
+        """Handle planned operation delete request."""
+        event.stop()
+        try:
+            self.forecast_service.delete_planned_operation(event.operation.id)
+            self.notify(f"Opération '{event.operation.description}' supprimée")
+            self._refresh_planned_operations()
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception("Error deleting planned operation")
+            self.notify(f"Erreur: {e}", severity="error")
+
+    def _on_planned_operation_edited(self, operation: PlannedOperation | None) -> None:
+        """Handle planned operation edit completion."""
+        if operation is None:
+            return
+
+        try:
+            if operation.id == -1:
+                # New operation
+                self.forecast_service.add_planned_operation(operation)
+                self.notify(f"Opération '{operation.description}' créée")
+            else:
+                # Update existing
+                self.forecast_service.update_planned_operation(operation)
+                self.notify(f"Opération '{operation.description}' modifiée")
+            self._refresh_planned_operations()
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception("Error saving planned operation")
+            self.notify(f"Erreur: {e}", severity="error")
+
+    def _refresh_planned_operations(self) -> None:
+        """Refresh planned operations and forecast widgets."""
+        planned_ops_widget = self.query_one(
+            "#planned-ops-widget", PlannedOperationsWidget
+        )
+        planned_ops_widget.refresh_data()
+        forecast_widget = self.query_one("#forecast-widget", ForecastWidget)
+        forecast_widget.refresh_data()
 
 
 def run_app(config_path: Path) -> None:

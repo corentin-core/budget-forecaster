@@ -1,4 +1,5 @@
 """Module for the budget class."""
+
 import math
 from datetime import timedelta
 from typing import Any
@@ -19,12 +20,13 @@ class Budget(ForecastOperationRange):
 
     def __init__(
         self,
+        record_id: int,
         description: str,
         amount: Amount,
         category: Category,
         time_range: TimeRangeInterface,
     ):
-        super().__init__(description, amount, category, time_range)
+        super().__init__(record_id, description, amount, category, time_range)
         # Only operations strictly in the budget time range will be considered
         # However they can have any amount
         self.set_matcher_params(
@@ -45,6 +47,8 @@ class Budget(ForecastOperationRange):
 
     def replace(self, **kwargs: Any) -> "Budget":
         """Return a new instance of the planned operation with the given parameters replaced."""
+        new_id = kwargs.get("record_id", self.id)
+        assert isinstance(new_id, int), "record_id should be an int"
         new_description = kwargs.get("description", self.description)
         assert isinstance(new_description, str), "description should be a string"
         new_amount = kwargs.get("amount", Amount(self.amount, self.currency))
@@ -56,6 +60,7 @@ class Budget(ForecastOperationRange):
             new_time_range, TimeRangeInterface
         ), "time_range should be a TimeRangeInterface"
         return Budget(
+            record_id=new_id,
             description=new_description,
             amount=new_amount,
             category=new_category,
