@@ -1,16 +1,32 @@
 """SQLite repository for account data persistence."""
+
+# pylint: disable=protected-access,no-else-return
+# pylint: disable=too-many-arguments,too-many-positional-arguments
+
+import json
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Callable, Iterable
 
+from dateutil.relativedelta import relativedelta
+
 from budget_forecaster.account.account import Account
 from budget_forecaster.amount import Amount
+from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
+from budget_forecaster.operation_range.planned_operation import PlannedOperation
+from budget_forecaster.time_range import (
+    DailyTimeRange,
+    PeriodicDailyTimeRange,
+    PeriodicTimeRange,
+    TimeRange,
+    TimeRangeInterface,
+)
 from budget_forecaster.types import Category
 
 # Current schema version
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2
 
 # Base schema (version 0 -> 1)
 SCHEMA_V1 = """
@@ -47,6 +63,43 @@ CREATE INDEX IF NOT EXISTS idx_operations_date ON operations(date);
 CREATE INDEX IF NOT EXISTS idx_operations_category ON operations(category);
 """
 
+# Schema migration v1 -> v2: add budgets and planned_operations tables
+SCHEMA_V2 = """
+CREATE TABLE IF NOT EXISTS budgets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    description TEXT NOT NULL,
+    amount REAL NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'EUR',
+    category TEXT NOT NULL,
+    start_date TIMESTAMP NOT NULL,
+    duration_value INTEGER,
+    duration_unit TEXT,
+    period_value INTEGER,
+    period_unit TEXT,
+    end_date TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS planned_operations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    description TEXT NOT NULL,
+    amount REAL NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'EUR',
+    category TEXT NOT NULL,
+    start_date TIMESTAMP NOT NULL,
+    period_value INTEGER,
+    period_unit TEXT,
+    end_date TIMESTAMP,
+    description_hints TEXT,
+    approximation_date_days INTEGER DEFAULT 5,
+    approximation_amount_ratio REAL DEFAULT 0.05
+);
+
+CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets(category);
+CREATE INDEX IF NOT EXISTS idx_budgets_start_date ON budgets(start_date);
+CREATE INDEX IF NOT EXISTS idx_planned_operations_category ON planned_operations(category);
+CREATE INDEX IF NOT EXISTS idx_planned_operations_start_date ON planned_operations(start_date);
+"""
+
 
 class SqliteRepository:
     """Repository for persisting account data in SQLite."""
@@ -55,9 +108,7 @@ class SqliteRepository:
     # Add new migrations here when schema evolves
     _migrations: dict[int, tuple[int, str | Callable[[sqlite3.Connection], None]]] = {
         1: (0, SCHEMA_V1),
-        # Example for future migrations:
-        # 2: (1, "ALTER TABLE operations ADD COLUMN notes TEXT;"),
-        # 3: (2, lambda conn: conn.execute("UPDATE ...").commit()),
+        2: (1, SCHEMA_V2),
     }
 
     def __init__(self, db_path: Path) -> None:
@@ -303,3 +354,365 @@ class SqliteRepository:
             "SELECT 1 FROM operations WHERE unique_id = ?", (unique_id,)
         )
         return cursor.fetchone() is not None
+
+    # Budget methods
+
+    def get_all_budgets(self) -> list[Budget]:
+        """Get all budgets."""
+        conn = self._get_connection()
+        cursor = conn.execute(
+            """SELECT id, description, amount, currency, category, start_date,
+               duration_value, duration_unit, period_value, period_unit, end_date
+               FROM budgets ORDER BY start_date"""
+        )
+        return [self._row_to_budget(row) for row in cursor.fetchall()]
+
+    def get_budget_by_id(self, budget_id: int) -> Budget | None:
+        """Get a budget by id."""
+        conn = self._get_connection()
+        cursor = conn.execute(
+            """SELECT id, description, amount, currency, category, start_date,
+               duration_value, duration_unit, period_value, period_unit, end_date
+               FROM budgets WHERE id = ?""",
+            (budget_id,),
+        )
+        if (row := cursor.fetchone()) is None:
+            return None
+        return self._row_to_budget(row)
+
+    def upsert_budget(self, budget: Budget) -> int:
+        """Insert or update a budget. Returns the budget id."""
+        conn = self._get_connection()
+        time_range_data = self._serialize_budget_time_range(budget.time_range)
+
+        if budget.id > 0:
+            # Update existing
+            conn.execute(
+                """UPDATE budgets SET description = ?, amount = ?, currency = ?,
+                   category = ?, start_date = ?, duration_value = ?, duration_unit = ?,
+                   period_value = ?, period_unit = ?, end_date = ?
+                   WHERE id = ?""",
+                (
+                    budget.description,
+                    budget.amount,
+                    budget.currency,
+                    budget.category.value,
+                    time_range_data["start_date"],
+                    time_range_data["duration_value"],
+                    time_range_data["duration_unit"],
+                    time_range_data["period_value"],
+                    time_range_data["period_unit"],
+                    time_range_data["end_date"],
+                    budget.id,
+                ),
+            )
+            conn.commit()
+            return budget.id
+        else:
+            # Insert new
+            cursor = conn.execute(
+                """INSERT INTO budgets (description, amount, currency, category,
+                   start_date, duration_value, duration_unit, period_value,
+                   period_unit, end_date)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    budget.description,
+                    budget.amount,
+                    budget.currency,
+                    budget.category.value,
+                    time_range_data["start_date"],
+                    time_range_data["duration_value"],
+                    time_range_data["duration_unit"],
+                    time_range_data["period_value"],
+                    time_range_data["period_unit"],
+                    time_range_data["end_date"],
+                ),
+            )
+            conn.commit()
+            if cursor.lastrowid is None:
+                raise RuntimeError("Failed to insert budget")
+            return cursor.lastrowid
+
+    def delete_budget(self, budget_id: int) -> None:
+        """Delete a budget."""
+        conn = self._get_connection()
+        conn.execute("DELETE FROM budgets WHERE id = ?", (budget_id,))
+        conn.commit()
+
+    def _row_to_budget(self, row: sqlite3.Row) -> Budget:
+        """Convert a database row to a Budget object."""
+        time_range = self._deserialize_budget_time_range(
+            start_date=datetime.fromisoformat(row["start_date"]),
+            duration_value=row["duration_value"],
+            duration_unit=row["duration_unit"],
+            period_value=row["period_value"],
+            period_unit=row["period_unit"],
+            end_date=(
+                datetime.fromisoformat(row["end_date"]) if row["end_date"] else None
+            ),
+        )
+        return Budget(
+            record_id=row["id"],
+            description=row["description"],
+            amount=Amount(row["amount"], row["currency"]),
+            category=Category(row["category"]),
+            time_range=time_range,
+        )
+
+    # Planned Operation methods
+
+    def get_all_planned_operations(self) -> list[PlannedOperation]:
+        """Get all planned operations."""
+        conn = self._get_connection()
+        cursor = conn.execute(
+            """SELECT id, description, amount, currency, category, start_date,
+               period_value, period_unit, end_date, description_hints,
+               approximation_date_days, approximation_amount_ratio
+               FROM planned_operations ORDER BY start_date"""
+        )
+        return [self._row_to_planned_operation(row) for row in cursor.fetchall()]
+
+    def get_planned_operation_by_id(self, op_id: int) -> PlannedOperation | None:
+        """Get a planned operation by id."""
+        conn = self._get_connection()
+        cursor = conn.execute(
+            """SELECT id, description, amount, currency, category, start_date,
+               period_value, period_unit, end_date, description_hints,
+               approximation_date_days, approximation_amount_ratio
+               FROM planned_operations WHERE id = ?""",
+            (op_id,),
+        )
+        if (row := cursor.fetchone()) is None:
+            return None
+        return self._row_to_planned_operation(row)
+
+    def upsert_planned_operation(self, op: PlannedOperation) -> int:
+        """Insert or update a planned operation. Returns the operation id."""
+        conn = self._get_connection()
+        time_range_data = self._serialize_planned_op_time_range(op.time_range)
+        hints = (
+            json.dumps(list(op.matcher.description_hints))
+            if op.matcher.description_hints
+            else None
+        )
+        approx_days = int(op.matcher.approximation_date_range.total_seconds() / 86400)
+
+        if op.id > 0:
+            # Update existing
+            conn.execute(
+                """UPDATE planned_operations SET description = ?, amount = ?,
+                   currency = ?, category = ?, start_date = ?, period_value = ?,
+                   period_unit = ?, end_date = ?, description_hints = ?,
+                   approximation_date_days = ?, approximation_amount_ratio = ?
+                   WHERE id = ?""",
+                (
+                    op.description,
+                    op.amount,
+                    op.currency,
+                    op.category.value,
+                    time_range_data["start_date"],
+                    time_range_data["period_value"],
+                    time_range_data["period_unit"],
+                    time_range_data["end_date"],
+                    hints,
+                    approx_days,
+                    op.matcher.approximation_amount_ratio,
+                    op.id,
+                ),
+            )
+            conn.commit()
+            return op.id
+        else:
+            # Insert new
+            cursor = conn.execute(
+                """INSERT INTO planned_operations (description, amount, currency,
+                   category, start_date, period_value, period_unit, end_date,
+                   description_hints, approximation_date_days, approximation_amount_ratio)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    op.description,
+                    op.amount,
+                    op.currency,
+                    op.category.value,
+                    time_range_data["start_date"],
+                    time_range_data["period_value"],
+                    time_range_data["period_unit"],
+                    time_range_data["end_date"],
+                    hints,
+                    approx_days,
+                    op.matcher.approximation_amount_ratio,
+                ),
+            )
+            conn.commit()
+            if cursor.lastrowid is None:
+                raise RuntimeError("Failed to insert planned operation")
+            return cursor.lastrowid
+
+    def delete_planned_operation(self, op_id: int) -> None:
+        """Delete a planned operation."""
+        conn = self._get_connection()
+        conn.execute("DELETE FROM planned_operations WHERE id = ?", (op_id,))
+        conn.commit()
+
+    def _row_to_planned_operation(self, row: sqlite3.Row) -> PlannedOperation:
+        """Convert a database row to a PlannedOperation object."""
+        time_range = self._deserialize_planned_op_time_range(
+            start_date=datetime.fromisoformat(row["start_date"]),
+            period_value=row["period_value"],
+            period_unit=row["period_unit"],
+            end_date=(
+                datetime.fromisoformat(row["end_date"]) if row["end_date"] else None
+            ),
+        )
+        if hints_str := row["description_hints"]:
+            # Support both JSON (new) and semicolon-delimited (legacy) formats
+            if hints_str.startswith("["):
+                hints = set(json.loads(hints_str))
+            else:
+                hints = set(hints_str.split(";"))
+        else:
+            hints = set()
+
+        op = PlannedOperation(
+            record_id=row["id"],
+            description=row["description"],
+            amount=Amount(row["amount"], row["currency"]),
+            category=Category(row["category"]),
+            time_range=time_range,
+        )
+        op.set_matcher_params(
+            description_hints=hints,
+            approximation_date_range=timedelta(days=row["approximation_date_days"]),
+            approximation_amount_ratio=row["approximation_amount_ratio"],
+        )
+        return op
+
+    # TimeRange serialization helpers
+
+    def _relativedelta_to_db(self, rd: relativedelta) -> tuple[int, str]:
+        """Convert relativedelta to (value, unit) for database storage.
+
+        Note: relativedelta.weeks is a computed property (days // 7), so we must
+        check rd.days BEFORE rd.weeks to avoid losing precision.
+        """
+        if rd.years:
+            return (rd.years, "years")
+        elif rd.months:
+            return (rd.months, "months")
+        elif rd.days:
+            # Check days before weeks because rd.weeks is computed as days // 7
+            return (rd.days, "days")
+        elif rd.weeks:
+            # Only reached if explicitly set as weeks with no days
+            return (rd.weeks * 7, "days")
+        else:
+            # Default to days=0
+            return (0, "days")
+
+    def _db_to_relativedelta(
+        self, value: int | None, unit: str | None
+    ) -> relativedelta:
+        """Convert (value, unit) from database to relativedelta."""
+        if value is None or unit is None:
+            return relativedelta()
+        if unit == "years":
+            return relativedelta(years=value)
+        elif unit == "months":
+            return relativedelta(months=value)
+        elif unit == "weeks":
+            return relativedelta(weeks=value)
+        else:
+            return relativedelta(days=value)
+
+    def _serialize_budget_time_range(self, time_range: TimeRangeInterface) -> dict:
+        """Serialize a budget time range to database fields."""
+        result: dict = {
+            "start_date": time_range.initial_date.isoformat(),
+            "duration_value": None,
+            "duration_unit": None,
+            "period_value": None,
+            "period_unit": None,
+            "end_date": None,
+        }
+
+        if isinstance(time_range, PeriodicTimeRange):
+            # Get duration from initial time range (access private attribute)
+            # pylint: disable=protected-access
+            inner_range: TimeRange = (
+                time_range._PeriodicTimeRange__initial_time_range  # type: ignore
+            )
+            duration_rd: relativedelta = (
+                inner_range._TimeRange__duration  # type: ignore
+            )
+            dur_val, dur_unit = self._relativedelta_to_db(duration_rd)
+            result["duration_value"] = dur_val
+            result["duration_unit"] = dur_unit
+            # Get period
+            per_val, per_unit = self._relativedelta_to_db(time_range.period)
+            result["period_value"] = per_val
+            result["period_unit"] = per_unit
+            # Get end date (access protected attribute)
+            if time_range._expiration_date != datetime.max:
+                result["end_date"] = time_range._expiration_date.isoformat()
+        elif isinstance(time_range, TimeRange):
+            # Access the relativedelta duration (private attribute)
+            duration_rd = time_range._TimeRange__duration  # type: ignore[attr-defined]
+            dur_val, dur_unit = self._relativedelta_to_db(duration_rd)
+            result["duration_value"] = dur_val
+            result["duration_unit"] = dur_unit
+
+        return result
+
+    def _deserialize_budget_time_range(
+        self,
+        start_date: datetime,
+        duration_value: int | None,
+        duration_unit: str | None,
+        period_value: int | None,
+        period_unit: str | None,
+        end_date: datetime | None,
+    ) -> TimeRangeInterface:
+        """Deserialize budget time range from database fields."""
+        duration = self._db_to_relativedelta(duration_value, duration_unit)
+        inner_range = TimeRange(start_date, duration)
+
+        if period_value is not None and period_unit is not None:
+            period = self._db_to_relativedelta(period_value, period_unit)
+            expiration = end_date if end_date else datetime.max
+            return PeriodicTimeRange(inner_range, period, expiration)
+
+        return inner_range
+
+    def _serialize_planned_op_time_range(self, time_range: TimeRangeInterface) -> dict:
+        """Serialize a planned operation time range to database fields."""
+        result: dict = {
+            "start_date": time_range.initial_date.isoformat(),
+            "period_value": None,
+            "period_unit": None,
+            "end_date": None,
+        }
+
+        if isinstance(time_range, PeriodicDailyTimeRange):
+            # period and _expiration_date are inherited from PeriodicTimeRange
+            per_val, per_unit = self._relativedelta_to_db(time_range._period)
+            result["period_value"] = per_val
+            result["period_unit"] = per_unit
+            if time_range._expiration_date != datetime.max:
+                result["end_date"] = time_range._expiration_date.isoformat()
+
+        return result
+
+    def _deserialize_planned_op_time_range(
+        self,
+        start_date: datetime,
+        period_value: int | None,
+        period_unit: str | None,
+        end_date: datetime | None,
+    ) -> DailyTimeRange | PeriodicDailyTimeRange:
+        """Deserialize planned operation time range from database fields."""
+        if period_value is not None and period_unit is not None:
+            period = self._db_to_relativedelta(period_value, period_unit)
+            expiration = end_date if end_date else datetime.max
+            return PeriodicDailyTimeRange(start_date, period, expiration)
+
+        return DailyTimeRange(start_date)

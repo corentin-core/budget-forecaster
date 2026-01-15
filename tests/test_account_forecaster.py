@@ -87,12 +87,14 @@ def planned_operations() -> tuple[PlannedOperation, ...]:
     """Create a tuple of planned operations."""
     return (
         PlannedOperation(
+            record_id=1,
             description="Isolated Planned Operation",
             amount=Amount(-50.0),
             category=Category.OTHER,
             time_range=DailyTimeRange(datetime(2023, 3, 15)),
         ),
         PlannedOperation(
+            record_id=2,
             description="Recurring Planned Operation",
             amount=Amount(-20.0),
             category=Category.GROCERIES,
@@ -171,12 +173,14 @@ def budgets() -> tuple[Budget, ...]:
     """Create a tuple of budgets."""
     return (
         Budget(
+            record_id=1,
             description="Obsolete budget",
             amount=Amount(-230),
             category=Category.CAR_FUEL,
             time_range=TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
         ),
         Budget(
+            record_id=2,
             description="Recurring budget 1",
             amount=Amount(-300),
             category=Category.GROCERIES,
@@ -186,6 +190,7 @@ def budgets() -> tuple[Budget, ...]:
             ),
         ),
         Budget(
+            record_id=3,
             description="Recurring budget 2",
             amount=Amount(-100),
             category=Category.OTHER,
@@ -196,6 +201,7 @@ def budgets() -> tuple[Budget, ...]:
             ),
         ),
         Budget(
+            record_id=4,
             description="Isolated budget",
             amount=Amount(-150),
             category=Category.OTHER,

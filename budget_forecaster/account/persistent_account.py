@@ -62,6 +62,11 @@ class PersistentAccount:
             raise FileNotFoundError("No account found")
         self._aggregated_account.replace_operation(new_operation)
 
+    @property
+    def repository(self) -> SqliteRepository:
+        """Return the underlying SQLite repository."""
+        return self._repository
+
     def close(self) -> None:
         """Close the database connection."""
         self._repository.close()
