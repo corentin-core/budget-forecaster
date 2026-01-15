@@ -65,7 +65,8 @@ python -m budget_forecaster.main -c config.yaml categorize
 
 - **NEVER commit directly to main** - always create a feature branch and submit a PR
 - When working on an issue:
-  1. Create a branch from up-to-date main: `git checkout main && git pull && git checkout -b issue/<number>-<short-description>`
+  1. Create a branch from up-to-date main:
+     `git checkout main && git pull && git checkout -b issue/<number>-<short-description>`
   2. Make commits on the feature branch
   3. Push the branch and create a PR with `gh pr create`
 - **Never use `git add -A` or `git add .`** - always stage files explicitly to avoid
@@ -142,3 +143,39 @@ Currently all amounts are hardcoded in EUR.
 
 gh issue edit $ISSUE_NUM --add-label "enhancement" --add-label "P2-medium"
 ```
+
+## Testing Principles
+
+**Test the feature, not just the code.** Unit tests alone are not sufficient.
+
+When implementing or reviewing tests:
+
+1. **End-to-end tests are required** - Every feature needs at least one test that
+   exercises the complete flow, not just individual components with mocks
+
+2. **Use fixtures for expected outputs** - For features that generate files (CSV, Excel,
+   JSON), include reference files in `tests/fixtures/` and compare against them
+
+3. **Validate actual output** - A test that only checks "no exception thrown" or "file
+   exists" is insufficient. Verify the content matches expectations
+
+Example of insufficient vs. sufficient testing:
+
+```python
+# Insufficient - only checks file exists
+def test_export():
+    exporter.export(data, "output.csv")
+    assert Path("output.csv").exists()
+
+# Sufficient - validates actual content
+def test_export():
+    exporter.export(data, "output.csv")
+    expected = Path("tests/fixtures/expected.csv").read_text()
+    assert Path("output.csv").read_text() == expected
+```
+
+## Workflow Automation
+
+- **Use commands proactively** - Do not wait for the user to explicitly call them.
+  Invoke them automatically when relevant to the current task (e.g., `/lint`, `/test`,
+  `/review`, `/create-pr`)
