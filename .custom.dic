@@ -23,6 +23,7 @@ historicoperation
 iterable
 json
 kwargs
+lifecycle
 matcher
 minification
 minifies
