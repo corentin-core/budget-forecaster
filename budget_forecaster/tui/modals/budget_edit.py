@@ -1,7 +1,7 @@
 """Budget edit modal for creating/editing budgets."""
 
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements
-# pylint: disable=protected-access,raise-missing-from,consider-using-assignment-expr
+# pylint: disable=raise-missing-from,consider-using-assignment-expr
 
 from datetime import datetime
 from typing import Any
@@ -204,11 +204,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
         if not self._budget:
             return 1
         tr = self._budget.time_range
-        if isinstance(tr, PeriodicTimeRange):
-            inner = tr._PeriodicTimeRange__initial_time_range  # type: ignore[attr-defined]
-            rd = inner._TimeRange__duration  # type: ignore[attr-defined]
-        else:
-            rd = tr._TimeRange__duration  # type: ignore[attr-defined]
+        rd = tr.duration
         return rd.months if rd.months else 1
 
     def _get_period_months(self) -> int | None:
@@ -217,7 +213,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
             return None
         tr = self._budget.time_range
         if isinstance(tr, PeriodicTimeRange):
-            return tr._period.months if tr._period.months else 1
+            return tr.period.months if tr.period.months else 1
         return None
 
     def _get_end_date(self) -> datetime | None:
@@ -226,8 +222,8 @@ class BudgetEditModal(ModalScreen[Budget | None]):
             return None
         tr = self._budget.time_range
         if isinstance(tr, PeriodicTimeRange):
-            if tr._expiration_date != datetime.max:
-                return tr._expiration_date
+            if tr.last_date != datetime.max:
+                return tr.last_date
         return None
 
     def on_button_pressed(self, event: Button.Pressed) -> None:

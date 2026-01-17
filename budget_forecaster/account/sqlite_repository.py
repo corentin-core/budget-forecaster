@@ -1,6 +1,6 @@
 """SQLite repository for account data persistence."""
 
-# pylint: disable=protected-access,no-else-return
+# pylint: disable=no-else-return
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 
 import json
@@ -637,28 +637,20 @@ class SqliteRepository(RepositoryInterface):
         }
 
         if isinstance(time_range, PeriodicTimeRange):
-            # Get duration from initial time range (access private attribute)
-            # pylint: disable=protected-access
-            inner_range: TimeRange = (
-                time_range._PeriodicTimeRange__initial_time_range  # type: ignore
-            )
-            duration_rd: relativedelta = (
-                inner_range._TimeRange__duration  # type: ignore
-            )
-            dur_val, dur_unit = self._relativedelta_to_db(duration_rd)
+            # Get duration from base time range
+            dur_val, dur_unit = self._relativedelta_to_db(time_range.duration)
             result["duration_value"] = dur_val
             result["duration_unit"] = dur_unit
             # Get period
             per_val, per_unit = self._relativedelta_to_db(time_range.period)
             result["period_value"] = per_val
             result["period_unit"] = per_unit
-            # Get end date (access protected attribute)
-            if time_range._expiration_date != datetime.max:
-                result["end_date"] = time_range._expiration_date.isoformat()
+            # Get end date
+            if time_range.last_date != datetime.max:
+                result["end_date"] = time_range.last_date.isoformat()
         elif isinstance(time_range, TimeRange):
-            # Access the relativedelta duration (private attribute)
-            duration_rd = time_range._TimeRange__duration  # type: ignore[attr-defined]
-            dur_val, dur_unit = self._relativedelta_to_db(duration_rd)
+            # Get the relativedelta duration
+            dur_val, dur_unit = self._relativedelta_to_db(time_range.duration)
             result["duration_value"] = dur_val
             result["duration_unit"] = dur_unit
 
@@ -694,12 +686,12 @@ class SqliteRepository(RepositoryInterface):
         }
 
         if isinstance(time_range, PeriodicDailyTimeRange):
-            # period and _expiration_date are inherited from PeriodicTimeRange
-            per_val, per_unit = self._relativedelta_to_db(time_range._period)
+            # period is inherited from PeriodicTimeRange
+            per_val, per_unit = self._relativedelta_to_db(time_range.period)
             result["period_value"] = per_val
             result["period_unit"] = per_unit
-            if time_range._expiration_date != datetime.max:
-                result["end_date"] = time_range._expiration_date.isoformat()
+            if time_range.last_date != datetime.max:
+                result["end_date"] = time_range.last_date.isoformat()
 
         return result
 
