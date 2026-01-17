@@ -61,11 +61,22 @@ git diff main...HEAD
 - No features added beyond what was specified
 - No over-engineering
 
+#### Codebase Coherence
+
+- **Uses existing abstractions?** If `RepositoryInterface` exists, new methods should be
+  added there, not bypass it with direct `SqliteRepository` usage
+- **Follows existing patterns?** Check similar features for naming, structure, DI
+  patterns
+- **No implementation leakage?** Dependencies should be on interfaces, not concrete
+  classes
+
 #### Testing Adequacy
 
 - Are there tests for new functionality?
 - Do tests validate actual behavior (not just "no exception")?
 - Are edge cases covered?
+- **Do tests test application logic, not Python built-ins?** Flag tests that verify
+  StrEnum values, NamedTuple iteration, dataclass fields, etc. These are useless.
 
 ### Step 4: Determine verdict
 
@@ -130,6 +141,8 @@ gh pr review <number> --comment --body "..."
 - "Missing test for the error path when file doesn't exist"
 - "The design specifies Y but this implements Z"
 - "Consider using a dataclass here for clarity"
+- "These tests are useless - they test Python's StrEnum/NamedTuple behavior, not your
+  code"
 
 ## Avoid
 
