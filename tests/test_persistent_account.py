@@ -221,7 +221,8 @@ class TestPersistentAccount:  # pylint: disable=protected-access
 
     def test_load_raises_when_no_account(self, temp_db_path: Path) -> None:
         """Test that load raises FileNotFoundError when no account exists."""
-        persistent = PersistentAccount(temp_db_path)
+        repository = SqliteRepository(temp_db_path)
+        persistent = PersistentAccount(repository)
 
         with pytest.raises(FileNotFoundError):
             persistent.load()
@@ -231,7 +232,8 @@ class TestPersistentAccount:  # pylint: disable=protected-access
     def test_save_and_load(self, temp_db_path: Path, sample_account: Account) -> None:
         """Test saving and loading an aggregated account."""
         # Create and save
-        persistent = PersistentAccount(temp_db_path)
+        repository = SqliteRepository(temp_db_path)
+        persistent = PersistentAccount(repository)
         persistent._repository.initialize()
         persistent._aggregated_account = AggregatedAccount(
             "Mes comptes", [sample_account]
@@ -240,7 +242,8 @@ class TestPersistentAccount:  # pylint: disable=protected-access
         persistent.close()
 
         # Load in new instance
-        persistent2 = PersistentAccount(temp_db_path)
+        repository2 = SqliteRepository(temp_db_path)
+        persistent2 = PersistentAccount(repository2)
         persistent2.load()
 
         assert persistent2.account.name == "Mes comptes"
@@ -252,7 +255,8 @@ class TestPersistentAccount:  # pylint: disable=protected-access
 
     def test_account_raises_when_not_loaded(self, temp_db_path: Path) -> None:
         """Test that accessing account raises when not loaded."""
-        persistent = PersistentAccount(temp_db_path)
+        repository = SqliteRepository(temp_db_path)
+        persistent = PersistentAccount(repository)
 
         with pytest.raises(FileNotFoundError):
             _ = persistent.account
@@ -261,7 +265,8 @@ class TestPersistentAccount:  # pylint: disable=protected-access
 
     def test_upsert_account(self, temp_db_path: Path, sample_account: Account) -> None:
         """Test upserting account through the interface."""
-        persistent = PersistentAccount(temp_db_path)
+        repository = SqliteRepository(temp_db_path)
+        persistent = PersistentAccount(repository)
         persistent._repository.initialize()
         persistent._aggregated_account = AggregatedAccount(
             "Mes comptes", [sample_account]
@@ -288,7 +293,8 @@ class TestPersistentAccount:  # pylint: disable=protected-access
         persistent.close()
 
         # Reload and verify
-        persistent2 = PersistentAccount(temp_db_path)
+        repository2 = SqliteRepository(temp_db_path)
+        persistent2 = PersistentAccount(repository2)
         persistent2.load()
 
         account = persistent2.accounts[0]
@@ -316,7 +322,7 @@ class TestBudgetRepository:
         repository.initialize()
 
         budget = Budget(
-            record_id=-1,
+            record_id=None,
             description="Courses mensuelles",
             amount=Amount(-500.0, "EUR"),
             category=Category.GROCERIES,
@@ -343,7 +349,7 @@ class TestBudgetRepository:
         repository.initialize()
 
         budget = Budget(
-            record_id=-1,
+            record_id=None,
             description="Courses mensuelles",
             amount=Amount(-500.0, "EUR"),
             category=Category.GROCERIES,
@@ -369,7 +375,7 @@ class TestBudgetRepository:
         repository.initialize()
 
         budget = Budget(
-            record_id=-1,
+            record_id=None,
             description="Test budget",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
@@ -391,7 +397,7 @@ class TestBudgetRepository:
         # Test simple TimeRange
         # duration of 10 days means last_date = initial + 10 - 1 = initial + 9
         budget = Budget(
-            record_id=-1,
+            record_id=None,
             description="Simple budget",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
@@ -415,7 +421,7 @@ class TestBudgetRepository:
         repository.initialize()
 
         budget = Budget(
-            record_id=-1,
+            record_id=None,
             description="Periodic budget",
             amount=Amount(-200.0, "EUR"),
             category=Category.GROCERIES,
@@ -457,7 +463,7 @@ class TestPlannedOperationRepository:
         repository.initialize()
 
         op = PlannedOperation(
-            record_id=-1,
+            record_id=None,
             description="Salaire mensuel",
             amount=Amount(3000.0, "EUR"),
             category=Category.SALARY,
@@ -487,7 +493,7 @@ class TestPlannedOperationRepository:
         repository.initialize()
 
         op = PlannedOperation(
-            record_id=-1,
+            record_id=None,
             description="Loyer",
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
@@ -511,7 +517,7 @@ class TestPlannedOperationRepository:
         repository.initialize()
 
         op = PlannedOperation(
-            record_id=-1,
+            record_id=None,
             description="Test op",
             amount=Amount(-50.0, "EUR"),
             category=Category.OTHER,
@@ -533,7 +539,7 @@ class TestPlannedOperationRepository:
         repository.initialize()
 
         op = PlannedOperation(
-            record_id=-1,
+            record_id=None,
             description="Test with matcher",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
@@ -562,7 +568,7 @@ class TestPlannedOperationRepository:
         repository.initialize()
 
         op = PlannedOperation(
-            record_id=-1,
+            record_id=None,
             description="Test hints",
             amount=Amount(-50.0, "EUR"),
             category=Category.OTHER,

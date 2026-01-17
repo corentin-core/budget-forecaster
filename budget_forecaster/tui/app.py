@@ -11,6 +11,7 @@ from textual.containers import Horizontal
 from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
 from budget_forecaster.account.persistent_account import PersistentAccount
+from budget_forecaster.account.sqlite_repository import SqliteRepository
 from budget_forecaster.config import Config
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
@@ -146,9 +147,8 @@ class BudgetApp(App[None]):
         self._config.setup_logging()
         logger.info("Starting Budget Forecaster TUI")
 
-        self._persistent_account = PersistentAccount(
-            database_path=self._config.database_path
-        )
+        repository = SqliteRepository(self._config.database_path)
+        self._persistent_account = PersistentAccount(repository)
         self._persistent_account.load()
 
         self._operation_service = OperationService(self._persistent_account)
@@ -383,6 +383,9 @@ class BudgetApp(App[None]):
     ) -> None:
         """Handle budget delete request."""
         event.stop()
+        if event.budget.id is None:
+            self.notify("Cannot delete unsaved budget", severity="error")
+            return
         try:
             self.forecast_service.delete_budget(event.budget.id)
             self.notify(f"Budget '{event.budget.description}' supprimé")
@@ -397,7 +400,7 @@ class BudgetApp(App[None]):
             return
 
         try:
-            if budget.id == -1:
+            if budget.id is None:
                 # New budget
                 self.forecast_service.add_budget(budget)
                 self.notify(f"Budget '{budget.description}' créé")
@@ -434,6 +437,9 @@ class BudgetApp(App[None]):
     ) -> None:
         """Handle planned operation delete request."""
         event.stop()
+        if event.operation.id is None:
+            self.notify("Cannot delete unsaved operation", severity="error")
+            return
         try:
             self.forecast_service.delete_planned_operation(event.operation.id)
             self.notify(f"Opération '{event.operation.description}' supprimée")
@@ -448,7 +454,7 @@ class BudgetApp(App[None]):
             return
 
         try:
-            if operation.id == -1:
+            if operation.id is None:
                 # New operation
                 self.forecast_service.add_planned_operation(operation)
                 self.notify(f"Opération '{operation.description}' créée")

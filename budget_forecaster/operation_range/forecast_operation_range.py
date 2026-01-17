@@ -12,7 +12,7 @@ class ForecastOperationRange(OperationRange):
 
     def __init__(
         self,
-        record_id: int,
+        record_id: int | None,
         description: str,
         amount: Amount,
         category: Category,
@@ -30,8 +30,8 @@ class ForecastOperationRange(OperationRange):
         )
 
     @property
-    def id(self) -> int:
-        """The database ID of the operation range. -1 if not persisted yet."""
+    def id(self) -> int | None:
+        """The database ID of the operation range. None if not persisted yet."""
         return self.__id
 
     @property
