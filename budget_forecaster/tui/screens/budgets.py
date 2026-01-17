@@ -1,6 +1,6 @@
 """Budgets management screen for budget forecaster."""
 
-# pylint: disable=protected-access,no-else-return
+# pylint: disable=no-else-return
 
 import logging
 from datetime import datetime
@@ -135,15 +135,11 @@ class BudgetsWidget(Vertical):
 
             # Determine duration and periodicity
             if isinstance(time_range, PeriodicTimeRange):
-                # pylint: disable=protected-access
-                inner_range = (
-                    time_range._PeriodicTimeRange__initial_time_range  # type: ignore
-                )
-                duration = self._format_duration(inner_range)
-                period = self._format_period(time_range._period)
+                duration = self._format_duration(time_range.base_time_range)
+                period = self._format_period(time_range.period)
                 end_date = (
-                    time_range._expiration_date.strftime("%Y-%m-%d")
-                    if time_range._expiration_date != datetime.max
+                    time_range.last_date.strftime("%Y-%m-%d")
+                    if time_range.last_date != datetime.max
                     else "-"
                 )
             else:

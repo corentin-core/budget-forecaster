@@ -1,6 +1,6 @@
 """Planned operations management screen for budget forecaster."""
 
-# pylint: disable=protected-access,no-else-return
+# pylint: disable=no-else-return
 
 import logging
 from datetime import datetime
@@ -135,10 +135,10 @@ class PlannedOperationsWidget(Vertical):
 
             # Determine periodicity and end date
             if isinstance(time_range, PeriodicDailyTimeRange):
-                period = self._format_period(time_range._period)
+                period = self._format_period(time_range.period)
                 end_date = (
-                    time_range._expiration_date.strftime("%Y-%m-%d")
-                    if time_range._expiration_date != datetime.max
+                    time_range.last_date.strftime("%Y-%m-%d")
+                    if time_range.last_date != datetime.max
                     else "-"
                 )
             else:

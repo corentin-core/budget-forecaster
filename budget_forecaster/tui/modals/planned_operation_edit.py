@@ -1,7 +1,7 @@
 """Planned operation edit modal for creating/editing planned operations."""
 
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements
-# pylint: disable=protected-access,raise-missing-from,no-else-return
+# pylint: disable=raise-missing-from,no-else-return
 # pylint: disable=consider-using-assignment-expr
 
 from datetime import datetime, timedelta
@@ -231,7 +231,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
             return None
         tr = self._operation.time_range
         if isinstance(tr, PeriodicDailyTimeRange):
-            p = tr._period
+            p = tr.period
             if p.months:
                 return p.months
             elif p.days:
@@ -244,8 +244,8 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
             return None
         tr = self._operation.time_range
         if isinstance(tr, PeriodicDailyTimeRange):
-            if tr._expiration_date != datetime.max:
-                return tr._expiration_date
+            if tr.last_date != datetime.max:
+                return tr.last_date
         return None
 
     def _get_hints(self) -> str:

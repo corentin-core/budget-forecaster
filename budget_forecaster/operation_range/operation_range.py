@@ -138,7 +138,7 @@ class OperationRange(OperationRangeInterface):
                 amount += self.amount
                 continue
 
-            amount_per_day = self.amount / time_range.duration.days
+            amount_per_day = self.amount / time_range.total_duration.days
             # incomplete period, two cases:
             # 1. time_range.initial_date < start_date
             # 2. time_range.last_date > end_date
