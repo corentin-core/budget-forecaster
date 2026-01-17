@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 from budget_forecaster.account.account import Account
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
+from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 
 
@@ -167,11 +168,83 @@ class OperationRepositoryInterface(ABC):
         """
 
 
+class OperationLinkRepositoryInterface(ABC):
+    """Interface for OperationLink persistence operations."""
+
+    @abstractmethod
+    def get_link_for_operation(self, operation_unique_id: int) -> OperationLink | None:
+        """Get the link for a historic operation, if any.
+
+        Args:
+            operation_unique_id: The unique ID of the operation.
+
+        Returns:
+            The OperationLink if found, None otherwise.
+        """
+
+    @abstractmethod
+    def get_links_for_planned_operation(
+        self, planned_op_id: int
+    ) -> tuple[OperationLink, ...]:
+        """Get all links targeting a planned operation.
+
+        Args:
+            planned_op_id: The ID of the planned operation.
+
+        Returns:
+            Tuple of OperationLinks targeting this planned operation.
+        """
+
+    @abstractmethod
+    def get_links_for_budget(self, budget_id: int) -> tuple[OperationLink, ...]:
+        """Get all links targeting a budget.
+
+        Args:
+            budget_id: The ID of the budget.
+
+        Returns:
+            Tuple of OperationLinks targeting this budget.
+        """
+
+    @abstractmethod
+    def create_link(self, link: OperationLink) -> None:
+        """Create a link.
+
+        Args:
+            link: The OperationLink to create.
+
+        Raises:
+            sqlite3.IntegrityError: If the operation is already linked.
+        """
+
+    @abstractmethod
+    def delete_link(self, operation_unique_id: int) -> None:
+        """Delete the link for an operation.
+
+        Args:
+            operation_unique_id: The unique ID of the operation.
+        """
+
+    @abstractmethod
+    def delete_automatic_links_for_target(
+        self, linked_type: LinkType, linked_id: int
+    ) -> None:
+        """Delete all automatic links for a given target.
+
+        Used for recalculation when a planned operation or budget is modified.
+
+        Args:
+            linked_type: The type of target (planned operation or budget).
+            linked_id: The ID of the target.
+        """
+
+
 class RepositoryInterface(
     BudgetRepositoryInterface,
     PlannedOperationRepositoryInterface,
     AccountRepositoryInterface,
     OperationRepositoryInterface,
+    OperationLinkRepositoryInterface,
     ABC,
 ):
     """Facade interface combining all repository operations.
