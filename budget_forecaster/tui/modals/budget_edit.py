@@ -310,7 +310,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
                 time_range = inner_range
 
             # Create budget
-            budget_id = self._budget.id if self._budget else -1
+            budget_id = self._budget.id if self._budget else None
             budget = Budget(
                 record_id=budget_id,
                 description=description,
