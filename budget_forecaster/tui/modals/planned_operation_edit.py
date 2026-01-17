@@ -364,7 +364,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
                 time_range = DailyTimeRange(op_date)
 
             # Create operation
-            op_id = self._operation.id if self._operation else -1
+            op_id = self._operation.id if self._operation else None
             operation = PlannedOperation(
                 record_id=op_id,
                 description=description,

@@ -383,6 +383,9 @@ class BudgetApp(App[None]):
     ) -> None:
         """Handle budget delete request."""
         event.stop()
+        if event.budget.id is None:
+            self.notify("Cannot delete unsaved budget", severity="error")
+            return
         try:
             self.forecast_service.delete_budget(event.budget.id)
             self.notify(f"Budget '{event.budget.description}' supprimé")
@@ -397,7 +400,7 @@ class BudgetApp(App[None]):
             return
 
         try:
-            if budget.id == -1:
+            if budget.id is None:
                 # New budget
                 self.forecast_service.add_budget(budget)
                 self.notify(f"Budget '{budget.description}' créé")
@@ -434,6 +437,9 @@ class BudgetApp(App[None]):
     ) -> None:
         """Handle planned operation delete request."""
         event.stop()
+        if event.operation.id is None:
+            self.notify("Cannot delete unsaved operation", severity="error")
+            return
         try:
             self.forecast_service.delete_planned_operation(event.operation.id)
             self.notify(f"Opération '{event.operation.description}' supprimée")
@@ -448,7 +454,7 @@ class BudgetApp(App[None]):
             return
 
         try:
-            if operation.id == -1:
+            if operation.id is None:
                 # New operation
                 self.forecast_service.add_planned_operation(operation)
                 self.notify(f"Opération '{operation.description}' créée")

@@ -24,7 +24,7 @@ class PlannedOperation(ForecastOperationRange):
 
     def __init__(
         self,
-        record_id: int,
+        record_id: int | None,
         description: str,
         amount: Amount,
         category: Category,
@@ -56,7 +56,9 @@ class PlannedOperation(ForecastOperationRange):
     def replace(self, **kwargs: Any) -> "PlannedOperation":
         """Return a new instance of the planned operation with the given parameters replaced."""
         new_id = kwargs.get("record_id", self.id)
-        assert isinstance(new_id, int), "record_id should be an int"
+        assert new_id is None or isinstance(
+            new_id, int
+        ), "record_id should be an int or None"
         new_description = kwargs.get("description", self.description)
         assert isinstance(new_description, str), "description should be a string"
         new_amount = kwargs.get("amount", Amount(self.amount, self.currency))

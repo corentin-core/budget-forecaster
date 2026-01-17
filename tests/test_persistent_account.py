@@ -322,7 +322,7 @@ class TestBudgetRepository:
         repository.initialize()
 
         budget = Budget(
-            record_id=-1,
+            record_id=None,
             description="Courses mensuelles",
             amount=Amount(-500.0, "EUR"),
             category=Category.GROCERIES,
@@ -349,7 +349,7 @@ class TestBudgetRepository:
         repository.initialize()
 
         budget = Budget(
-            record_id=-1,
+            record_id=None,
             description="Courses mensuelles",
             amount=Amount(-500.0, "EUR"),
             category=Category.GROCERIES,
@@ -375,7 +375,7 @@ class TestBudgetRepository:
         repository.initialize()
 
         budget = Budget(
-            record_id=-1,
+            record_id=None,
             description="Test budget",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
@@ -397,7 +397,7 @@ class TestBudgetRepository:
         # Test simple TimeRange
         # duration of 10 days means last_date = initial + 10 - 1 = initial + 9
         budget = Budget(
-            record_id=-1,
+            record_id=None,
             description="Simple budget",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
@@ -421,7 +421,7 @@ class TestBudgetRepository:
         repository.initialize()
 
         budget = Budget(
-            record_id=-1,
+            record_id=None,
             description="Periodic budget",
             amount=Amount(-200.0, "EUR"),
             category=Category.GROCERIES,
@@ -463,7 +463,7 @@ class TestPlannedOperationRepository:
         repository.initialize()
 
         op = PlannedOperation(
-            record_id=-1,
+            record_id=None,
             description="Salaire mensuel",
             amount=Amount(3000.0, "EUR"),
             category=Category.SALARY,
@@ -493,7 +493,7 @@ class TestPlannedOperationRepository:
         repository.initialize()
 
         op = PlannedOperation(
-            record_id=-1,
+            record_id=None,
             description="Loyer",
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
@@ -517,7 +517,7 @@ class TestPlannedOperationRepository:
         repository.initialize()
 
         op = PlannedOperation(
-            record_id=-1,
+            record_id=None,
             description="Test op",
             amount=Amount(-50.0, "EUR"),
             category=Category.OTHER,
@@ -539,7 +539,7 @@ class TestPlannedOperationRepository:
         repository.initialize()
 
         op = PlannedOperation(
-            record_id=-1,
+            record_id=None,
             description="Test with matcher",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
@@ -568,7 +568,7 @@ class TestPlannedOperationRepository:
         repository.initialize()
 
         op = PlannedOperation(
-            record_id=-1,
+            record_id=None,
             description="Test hints",
             amount=Amount(-50.0, "EUR"),
             category=Category.OTHER,

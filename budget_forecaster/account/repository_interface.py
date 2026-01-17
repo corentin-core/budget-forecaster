@@ -40,7 +40,7 @@ class BudgetRepositoryInterface(ABC):
         """Insert or update a budget.
 
         Args:
-            budget: Budget to insert (id <= 0) or update (id > 0).
+            budget: Budget to insert (id is None) or update (id is not None).
 
         Returns:
             The ID of the inserted or updated budget.
@@ -82,7 +82,7 @@ class PlannedOperationRepositoryInterface(ABC):
         """Insert or update a planned operation.
 
         Args:
-            op: PlannedOperation to insert (id <= 0) or update (id > 0).
+            op: PlannedOperation to insert (id is None) or update (id is not None).
 
         Returns:
             The ID of the inserted or updated planned operation.

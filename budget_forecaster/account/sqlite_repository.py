@@ -386,7 +386,7 @@ class SqliteRepository(RepositoryInterface):
         conn = self._get_connection()
         time_range_data = self._serialize_budget_time_range(budget.time_range)
 
-        if budget.id > 0:
+        if budget.id is not None:
             # Update existing
             conn.execute(
                 """UPDATE budgets SET description = ?, amount = ?, currency = ?,
@@ -498,7 +498,7 @@ class SqliteRepository(RepositoryInterface):
         )
         approx_days = int(op.matcher.approximation_date_range.total_seconds() / 86400)
 
-        if op.id > 0:
+        if op.id is not None:
             # Update existing
             conn.execute(
                 """UPDATE planned_operations SET description = ?, amount = ?,

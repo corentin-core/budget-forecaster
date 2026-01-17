@@ -112,9 +112,9 @@ class ForecastService:
         """Update an existing budget.
 
         Args:
-            budget: Budget with updated values (id must be > 0).
+            budget: Budget with updated values (id must not be None).
         """
-        if budget.id <= 0:
+        if budget.id is None:
             raise ValueError("Budget must have a valid ID for update")
         self._repository.upsert_budget(budget)
         self._invalidate_cache()
@@ -142,7 +142,7 @@ class ForecastService:
         """Add a new planned operation.
 
         Args:
-            op: Planned operation to add (id should be -1).
+            op: Planned operation to add (id should be None).
 
         Returns:
             The ID of the newly created planned operation.
@@ -155,9 +155,9 @@ class ForecastService:
         """Update an existing planned operation.
 
         Args:
-            op: Planned operation with updated values (id must be > 0).
+            op: Planned operation with updated values (id must not be None).
         """
-        if op.id <= 0:
+        if op.id is None:
             raise ValueError("Planned operation must have a valid ID for update")
         self._repository.upsert_planned_operation(op)
         self._invalidate_cache()
