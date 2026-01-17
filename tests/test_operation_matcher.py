@@ -1,4 +1,5 @@
 """Module with tests for the OperationMatcher class."""
+# pylint: disable=too-many-lines
 from datetime import datetime, timedelta
 
 import pytest
@@ -678,3 +679,346 @@ class TestOperationMatcherPeriodicTimeRange:
             )
             == set()
         )
+
+
+class TestOperationMatcherManualLinks:
+    """Tests for manual link functionality in OperationMatcher."""
+
+    def test_manual_link_takes_priority_over_heuristic_mismatch(
+        self, operation_range: OperationRange
+    ) -> None:
+        """Test that a manually linked operation matches even if heuristics fail."""
+        # Create an operation that does NOT match heuristically
+        # (different category, wrong amount, etc.)
+        non_matching_operation = HistoricOperation(
+            unique_id=100,
+            description="Non matching operation",
+            amount=Amount(500.0),  # Wrong amount (expected 100)
+            category=Category.OTHER,  # Wrong category (expected GROCERIES)
+            date=datetime(2023, 6, 15),  # Wrong date
+        )
+
+        # Without manual link, should not match
+        matcher_no_link = OperationMatcher(operation_range)
+        assert not matcher_no_link.match(non_matching_operation)
+
+        # With manual link, should match regardless of heuristics
+        matcher_with_link = OperationMatcher(
+            operation_range,
+            manual_links={100: datetime(2023, 1, 1)},
+        )
+        assert matcher_with_link.match(non_matching_operation)
+
+    def test_add_and_remove_manual_link(self, operation_range: OperationRange) -> None:
+        """Test adding and removing manual links dynamically."""
+        operation = HistoricOperation(
+            unique_id=101,
+            description="Test operation",
+            amount=Amount(500.0),
+            category=Category.OTHER,
+            date=datetime(2023, 6, 15),
+        )
+
+        matcher = OperationMatcher(operation_range)
+
+        # Initially no manual link
+        assert not matcher.is_manually_linked(operation)
+        assert not matcher.match(operation)
+
+        # Add manual link
+        matcher.add_manual_link(101, datetime(2023, 1, 1))
+        assert matcher.is_manually_linked(operation)
+        assert matcher.match(operation)
+
+        # Remove manual link
+        matcher.remove_manual_link(101)
+        assert not matcher.is_manually_linked(operation)
+        assert not matcher.match(operation)
+
+    def test_get_iteration_for_operation(self, operation_range: OperationRange) -> None:
+        """Test getting the iteration date for a manually linked operation."""
+        operation = HistoricOperation(
+            unique_id=102,
+            description="Test operation",
+            amount=Amount(100.0),
+            category=Category.GROCERIES,
+            date=datetime(2023, 1, 15),
+        )
+
+        iteration_date = datetime(2023, 1, 1)
+        matcher = OperationMatcher(
+            operation_range,
+            manual_links={102: iteration_date},
+        )
+
+        assert matcher.get_iteration_for_operation(operation) == iteration_date
+
+        # Non-linked operation returns None
+        other_operation = HistoricOperation(
+            unique_id=103,
+            description="Other operation",
+            amount=Amount(100.0),
+            category=Category.GROCERIES,
+            date=datetime(2023, 1, 15),
+        )
+        assert matcher.get_iteration_for_operation(other_operation) is None
+
+    def test_manual_links_preserved_in_replace(
+        self, operation_range: OperationRange
+    ) -> None:
+        """Test that manual links are preserved when using replace()."""
+        matcher = OperationMatcher(
+            operation_range,
+            manual_links={100: datetime(2023, 1, 1)},
+        )
+
+        new_operation_range = OperationRange(
+            "New Test Operation",
+            Amount(200, "EUR"),
+            Category.GROCERIES,
+            TimeRange(datetime(2023, 2, 1), relativedelta(months=1)),
+        )
+        new_matcher = matcher.replace(operation_range=new_operation_range)
+
+        # Manual links should be preserved
+        assert new_matcher.manual_links == {100: datetime(2023, 1, 1)}
+
+    def test_manual_links_property_returns_copy(
+        self, operation_range: OperationRange
+    ) -> None:
+        """Test that manual_links property returns a copy, not the original dict."""
+        original_links = {100: datetime(2023, 1, 1)}
+        matcher = OperationMatcher(operation_range, manual_links=original_links)
+
+        # Modify the returned dict
+        returned_links = matcher.manual_links
+        returned_links[200] = datetime(2023, 2, 1)
+
+        # Original should not be affected
+        assert 200 not in matcher.manual_links
+
+    def test_heuristic_match_still_works_without_manual_links(
+        self,
+        operation_range: OperationRange,
+        historic_operations: list[HistoricOperation],
+    ) -> None:
+        """Test that heuristic matching still works when no manual links exist."""
+        matcher = OperationMatcher(
+            operation_range, approximation_date_range=timedelta()
+        )
+        # This should behave exactly like before - using heuristic matching
+        assert set(matcher.matches(historic_operations)) == {
+            historic_operations[i] for i in (0, 1, 3, 5)
+        }
+
+    def test_match_heuristic_method(self, operation_range: OperationRange) -> None:
+        """Test that match_heuristic ignores manual links."""
+        # Operation that doesn't match heuristically
+        operation = HistoricOperation(
+            unique_id=104,
+            description="Non matching",
+            amount=Amount(500.0),
+            category=Category.OTHER,
+            date=datetime(2023, 6, 15),
+        )
+
+        # Even with manual link, match_heuristic should return False
+        matcher = OperationMatcher(
+            operation_range,
+            manual_links={104: datetime(2023, 1, 1)},
+        )
+        assert not matcher.match_heuristic(operation)
+        assert matcher.match(operation)  # But match() returns True due to manual link
+
+
+class TestComputeMatchScore:
+    """Tests for the compute_match_score function."""
+
+    def test_perfect_match_score(self) -> None:
+        """Test that a perfect match returns high score (minus description if no hints)."""
+        from budget_forecaster.operation_range.operation_matcher import (
+            compute_match_score,
+        )
+
+        op_range = OperationRange(
+            "Test Operation",
+            Amount(100, "EUR"),
+            Category.GROCERIES,
+            TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+        )
+
+        operation = HistoricOperation(
+            unique_id=1,
+            description="Test Operation",
+            amount=Amount(100.0),
+            category=Category.GROCERIES,
+            date=datetime(2023, 1, 15),
+        )
+
+        # Perfect match on amount, date, category (no description hints)
+        # Should get 40 + 30 + 20 = 90 (no description points without hints)
+        score = compute_match_score(operation, op_range, datetime(2023, 1, 15))
+        assert score == 90.0
+
+    def test_perfect_match_with_description_hints(self) -> None:
+        """Test that matching description hints adds to score."""
+        from budget_forecaster.operation_range.operation_matcher import (
+            compute_match_score,
+        )
+
+        op_range = OperationRange(
+            "Test Operation",
+            Amount(100, "EUR"),
+            Category.GROCERIES,
+            TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+        )
+
+        operation = HistoricOperation(
+            unique_id=1,
+            description="GROCERIES STORE ABC",
+            amount=Amount(100.0),
+            category=Category.GROCERIES,
+            date=datetime(2023, 1, 15),
+        )
+
+        matcher = OperationMatcher(
+            op_range,
+            description_hints={"GROCERIES", "ABC"},
+        )
+
+        # Perfect match including description
+        score = compute_match_score(operation, op_range, datetime(2023, 1, 15), matcher)
+        assert score == 100.0
+
+    def test_category_mismatch_reduces_score(self) -> None:
+        """Test that wrong category reduces score by 20 points."""
+        from budget_forecaster.operation_range.operation_matcher import (
+            compute_match_score,
+        )
+
+        op_range = OperationRange(
+            "Test Operation",
+            Amount(100, "EUR"),
+            Category.GROCERIES,
+            TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+        )
+
+        operation = HistoricOperation(
+            unique_id=1,
+            description="Test",
+            amount=Amount(100.0),
+            category=Category.OTHER,  # Wrong category
+            date=datetime(2023, 1, 15),
+        )
+
+        score = compute_match_score(operation, op_range, datetime(2023, 1, 15))
+        # Should get 40 (amount) + 30 (date) + 0 (category) = 70
+        assert score == 70.0
+
+    def test_amount_tolerance_within_range(self) -> None:
+        """Test that amount within tolerance gets full points."""
+        from budget_forecaster.operation_range.operation_matcher import (
+            compute_match_score,
+        )
+
+        op_range = OperationRange(
+            "Test Operation",
+            Amount(100, "EUR"),
+            Category.GROCERIES,
+            TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+        )
+
+        # 5% tolerance means 95-105 should get full amount score
+        operation = HistoricOperation(
+            unique_id=1,
+            description="Test",
+            amount=Amount(105.0),  # At tolerance boundary
+            category=Category.GROCERIES,
+            date=datetime(2023, 1, 15),
+        )
+
+        score = compute_match_score(operation, op_range, datetime(2023, 1, 15))
+        assert score == 90.0  # Full score (40 + 30 + 20)
+
+    def test_amount_beyond_tolerance_reduces_score(self) -> None:
+        """Test that amount beyond tolerance reduces score."""
+        from budget_forecaster.operation_range.operation_matcher import (
+            compute_match_score,
+        )
+
+        op_range = OperationRange(
+            "Test Operation",
+            Amount(100, "EUR"),
+            Category.GROCERIES,
+            TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+        )
+
+        # 20% difference is 15% beyond 5% tolerance
+        operation = HistoricOperation(
+            unique_id=1,
+            description="Test",
+            amount=Amount(120.0),  # 20% off
+            category=Category.GROCERIES,
+            date=datetime(2023, 1, 15),
+        )
+
+        score = compute_match_score(operation, op_range, datetime(2023, 1, 15))
+        # Amount score: 40 * (1 - 0.15) = 34
+        # Date score: 30
+        # Category score: 20
+        assert 80.0 < score < 90.0
+
+    def test_date_beyond_tolerance_reduces_score(self) -> None:
+        """Test that date beyond tolerance reduces score."""
+        from budget_forecaster.operation_range.operation_matcher import (
+            compute_match_score,
+        )
+
+        op_range = OperationRange(
+            "Test Operation",
+            Amount(100, "EUR"),
+            Category.GROCERIES,
+            TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+        )
+
+        # 20 days from iteration is 15 days beyond 5 day tolerance
+        operation = HistoricOperation(
+            unique_id=1,
+            description="Test",
+            amount=Amount(100.0),
+            category=Category.GROCERIES,
+            date=datetime(2023, 1, 21),  # 20 days from iteration
+        )
+
+        score = compute_match_score(operation, op_range, datetime(2023, 1, 1))
+        # Amount score: 40
+        # Date score: 30 * (1 - 15/30) = 15
+        # Category score: 20
+        assert score == 75.0
+
+    def test_complete_mismatch_low_score(self) -> None:
+        """Test that a complete mismatch returns low score."""
+        from budget_forecaster.operation_range.operation_matcher import (
+            compute_match_score,
+        )
+
+        op_range = OperationRange(
+            "Test Operation",
+            Amount(100, "EUR"),
+            Category.GROCERIES,
+            TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+        )
+
+        operation = HistoricOperation(
+            unique_id=1,
+            description="Completely different",
+            amount=Amount(1000.0),  # 10x different
+            category=Category.OTHER,
+            date=datetime(2023, 6, 15),  # 165+ days away
+        )
+
+        score = compute_match_score(operation, op_range, datetime(2023, 1, 1))
+        # Amount: way beyond tolerance -> 0
+        # Date: way beyond tolerance -> 0
+        # Category: mismatch -> 0
+        assert score == 0.0

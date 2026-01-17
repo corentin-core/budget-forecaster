@@ -7,7 +7,7 @@ from budget_forecaster.operation_range.operation_range import OperationRange
 from budget_forecaster.time_range import TimeRangeInterface
 
 
-class OperationMatcher:
+class OperationMatcher:  # pylint: disable=too-many-public-methods
     """Check if an operation matches an operation range."""
 
     def __init__(
@@ -16,11 +16,25 @@ class OperationMatcher:
         description_hints: set[str] | None = None,
         approximation_date_range: timedelta = timedelta(days=5),
         approximation_amount_ratio: float = 0.05,
+        manual_links: dict[int, datetime] | None = None,
     ):
+        """Initialize the matcher.
+
+        Args:
+            operation_range: The operation range to match against.
+            description_hints: Keywords that must appear in operation descriptions.
+            approximation_date_range: Tolerance for date matching.
+            approximation_amount_ratio: Tolerance ratio for amount matching.
+            manual_links: Dict mapping operation_unique_id to iteration_date for
+                manual links. Manual links take priority over heuristic matching.
+        """
         self.__operation_range = operation_range
         self.__description_hints = description_hints or set()
         self.__approximation_date_range = approximation_date_range
         self.__approximation_amount_ratio = approximation_amount_ratio
+        self.__manual_links: dict[int, datetime] = (
+            manual_links.copy() if manual_links else {}
+        )
 
     @property
     def operation_range(self) -> OperationRange:
@@ -41,6 +55,57 @@ class OperationMatcher:
     def approximation_amount_ratio(self) -> float:
         """The approximation amount ratio to match."""
         return self.__approximation_amount_ratio
+
+    @property
+    def manual_links(self) -> dict[int, datetime]:
+        """Dict mapping operation_unique_id to iteration_date for manual links."""
+        return self.__manual_links.copy()
+
+    def add_manual_link(
+        self, operation_unique_id: int, iteration_date: datetime
+    ) -> None:
+        """Add a manual link for an operation.
+
+        Args:
+            operation_unique_id: The unique ID of the historic operation.
+            iteration_date: The date of the specific iteration to link to.
+        """
+        self.__manual_links[operation_unique_id] = iteration_date
+
+    def remove_manual_link(self, operation_unique_id: int) -> None:
+        """Remove a manual link for an operation.
+
+        Args:
+            operation_unique_id: The unique ID of the historic operation.
+        """
+        self.__manual_links.pop(operation_unique_id, None)
+
+    def is_manually_linked(self, operation: HistoricOperation) -> bool:
+        """Check if operation has a manual link to this matcher's operation_range.
+
+        Args:
+            operation: The historic operation to check.
+
+        Returns:
+            True if the operation has a manual link, False otherwise.
+        """
+        return operation.unique_id in self.__manual_links
+
+    def get_iteration_for_operation(
+        self, operation: HistoricOperation
+    ) -> datetime | None:
+        """Get the specific iteration date this operation is linked to.
+
+        For manually linked operations, returns the stored iteration date.
+        For heuristic matches, returns None (caller should use date proximity).
+
+        Args:
+            operation: The historic operation to check.
+
+        Returns:
+            The iteration date if manually linked, None otherwise.
+        """
+        return self.__manual_links.get(operation.unique_id)
 
     def update_params(
         self,
@@ -93,8 +158,18 @@ class OperationMatcher:
             approx_after=self.approximation_date_range,
         )
 
-    def match(self, operation: HistoricOperation) -> bool:
-        """Check if the operation matches the planned operation."""
+    def match_heuristic(self, operation: HistoricOperation) -> bool:
+        """Check if the operation matches using heuristic rules only.
+
+        This method applies the original matching logic without considering
+        manual links. Used internally and for scoring.
+
+        Args:
+            operation: The historic operation to check.
+
+        Returns:
+            True if the operation matches heuristically, False otherwise.
+        """
         return (
             not self.__out_of_range(operation)
             and (not self.description_hints or self.match_description(operation))
@@ -102,6 +177,26 @@ class OperationMatcher:
             and self.match_category(operation)
             and self.match_date_range(operation)
         )
+
+    def match(self, operation: HistoricOperation) -> bool:
+        """Check if the operation matches the planned operation.
+
+        Manual links take priority over heuristic matching. If an operation
+        has a manual link to this matcher's operation range, it will match
+        regardless of heuristic criteria.
+
+        Args:
+            operation: The historic operation to check.
+
+        Returns:
+            True if the operation matches (manually or heuristically).
+        """
+        # Manual links take priority
+        if self.is_manually_linked(operation):
+            return True
+
+        # Fall back to heuristic matching
+        return self.match_heuristic(operation)
 
     def matches(
         self, operations: Iterable[HistoricOperation]
@@ -186,4 +281,71 @@ class OperationMatcher:
             description_hints=self.description_hints,
             approximation_date_range=self.approximation_date_range,
             approximation_amount_ratio=self.approximation_amount_ratio,
+            manual_links=self.__manual_links,
         )
+
+
+def compute_match_score(
+    operation: HistoricOperation,
+    operation_range: OperationRange,
+    iteration_date: datetime,
+    matcher: "OperationMatcher | None" = None,
+) -> float:
+    """Compute a match score (0-100) for an operation against a specific iteration.
+
+    Uses the same criteria as OperationMatcher with weighted scoring:
+    - Amount: 40% of score
+    - Date: 30% of score
+    - Category: 20% of score
+    - Description: 10% of score
+
+    Args:
+        operation: The historic operation to score.
+        operation_range: The operation range to match against.
+        iteration_date: The date of the specific iteration.
+        matcher: Optional matcher with configuration (approximation params).
+            If not provided, default values are used.
+
+    Returns:
+        A score from 0 to 100 indicating match quality.
+    """
+    # Use provided matcher config or defaults
+    if matcher is None:
+        approx_amount_ratio = 0.05
+        approx_date_days = 5
+        description_hints: set[str] = set()
+    else:
+        approx_amount_ratio = matcher.approximation_amount_ratio
+        approx_date_days = matcher.approximation_date_range.days
+        description_hints = matcher.description_hints
+
+    score = 0.0
+
+    # Amount score (40%)
+    if (planned_amount := abs(operation_range.amount)) > 0:
+        amount_diff = abs(abs(operation.amount) - planned_amount) / planned_amount
+        if amount_diff <= approx_amount_ratio:
+            score += 40.0  # Full score if within tolerance
+        else:
+            # Gradual decrease beyond tolerance
+            score += max(0.0, 40.0 * (1 - (amount_diff - approx_amount_ratio)))
+
+    # Date score (30%) - distance to specific iteration
+    if (days_diff := abs((operation.date - iteration_date).days)) <= approx_date_days:
+        score += 30.0  # Full score if within tolerance
+    else:
+        # Gradual decrease: score drops to 0 at 30 days beyond tolerance
+        score += max(0.0, 30.0 * (1 - (days_diff - approx_date_days) / 30))
+
+    # Category score (20%)
+    if operation.category == operation_range.category:
+        score += 20.0
+
+    # Description score (10%)
+    if description_hints:
+        if all(hint in operation.description for hint in description_hints):
+            score += 10.0
+    # If no hints are configured, we don't award description points
+    # (this matches the existing match_description behavior)
+
+    return score
