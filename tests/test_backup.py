@@ -1,4 +1,4 @@
-"""Tests for the BackupService."""
+"""Tests for the BackupService and BackupConfig."""
 
 # pylint: disable=redefined-outer-name,protected-access
 
@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from budget_forecaster.backup import BackupService
+from budget_forecaster.config import BackupConfig, Config
 
 
 @pytest.fixture
@@ -237,3 +238,91 @@ class TestGetExistingBackups:
 
         assert backups[0] == backup1  # Oldest first
         assert backups[-1] == backup3  # Newest last
+
+
+class TestBackupConfigParsing:
+    """Tests for BackupConfig parsing from YAML."""
+
+    def test_default_backup_config_when_section_absent(self, tmp_path: Path) -> None:
+        """BackupConfig uses defaults when backup section is absent from YAML."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+database_path: test.db
+account_name: Test Account
+account_currency: EUR
+"""
+        )
+
+        config = Config()
+        config.parse(config_file)
+
+        assert config.backup == BackupConfig()
+        assert config.backup.enabled is True
+        assert config.backup.max_backups == 5
+        assert config.backup.directory is None
+
+    def test_parses_full_backup_config(self, tmp_path: Path) -> None:
+        """BackupConfig is parsed correctly when all fields are specified."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+database_path: test.db
+account_name: Test Account
+account_currency: EUR
+backup:
+  enabled: false
+  max_backups: 10
+  directory: /custom/backup/path
+"""
+        )
+
+        config = Config()
+        config.parse(config_file)
+
+        assert config.backup.enabled is False
+        assert config.backup.max_backups == 10
+        assert config.backup.directory == Path("/custom/backup/path")
+
+    def test_parses_partial_backup_config(self, tmp_path: Path) -> None:
+        """BackupConfig uses defaults for unspecified fields."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+database_path: test.db
+account_name: Test Account
+account_currency: EUR
+backup:
+  max_backups: 3
+"""
+        )
+
+        config = Config()
+        config.parse(config_file)
+
+        # Specified field
+        assert config.backup.max_backups == 3
+        # Default fields
+        assert config.backup.enabled is True
+        assert config.backup.directory is None
+
+    def test_parses_backup_disabled(self, tmp_path: Path) -> None:
+        """BackupConfig correctly parses enabled: false."""
+        config_file = tmp_path / "config.yaml"
+        config_file.write_text(
+            """
+database_path: test.db
+account_name: Test Account
+account_currency: EUR
+backup:
+  enabled: false
+"""
+        )
+
+        config = Config()
+        config.parse(config_file)
+
+        assert config.backup.enabled is False
+        # Other fields use defaults
+        assert config.backup.max_backups == 5
+        assert config.backup.directory is None
