@@ -38,7 +38,7 @@ gh issue view <number>
 
 **Present this summary to the user before continuing.**
 
-#### Step 1.2: Read relevant code
+#### Step 1.2: Read relevant code and check coherence (CRITICAL)
 
 Check existing patterns in the codebase:
 
@@ -48,6 +48,35 @@ ls budget_forecaster/bank_adapter/
 ```
 
 Look for similar implementations to follow the same patterns.
+
+**Coherence check - ask yourself:**
+
+1. **Does this follow existing abstractions?** If there's a `RepositoryInterface`, use
+   it. Don't inject `SqliteRepository` directly - that contaminates the codebase with
+   implementation dependencies.
+
+2. **Are similar methods already defined?** If you're adding `get_link_for_operation()`,
+   check if similar methods exist (e.g., `get_budget_by_id()`) and follow the same
+   pattern.
+
+3. **Should this be behind an interface?** If other parts of the code use interfaces for
+   similar concerns, yours should too.
+
+```python
+# WRONG - direct dependency on implementation
+class MyService:
+    def __init__(self, repo: SqliteRepository):  # Couples to SQLite!
+        self.repo = repo
+
+# RIGHT - depend on abstraction
+class MyService:
+    def __init__(self, repo: RepositoryInterface):  # Can be any implementation
+        self.repo = repo
+```
+
+**Real example:** Commit `f5e64c8` was a refactor to fix exactly this - code was using
+`SqliteRepository` directly instead of an interface, requiring a facade to be created
+after the fact.
 
 ### Phase 2: Create Implementation Checklist
 
@@ -96,6 +125,28 @@ def test_export():
     assert Path("output.csv").read_text() == expected
 ```
 
+**Do NOT test built-in Python features:**
+
+```python
+# WRONG - tests Python's StrEnum behavior, not your code
+def test_link_type_values():
+    assert LinkType.BUDGET == "budget"
+    assert str(LinkType.BUDGET) == "budget"
+
+# WRONG - tests Python's NamedTuple behavior, not your code
+def test_namedtuple_is_iterable():
+    link = OperationLink(...)
+    assert tuple(link) == (...)
+
+# RIGHT - tests your application logic
+def test_create_link_duplicate_raises_error():
+    repository.create_link(link1)
+    with pytest.raises(sqlite3.IntegrityError):
+        repository.create_link(link2)  # Same operation_unique_id
+```
+
+Only test code YOU wrote, not Python stdlib features.
+
 ### Phase 4: Pre-Review Validation
 
 Before creating the PR:
@@ -135,6 +186,30 @@ Once validation passes:
 | Tests that only check existence | Tests that validate content       |
 | Missing type annotations        | Full type hints on all functions  |
 | Skipping tests                  | Tests are part of the deliverable |
+| Accessing private attributes    | Ask for design review (see below) |
+
+### Never access private attributes
+
+If you find yourself needing to access a private attribute (`_foo`) or disable a linter
+warning (`# pylint: disable=protected-access`), **STOP**. This is a design smell.
+
+```python
+# WRONG - accessing private attribute
+def test_something():
+    obj = MyClass()
+    assert obj._internal_state == expected  # pylint: disable=protected-access
+
+# WRONG - production code accessing internals
+result = other_object._private_method()
+```
+
+**What to do instead:**
+
+1. Ask the requester if the class needs a public accessor method
+2. If testing, ask if the test is testing implementation details instead of behavior
+3. If the design is missing something, update the issue before continuing
+
+This rule applies to both production code AND tests.
 
 ## Workflow Summary
 
