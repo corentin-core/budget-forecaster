@@ -70,7 +70,66 @@ Structure the design with:
 - [ ] Criterion 2
 ```
 
-### 5. Verify data source mapping (CRITICAL)
+### 5. Break down large features (IMPORTANT)
+
+For complex features, split the work into multiple smaller PRs that are easier to
+review:
+
+1. **Create sub-issues** - Each sub-issue handles one piece of the feature
+2. **Link issues together** - Use "Part of #X" in sub-issues, "Blocked by #Y" in parent
+3. **Create a feature branch** - e.g., `feature/32-manual-operation-linking`
+4. **PRs target the feature branch** - Each sub-issue PR merges into the feature branch
+5. **Final PR** - Merge the feature branch into main when all sub-PRs are done
+
+```
+main
+  └── feature/32-manual-linking  (feature branch)
+        ├── PR #63: issue/57-data-model  (merged)
+        ├── PR #64: issue/58-heuristics  (merged)
+        └── PR #65: issue/59-ui          (in progress)
+```
+
+**Benefits:**
+
+- Smaller PRs are easier to review thoroughly
+- Issues can be worked on in parallel
+- Each piece can be tested independently
+- Easier to revert if something goes wrong
+
+**When to split:**
+
+- Feature touches 3+ files with significant changes
+- Multiple independent components (data model, logic, UI)
+- Estimated review time > 15 minutes
+
+### 6. Verify codebase coherence (CRITICAL)
+
+Before finalizing the design, check that it integrates well with existing code:
+
+**Abstractions:**
+
+- If there's a `RepositoryInterface`, new persistence methods go there (not a new class)
+- If similar services use dependency injection, yours should too
+- Don't introduce direct dependencies on implementations (e.g., `SqliteRepository`)
+
+**Patterns:**
+
+- Check how similar features are structured (e.g., existing adapters, services)
+- Follow the same naming conventions and file organization
+- If existing code uses interfaces/protocols, yours should too
+
+**Questions to answer in the design:**
+
+- [ ] Which existing interfaces need to be extended?
+- [ ] What dependencies will the new code have? (should be abstractions, not
+      implementations)
+- [ ] Does the design follow existing patterns in the codebase?
+
+**Real example:** Commit `f5e64c8` was needed because the initial design didn't account
+for the existing `RepositoryInterface` pattern - code was coupled to `SqliteRepository`
+directly.
+
+### 7. Verify data source mapping (CRITICAL)
 
 For each output or data flow, ensure the design specifies:
 
@@ -82,7 +141,7 @@ For each output or data flow, ensure the design specifies:
 
 **If data sources are unclear, ask for clarification.**
 
-### 6. Review cycle
+### 8. Review cycle
 
 After each batch of changes:
 
@@ -92,7 +151,7 @@ After each batch of changes:
    - Review the full draft
    - Update the GitHub issue
 
-### 7. Update the GitHub issue
+### 9. Update the GitHub issue
 
 Once approved:
 
@@ -125,6 +184,10 @@ Create Draft
 |       |                   |
 |       | Approved          +---> (loop back)
 |       v
+Split into sub-issues? ---> Yes: Create sub-issues + feature branch
+    |                              |
+    | No                           v
+    v                        Update each sub-issue
 Update GitHub Issue
     |
     v
@@ -137,5 +200,27 @@ Cleanup Draft
 - **Be explicit**: Vague designs lead to implementation bugs.
 - **Keep code snippets minimal**: Show interfaces, not full implementations.
 - **Use diagrams sparingly**: ASCII diagrams are fine for simple flows.
+
+## Testing Guidelines
+
+When specifying tests in the design:
+
+- **Test application logic, not Python built-ins** - Don't specify tests for StrEnum
+  values, NamedTuple iteration, dataclass field access, etc. These test Python, not your
+  code.
+- **Focus on behavior** - Test CRUD operations, business rules, edge cases, error
+  handling.
+
+```markdown
+# BAD - testing Python features
+
+- [ ] Test that `LinkType.BUDGET == "budget"`
+- [ ] Test that OperationLink is iterable
+
+# GOOD - testing application logic
+
+- [ ] Test that duplicate links raise IntegrityError
+- [ ] Test that `delete_automatic_links` preserves manual links
+```
 
 $ARGUMENTS

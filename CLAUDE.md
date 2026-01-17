@@ -45,6 +45,9 @@ python -m budget_forecaster.main -c config.yaml categorize
 - pytest tests for any new feature
 - No dependencies not listed in setup.py
 - Always run tests (`pytest tests/`) before committing changes
+- **Prefer tuples over lists for return types** - Use `tuple[T, ...]` instead of
+  `list[T]` for function return values (tuples are immutable and signal that the caller
+  shouldn't modify the result)
 
 ## Data files (not versioned)
 
