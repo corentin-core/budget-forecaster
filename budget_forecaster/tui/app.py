@@ -12,6 +12,7 @@ from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
 from budget_forecaster.account.persistent_account import PersistentAccount
 from budget_forecaster.account.sqlite_repository import SqliteRepository
+from budget_forecaster.backup import BackupService
 from budget_forecaster.config import Config
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
@@ -146,6 +147,17 @@ class BudgetApp(App[None]):
         # Setup logging from config
         self._config.setup_logging()
         logger.info("Starting Budget Forecaster TUI")
+
+        # Create backup before any database access
+        if self._config.backup.enabled:
+            backup_service = BackupService(
+                database_path=self._config.database_path,
+                backup_directory=self._config.backup.directory,
+                max_backups=self._config.backup.max_backups,
+            )
+            if backup_path := backup_service.create_backup():
+                logger.info("Database backup created: %s", backup_path)
+            backup_service.rotate_backups()
 
         repository = SqliteRepository(self._config.database_path)
         self._persistent_account = PersistentAccount(repository)
