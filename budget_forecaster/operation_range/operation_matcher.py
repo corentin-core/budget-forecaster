@@ -16,7 +16,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         description_hints: set[str] | None = None,
         approximation_date_range: timedelta = timedelta(days=5),
         approximation_amount_ratio: float = 0.05,
-        manual_links: dict[int, datetime] | None = None,
+        operation_links: dict[int, datetime] | None = None,
     ):
         """Initialize the matcher.
 
@@ -25,15 +25,16 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
             description_hints: Keywords that must appear in operation descriptions.
             approximation_date_range: Tolerance for date matching.
             approximation_amount_ratio: Tolerance ratio for amount matching.
-            manual_links: Dict mapping operation_unique_id to iteration_date for
-                manual links. Manual links take priority over heuristic matching.
+            operation_links: Dict mapping operation_unique_id to iteration_date for
+                linked operations. Links take priority over heuristic matching.
+                Links can be manual (user-created) or automatic (heuristic-created).
         """
         self.__operation_range = operation_range
         self.__description_hints = description_hints or set()
         self.__approximation_date_range = approximation_date_range
         self.__approximation_amount_ratio = approximation_amount_ratio
-        self.__manual_links: dict[int, datetime] = (
-            manual_links.copy() if manual_links else {}
+        self.__operation_links: dict[int, datetime] = (
+            operation_links.copy() if operation_links else {}
         )
 
     @property
@@ -57,55 +58,55 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         return self.__approximation_amount_ratio
 
     @property
-    def manual_links(self) -> dict[int, datetime]:
-        """Dict mapping operation_unique_id to iteration_date for manual links."""
-        return self.__manual_links.copy()
+    def operation_links(self) -> dict[int, datetime]:
+        """Dict mapping operation_unique_id to iteration_date for linked operations."""
+        return self.__operation_links.copy()
 
-    def add_manual_link(
+    def add_operation_link(
         self, operation_unique_id: int, iteration_date: datetime
     ) -> None:
-        """Add a manual link for an operation.
+        """Add a link for an operation.
 
         Args:
             operation_unique_id: The unique ID of the historic operation.
             iteration_date: The date of the specific iteration to link to.
         """
-        self.__manual_links[operation_unique_id] = iteration_date
+        self.__operation_links[operation_unique_id] = iteration_date
 
-    def remove_manual_link(self, operation_unique_id: int) -> None:
-        """Remove a manual link for an operation.
+    def remove_operation_link(self, operation_unique_id: int) -> None:
+        """Remove a link for an operation.
 
         Args:
             operation_unique_id: The unique ID of the historic operation.
         """
-        self.__manual_links.pop(operation_unique_id, None)
+        self.__operation_links.pop(operation_unique_id, None)
 
-    def is_manually_linked(self, operation: HistoricOperation) -> bool:
-        """Check if operation has a manual link to this matcher's operation_range.
+    def is_linked(self, operation: HistoricOperation) -> bool:
+        """Check if operation has a link to this matcher's operation_range.
 
         Args:
             operation: The historic operation to check.
 
         Returns:
-            True if the operation has a manual link, False otherwise.
+            True if the operation has a link, False otherwise.
         """
-        return operation.unique_id in self.__manual_links
+        return operation.unique_id in self.__operation_links
 
     def get_iteration_for_operation(
         self, operation: HistoricOperation
     ) -> datetime | None:
         """Get the specific iteration date this operation is linked to.
 
-        For manually linked operations, returns the stored iteration date.
+        For linked operations, returns the stored iteration date.
         For heuristic matches, returns None (caller should use date proximity).
 
         Args:
             operation: The historic operation to check.
 
         Returns:
-            The iteration date if manually linked, None otherwise.
+            The iteration date if linked, None otherwise.
         """
-        return self.__manual_links.get(operation.unique_id)
+        return self.__operation_links.get(operation.unique_id)
 
     def update_params(
         self,
@@ -162,7 +163,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         """Check if the operation matches using heuristic rules only.
 
         This method applies the original matching logic without considering
-        manual links. Used internally and for scoring.
+        operation links. Used internally and for scoring.
 
         Args:
             operation: The historic operation to check.
@@ -181,18 +182,18 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
     def match(self, operation: HistoricOperation) -> bool:
         """Check if the operation matches the planned operation.
 
-        Manual links take priority over heuristic matching. If an operation
-        has a manual link to this matcher's operation range, it will match
+        Operation links take priority over heuristic matching. If an operation
+        has a link to this matcher's operation range, it will match
         regardless of heuristic criteria.
 
         Args:
             operation: The historic operation to check.
 
         Returns:
-            True if the operation matches (manually or heuristically).
+            True if the operation matches (via link or heuristically).
         """
-        # Manual links take priority
-        if self.is_manually_linked(operation):
+        # Operation links take priority
+        if self.is_linked(operation):
             return True
 
         # Fall back to heuristic matching
@@ -281,7 +282,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
             description_hints=self.description_hints,
             approximation_date_range=self.approximation_date_range,
             approximation_amount_ratio=self.approximation_amount_ratio,
-            manual_links=self.__manual_links,
+            operation_links=self.__operation_links,
         )
 
 

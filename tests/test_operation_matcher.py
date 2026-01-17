@@ -681,13 +681,13 @@ class TestOperationMatcherPeriodicTimeRange:
         )
 
 
-class TestOperationMatcherManualLinks:
-    """Tests for manual link functionality in OperationMatcher."""
+class TestOperationMatcherOperationLinks:
+    """Tests for operation link functionality in OperationMatcher."""
 
-    def test_manual_link_takes_priority_over_heuristic_mismatch(
+    def test_operation_link_takes_priority_over_heuristic_mismatch(
         self, operation_range: OperationRange
     ) -> None:
-        """Test that a manually linked operation matches even if heuristics fail."""
+        """Test that a linked operation matches even if heuristics fail."""
         # Create an operation that does NOT match heuristically
         # (different category, wrong amount, etc.)
         non_matching_operation = HistoricOperation(
@@ -698,19 +698,21 @@ class TestOperationMatcherManualLinks:
             date=datetime(2023, 6, 15),  # Wrong date
         )
 
-        # Without manual link, should not match
+        # Without link, should not match
         matcher_no_link = OperationMatcher(operation_range)
         assert not matcher_no_link.match(non_matching_operation)
 
-        # With manual link, should match regardless of heuristics
+        # With link, should match regardless of heuristics
         matcher_with_link = OperationMatcher(
             operation_range,
-            manual_links={100: datetime(2023, 1, 1)},
+            operation_links={100: datetime(2023, 1, 1)},
         )
         assert matcher_with_link.match(non_matching_operation)
 
-    def test_add_and_remove_manual_link(self, operation_range: OperationRange) -> None:
-        """Test adding and removing manual links dynamically."""
+    def test_add_and_remove_operation_link(
+        self, operation_range: OperationRange
+    ) -> None:
+        """Test adding and removing operation links dynamically."""
         operation = HistoricOperation(
             unique_id=101,
             description="Test operation",
@@ -721,22 +723,22 @@ class TestOperationMatcherManualLinks:
 
         matcher = OperationMatcher(operation_range)
 
-        # Initially no manual link
-        assert not matcher.is_manually_linked(operation)
+        # Initially no link
+        assert not matcher.is_linked(operation)
         assert not matcher.match(operation)
 
-        # Add manual link
-        matcher.add_manual_link(101, datetime(2023, 1, 1))
-        assert matcher.is_manually_linked(operation)
+        # Add link
+        matcher.add_operation_link(101, datetime(2023, 1, 1))
+        assert matcher.is_linked(operation)
         assert matcher.match(operation)
 
-        # Remove manual link
-        matcher.remove_manual_link(101)
-        assert not matcher.is_manually_linked(operation)
+        # Remove link
+        matcher.remove_operation_link(101)
+        assert not matcher.is_linked(operation)
         assert not matcher.match(operation)
 
     def test_get_iteration_for_operation(self, operation_range: OperationRange) -> None:
-        """Test getting the iteration date for a manually linked operation."""
+        """Test getting the iteration date for a linked operation."""
         operation = HistoricOperation(
             unique_id=102,
             description="Test operation",
@@ -748,7 +750,7 @@ class TestOperationMatcherManualLinks:
         iteration_date = datetime(2023, 1, 1)
         matcher = OperationMatcher(
             operation_range,
-            manual_links={102: iteration_date},
+            operation_links={102: iteration_date},
         )
 
         assert matcher.get_iteration_for_operation(operation) == iteration_date
@@ -763,13 +765,13 @@ class TestOperationMatcherManualLinks:
         )
         assert matcher.get_iteration_for_operation(other_operation) is None
 
-    def test_manual_links_preserved_in_replace(
+    def test_operation_links_preserved_in_replace(
         self, operation_range: OperationRange
     ) -> None:
-        """Test that manual links are preserved when using replace()."""
+        """Test that operation links are preserved when using replace()."""
         matcher = OperationMatcher(
             operation_range,
-            manual_links={100: datetime(2023, 1, 1)},
+            operation_links={100: datetime(2023, 1, 1)},
         )
 
         new_operation_range = OperationRange(
@@ -780,29 +782,29 @@ class TestOperationMatcherManualLinks:
         )
         new_matcher = matcher.replace(operation_range=new_operation_range)
 
-        # Manual links should be preserved
-        assert new_matcher.manual_links == {100: datetime(2023, 1, 1)}
+        # Operation links should be preserved
+        assert new_matcher.operation_links == {100: datetime(2023, 1, 1)}
 
-    def test_manual_links_property_returns_copy(
+    def test_operation_links_property_returns_copy(
         self, operation_range: OperationRange
     ) -> None:
-        """Test that manual_links property returns a copy, not the original dict."""
+        """Test that operation_links property returns a copy, not the original dict."""
         original_links = {100: datetime(2023, 1, 1)}
-        matcher = OperationMatcher(operation_range, manual_links=original_links)
+        matcher = OperationMatcher(operation_range, operation_links=original_links)
 
         # Modify the returned dict
-        returned_links = matcher.manual_links
+        returned_links = matcher.operation_links
         returned_links[200] = datetime(2023, 2, 1)
 
         # Original should not be affected
-        assert 200 not in matcher.manual_links
+        assert 200 not in matcher.operation_links
 
-    def test_heuristic_match_still_works_without_manual_links(
+    def test_heuristic_match_still_works_without_operation_links(
         self,
         operation_range: OperationRange,
         historic_operations: list[HistoricOperation],
     ) -> None:
-        """Test that heuristic matching still works when no manual links exist."""
+        """Test that heuristic matching still works when no operation links exist."""
         matcher = OperationMatcher(
             operation_range, approximation_date_range=timedelta()
         )
@@ -812,7 +814,7 @@ class TestOperationMatcherManualLinks:
         }
 
     def test_match_heuristic_method(self, operation_range: OperationRange) -> None:
-        """Test that match_heuristic ignores manual links."""
+        """Test that match_heuristic ignores operation links."""
         # Operation that doesn't match heuristically
         operation = HistoricOperation(
             unique_id=104,
@@ -822,13 +824,13 @@ class TestOperationMatcherManualLinks:
             date=datetime(2023, 6, 15),
         )
 
-        # Even with manual link, match_heuristic should return False
+        # Even with link, match_heuristic should return False
         matcher = OperationMatcher(
             operation_range,
-            manual_links={104: datetime(2023, 1, 1)},
+            operation_links={104: datetime(2023, 1, 1)},
         )
         assert not matcher.match_heuristic(operation)
-        assert matcher.match(operation)  # But match() returns True due to manual link
+        assert matcher.match(operation)  # But match() returns True due to link
 
 
 class TestComputeMatchScore:
