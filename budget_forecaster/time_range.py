@@ -27,8 +27,13 @@ class TimeRangeInterface(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def duration(self) -> timedelta:
-        """Return the duration of an instance of this time range."""
+    def total_duration(self) -> timedelta:
+        """Return the total duration as a timedelta."""
+
+    @property
+    @abc.abstractmethod
+    def duration(self) -> relativedelta:
+        """Return the duration as a relativedelta."""
 
     @abc.abstractmethod
     def is_expired(self, date: datetime) -> bool:
@@ -111,8 +116,14 @@ class TimeRange(TimeRangeInterface):
         return self.__initial_date + self.__duration - timedelta(days=1)
 
     @property
-    def duration(self) -> timedelta:
+    def total_duration(self) -> timedelta:
+        """Return the total duration as a timedelta."""
         return self.last_date - self.initial_date + timedelta(days=1)
+
+    @property
+    def duration(self) -> relativedelta:
+        """Return the duration as a relativedelta."""
+        return self.__duration
 
     def is_expired(self, date: datetime) -> bool:
         return self.last_date < date
@@ -172,11 +183,12 @@ class TimeRange(TimeRangeInterface):
         if not isinstance(other, TimeRange):
             return NotImplemented
         return (
-            self.initial_date == other.initial_date and self.duration == other.duration
+            self.initial_date == other.initial_date
+            and self.total_duration == other.total_duration
         )
 
     def __hash__(self) -> int:
-        return hash((self.initial_date, self.duration))
+        return hash((self.initial_date, self.total_duration))
 
 
 class DailyTimeRange(TimeRange):
@@ -220,8 +232,19 @@ class PeriodicTimeRange(TimeRangeInterface):
         return self._expiration_date
 
     @property
-    def duration(self) -> timedelta:
+    def base_time_range(self) -> TimeRangeInterface:
+        """Return the base time range that repeats."""
+        return self.__initial_time_range
+
+    @property
+    def total_duration(self) -> timedelta:
+        """Return the total duration as a timedelta."""
         return self.last_date - self.initial_date + timedelta(days=1)
+
+    @property
+    def duration(self) -> relativedelta:
+        """Return the duration of each period as a relativedelta."""
+        return self.__initial_time_range.duration
 
     @property
     def period(self) -> relativedelta:
@@ -317,14 +340,19 @@ class PeriodicTimeRange(TimeRangeInterface):
             return NotImplemented
         return (
             self.initial_date == other.initial_date
-            and self.duration == other.duration
+            and self.total_duration == other.total_duration
             and self._period == other._period
             and self._expiration_date == other._expiration_date
         )
 
     def __hash__(self) -> int:
         return hash(
-            (self.initial_date, self.duration, self._period, self._expiration_date)
+            (
+                self.initial_date,
+                self.total_duration,
+                self._period,
+                self._expiration_date,
+            )
         )
 
 
