@@ -61,7 +61,7 @@ class AccountForecaster:  # pylint: disable=too-few-public-methods
             if time_range.is_expired(balance_date):
                 continue
 
-            amount_per_day = operation_range.amount / time_range.duration.days
+            amount_per_day = operation_range.amount / time_range.total_duration.days
             budget_start_date = max(
                 time_range.initial_date, balance_date + timedelta(days=1)
             )

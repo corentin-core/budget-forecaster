@@ -24,17 +24,26 @@ class TestTimeRange:
         """Test the last_date property."""
         assert time_range.last_date == datetime(2023, 1, 10)
 
-    def test_duration(self, time_range: TimeRange) -> None:
-        """Test the duration property."""
-        assert time_range.duration == timedelta(days=10)
+    def test_total_duration(self, time_range: TimeRange) -> None:
+        """Test the total_duration property."""
+        assert time_range.total_duration == timedelta(days=10)
 
-    def test_duration_relative(self) -> None:
-        """Test the duration property with a relative delta."""
+    def test_total_duration_relative(self) -> None:
+        """Test the total_duration property with a relative delta."""
         t_range = TimeRange(datetime(2023, 1, 1), relativedelta(months=1))
-        assert t_range.duration == timedelta(days=31)
+        assert t_range.total_duration == timedelta(days=31)
 
         t_range = TimeRange(datetime(2023, 2, 1), relativedelta(months=1))
-        assert t_range.duration == timedelta(days=28)
+        assert t_range.total_duration == timedelta(days=28)
+
+    def test_duration(self, time_range: TimeRange) -> None:
+        """Test the duration property returns the relativedelta."""
+        assert time_range.duration == relativedelta(days=10)
+
+    def test_duration_months(self) -> None:
+        """Test the duration property with months."""
+        t_range = TimeRange(datetime(2023, 1, 1), relativedelta(months=1))
+        assert t_range.duration == relativedelta(months=1)
 
     def test_contains_date_within_range(self, time_range: TimeRange) -> None:
         """Test the is_within method with dates within the range."""
@@ -93,7 +102,7 @@ class TestTimeRange:
         new_time_range = time_range.replace(initial_date=datetime(2023, 1, 2))
         assert new_time_range.initial_date == datetime(2023, 1, 2)
         assert new_time_range.last_date == datetime(2023, 1, 11)
-        assert new_time_range.duration == timedelta(days=10)
+        assert new_time_range.total_duration == timedelta(days=10)
 
 
 @pytest.fixture
@@ -105,17 +114,21 @@ def daily_time_range() -> DailyTimeRange:
 class TestDailyTimeRange:
     """Test cases for the DailyTimeRange class."""
 
-    def test_initial_date(self, time_range: TimeRange) -> None:
+    def test_initial_date(self, daily_time_range: DailyTimeRange) -> None:
         """Test the initial_date property."""
-        assert time_range.initial_date == datetime(2023, 1, 1)
+        assert daily_time_range.initial_date == datetime(2023, 1, 1)
 
-    def test_last_date(self, time_range: TimeRange) -> None:
+    def test_last_date(self, daily_time_range: DailyTimeRange) -> None:
         """Test the last_date property."""
-        assert time_range.last_date == datetime(2023, 1, 10)
+        assert daily_time_range.last_date == datetime(2023, 1, 1)
 
-    def test_duration(self, time_range: TimeRange) -> None:
-        """Test the duration property."""
-        assert time_range.duration == timedelta(days=10)
+    def test_total_duration(self, daily_time_range: DailyTimeRange) -> None:
+        """Test the total_duration property."""
+        assert daily_time_range.total_duration == timedelta(days=1)
+
+    def test_duration(self, daily_time_range: DailyTimeRange) -> None:
+        """Test the duration property returns the relativedelta."""
+        assert daily_time_range.duration == relativedelta(days=1)
 
     def test_contains_date_within_range(self, daily_time_range: DailyTimeRange) -> None:
         """Test the is_within method with dates within the range."""
@@ -180,7 +193,7 @@ class TestDailyTimeRange:
         new_time_range = daily_time_range.replace(initial_date=datetime(2023, 1, 2))
         assert new_time_range.initial_date == datetime(2023, 1, 2)
         assert new_time_range.last_date == datetime(2023, 1, 2)
-        assert new_time_range.duration == timedelta(days=1)
+        assert new_time_range.total_duration == timedelta(days=1)
 
 
 @pytest.fixture
@@ -191,7 +204,7 @@ def periodic_time_range(time_range: TimeRange) -> PeriodicTimeRange:
     )
 
 
-class TestPeriodicTimeRange:
+class TestPeriodicTimeRange:  # pylint: disable=too-many-public-methods
     """Test cases for the PeriodicTimeRange class."""
 
     def test_initial_date(self, periodic_time_range: PeriodicTimeRange) -> None:
@@ -202,9 +215,19 @@ class TestPeriodicTimeRange:
         """Test the last_date property."""
         assert periodic_time_range.last_date == datetime(2023, 12, 31)
 
+    def test_total_duration(self, periodic_time_range: PeriodicTimeRange) -> None:
+        """Test the total_duration property."""
+        assert periodic_time_range.total_duration == timedelta(days=365)
+
     def test_duration(self, periodic_time_range: PeriodicTimeRange) -> None:
-        """Test the duration property."""
-        assert periodic_time_range.duration == timedelta(days=365)
+        """Test the duration property returns the period's relativedelta."""
+        assert periodic_time_range.duration == relativedelta(days=10)
+
+    def test_base_time_range(self, periodic_time_range: PeriodicTimeRange) -> None:
+        """Test the base_time_range property."""
+        base = periodic_time_range.base_time_range
+        assert base.initial_date == datetime(2023, 1, 1)
+        assert base.duration == relativedelta(days=10)
 
     def test_contains_date_within_range(
         self, periodic_time_range: PeriodicTimeRange
@@ -329,4 +352,4 @@ class TestPeriodicTimeRange:
         new_time_range = periodic_time_range.replace(initial_date=datetime(2023, 1, 2))
         assert new_time_range.initial_date == datetime(2023, 1, 2)
         assert new_time_range.last_date == datetime(2023, 12, 31)
-        assert new_time_range.duration == timedelta(days=364)
+        assert new_time_range.total_duration == timedelta(days=364)
