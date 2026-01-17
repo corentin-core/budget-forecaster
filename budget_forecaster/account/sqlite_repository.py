@@ -2,6 +2,7 @@
 
 # pylint: disable=no-else-return
 # pylint: disable=too-many-arguments,too-many-positional-arguments
+# pylint: disable=too-many-public-methods
 
 import json
 import sqlite3
@@ -16,6 +17,7 @@ from budget_forecaster.account.repository_interface import RepositoryInterface
 from budget_forecaster.amount import Amount
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
+from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.time_range import (
     DailyTimeRange,
@@ -27,7 +29,7 @@ from budget_forecaster.time_range import (
 from budget_forecaster.types import Category
 
 # Current schema version
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 
 # Base schema (version 0 -> 1)
 SCHEMA_V1 = """
@@ -101,6 +103,24 @@ CREATE INDEX IF NOT EXISTS idx_planned_operations_category ON planned_operations
 CREATE INDEX IF NOT EXISTS idx_planned_operations_start_date ON planned_operations(start_date);
 """
 
+# Schema migration v2 -> v3: add operation_links table
+SCHEMA_V3 = """
+CREATE TABLE IF NOT EXISTS operation_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    operation_unique_id INTEGER NOT NULL,
+    linked_type TEXT NOT NULL,
+    linked_id INTEGER NOT NULL,
+    iteration_date TIMESTAMP NOT NULL,
+    is_manual BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    notes TEXT,
+    UNIQUE(operation_unique_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_operation_links_operation ON operation_links(operation_unique_id);
+CREATE INDEX IF NOT EXISTS idx_operation_links_target ON operation_links(linked_type, linked_id);
+"""
+
 
 class SqliteRepository(RepositoryInterface):
     """Repository for persisting account data in SQLite."""
@@ -110,6 +130,7 @@ class SqliteRepository(RepositoryInterface):
     _migrations: dict[int, tuple[int, str | Callable[[sqlite3.Connection], None]]] = {
         1: (0, SCHEMA_V1),
         2: (1, SCHEMA_V2),
+        3: (2, SCHEMA_V3),
     }
 
     def __init__(self, db_path: Path) -> None:
@@ -709,3 +730,96 @@ class SqliteRepository(RepositoryInterface):
             return PeriodicDailyTimeRange(start_date, period, expiration)
 
         return DailyTimeRange(start_date)
+
+    # Operation Link methods
+
+    def get_link_for_operation(self, operation_unique_id: int) -> OperationLink | None:
+        """Get the link for a historic operation, if any."""
+        conn = self._get_connection()
+        cursor = conn.execute(
+            """SELECT operation_unique_id, linked_type, linked_id, iteration_date,
+               is_manual, notes
+               FROM operation_links WHERE operation_unique_id = ?""",
+            (operation_unique_id,),
+        )
+        if (row := cursor.fetchone()) is None:
+            return None
+        return self._row_to_operation_link(row)
+
+    def get_links_for_planned_operation(
+        self, planned_op_id: int
+    ) -> tuple[OperationLink, ...]:
+        """Get all links targeting a planned operation."""
+        conn = self._get_connection()
+        cursor = conn.execute(
+            """SELECT operation_unique_id, linked_type, linked_id, iteration_date,
+               is_manual, notes
+               FROM operation_links
+               WHERE linked_type = ? AND linked_id = ?
+               ORDER BY iteration_date""",
+            (LinkType.PLANNED_OPERATION, planned_op_id),
+        )
+        return tuple(self._row_to_operation_link(row) for row in cursor.fetchall())
+
+    def get_links_for_budget(self, budget_id: int) -> tuple[OperationLink, ...]:
+        """Get all links targeting a budget."""
+        conn = self._get_connection()
+        cursor = conn.execute(
+            """SELECT operation_unique_id, linked_type, linked_id, iteration_date,
+               is_manual, notes
+               FROM operation_links
+               WHERE linked_type = ? AND linked_id = ?
+               ORDER BY iteration_date""",
+            (LinkType.BUDGET, budget_id),
+        )
+        return tuple(self._row_to_operation_link(row) for row in cursor.fetchall())
+
+    def create_link(self, link: OperationLink) -> None:
+        """Create a link. Raises IntegrityError if operation already linked."""
+        conn = self._get_connection()
+        conn.execute(
+            """INSERT INTO operation_links
+               (operation_unique_id, linked_type, linked_id, iteration_date, is_manual, notes)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                link.operation_unique_id,
+                link.linked_type,
+                link.linked_id,
+                link.iteration_date.isoformat(),
+                link.is_manual,
+                link.notes,
+            ),
+        )
+        conn.commit()
+
+    def delete_link(self, operation_unique_id: int) -> None:
+        """Delete the link for an operation."""
+        conn = self._get_connection()
+        conn.execute(
+            "DELETE FROM operation_links WHERE operation_unique_id = ?",
+            (operation_unique_id,),
+        )
+        conn.commit()
+
+    def delete_automatic_links_for_target(
+        self, linked_type: LinkType, linked_id: int
+    ) -> None:
+        """Delete all automatic links for a given target."""
+        conn = self._get_connection()
+        conn.execute(
+            """DELETE FROM operation_links
+               WHERE linked_type = ? AND linked_id = ? AND is_manual = FALSE""",
+            (linked_type, linked_id),
+        )
+        conn.commit()
+
+    def _row_to_operation_link(self, row: sqlite3.Row) -> OperationLink:
+        """Convert a database row to an OperationLink object."""
+        return OperationLink(
+            operation_unique_id=row["operation_unique_id"],
+            linked_type=LinkType(row["linked_type"]),
+            linked_id=row["linked_id"],
+            iteration_date=datetime.fromisoformat(row["iteration_date"]),
+            is_manual=bool(row["is_manual"]),
+            notes=row["notes"],
+        )
