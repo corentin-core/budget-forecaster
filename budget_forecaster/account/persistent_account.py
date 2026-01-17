@@ -1,27 +1,31 @@
 """Module for the PersistentAccount class."""
-import pathlib
 
 from budget_forecaster.account.account import Account, AccountParameters
 from budget_forecaster.account.aggregated_account import AggregatedAccount
-from budget_forecaster.account.sqlite_repository import SqliteRepository
+from budget_forecaster.account.repository_interface import RepositoryInterface
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
 
 
 class PersistentAccount:
-    """Saved multiple accounts in a SQLite database and aggregate them as one."""
+    """Manage multiple accounts in a repository and aggregate them as one."""
 
-    def __init__(self, database_path: pathlib.Path) -> None:
-        self._repository = SqliteRepository(database_path)
+    def __init__(self, repository: RepositoryInterface) -> None:
+        """Initialize with a repository.
+
+        Args:
+            repository: The repository for data persistence.
+        """
+        self._repository = repository
         self._aggregated_account: AggregatedAccount | None = None
 
     def save(self) -> None:
-        """Save the accounts to the database."""
+        """Save the accounts to the repository."""
         self._repository.set_aggregated_account_name(self.account.name)
         for acc in self.accounts:
             self._repository.upsert_account(acc)
 
     def load(self) -> None:
-        """Load the accounts from the database."""
+        """Load the accounts from the repository."""
         self._repository.initialize()
 
         if (aggregated_name := self._repository.get_aggregated_account_name()) is None:
@@ -63,10 +67,10 @@ class PersistentAccount:
         self._aggregated_account.replace_operation(new_operation)
 
     @property
-    def repository(self) -> SqliteRepository:
-        """Return the underlying SQLite repository."""
+    def repository(self) -> RepositoryInterface:
+        """Return the underlying repository."""
         return self._repository
 
     def close(self) -> None:
-        """Close the database connection."""
+        """Close the repository connection."""
         self._repository.close()

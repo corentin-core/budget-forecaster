@@ -12,6 +12,7 @@ from typing import Callable, Iterable
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.account.account import Account
+from budget_forecaster.account.repository_interface import RepositoryInterface
 from budget_forecaster.amount import Amount
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
@@ -101,7 +102,7 @@ CREATE INDEX IF NOT EXISTS idx_planned_operations_start_date ON planned_operatio
 """
 
 
-class SqliteRepository:
+class SqliteRepository(RepositoryInterface):
     """Repository for persisting account data in SQLite."""
 
     # Migration functions: version -> (from_version, migration_sql_or_callable)
@@ -385,7 +386,7 @@ class SqliteRepository:
         conn = self._get_connection()
         time_range_data = self._serialize_budget_time_range(budget.time_range)
 
-        if budget.id > 0:
+        if budget.id is not None:
             # Update existing
             conn.execute(
                 """UPDATE budgets SET description = ?, amount = ?, currency = ?,
@@ -497,7 +498,7 @@ class SqliteRepository:
         )
         approx_days = int(op.matcher.approximation_date_range.total_seconds() / 86400)
 
-        if op.id > 0:
+        if op.id is not None:
             # Update existing
             conn.execute(
                 """UPDATE planned_operations SET description = ?, amount = ?,
