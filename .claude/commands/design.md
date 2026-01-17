@@ -124,12 +124,95 @@ Before finalizing the design, check that it integrates well with existing code:
 - [ ] What dependencies will the new code have? (should be abstractions, not
       implementations)
 - [ ] Does the design follow existing patterns in the codebase?
+- [ ] Do names reflect ALL possible values/origins of the data? (see §7)
+- [ ] Is the data lifecycle clear: who loads, creates, persists? (see §8)
 
 **Real example:** Commit `f5e64c8` was needed because the initial design didn't account
 for the existing `RepositoryInterface` pattern - code was coupled to `SqliteRepository`
 directly.
 
-### 7. Verify data source mapping (CRITICAL)
+### 7. Verify naming coherence (CRITICAL)
+
+Names must reflect the **complete nature** of an entity, not just one use case.
+
+**Checklist:**
+
+- [ ] Does the name cover ALL sources/origins of the data?
+- [ ] Does the name cover ALL use cases?
+- [ ] Is the name consistent with the data model?
+
+**Example - what we caught:**
+
+```python
+# BAD: "manual_links" implies only user-created links
+manual_links: dict[int, datetime]  # But links can also be heuristic-created!
+
+# GOOD: "operation_links" covers both origins
+operation_links: dict[int, datetime]  # Links can be manual OR heuristic
+```
+
+The `OperationLink` data model has `is_manual: bool`, meaning links can be:
+
+- `is_manual=True` → user-created
+- `is_manual=False` → heuristic-created
+
+So the parameter name must be generic enough to cover both.
+
+**Questions to ask:**
+
+- If the data model has a discriminator field (type, source, origin), does the naming
+  account for all possible values?
+- Would someone reading just the parameter name understand all its possible contents?
+
+### 8. Verify data lifecycle (CRITICAL)
+
+For each data entity, the design must explicitly answer:
+
+| Question          | Must specify                                                     |
+| ----------------- | ---------------------------------------------------------------- |
+| **Who loads?**    | Which service/component fetches data from persistence            |
+| **Who uses?**     | Which component consumes the data (may be different from loader) |
+| **Who creates?**  | Which component creates new instances                            |
+| **Who persists?** | Which component saves to the database                            |
+| **When?**         | What events trigger each operation                               |
+
+**If components don't match, you need an orchestration layer.**
+
+**Example - what we missed:**
+
+```
+OperationMatcher:
+  - Uses links (in memory)
+  - Does NOT load from DB
+  - Does NOT persist to DB
+
+OperationLinkRepository:
+  - Persists links (to DB)
+  - Does NOT know about matchers
+
+WHO BRIDGES THE GAP? → OperationLinkService (was missing from design!)
+```
+
+The service is needed to:
+
+1. Load links from repository → inject into matcher
+2. Run matcher → create new links → persist via repository
+3. Handle recalculation on edits
+
+**Template to include in design:**
+
+```markdown
+### Data Lifecycle: [Entity Name]
+
+| Operation | Component            | Trigger           |
+| --------- | -------------------- | ----------------- |
+| Load      | `ServiceX.load()`    | Startup, forecast |
+| Create    | `ServiceX.create()`  | Import, edit      |
+| Persist   | `RepositoryY.save()` | After create      |
+| Delete    | `ServiceX.delete()`  | User action       |
+```
+
+### 9. Verify data source mapping (CRITICAL)
 
 For each output or data flow, ensure the design specifies:
 
@@ -141,7 +224,7 @@ For each output or data flow, ensure the design specifies:
 
 **If data sources are unclear, ask for clarification.**
 
-### 8. Review cycle
+### 10. Review cycle
 
 After each batch of changes:
 
@@ -151,7 +234,7 @@ After each batch of changes:
    - Review the full draft
    - Update the GitHub issue
 
-### 9. Update the GitHub issue
+### 11. Update the GitHub issue
 
 Once approved:
 
