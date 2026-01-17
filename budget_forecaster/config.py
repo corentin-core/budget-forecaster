@@ -14,6 +14,14 @@ class AccountConfig(NamedTuple):
     currency: str
 
 
+class BackupConfig(NamedTuple):
+    """Configuration for automatic database backups."""
+
+    enabled: bool = True
+    max_backups: int = 5
+    directory: Path | None = None  # None = same directory as database
+
+
 class Config:  # pylint: disable=too-few-public-methods
     """A class to store the configuration."""
 
@@ -21,6 +29,8 @@ class Config:  # pylint: disable=too-few-public-methods
         # Account config
         self.account = AccountConfig(name="Main Account", currency="EUR")
         self.database_path = Path("budget.db")
+        # Backup config
+        self.backup = BackupConfig()
         # Import config
         self.inbox_path = Path("inbox")
         self.inbox_exclude_patterns: list[str] = []
@@ -40,6 +50,18 @@ class Config:  # pylint: disable=too-few-public-methods
                 self.inbox_path = Path(config["inbox_path"])
             if "inbox_exclude_patterns" in config:
                 self.inbox_exclude_patterns = config["inbox_exclude_patterns"] or []
+            # Parse backup config
+            if "backup" in config:
+                backup_cfg = config["backup"]
+                self.backup = BackupConfig(
+                    enabled=backup_cfg.get("enabled", True),
+                    max_backups=backup_cfg.get("max_backups", 5),
+                    directory=(
+                        Path(backup_cfg["directory"])
+                        if backup_cfg.get("directory")
+                        else None
+                    ),
+                )
             # Parse logging config (native dictConfig format)
             if "logging" in config:
                 self.logging_config = config["logging"]
