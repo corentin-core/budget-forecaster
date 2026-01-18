@@ -212,7 +212,53 @@ The service is needed to:
 | Delete    | `ServiceX.delete()`  | User action       |
 ```
 
-### 9. Verify data source mapping (CRITICAL)
+### 9. Verify invariant validation (CRITICAL)
+
+For each class, identify invariants that must always hold and specify where validation
+occurs.
+
+**Invariant types:**
+
+| Type                  | Example                                              | Validate in          |
+| --------------------- | ---------------------------------------------------- | -------------------- |
+| **Domain constraint** | `amount > 0`                                         | Constructor          |
+| **Referential**       | `iteration_date` must be valid for `operation_range` | Constructor + setter |
+| **Cross-field**       | `start_date < end_date`                              | Constructor          |
+| **Collection**        | All items in list satisfy predicate                  | Constructor + add()  |
+
+**Template to include in design:**
+
+```markdown
+### Invariants: [ClassName]
+
+| Invariant                         | Validation location      |
+| --------------------------------- | ------------------------ |
+| `operation_links` dates are valid | `__init__`, `add_link()` |
+| `amount` cannot be zero           | `__init__`               |
+```
+
+**Example - what we added:**
+
+```python
+# OperationMatcher validates that all operation_links have valid iteration dates
+def __init__(self, operation_range, operation_links=None):
+    # ...
+    if operation_links:
+        for op_id, iteration_date in operation_links.items():
+            self.__validate_iteration_date(iteration_date)  # Raises ValueError
+
+def add_operation_link(self, op_id, iteration_date):
+    self.__validate_iteration_date(iteration_date)  # Same validation
+    self.__operation_links[op_id] = iteration_date
+```
+
+**Questions to answer:**
+
+- [ ] What constraints must always hold for this class?
+- [ ] Where should validation occur (constructor, setters, both)?
+- [ ] What exception should be raised on violation?
+
+### 10. Verify data source mapping (CRITICAL)
 
 For each output or data flow, ensure the design specifies:
 
@@ -224,7 +270,7 @@ For each output or data flow, ensure the design specifies:
 
 **If data sources are unclear, ask for clarification.**
 
-### 10. Review cycle
+### 11. Review cycle
 
 After each batch of changes:
 
@@ -234,7 +280,7 @@ After each batch of changes:
    - Review the full draft
    - Update the GitHub issue
 
-### 11. Update the GitHub issue
+### 12. Update the GitHub issue
 
 Once approved:
 
