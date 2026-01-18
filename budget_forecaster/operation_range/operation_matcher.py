@@ -5,6 +5,7 @@ from typing import Any, Iterable, Iterator
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
 from budget_forecaster.operation_range.operation_range import OperationRange
 from budget_forecaster.time_range import TimeRangeInterface
+from budget_forecaster.types import IterationDate, OperationId
 
 
 class OperationMatcher:  # pylint: disable=too-many-public-methods
@@ -16,7 +17,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         description_hints: set[str] | None = None,
         approximation_date_range: timedelta = timedelta(days=5),
         approximation_amount_ratio: float = 0.05,
-        operation_links: dict[int, datetime] | None = None,
+        operation_links: dict[OperationId, IterationDate] | None = None,
     ):
         """Initialize the matcher.
 
@@ -25,7 +26,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
             description_hints: Keywords that must appear in operation descriptions.
             approximation_date_range: Tolerance for date matching.
             approximation_amount_ratio: Tolerance ratio for amount matching.
-            operation_links: Dict mapping operation_unique_id to iteration_date for
+            operation_links: Dict mapping operation ID to iteration date for
                 linked operations. Links take priority over heuristic matching.
                 Links can be manual (user-created) or automatic (heuristic-created).
         """
@@ -33,7 +34,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         self.__description_hints = description_hints or set()
         self.__approximation_date_range = approximation_date_range
         self.__approximation_amount_ratio = approximation_amount_ratio
-        self.__operation_links: dict[int, datetime] = (
+        self.__operation_links: dict[OperationId, IterationDate] = (
             operation_links.copy() if operation_links else {}
         )
 
@@ -58,12 +59,12 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         return self.__approximation_amount_ratio
 
     @property
-    def operation_links(self) -> dict[int, datetime]:
+    def operation_links(self) -> dict[OperationId, IterationDate]:
         """Dict mapping operation_unique_id to iteration_date for linked operations."""
         return self.__operation_links.copy()
 
     def add_operation_link(
-        self, operation_unique_id: int, iteration_date: datetime
+        self, operation_unique_id: OperationId, iteration_date: IterationDate
     ) -> None:
         """Add a link for an operation.
 
@@ -73,7 +74,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         """
         self.__operation_links[operation_unique_id] = iteration_date
 
-    def remove_operation_link(self, operation_unique_id: int) -> None:
+    def remove_operation_link(self, operation_unique_id: OperationId) -> None:
         """Remove a link for an operation.
 
         Args:
@@ -94,7 +95,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
 
     def get_iteration_for_operation(
         self, operation: HistoricOperation
-    ) -> datetime | None:
+    ) -> IterationDate | None:
         """Get the specific iteration date this operation is linked to.
 
         For linked operations, returns the stored iteration date.
