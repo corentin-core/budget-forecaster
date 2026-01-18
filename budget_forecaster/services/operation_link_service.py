@@ -28,7 +28,7 @@ class _MatchCandidate(NamedTuple):
 
     linked_type: LinkType
     linked_id: PlannedOperationId | BudgetId
-    matcher: OperationMatcher
+    iteration_date: datetime
     score: float
 
 
@@ -211,27 +211,21 @@ class OperationLinkService:
                 )
 
                 if best_match is None or score > best_match.score:
-                    best_match = _MatchCandidate(linked_type, linked_id, matcher, score)
+                    best_match = _MatchCandidate(
+                        linked_type, linked_id, iteration_date, score
+                    )
 
             # Create link for best match
             if best_match is not None:
-                current_iteration = (
-                    best_match.matcher.operation_range.time_range.current_time_range(
-                        operation.date,
-                        approx_before=best_match.matcher.approximation_date_range,
-                        approx_after=best_match.matcher.approximation_date_range,
-                    )
+                link = OperationLink(
+                    operation_unique_id=operation.unique_id,
+                    linked_type=best_match.linked_type,
+                    linked_id=best_match.linked_id,
+                    iteration_date=best_match.iteration_date,
+                    is_manual=False,
                 )
-                if current_iteration is not None:
-                    link = OperationLink(
-                        operation_unique_id=operation.unique_id,
-                        linked_type=best_match.linked_type,
-                        linked_id=best_match.linked_id,
-                        iteration_date=current_iteration.initial_date,
-                        is_manual=False,
-                    )
-                    self._repository.create_link(link)
-                    created_links.append(link)
+                self._repository.create_link(link)
+                created_links.append(link)
 
         return tuple(created_links)
 
