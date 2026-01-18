@@ -18,8 +18,6 @@ from budget_forecaster.operation_range.operation_range import OperationRange
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.types import (
     BudgetId,
-    IterationDate,
-    OperationId,
     PlannedOperationId,
 )
 
@@ -104,48 +102,45 @@ class OperationLinkService:
         """
         self._repository = repository
 
-    def load_links_for_matcher(
-        self, linked_type: LinkType, linked_id: PlannedOperationId | BudgetId
-    ) -> dict[OperationId, IterationDate]:
-        """Load links from DB as a dict suitable for OperationMatcher.
+    def load_links_for_target(
+        self, target: PlannedOperation | Budget
+    ) -> tuple[OperationLink, ...]:
+        """Load all links for a target from the database.
 
         Args:
-            linked_type: The type of target (planned operation or budget).
-            linked_id: The ID of the target.
+            target: The planned operation or budget to load links for.
 
         Returns:
-            Dict mapping operation_unique_id to iteration_date.
+            Tuple of OperationLinks for this target.
         """
-        match linked_type:
-            case LinkType.PLANNED_OPERATION:
-                links = self._repository.get_links_for_planned_operation(linked_id)
-            case LinkType.BUDGET:
-                links = self._repository.get_links_for_budget(linked_id)
-        return {link.operation_unique_id: link.iteration_date for link in links}
+        if target.id is None:
+            return ()
+
+        if isinstance(target, PlannedOperation):
+            return self._repository.get_links_for_planned_operation(target.id)
+        return self._repository.get_links_for_budget(target.id)
 
     def create_matcher_with_links(
-        self,
-        operation_range: OperationRange,
-        linked_type: LinkType,
-        linked_id: PlannedOperationId | BudgetId,
-        **matcher_kwargs,
+        self, target: PlannedOperation | Budget
     ) -> OperationMatcher:
         """Create an OperationMatcher pre-loaded with links from DB.
 
         Args:
-            operation_range: The operation range to match against.
-            linked_type: The type of target (planned operation or budget).
-            linked_id: The ID of the target.
-            **matcher_kwargs: Additional arguments for OperationMatcher.
+            target: The planned operation or budget to create a matcher for.
 
         Returns:
             A configured OperationMatcher with links loaded.
         """
-        links = self.load_links_for_matcher(linked_type, linked_id)
+        links = self.load_links_for_target(target)
+        operation_links = {
+            link.operation_unique_id: link.iteration_date for link in links
+        }
         return OperationMatcher(
-            operation_range=operation_range,
-            operation_links=links,
-            **matcher_kwargs,
+            operation_range=target,
+            operation_links=operation_links,
+            approximation_date_range=target.matcher.approximation_date_range,
+            approximation_amount_ratio=target.matcher.approximation_amount_ratio,
+            description_hints=target.matcher.description_hints,
         )
 
     def create_heuristic_links(

@@ -124,18 +124,23 @@ def sample_operations() -> tuple[HistoricOperation, ...]:
     )
 
 
-class TestLoadLinksForMatcher:
-    """Tests for load_links_for_matcher method."""
+class TestLoadLinksForTarget:
+    """Tests for load_links_for_target method."""
 
-    def test_returns_empty_dict_when_no_links(
-        self, link_service: OperationLinkService
+    def test_returns_empty_tuple_when_no_links(
+        self,
+        link_service: OperationLinkService,
+        monthly_rent_planned_op: PlannedOperation,
     ) -> None:
-        """Test that an empty dict is returned when no links exist."""
-        result = link_service.load_links_for_matcher(LinkType.PLANNED_OPERATION, 1)
-        assert result == {}
+        """Test that an empty tuple is returned when no links exist."""
+        result = link_service.load_links_for_target(monthly_rent_planned_op)
+        assert result == ()
 
     def test_returns_links_for_planned_operation(
-        self, link_service: OperationLinkService, repository: SqliteRepository
+        self,
+        link_service: OperationLinkService,
+        repository: SqliteRepository,
+        monthly_rent_planned_op: PlannedOperation,
     ) -> None:
         """Test loading links for a planned operation."""
         # Create some links
@@ -156,16 +161,26 @@ class TestLoadLinksForMatcher:
         repository.create_link(link1)
         repository.create_link(link2)
 
-        result = link_service.load_links_for_matcher(LinkType.PLANNED_OPERATION, 1)
+        result = link_service.load_links_for_target(monthly_rent_planned_op)
 
         assert len(result) == 2
-        assert result[100] == datetime(2024, 1, 1)
-        assert result[200] == datetime(2024, 2, 1)
+        assert result[0].operation_unique_id == 100
+        assert result[1].operation_unique_id == 200
 
     def test_returns_links_for_budget(
         self, link_service: OperationLinkService, repository: SqliteRepository
     ) -> None:
         """Test loading links for a budget."""
+        budget = Budget(
+            record_id=5,
+            description="Housing Budget",
+            amount=Amount(-1000.0, "EUR"),
+            category=Category.RENT,
+            time_range=PeriodicTimeRange(
+                TimeRange(datetime(2024, 1, 1), relativedelta(months=1)),
+                relativedelta(months=1),
+            ),
+        )
         link = OperationLink(
             operation_unique_id=300,
             linked_type=LinkType.BUDGET,
@@ -174,10 +189,10 @@ class TestLoadLinksForMatcher:
         )
         repository.create_link(link)
 
-        result = link_service.load_links_for_matcher(LinkType.BUDGET, 5)
+        result = link_service.load_links_for_target(budget)
 
         assert len(result) == 1
-        assert result[300] == datetime(2024, 1, 1)
+        assert result[0].operation_unique_id == 300
 
 
 class TestCreateMatcherWithLinks:
@@ -187,7 +202,7 @@ class TestCreateMatcherWithLinks:
         self,
         link_service: OperationLinkService,
         repository: SqliteRepository,
-        monthly_rent_range: OperationRange,
+        monthly_rent_planned_op: PlannedOperation,
     ) -> None:
         """Test that the created matcher has links loaded."""
         # Create a link
@@ -199,11 +214,7 @@ class TestCreateMatcherWithLinks:
         )
         repository.create_link(link)
 
-        matcher = link_service.create_matcher_with_links(
-            monthly_rent_range,
-            LinkType.PLANNED_OPERATION,
-            linked_id=1,
-        )
+        matcher = link_service.create_matcher_with_links(monthly_rent_planned_op)
 
         assert 100 in matcher.operation_links
         assert matcher.operation_links[100] == datetime(2024, 1, 1)
