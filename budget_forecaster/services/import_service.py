@@ -18,10 +18,8 @@ from budget_forecaster.operation_range.historic_operation_factory import (
     HistoricOperationFactory,
 )
 from budget_forecaster.operation_range.operation_link import LinkType
-from budget_forecaster.operation_range.operation_link_service import (
-    OperationLinkService,
-)
 from budget_forecaster.operation_range.operation_matcher import OperationMatcher
+from budget_forecaster.services.operation_link_service import OperationLinkService
 
 logger = logging.getLogger(__name__)
 

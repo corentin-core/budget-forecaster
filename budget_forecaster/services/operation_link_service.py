@@ -3,8 +3,6 @@
 This module contains the OperationLinkService class that bridges
 the OperationMatcher (uses links in memory) and the OperationLinkRepository
 (persists links in the database).
-
-See issue #59 for the full implementation plan.
 """
 
 import math

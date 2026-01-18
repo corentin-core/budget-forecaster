@@ -6,8 +6,8 @@ from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.amount import Amount
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.operation_range.operation_link_service import compute_match_score
 from budget_forecaster.operation_range.operation_range import OperationRange
+from budget_forecaster.services.operation_link_service import compute_match_score
 from budget_forecaster.time_range import TimeRange
 from budget_forecaster.types import Category
 
