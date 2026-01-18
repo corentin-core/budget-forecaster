@@ -70,6 +70,26 @@ git diff main...HEAD
 - **No implementation leakage?** Dependencies should be on interfaces, not concrete
   classes
 
+#### Encapsulation
+
+- **Are implementation details exposed?** Methods that are only used internally should
+  be private (`__method`). If a method is public but only called by one other method in
+  the same class, it should probably be private.
+- **Does the public API make sense?** Can external callers use the class without knowing
+  implementation details?
+
+**Example - what we caught:**
+
+```python
+# BAD: match_heuristic() was public but only used by match()
+def match_heuristic(self, operation):  # Should be __match_heuristic
+    ...
+def match(self, operation):
+    if self.is_linked(operation):
+        return True
+    return self.match_heuristic(operation)  # Only internal usage
+```
+
 #### Testing Adequacy
 
 - Are there tests for new functionality?
@@ -77,6 +97,29 @@ git diff main...HEAD
 - Are edge cases covered?
 - **Do tests test application logic, not Python built-ins?** Flag tests that verify
   StrEnum values, NamedTuple iteration, dataclass fields, etc. These are useless.
+- **Do tests test behavior or implementation?** Tests should use public methods, not
+  call private methods directly. If a test calls `obj._Class__private_method()`, flag
+  it.
+
+**Example - what we caught:**
+
+```python
+# BAD: Testing private method directly
+def test_match_heuristic_method(self):
+    assert not matcher.match_heuristic(operation)  # Tests implementation
+
+# GOOD: Testing through public API
+def test_linked_operation_matches_despite_heuristic_mismatch(self):
+    assert matcher.match(operation)  # Tests behavior
+```
+
+#### Edge Cases for Periodic/Recursive Structures
+
+For features involving periodic time ranges or recursive structures, verify tests cover:
+
+- Links/operations on specific iterations (not just the first)
+- Multiple items linked to different iterations
+- Boundary conditions (first iteration, last iteration)
 
 ### Step 4: Determine verdict
 
