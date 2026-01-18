@@ -13,9 +13,9 @@ from budget_forecaster.account.repository_interface import RepositoryInterface
 from budget_forecaster.forecast.forecast import Forecast
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.operation_link import LinkType
-from budget_forecaster.operation_range.operation_matcher import OperationMatcher
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.services.operation_link_service import OperationLinkService
+from budget_forecaster.types import BudgetId, PlannedOperationId
 
 logger = logging.getLogger(__name__)
 
@@ -46,39 +46,20 @@ class ForecastService:
         self,
         account: Account,
         repository: RepositoryInterface,
-        auto_link: bool = True,
+        operation_link_service: OperationLinkService,
     ) -> None:
         """Initialize the forecast service.
 
         Args:
             account: The account to forecast.
             repository: Repository for data persistence.
-            auto_link: If True, automatically recalculate links on changes.
+            operation_link_service: Service for managing operation links.
         """
         self._account = account
         self._repository = repository
+        self._operation_link_service = operation_link_service
         self._forecast: Forecast | None = None
         self._report: AccountAnalysisReport | None = None
-        self._auto_link = auto_link
-        self._link_service: OperationLinkService | None = None
-
-    @property
-    def _operation_link_service(self) -> OperationLinkService:
-        """Get or create the operation link service."""
-        if self._link_service is None:
-            self._link_service = OperationLinkService(self._repository)
-        return self._link_service
-
-    def set_account(self, account: Account) -> None:
-        """Update the account reference.
-
-        Used when the account is reloaded from the database.
-
-        Args:
-            account: The new account reference.
-        """
-        self._account = account
-        self._invalidate_cache()
 
     def load_forecast(self) -> Forecast:
         """Load forecast data from the database.
@@ -120,11 +101,11 @@ class ForecastService:
         """Get all budgets from the database."""
         return self._repository.get_all_budgets()
 
-    def get_budget_by_id(self, budget_id: int) -> Budget | None:
+    def get_budget_by_id(self, budget_id: BudgetId) -> Budget | None:
         """Get a budget by ID."""
         return self._repository.get_budget_by_id(budget_id)
 
-    def add_budget(self, budget: Budget) -> int:
+    def add_budget(self, budget: Budget) -> BudgetId:
         """Add a new budget.
 
         Args:
@@ -135,11 +116,7 @@ class ForecastService:
         """
         budget_id = self._repository.upsert_budget(budget)
         self._invalidate_cache()
-
-        # Recalculate heuristic links for the new budget
-        if self._auto_link:
-            self._recalculate_budget_links(budget_id)
-
+        self._recalculate_budget_links(budget_id)
         return budget_id
 
     def update_budget(self, budget: Budget) -> None:
@@ -152,12 +129,9 @@ class ForecastService:
             raise ValueError("Budget must have a valid ID for update")
         self._repository.upsert_budget(budget)
         self._invalidate_cache()
+        self._recalculate_budget_links(budget.id)
 
-        # Recalculate heuristic links for the modified budget
-        if self._auto_link:
-            self._recalculate_budget_links(budget.id)
-
-    def delete_budget(self, budget_id: int) -> None:
+    def delete_budget(self, budget_id: BudgetId) -> None:
         """Delete a budget.
 
         Args:
@@ -172,11 +146,13 @@ class ForecastService:
         """Get all planned operations from the database."""
         return self._repository.get_all_planned_operations()
 
-    def get_planned_operation_by_id(self, op_id: int) -> PlannedOperation | None:
+    def get_planned_operation_by_id(
+        self, op_id: PlannedOperationId
+    ) -> PlannedOperation | None:
         """Get a planned operation by ID."""
         return self._repository.get_planned_operation_by_id(op_id)
 
-    def add_planned_operation(self, op: PlannedOperation) -> int:
+    def add_planned_operation(self, op: PlannedOperation) -> PlannedOperationId:
         """Add a new planned operation.
 
         Args:
@@ -187,11 +163,7 @@ class ForecastService:
         """
         op_id = self._repository.upsert_planned_operation(op)
         self._invalidate_cache()
-
-        # Recalculate heuristic links for the new planned operation
-        if self._auto_link:
-            self._recalculate_planned_operation_links(op_id)
-
+        self._recalculate_planned_operation_links(op_id)
         return op_id
 
     def update_planned_operation(self, op: PlannedOperation) -> None:
@@ -204,12 +176,9 @@ class ForecastService:
             raise ValueError("Planned operation must have a valid ID for update")
         self._repository.upsert_planned_operation(op)
         self._invalidate_cache()
+        self._recalculate_planned_operation_links(op.id)
 
-        # Recalculate heuristic links for the modified planned operation
-        if self._auto_link:
-            self._recalculate_planned_operation_links(op.id)
-
-    def delete_planned_operation(self, op_id: int) -> None:
+    def delete_planned_operation(self, op_id: PlannedOperationId) -> None:
         """Delete a planned operation.
 
         Args:
@@ -340,7 +309,7 @@ class ForecastService:
 
     # Link recalculation methods
 
-    def _recalculate_planned_operation_links(self, op_id: int) -> None:
+    def _recalculate_planned_operation_links(self, op_id: PlannedOperationId) -> None:
         """Recalculate heuristic links for a planned operation.
 
         Args:
@@ -358,7 +327,7 @@ class ForecastService:
         )
         logger.debug("Recalculated links for planned operation %d", op_id)
 
-    def _recalculate_budget_links(self, budget_id: int) -> None:
+    def _recalculate_budget_links(self, budget_id: BudgetId) -> None:
         """Recalculate heuristic links for a budget.
 
         Args:
@@ -368,12 +337,10 @@ class ForecastService:
             return
 
         operations = self._account.operations
-        # Create a basic matcher for the budget
-        matcher = OperationMatcher(operation_range=budget)
         self._operation_link_service.recalculate_links_for_target(
             LinkType.BUDGET,
             budget_id,
             operations,
-            matcher,
+            budget.matcher,
         )
         logger.debug("Recalculated links for budget %d", budget_id)

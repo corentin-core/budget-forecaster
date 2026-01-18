@@ -15,7 +15,17 @@ from budget_forecaster.operation_range.historic_operation import HistoricOperati
 from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
 from budget_forecaster.operation_range.operation_matcher import OperationMatcher
 from budget_forecaster.operation_range.operation_range import OperationRange
-from budget_forecaster.types import IterationDate
+from budget_forecaster.types import (
+    BudgetId,
+    IterationDate,
+    OperationId,
+    PlannedOperationId,
+)
+
+# Maximum distance in days to search for iterations around an operation date.
+# This is used when finding the closest iteration for an operation that doesn't
+# fall within any existing iteration's time range.
+_ITERATION_SEARCH_RANGE_DAYS = 60
 
 
 def compute_match_score(
@@ -99,8 +109,8 @@ class OperationLinkService:
         self._repository = repository
 
     def load_links_for_matcher(
-        self, linked_type: LinkType, linked_id: int
-    ) -> dict[int, IterationDate]:
+        self, linked_type: LinkType, linked_id: PlannedOperationId | BudgetId
+    ) -> dict[OperationId, IterationDate]:
         """Load links from DB as a dict suitable for OperationMatcher.
 
         Args:
@@ -110,17 +120,18 @@ class OperationLinkService:
         Returns:
             Dict mapping operation_unique_id to iteration_date.
         """
-        if linked_type == LinkType.PLANNED_OPERATION:
-            links = self._repository.get_links_for_planned_operation(linked_id)
-        else:
-            links = self._repository.get_links_for_budget(linked_id)
+        match linked_type:
+            case LinkType.PLANNED_OPERATION:
+                links = self._repository.get_links_for_planned_operation(linked_id)
+            case LinkType.BUDGET:
+                links = self._repository.get_links_for_budget(linked_id)
         return {link.operation_unique_id: link.iteration_date for link in links}
 
     def create_matcher_with_links(
         self,
         operation_range: OperationRange,
         linked_type: LinkType,
-        linked_id: int,
+        linked_id: PlannedOperationId | BudgetId,
         **matcher_kwargs,
     ) -> OperationMatcher:
         """Create an OperationMatcher pre-loaded with links from DB.
@@ -144,7 +155,9 @@ class OperationLinkService:
     def create_heuristic_links(
         self,
         operations: tuple[HistoricOperation, ...],
-        matchers_by_target: dict[tuple[LinkType, int], OperationMatcher],
+        matchers_by_target: dict[
+            tuple[LinkType, PlannedOperationId | BudgetId], OperationMatcher
+        ],
     ) -> tuple[OperationLink, ...]:
         """Create and persist heuristic links for unlinked operations.
 
@@ -168,12 +181,12 @@ class OperationLinkService:
 
             # Try each matcher to find a match
             best_match: tuple[
-                tuple[LinkType, int], OperationMatcher, float
+                tuple[LinkType, PlannedOperationId | BudgetId], OperationMatcher, float
             ] | None = None
 
             for (linked_type, linked_id), matcher in matchers_by_target.items():
-                # Check if operation matches this target heuristically
-                if not self._matches_heuristically(operation, matcher):
+                # Check if operation matches this target using the matcher's logic
+                if not matcher.match(operation):
                     continue
 
                 # Find the closest iteration
@@ -221,7 +234,7 @@ class OperationLinkService:
     def recalculate_links_for_target(
         self,
         linked_type: LinkType,
-        linked_id: int,
+        linked_id: PlannedOperationId | BudgetId,
         operations: tuple[HistoricOperation, ...],
         matcher: OperationMatcher,
     ) -> tuple[OperationLink, ...]:
@@ -250,38 +263,6 @@ class OperationLinkService:
             {(linked_type, linked_id): matcher},
         )
 
-    def _matches_heuristically(
-        self, operation: HistoricOperation, matcher: OperationMatcher
-    ) -> bool:
-        """Check if an operation matches using heuristic rules only.
-
-        This replicates the OperationMatcher logic without using links.
-
-        Args:
-            operation: The operation to check.
-            matcher: The matcher to use for checking.
-
-        Returns:
-            True if the operation matches heuristically.
-        """
-        # Check category first (cheapest check)
-        if not matcher.match_category(operation):
-            return False
-
-        # Check amount
-        if not matcher.match_amount(operation):
-            return False
-
-        # Check date range
-        if not matcher.match_date_range(operation):
-            return False
-
-        # Check description hints (if configured)
-        if matcher.description_hints and not matcher.match_description(operation):
-            return False
-
-        return True
-
     def _find_closest_iteration(
         self, operation: HistoricOperation, operation_range: OperationRange
     ) -> IterationDate | None:
@@ -301,16 +282,16 @@ class OperationLinkService:
         if (current := time_range.current_time_range(op_date)) is not None:
             return current.initial_date
 
-        # Try to find the closest iteration
+        # Try to find the closest iteration within search range
         closest_date: IterationDate | None = None
         min_distance = math.inf
+        search_range = timedelta(days=_ITERATION_SEARCH_RANGE_DAYS)
 
-        # Check iterations around the operation date
         for iteration in time_range.iterate_over_time_ranges(
-            from_date=op_date - timedelta(days=60)
+            from_date=op_date - search_range
         ):
             # Stop if we've gone too far past the operation date
-            if iteration.initial_date > op_date + timedelta(days=60):
+            if iteration.initial_date > op_date + search_range:
                 break
 
             if (

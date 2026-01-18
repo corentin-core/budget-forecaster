@@ -20,6 +20,7 @@ from budget_forecaster.operation_range.historic_operation_factory import (
 from budget_forecaster.operation_range.operation_link import LinkType
 from budget_forecaster.operation_range.operation_matcher import OperationMatcher
 from budget_forecaster.services.operation_link_service import OperationLinkService
+from budget_forecaster.types import BudgetId, PlannedOperationId
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class ImportService:
     """Service for importing bank exports.
 
     This service provides methods to import bank statements from files or
-    the inbox folder. Optionally creates heuristic links to planned
+    the inbox folder. Automatically creates heuristic links to planned
     operations and budgets after import.
     """
 
@@ -57,32 +58,22 @@ class ImportService:
         self,
         persistent_account: PersistentAccount,
         inbox_path: Path,
+        operation_link_service: OperationLinkService,
         exclude_patterns: list[str] | None = None,
-        auto_link: bool = True,
     ) -> None:
         """Initialize the service.
 
         Args:
             persistent_account: The persistent account to import to.
             inbox_path: Path to the inbox folder.
+            operation_link_service: Service for managing operation links.
             exclude_patterns: List of glob patterns to exclude from inbox.
-            auto_link: If True, automatically create heuristic links after import.
         """
         self._persistent_account = persistent_account
         self._inbox_path = inbox_path
+        self._operation_link_service = operation_link_service
         self._exclude_patterns = exclude_patterns or []
         self._bank_adapter_factory = BankAdapterFactory()
-        self._auto_link = auto_link
-        self._link_service: OperationLinkService | None = None
-
-    @property
-    def _operation_link_service(self) -> OperationLinkService:
-        """Get or create the operation link service."""
-        if self._link_service is None:
-            self._link_service = OperationLinkService(
-                self._persistent_account.repository
-            )
-        return self._link_service
 
     def _is_excluded(self, path: Path) -> bool:
         """Check if a path matches any exclusion pattern.
@@ -180,9 +171,8 @@ class ImportService:
 
             operations_count = len(bank_adapter.operations)
 
-            # Create heuristic links if enabled
-            if self._auto_link:
-                self.create_heuristic_links()
+            # Create heuristic links
+            self.create_heuristic_links()
 
             if move_to_processed:
                 self._move_to_processed(path)
@@ -286,7 +276,9 @@ class ImportService:
         operations = self._persistent_account.account.operations
 
         # Build matchers for all planned operations and budgets
-        matchers_by_target: dict[tuple[LinkType, int], OperationMatcher] = {}
+        matchers_by_target: dict[
+            tuple[LinkType, PlannedOperationId | BudgetId], OperationMatcher
+        ] = {}
 
         # Add matchers for planned operations
         for planned_op in repository.get_all_planned_operations():
@@ -295,11 +287,10 @@ class ImportService:
                     (LinkType.PLANNED_OPERATION, planned_op.id)
                 ] = planned_op.matcher
 
-        # Add matchers for budgets (create basic matchers)
+        # Add matchers for budgets
         for budget in repository.get_all_budgets():
             if budget.id is not None:
-                matcher = OperationMatcher(operation_range=budget)
-                matchers_by_target[(LinkType.BUDGET, budget.id)] = matcher
+                matchers_by_target[(LinkType.BUDGET, budget.id)] = budget.matcher
 
         if not matchers_by_target:
             return 0

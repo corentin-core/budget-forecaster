@@ -415,64 +415,6 @@ class TestFindClosestIteration:
         assert result == datetime(2024, 1, 1)
 
 
-class TestMatchesHeuristically:
-    """Tests for _matches_heuristically method."""
-
-    def test_returns_true_for_matching_operation(
-        self,
-        link_service: OperationLinkService,
-        monthly_rent_matcher: OperationMatcher,
-    ) -> None:
-        """Test that a matching operation returns True."""
-        operation = HistoricOperation(
-            unique_id=1,
-            description="RENT TRANSFER",
-            amount=Amount(-800.0, "EUR"),
-            category=Category.RENT,
-            date=datetime(2024, 1, 3),
-        )
-
-        result = link_service._matches_heuristically(operation, monthly_rent_matcher)
-
-        assert result is True
-
-    def test_returns_false_for_wrong_category(
-        self,
-        link_service: OperationLinkService,
-        monthly_rent_matcher: OperationMatcher,
-    ) -> None:
-        """Test that wrong category returns False."""
-        operation = HistoricOperation(
-            unique_id=1,
-            description="RENT TRANSFER",
-            amount=Amount(-800.0, "EUR"),
-            category=Category.GROCERIES,  # Wrong category
-            date=datetime(2024, 1, 3),
-        )
-
-        result = link_service._matches_heuristically(operation, monthly_rent_matcher)
-
-        assert result is False
-
-    def test_returns_false_for_wrong_amount(
-        self,
-        link_service: OperationLinkService,
-        monthly_rent_matcher: OperationMatcher,
-    ) -> None:
-        """Test that wrong amount returns False."""
-        operation = HistoricOperation(
-            unique_id=1,
-            description="RENT TRANSFER",
-            amount=Amount(-500.0, "EUR"),  # Wrong amount
-            category=Category.RENT,
-            date=datetime(2024, 1, 3),
-        )
-
-        result = link_service._matches_heuristically(operation, monthly_rent_matcher)
-
-        assert result is False
-
-
 # Integration tests for ForecastService triggers
 
 
@@ -510,8 +452,9 @@ class TestForecastServiceLinkIntegration:
         assert len(accounts) == 1
         account = accounts[0]
 
-        # Create ForecastService
-        service = ForecastService(account, populated_repository, auto_link=True)
+        # Create ForecastService with injected OperationLinkService
+        operation_link_service = OperationLinkService(populated_repository)
+        service = ForecastService(account, populated_repository, operation_link_service)
 
         # Create a planned operation that matches rent operations
         planned_op = PlannedOperation(
@@ -538,7 +481,8 @@ class TestForecastServiceLinkIntegration:
 
         accounts = populated_repository.get_all_accounts()
         account = accounts[0]
-        service = ForecastService(account, populated_repository, auto_link=True)
+        operation_link_service = OperationLinkService(populated_repository)
+        service = ForecastService(account, populated_repository, operation_link_service)
 
         # Add initial planned operation
         planned_op = PlannedOperation(
@@ -577,7 +521,8 @@ class TestForecastServiceLinkIntegration:
 
         accounts = populated_repository.get_all_accounts()
         account = accounts[0]
-        service = ForecastService(account, populated_repository, auto_link=True)
+        operation_link_service = OperationLinkService(populated_repository)
+        service = ForecastService(account, populated_repository, operation_link_service)
 
         # Create a budget that matches groceries
         budget = Budget(
@@ -597,33 +542,6 @@ class TestForecastServiceLinkIntegration:
         links = populated_repository.get_links_for_budget(budget_id)
         assert len(links) == 1
         assert links[0].operation_unique_id == 3  # The groceries operation
-
-    def test_auto_link_disabled_does_not_create_links(
-        self, populated_repository: SqliteRepository
-    ) -> None:
-        """Test that disabling auto_link prevents automatic link creation."""
-        from budget_forecaster.services.forecast_service import ForecastService
-
-        accounts = populated_repository.get_all_accounts()
-        account = accounts[0]
-        service = ForecastService(account, populated_repository, auto_link=False)
-
-        # Create a planned operation that would match
-        planned_op = PlannedOperation(
-            record_id=None,
-            description="Rent",
-            amount=Amount(-800.0, "EUR"),
-            category=Category.RENT,
-            time_range=PeriodicDailyTimeRange(
-                datetime(2024, 1, 1), relativedelta(months=1)
-            ),
-        )
-
-        op_id = service.add_planned_operation(planned_op)
-
-        # No links should be created
-        links = populated_repository.get_links_for_planned_operation(op_id)
-        assert len(links) == 0
 
 
 class TestManualLinkProtection:
