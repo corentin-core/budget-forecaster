@@ -737,6 +737,25 @@ class TestOperationMatcherOperationLinks:
         assert not matcher.is_linked(operation)
         assert not matcher.match(operation)
 
+    def test_invalid_iteration_date_raises_error(
+        self, operation_range: OperationRange
+    ) -> None:
+        """Test that invalid iteration dates raise ValueError."""
+        # Date that is not a valid iteration of the operation range
+        invalid_date = datetime(2023, 1, 15)  # operation_range starts on Jan 1
+
+        # Should raise in constructor
+        with pytest.raises(ValueError, match="Invalid iteration date"):
+            OperationMatcher(
+                operation_range,
+                operation_links={100: invalid_date},
+            )
+
+        # Should also raise in add_operation_link
+        matcher = OperationMatcher(operation_range)
+        with pytest.raises(ValueError, match="Invalid iteration date"):
+            matcher.add_operation_link(100, invalid_date)
+
     def test_get_iteration_for_operation(self, operation_range: OperationRange) -> None:
         """Test getting the iteration date for a linked operation."""
         operation = HistoricOperation(
@@ -768,12 +787,22 @@ class TestOperationMatcherOperationLinks:
     def test_operation_links_preserved_in_replace(
         self, operation_range: OperationRange
     ) -> None:
-        """Test that operation links are preserved when using replace()."""
+        """Test operation links behavior with replace().
+
+        Links are preserved when operation_range stays the same,
+        but cleared when operation_range changes (because links reference
+        iterations of the old operation range).
+        """
         matcher = OperationMatcher(
             operation_range,
             operation_links={100: datetime(2023, 1, 1)},
         )
 
+        # When operation_range is not replaced, links should be preserved
+        same_range_matcher = matcher.replace()
+        assert same_range_matcher.operation_links == {100: datetime(2023, 1, 1)}
+
+        # When operation_range is replaced, links should be cleared
         new_operation_range = OperationRange(
             "New Test Operation",
             Amount(200, "EUR"),
@@ -782,8 +811,8 @@ class TestOperationMatcherOperationLinks:
         )
         new_matcher = matcher.replace(operation_range=new_operation_range)
 
-        # Operation links should be preserved
-        assert new_matcher.operation_links == {100: datetime(2023, 1, 1)}
+        # Operation links should be cleared because they referenced the old range
+        assert not new_matcher.operation_links
 
     def test_operation_links_property_returns_copy(
         self, operation_range: OperationRange
@@ -813,21 +842,139 @@ class TestOperationMatcherOperationLinks:
             historic_operations[i] for i in (0, 1, 3, 5)
         }
 
-    def test_match_heuristic_method(self, operation_range: OperationRange) -> None:
-        """Test that match_heuristic ignores operation links."""
-        # Operation that doesn't match heuristically
-        operation = HistoricOperation(
-            unique_id=104,
-            description="Non matching",
-            amount=Amount(500.0),
-            category=Category.OTHER,
-            date=datetime(2023, 6, 15),
+    def test_link_on_specific_iteration_of_periodic_range(self) -> None:
+        """Test that a link targets a specific iteration of a periodic operation range.
+
+        Scenario: Monthly rent payment (periodic), operation linked to February iteration.
+        The operation should match via the link, and get_iteration_for_operation should
+        return the specific February date, not just any iteration.
+        """
+        # Create a periodic operation range: monthly rent starting Jan 1st
+        periodic_range = OperationRange(
+            "Monthly Rent",
+            Amount(800, "EUR"),
+            Category.RENT,
+            PeriodicTimeRange(
+                DailyTimeRange(datetime(2023, 1, 1)),
+                relativedelta(months=1),
+                datetime(2023, 12, 31),
+            ),
         )
 
-        # Even with link, match_heuristic should return False
-        matcher = OperationMatcher(
-            operation_range,
-            operation_links={104: datetime(2023, 1, 1)},
+        # Operation that arrived late (Feb 3rd instead of Feb 1st) with slightly different amount
+        late_rent_operation = HistoricOperation(
+            unique_id=200,
+            description="TRANSFER LANDLORD",
+            amount=Amount(800.0),
+            category=Category.RENT,
+            date=datetime(2023, 2, 3),  # 2 days late
         )
-        assert not matcher.match_heuristic(operation)
-        assert matcher.match(operation)  # But match() returns True due to link
+
+        # Link to the February iteration specifically
+        february_iteration = datetime(2023, 2, 1)
+        matcher = OperationMatcher(
+            periodic_range,
+            operation_links={200: february_iteration},
+        )
+
+        # Should match via link
+        assert matcher.match(late_rent_operation)
+        assert matcher.is_linked(late_rent_operation)
+
+        # Should return the specific iteration date
+        assert (
+            matcher.get_iteration_for_operation(late_rent_operation)
+            == february_iteration
+        )
+
+    def test_link_overrides_heuristic_on_wrong_iteration(self) -> None:
+        """Test that a link can force match to a different iteration than heuristics would choose.
+
+        Scenario: Operation date is closest to March iteration, but user linked it to February.
+        The link should take priority.
+        """
+        periodic_range = OperationRange(
+            "Monthly Subscription",
+            Amount(50, "EUR"),
+            Category.ENTERTAINMENT,
+            PeriodicTimeRange(
+                DailyTimeRange(datetime(2023, 1, 15)),
+                relativedelta(months=1),
+                datetime(2023, 12, 31),
+            ),
+        )
+
+        # Operation on Feb 28th - closer to March 15th than Feb 15th
+        operation = HistoricOperation(
+            unique_id=201,
+            description="NETFLIX",
+            amount=Amount(50.0),
+            category=Category.ENTERTAINMENT,
+            date=datetime(2023, 2, 28),  # Closer to Mar 15 than Feb 15
+        )
+
+        # User explicitly links to February iteration
+        february_iteration = datetime(2023, 2, 15)
+        matcher = OperationMatcher(
+            periodic_range,
+            operation_links={201: february_iteration},
+        )
+
+        # Should match and return the user-specified iteration
+        assert matcher.match(operation)
+        assert matcher.get_iteration_for_operation(operation) == february_iteration
+
+    def test_multiple_operations_linked_to_different_iterations(self) -> None:
+        """Test multiple operations linked to different iterations of the same periodic range."""
+        periodic_range = OperationRange(
+            "Weekly Groceries",
+            Amount(100, "EUR"),
+            Category.GROCERIES,
+            PeriodicTimeRange(
+                DailyTimeRange(datetime(2023, 1, 1)),
+                relativedelta(weeks=1),
+                datetime(2023, 12, 31),
+            ),
+        )
+
+        # Three operations linked to different weekly iterations
+        op_week1 = HistoricOperation(
+            unique_id=301,
+            description="SUPERMARKET",
+            amount=Amount(95.0),
+            category=Category.GROCERIES,
+            date=datetime(2023, 1, 2),
+        )
+        op_week2 = HistoricOperation(
+            unique_id=302,
+            description="SUPERMARKET",
+            amount=Amount(110.0),
+            category=Category.GROCERIES,
+            date=datetime(2023, 1, 10),
+        )
+        op_week3 = HistoricOperation(
+            unique_id=303,
+            description="SUPERMARKET",
+            amount=Amount(100.0),
+            category=Category.GROCERIES,
+            date=datetime(2023, 1, 14),
+        )
+
+        matcher = OperationMatcher(
+            periodic_range,
+            operation_links={
+                301: datetime(2023, 1, 1),  # Week 1
+                302: datetime(2023, 1, 8),  # Week 2
+                303: datetime(2023, 1, 15),  # Week 3
+            },
+        )
+
+        # All should match
+        assert matcher.match(op_week1)
+        assert matcher.match(op_week2)
+        assert matcher.match(op_week3)
+
+        # Each should return its specific iteration
+        assert matcher.get_iteration_for_operation(op_week1) == datetime(2023, 1, 1)
+        assert matcher.get_iteration_for_operation(op_week2) == datetime(2023, 1, 8)
+        assert matcher.get_iteration_for_operation(op_week3) == datetime(2023, 1, 15)

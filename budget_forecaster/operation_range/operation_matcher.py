@@ -34,9 +34,13 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         self.__description_hints = description_hints or set()
         self.__approximation_date_range = approximation_date_range
         self.__approximation_amount_ratio = approximation_amount_ratio
-        self.__operation_links: dict[OperationId, IterationDate] = (
-            operation_links.copy() if operation_links else {}
-        )
+        self.__operation_links: dict[OperationId, IterationDate] = {}
+
+        # Validate and copy operation links
+        if operation_links:
+            for op_id, iteration_date in operation_links.items():
+                self.__validate_iteration_date(iteration_date)
+                self.__operation_links[op_id] = iteration_date
 
     @property
     def operation_range(self) -> OperationRange:
@@ -63,6 +67,24 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         """Dict mapping operation_unique_id to iteration_date for linked operations."""
         return self.__operation_links.copy()
 
+    def __validate_iteration_date(self, iteration_date: IterationDate) -> None:
+        """Validate that iteration_date is a valid iteration of the operation range.
+
+        Args:
+            iteration_date: The date to validate.
+
+        Raises:
+            ValueError: If the date is not a valid iteration.
+        """
+        time_range = self.__operation_range.time_range.current_time_range(
+            iteration_date
+        )
+        if time_range is None or time_range.initial_date != iteration_date:
+            raise ValueError(
+                f"Invalid iteration date {iteration_date} for operation range "
+                f"'{self.__operation_range.description}'"
+            )
+
     def add_operation_link(
         self, operation_unique_id: OperationId, iteration_date: IterationDate
     ) -> None:
@@ -71,7 +93,11 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         Args:
             operation_unique_id: The unique ID of the historic operation.
             iteration_date: The date of the specific iteration to link to.
+
+        Raises:
+            ValueError: If iteration_date is not a valid iteration.
         """
+        self.__validate_iteration_date(iteration_date)
         self.__operation_links[operation_unique_id] = iteration_date
 
     def remove_operation_link(self, operation_unique_id: OperationId) -> None:
@@ -160,11 +186,11 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
             approx_after=self.approximation_date_range,
         )
 
-    def match_heuristic(self, operation: HistoricOperation) -> bool:
+    def __match_heuristic(self, operation: HistoricOperation) -> bool:
         """Check if the operation matches using heuristic rules only.
 
         This method applies the original matching logic without considering
-        operation links. Used internally and for scoring.
+        operation links.
 
         Args:
             operation: The historic operation to check.
@@ -198,7 +224,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
             return True
 
         # Fall back to heuristic matching
-        return self.match_heuristic(operation)
+        return self.__match_heuristic(operation)
 
     def matches(
         self, operations: Iterable[HistoricOperation]
@@ -274,14 +300,21 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
                     break
 
     def replace(self, **kwargs: Any) -> "OperationMatcher":
-        """Return a new instance of the operation matcher with the given parameters replaced."""
+        """Return a new instance of the operation matcher with the given parameters replaced.
+
+        Note: If operation_range is replaced, operation_links are cleared because
+        the existing links reference iterations of the old operation range.
+        """
         new_operation_range = kwargs.get("operation_range", self.operation_range)
         assert isinstance(new_operation_range, OperationRange)
+
+        # Clear links if operation_range changes (links are tied to specific iterations)
+        preserve_links = new_operation_range is self.operation_range
 
         return OperationMatcher(
             operation_range=new_operation_range,
             description_hints=self.description_hints,
             approximation_date_range=self.approximation_date_range,
             approximation_amount_ratio=self.approximation_amount_ratio,
-            operation_links=self.__operation_links,
+            operation_links=self.__operation_links if preserve_links else None,
         )
