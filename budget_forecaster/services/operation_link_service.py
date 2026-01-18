@@ -26,9 +26,7 @@ from budget_forecaster.types import (
 class _MatchCandidate(NamedTuple):
     """Internal structure for tracking the best match during heuristic linking."""
 
-    linked_type: LinkType
-    linked_id: PlannedOperationId | BudgetId
-    iteration_date: datetime
+    link: OperationLink
     score: float
 
 
@@ -211,21 +209,19 @@ class OperationLinkService:
                 )
 
                 if best_match is None or score > best_match.score:
-                    best_match = _MatchCandidate(
-                        linked_type, linked_id, iteration_date, score
+                    link = OperationLink(
+                        operation_unique_id=operation.unique_id,
+                        linked_type=linked_type,
+                        linked_id=linked_id,
+                        iteration_date=iteration_date,
+                        is_manual=False,
                     )
+                    best_match = _MatchCandidate(link, score)
 
-            # Create link for best match
+            # Persist best match
             if best_match is not None:
-                link = OperationLink(
-                    operation_unique_id=operation.unique_id,
-                    linked_type=best_match.linked_type,
-                    linked_id=best_match.linked_id,
-                    iteration_date=best_match.iteration_date,
-                    is_manual=False,
-                )
-                self._repository.create_link(link)
-                created_links.append(link)
+                self._repository.create_link(best_match.link)
+                created_links.append(best_match.link)
 
         return tuple(created_links)
 
