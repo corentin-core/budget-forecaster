@@ -5,7 +5,6 @@ the OperationMatcher (uses links in memory) and the OperationLinkRepository
 (persists links in the database).
 """
 
-import math
 from datetime import datetime, timedelta
 
 from budget_forecaster.account.repository_interface import (
@@ -21,11 +20,6 @@ from budget_forecaster.types import (
     OperationId,
     PlannedOperationId,
 )
-
-# Maximum distance in days to search for iterations around an operation date.
-# This is used when finding the closest iteration for an operation that doesn't
-# fall within any existing iteration's time range.
-_ITERATION_SEARCH_RANGE_DAYS = 60
 
 
 def compute_match_score(
@@ -189,12 +183,17 @@ class OperationLinkService:
                 if not matcher.match(operation):
                     continue
 
-                # Find the closest iteration
-                iteration_date = self._find_closest_iteration(
-                    operation, matcher.operation_range
+                # Find the iteration using the matcher's date tolerance
+                current_iteration = (
+                    matcher.operation_range.time_range.current_time_range(
+                        operation.date,
+                        approx_before=matcher.approximation_date_range,
+                        approx_after=matcher.approximation_date_range,
+                    )
                 )
-                if iteration_date is None:
+                if current_iteration is None:
                     continue
+                iteration_date = current_iteration.initial_date
 
                 # Compute match score for tie-breaking
                 score = compute_match_score(
@@ -215,15 +214,19 @@ class OperationLinkService:
             # Create link for best match
             if best_match is not None:
                 (linked_type, linked_id), matcher, _ = best_match
-                iteration_date = self._find_closest_iteration(
-                    operation, matcher.operation_range
+                current_iteration = (
+                    matcher.operation_range.time_range.current_time_range(
+                        operation.date,
+                        approx_before=matcher.approximation_date_range,
+                        approx_after=matcher.approximation_date_range,
+                    )
                 )
-                if iteration_date is not None:
+                if current_iteration is not None:
                     link = OperationLink(
                         operation_unique_id=operation.unique_id,
                         linked_type=linked_type,
                         linked_id=linked_id,
-                        iteration_date=iteration_date,
+                        iteration_date=current_iteration.initial_date,
                         is_manual=False,
                     )
                     self._repository.create_link(link)
@@ -262,42 +265,3 @@ class OperationLinkService:
             operations,
             {(linked_type, linked_id): matcher},
         )
-
-    def _find_closest_iteration(
-        self, operation: HistoricOperation, operation_range: OperationRange
-    ) -> IterationDate | None:
-        """Find the iteration date closest to the operation date.
-
-        Args:
-            operation: The historic operation.
-            operation_range: The operation range to find iteration in.
-
-        Returns:
-            The closest iteration date, or None if no suitable iteration found.
-        """
-        time_range = operation_range.time_range
-        op_date = operation.date
-
-        # Try to find the current iteration (the one containing the operation date)
-        if (current := time_range.current_time_range(op_date)) is not None:
-            return current.initial_date
-
-        # Try to find the closest iteration within search range
-        closest_date: IterationDate | None = None
-        min_distance = math.inf
-        search_range = timedelta(days=_ITERATION_SEARCH_RANGE_DAYS)
-
-        for iteration in time_range.iterate_over_time_ranges(
-            from_date=op_date - search_range
-        ):
-            # Stop if we've gone too far past the operation date
-            if iteration.initial_date > op_date + search_range:
-                break
-
-            if (
-                distance := abs((iteration.initial_date - op_date).days)
-            ) < min_distance:
-                min_distance = distance
-                closest_date = iteration.initial_date
-
-        return closest_date

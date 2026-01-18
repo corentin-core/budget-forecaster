@@ -367,54 +367,6 @@ class TestRecalculateLinksForTarget:
         assert len(new_links) == 2
 
 
-class TestFindClosestIteration:
-    """Tests for _find_closest_iteration method."""
-
-    def test_finds_current_iteration(
-        self, link_service: OperationLinkService, monthly_rent_range: OperationRange
-    ) -> None:
-        """Test finding iteration when operation is within current iteration."""
-        operation = HistoricOperation(
-            unique_id=1,
-            description="RENT",
-            amount=Amount(-800.0, "EUR"),
-            category=Category.RENT,
-            date=datetime(2024, 1, 15),  # Mid-January
-        )
-
-        result = link_service._find_closest_iteration(operation, monthly_rent_range)
-
-        assert result == datetime(2024, 1, 1)
-
-    def test_finds_closest_iteration_when_between(
-        self, link_service: OperationLinkService
-    ) -> None:
-        """Test finding closest iteration when operation date is between iterations."""
-        # Daily operation on the 1st of each month
-        time_range = PeriodicDailyTimeRange(
-            datetime(2024, 1, 1), relativedelta(months=1)
-        )
-        operation_range = OperationRange(
-            description="Monthly Payment",
-            amount=Amount(100.0, "EUR"),
-            category=Category.OTHER,
-            time_range=time_range,
-        )
-
-        # Operation on Jan 5 - closer to Jan 1 (4 days) than Feb 1 (27 days)
-        operation = HistoricOperation(
-            unique_id=1,
-            description="Payment",
-            amount=Amount(-100.0, "EUR"),
-            category=Category.OTHER,
-            date=datetime(2024, 1, 5),
-        )
-
-        result = link_service._find_closest_iteration(operation, operation_range)
-
-        assert result == datetime(2024, 1, 1)
-
-
 # Integration tests for ForecastService triggers
 
 
