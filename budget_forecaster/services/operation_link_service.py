@@ -6,6 +6,7 @@ the OperationMatcher (uses links in memory) and the OperationLinkRepository
 """
 
 from datetime import datetime, timedelta
+from typing import NamedTuple
 
 from budget_forecaster.account.repository_interface import (
     OperationLinkRepositoryInterface,
@@ -20,6 +21,15 @@ from budget_forecaster.types import (
     BudgetId,
     PlannedOperationId,
 )
+
+
+class _MatchCandidate(NamedTuple):
+    """Internal structure for tracking the best match during heuristic linking."""
+
+    linked_type: LinkType
+    linked_id: PlannedOperationId | BudgetId
+    matcher: OperationMatcher
+    score: float
 
 
 def compute_match_score(
@@ -171,9 +181,7 @@ class OperationLinkService:
                 continue
 
             # Try each matcher to find a match
-            best_match: tuple[
-                tuple[LinkType, PlannedOperationId | BudgetId], OperationMatcher, float
-            ] | None = None
+            best_match: _MatchCandidate | None = None
 
             for (linked_type, linked_id), matcher in matchers_by_target.items():
                 # Check if operation matches this target using the matcher's logic
@@ -202,27 +210,23 @@ class OperationLinkService:
                     description_hints=matcher.description_hints,
                 )
 
-                if (
-                    best_match is None
-                    or score > best_match[2]  # pylint: disable=unsubscriptable-object
-                ):
-                    best_match = ((linked_type, linked_id), matcher, score)
+                if best_match is None or score > best_match.score:
+                    best_match = _MatchCandidate(linked_type, linked_id, matcher, score)
 
             # Create link for best match
             if best_match is not None:
-                (linked_type, linked_id), matcher, _ = best_match
                 current_iteration = (
-                    matcher.operation_range.time_range.current_time_range(
+                    best_match.matcher.operation_range.time_range.current_time_range(
                         operation.date,
-                        approx_before=matcher.approximation_date_range,
-                        approx_after=matcher.approximation_date_range,
+                        approx_before=best_match.matcher.approximation_date_range,
+                        approx_after=best_match.matcher.approximation_date_range,
                     )
                 )
                 if current_iteration is not None:
                     link = OperationLink(
                         operation_unique_id=operation.unique_id,
-                        linked_type=linked_type,
-                        linked_id=linked_id,
+                        linked_type=best_match.linked_type,
+                        linked_id=best_match.linked_id,
                         iteration_date=current_iteration.initial_date,
                         is_manual=False,
                     )
