@@ -12,6 +12,11 @@ from budget_forecaster.account.account_analyzer import AccountAnalyzer
 from budget_forecaster.account.repository_interface import RepositoryInterface
 from budget_forecaster.forecast.forecast import Forecast
 from budget_forecaster.operation_range.budget import Budget
+from budget_forecaster.operation_range.operation_link import LinkType
+from budget_forecaster.operation_range.operation_link_service import (
+    OperationLinkService,
+)
+from budget_forecaster.operation_range.operation_matcher import OperationMatcher
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 
 logger = logging.getLogger(__name__)
@@ -33,23 +38,49 @@ class MonthlySummary(TypedDict):
 
 
 class ForecastService:
-    """Service for generating and managing forecasts."""
+    """Service for generating and managing forecasts.
+
+    Automatically recalculates heuristic operation links when planned
+    operations or budgets are added or modified.
+    """
 
     def __init__(
         self,
         account: Account,
         repository: RepositoryInterface,
+        auto_link: bool = True,
     ) -> None:
         """Initialize the forecast service.
 
         Args:
             account: The account to forecast.
             repository: Repository for data persistence.
+            auto_link: If True, automatically recalculate links on changes.
         """
         self._account = account
         self._repository = repository
         self._forecast: Forecast | None = None
         self._report: AccountAnalysisReport | None = None
+        self._auto_link = auto_link
+        self._link_service: OperationLinkService | None = None
+
+    @property
+    def _operation_link_service(self) -> OperationLinkService:
+        """Get or create the operation link service."""
+        if self._link_service is None:
+            self._link_service = OperationLinkService(self._repository)
+        return self._link_service
+
+    def set_account(self, account: Account) -> None:
+        """Update the account reference.
+
+        Used when the account is reloaded from the database.
+
+        Args:
+            account: The new account reference.
+        """
+        self._account = account
+        self._invalidate_cache()
 
     def load_forecast(self) -> Forecast:
         """Load forecast data from the database.
@@ -106,6 +137,11 @@ class ForecastService:
         """
         budget_id = self._repository.upsert_budget(budget)
         self._invalidate_cache()
+
+        # Recalculate heuristic links for the new budget
+        if self._auto_link:
+            self._recalculate_budget_links(budget_id)
+
         return budget_id
 
     def update_budget(self, budget: Budget) -> None:
@@ -118,6 +154,10 @@ class ForecastService:
             raise ValueError("Budget must have a valid ID for update")
         self._repository.upsert_budget(budget)
         self._invalidate_cache()
+
+        # Recalculate heuristic links for the modified budget
+        if self._auto_link:
+            self._recalculate_budget_links(budget.id)
 
     def delete_budget(self, budget_id: int) -> None:
         """Delete a budget.
@@ -149,6 +189,11 @@ class ForecastService:
         """
         op_id = self._repository.upsert_planned_operation(op)
         self._invalidate_cache()
+
+        # Recalculate heuristic links for the new planned operation
+        if self._auto_link:
+            self._recalculate_planned_operation_links(op_id)
+
         return op_id
 
     def update_planned_operation(self, op: PlannedOperation) -> None:
@@ -161,6 +206,10 @@ class ForecastService:
             raise ValueError("Planned operation must have a valid ID for update")
         self._repository.upsert_planned_operation(op)
         self._invalidate_cache()
+
+        # Recalculate heuristic links for the modified planned operation
+        if self._auto_link:
+            self._recalculate_planned_operation_links(op.id)
 
     def delete_planned_operation(self, op_id: int) -> None:
         """Delete a planned operation.
@@ -290,3 +339,43 @@ class ForecastService:
             (str(cat), float(row["Total"]), float(row["Moyenne mensuelle"]))
             for cat, row in df.iterrows()
         ]
+
+    # Link recalculation methods
+
+    def _recalculate_planned_operation_links(self, op_id: int) -> None:
+        """Recalculate heuristic links for a planned operation.
+
+        Args:
+            op_id: The ID of the planned operation.
+        """
+        if (planned_op := self._repository.get_planned_operation_by_id(op_id)) is None:
+            return
+
+        operations = self._account.operations
+        self._operation_link_service.recalculate_links_for_target(
+            LinkType.PLANNED_OPERATION,
+            op_id,
+            operations,
+            planned_op.matcher,
+        )
+        logger.debug("Recalculated links for planned operation %d", op_id)
+
+    def _recalculate_budget_links(self, budget_id: int) -> None:
+        """Recalculate heuristic links for a budget.
+
+        Args:
+            budget_id: The ID of the budget.
+        """
+        if (budget := self._repository.get_budget_by_id(budget_id)) is None:
+            return
+
+        operations = self._account.operations
+        # Create a basic matcher for the budget
+        matcher = OperationMatcher(operation_range=budget)
+        self._operation_link_service.recalculate_links_for_target(
+            LinkType.BUDGET,
+            budget_id,
+            operations,
+            matcher,
+        )
+        logger.debug("Recalculated links for budget %d", budget_id)

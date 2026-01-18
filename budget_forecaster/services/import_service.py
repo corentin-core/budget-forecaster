@@ -17,6 +17,11 @@ from budget_forecaster.bank_adapter.bank_adapter_factory import BankAdapterFacto
 from budget_forecaster.operation_range.historic_operation_factory import (
     HistoricOperationFactory,
 )
+from budget_forecaster.operation_range.operation_link import LinkType
+from budget_forecaster.operation_range.operation_link_service import (
+    OperationLinkService,
+)
+from budget_forecaster.operation_range.operation_matcher import OperationMatcher
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +51,8 @@ class ImportService:
     """Service for importing bank exports.
 
     This service provides methods to import bank statements from files or
-    the inbox folder.
+    the inbox folder. Optionally creates heuristic links to planned
+    operations and budgets after import.
     """
 
     def __init__(
@@ -54,6 +60,7 @@ class ImportService:
         persistent_account: PersistentAccount,
         inbox_path: Path,
         exclude_patterns: list[str] | None = None,
+        auto_link: bool = True,
     ) -> None:
         """Initialize the service.
 
@@ -61,11 +68,23 @@ class ImportService:
             persistent_account: The persistent account to import to.
             inbox_path: Path to the inbox folder.
             exclude_patterns: List of glob patterns to exclude from inbox.
+            auto_link: If True, automatically create heuristic links after import.
         """
         self._persistent_account = persistent_account
         self._inbox_path = inbox_path
         self._exclude_patterns = exclude_patterns or []
         self._bank_adapter_factory = BankAdapterFactory()
+        self._auto_link = auto_link
+        self._link_service: OperationLinkService | None = None
+
+    @property
+    def _operation_link_service(self) -> OperationLinkService:
+        """Get or create the operation link service."""
+        if self._link_service is None:
+            self._link_service = OperationLinkService(
+                self._persistent_account.repository
+            )
+        return self._link_service
 
     def _is_excluded(self, path: Path) -> bool:
         """Check if a path matches any exclusion pattern.
@@ -158,7 +177,14 @@ class ImportService:
             self._persistent_account.upsert_account(account_params)
             self._persistent_account.save()
 
+            # Reload to get updated operations with unique_ids
+            self._persistent_account.load()
+
             operations_count = len(bank_adapter.operations)
+
+            # Create heuristic links if enabled
+            if self._auto_link:
+                self.create_heuristic_links()
 
             if move_to_processed:
                 self._move_to_processed(path)
@@ -248,3 +274,42 @@ class ImportService:
     def pending_import_count(self) -> int:
         """Get the number of pending imports."""
         return len(self.get_supported_exports_in_inbox())
+
+    def create_heuristic_links(self) -> int:
+        """Create heuristic links for all unlinked operations.
+
+        Matches operations against all planned operations and budgets,
+        creating links where heuristic matching succeeds.
+
+        Returns:
+            Number of links created.
+        """
+        repository = self._persistent_account.repository
+        operations = self._persistent_account.account.operations
+
+        # Build matchers for all planned operations and budgets
+        matchers_by_target: dict[tuple[LinkType, int], OperationMatcher] = {}
+
+        # Add matchers for planned operations
+        for planned_op in repository.get_all_planned_operations():
+            if planned_op.id is not None:
+                matchers_by_target[
+                    (LinkType.PLANNED_OPERATION, planned_op.id)
+                ] = planned_op.matcher
+
+        # Add matchers for budgets (create basic matchers)
+        for budget in repository.get_all_budgets():
+            if budget.id is not None:
+                matcher = OperationMatcher(operation_range=budget)
+                matchers_by_target[(LinkType.BUDGET, budget.id)] = matcher
+
+        if not matchers_by_target:
+            return 0
+
+        # Create heuristic links
+        created_links = self._operation_link_service.create_heuristic_links(
+            operations, matchers_by_target
+        )
+
+        logger.info("Created %d heuristic links", len(created_links))
+        return len(created_links)
