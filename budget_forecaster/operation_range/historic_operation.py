@@ -6,9 +6,7 @@ from typing import Any, cast
 from budget_forecaster.amount import Amount
 from budget_forecaster.operation_range.operation_range import OperationRange
 from budget_forecaster.time_range import DailyTimeRange
-from budget_forecaster.types import Category
-
-OperationId = int
+from budget_forecaster.types import Category, OperationId
 
 
 @total_ordering

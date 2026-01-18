@@ -4,9 +4,10 @@ An operation link represents a connection between a historic operation
 and a specific iteration of a planned operation or budget.
 """
 
-from datetime import datetime
 from enum import StrEnum
 from typing import NamedTuple
+
+from budget_forecaster.types import IterationDate, OperationId
 
 
 class LinkType(StrEnum):
@@ -30,9 +31,9 @@ class OperationLink(NamedTuple):
         notes: Optional comment (only for manual links).
     """
 
-    operation_unique_id: int
+    operation_unique_id: OperationId
     linked_type: LinkType
     linked_id: int
-    iteration_date: datetime
+    iteration_date: IterationDate
     is_manual: bool = False
     notes: str | None = None

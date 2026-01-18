@@ -8,12 +8,10 @@ from budget_forecaster.account.account import Account
 from budget_forecaster.amount import Amount
 from budget_forecaster.forecast.forecast import Forecast
 from budget_forecaster.operation_range.budget import Budget
-from budget_forecaster.operation_range.historic_operation import (
-    HistoricOperation,
-    OperationId,
-)
+from budget_forecaster.operation_range.historic_operation import HistoricOperation
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.time_range import DailyTimeRange, TimeRangeInterface
+from budget_forecaster.types import OperationId
 
 
 class ForecastActualizer:  # pylint: disable=too-few-public-methods
