@@ -72,6 +72,24 @@ def monthly_rent_matcher(monthly_rent_range: OperationRange) -> OperationMatcher
 
 
 @pytest.fixture
+def monthly_rent_planned_op() -> PlannedOperation:
+    """Create a planned operation for monthly rent."""
+    planned_op = PlannedOperation(
+        record_id=1,
+        description="Rent",
+        amount=Amount(-800.0, "EUR"),
+        category=Category.RENT,
+        time_range=PeriodicDailyTimeRange(
+            datetime(2024, 1, 1), relativedelta(months=1)
+        ),
+    )
+    return planned_op.set_matcher_params(
+        approximation_date_range=timedelta(days=5),
+        approximation_amount_ratio=0.05,
+    )
+
+
+@pytest.fixture
 def sample_operations() -> tuple[HistoricOperation, ...]:
     """Create sample historic operations."""
     return (
@@ -297,7 +315,7 @@ class TestRecalculateLinksForTarget:
         self,
         link_service: OperationLinkService,
         repository: SqliteRepository,
-        monthly_rent_matcher: OperationMatcher,
+        monthly_rent_planned_op: PlannedOperation,
         sample_operations: tuple[HistoricOperation, ...],
     ) -> None:
         """Test that automatic links for the target are deleted."""
@@ -313,7 +331,7 @@ class TestRecalculateLinksForTarget:
 
         # Recalculate (should delete the old automatic link)
         link_service.recalculate_links_for_target(
-            LinkType.PLANNED_OPERATION, 1, sample_operations, monthly_rent_matcher
+            monthly_rent_planned_op, sample_operations
         )
 
         # Verify a new link was created (iteration date might be different)
@@ -324,7 +342,7 @@ class TestRecalculateLinksForTarget:
         self,
         link_service: OperationLinkService,
         repository: SqliteRepository,
-        monthly_rent_matcher: OperationMatcher,
+        monthly_rent_planned_op: PlannedOperation,
         sample_operations: tuple[HistoricOperation, ...],
     ) -> None:
         """Test that manual links are preserved during recalculation."""
@@ -341,7 +359,7 @@ class TestRecalculateLinksForTarget:
 
         # Recalculate
         link_service.recalculate_links_for_target(
-            LinkType.PLANNED_OPERATION, 1, sample_operations, monthly_rent_matcher
+            monthly_rent_planned_op, sample_operations
         )
 
         # Manual link should still exist with same values
@@ -354,13 +372,12 @@ class TestRecalculateLinksForTarget:
     def test_creates_new_links_after_deletion(
         self,
         link_service: OperationLinkService,
-        repository: SqliteRepository,
-        monthly_rent_matcher: OperationMatcher,
+        monthly_rent_planned_op: PlannedOperation,
         sample_operations: tuple[HistoricOperation, ...],
     ) -> None:
         """Test that new heuristic links are created after deletion."""
         new_links = link_service.recalculate_links_for_target(
-            LinkType.PLANNED_OPERATION, 1, sample_operations, monthly_rent_matcher
+            monthly_rent_planned_op, sample_operations
         )
 
         # Should create links for matching operations
@@ -503,7 +520,7 @@ class TestManualLinkProtection:
         self,
         link_service: OperationLinkService,
         repository: SqliteRepository,
-        monthly_rent_matcher: OperationMatcher,
+        monthly_rent_planned_op: PlannedOperation,
         sample_operations: tuple[HistoricOperation, ...],
     ) -> None:
         """Test that manual links survive multiple recalculations."""
@@ -521,7 +538,7 @@ class TestManualLinkProtection:
         # Perform multiple recalculations
         for _ in range(3):
             link_service.recalculate_links_for_target(
-                LinkType.PLANNED_OPERATION, 1, sample_operations, monthly_rent_matcher
+                monthly_rent_planned_op, sample_operations
             )
 
         # Manual link should still exist with original values
@@ -535,6 +552,7 @@ class TestManualLinkProtection:
         self,
         link_service: OperationLinkService,
         repository: SqliteRepository,
+        monthly_rent_planned_op: PlannedOperation,
         monthly_rent_matcher: OperationMatcher,
         sample_operations: tuple[HistoricOperation, ...],
     ) -> None:
@@ -551,7 +569,7 @@ class TestManualLinkProtection:
 
         # Recalculate should replace the heuristic link
         link_service.recalculate_links_for_target(
-            LinkType.PLANNED_OPERATION, 1, sample_operations, monthly_rent_matcher
+            monthly_rent_planned_op, sample_operations
         )
 
         # Link should still exist (recreated)

@@ -12,7 +12,6 @@ from budget_forecaster.account.account_analyzer import AccountAnalyzer
 from budget_forecaster.account.repository_interface import RepositoryInterface
 from budget_forecaster.forecast.forecast import Forecast
 from budget_forecaster.operation_range.budget import Budget
-from budget_forecaster.operation_range.operation_link import LinkType
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.services.operation_link_service import OperationLinkService
 from budget_forecaster.types import BudgetId, PlannedOperationId
@@ -318,12 +317,8 @@ class ForecastService:
         if (planned_op := self._repository.get_planned_operation_by_id(op_id)) is None:
             return
 
-        operations = self._account.operations
         self._operation_link_service.recalculate_links_for_target(
-            LinkType.PLANNED_OPERATION,
-            op_id,
-            operations,
-            planned_op.matcher,
+            planned_op, self._account.operations
         )
         logger.debug("Recalculated links for planned operation %d", op_id)
 
@@ -336,11 +331,7 @@ class ForecastService:
         if (budget := self._repository.get_budget_by_id(budget_id)) is None:
             return
 
-        operations = self._account.operations
         self._operation_link_service.recalculate_links_for_target(
-            LinkType.BUDGET,
-            budget_id,
-            operations,
-            budget.matcher,
+            budget, self._account.operations
         )
         logger.debug("Recalculated links for budget %d", budget_id)

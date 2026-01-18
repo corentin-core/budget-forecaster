@@ -10,10 +10,12 @@ from datetime import datetime, timedelta
 from budget_forecaster.account.repository_interface import (
     OperationLinkRepositoryInterface,
 )
+from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
 from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
 from budget_forecaster.operation_range.operation_matcher import OperationMatcher
 from budget_forecaster.operation_range.operation_range import OperationRange
+from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.types import (
     BudgetId,
     IterationDate,
@@ -236,10 +238,8 @@ class OperationLinkService:
 
     def recalculate_links_for_target(
         self,
-        linked_type: LinkType,
-        linked_id: PlannedOperationId | BudgetId,
+        target: PlannedOperation | Budget,
         operations: tuple[HistoricOperation, ...],
-        matcher: OperationMatcher,
     ) -> tuple[OperationLink, ...]:
         """Recalculate heuristic links for a target after it was modified.
 
@@ -249,19 +249,26 @@ class OperationLinkService:
         Manual links are preserved and never overwritten.
 
         Args:
-            linked_type: The type of target (planned operation or budget).
-            linked_id: The ID of the target.
+            target: The planned operation or budget to recalculate links for.
             operations: All operations to consider for linking.
-            matcher: The matcher configured for this target.
 
         Returns:
             Tuple of newly created OperationLinks.
         """
+        if target.id is None:
+            return ()
+
+        linked_type = (
+            LinkType.PLANNED_OPERATION
+            if isinstance(target, PlannedOperation)
+            else LinkType.BUDGET
+        )
+
         # Delete only heuristic links for this target (manual links preserved)
-        self._repository.delete_automatic_links_for_target(linked_type, linked_id)
+        self._repository.delete_automatic_links_for_target(linked_type, target.id)
 
         # Recreate heuristic links
         return self.create_heuristic_links(
             operations,
-            {(linked_type, linked_id): matcher},
+            {(linked_type, target.id): target.matcher},
         )
