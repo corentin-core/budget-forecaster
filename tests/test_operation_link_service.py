@@ -216,8 +216,9 @@ class TestCreateMatcherWithLinks:
 
         matcher = link_service.create_matcher_with_links(monthly_rent_planned_op)
 
-        assert 100 in matcher.operation_links
-        assert matcher.operation_links[100] == datetime(2024, 1, 1)
+        assert len(matcher.operation_links) == 1
+        assert matcher.operation_links[0].operation_unique_id == 100
+        assert matcher.operation_links[0].iteration_date == datetime(2024, 1, 1)
 
 
 class TestCreateHeuristicLinks:

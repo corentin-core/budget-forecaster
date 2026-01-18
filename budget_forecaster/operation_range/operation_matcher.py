@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from typing import Any, Iterable, Iterator
 
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
+from budget_forecaster.operation_range.operation_link import OperationLink
 from budget_forecaster.operation_range.operation_range import OperationRange
 from budget_forecaster.time_range import TimeRangeInterface
 from budget_forecaster.types import IterationDate, OperationId
@@ -17,7 +18,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         description_hints: set[str] | None = None,
         approximation_date_range: timedelta = timedelta(days=5),
         approximation_amount_ratio: float = 0.05,
-        operation_links: dict[OperationId, IterationDate] | None = None,
+        operation_links: tuple[OperationLink, ...] = (),
     ):
         """Initialize the matcher.
 
@@ -26,21 +27,20 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
             description_hints: Keywords that must appear in operation descriptions.
             approximation_date_range: Tolerance for date matching.
             approximation_amount_ratio: Tolerance ratio for amount matching.
-            operation_links: Dict mapping operation ID to iteration date for
-                linked operations. Links take priority over heuristic matching.
-                Links can be manual (user-created) or automatic (heuristic-created).
+            operation_links: Tuple of OperationLinks for this target.
+                Links take priority over heuristic matching.
         """
         self.__operation_range = operation_range
         self.__description_hints = description_hints or set()
         self.__approximation_date_range = approximation_date_range
         self.__approximation_amount_ratio = approximation_amount_ratio
-        self.__operation_links: dict[OperationId, IterationDate] = {}
+        self.__operation_links_tuple = operation_links
+        self.__operation_links_index: dict[OperationId, IterationDate] = {}
 
-        # Validate and copy operation links
-        if operation_links:
-            for op_id, iteration_date in operation_links.items():
-                self.__validate_iteration_date(iteration_date)
-                self.__operation_links[op_id] = iteration_date
+        # Validate and index operation links
+        for link in operation_links:
+            self.__validate_iteration_date(link.iteration_date)
+            self.__operation_links_index[link.operation_unique_id] = link.iteration_date
 
     @property
     def operation_range(self) -> OperationRange:
@@ -63,9 +63,9 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         return self.__approximation_amount_ratio
 
     @property
-    def operation_links(self) -> dict[OperationId, IterationDate]:
-        """Dict mapping operation_unique_id to iteration_date for linked operations."""
-        return self.__operation_links.copy()
+    def operation_links(self) -> tuple[OperationLink, ...]:
+        """Tuple of OperationLinks for this target."""
+        return self.__operation_links_tuple
 
     def __validate_iteration_date(self, iteration_date: IterationDate) -> None:
         """Validate that iteration_date is a valid iteration of the operation range.
@@ -98,7 +98,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
             ValueError: If iteration_date is not a valid iteration.
         """
         self.__validate_iteration_date(iteration_date)
-        self.__operation_links[operation_unique_id] = iteration_date
+        self.__operation_links_index[operation_unique_id] = iteration_date
 
     def remove_operation_link(self, operation_unique_id: OperationId) -> None:
         """Remove a link for an operation.
@@ -106,7 +106,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         Args:
             operation_unique_id: The unique ID of the historic operation.
         """
-        self.__operation_links.pop(operation_unique_id, None)
+        self.__operation_links_index.pop(operation_unique_id, None)
 
     def is_linked(self, operation: HistoricOperation) -> bool:
         """Check if operation has a link to this matcher's operation_range.
@@ -117,7 +117,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         Returns:
             True if the operation has a link, False otherwise.
         """
-        return operation.unique_id in self.__operation_links
+        return operation.unique_id in self.__operation_links_index
 
     def get_iteration_for_operation(
         self, operation: HistoricOperation
@@ -133,7 +133,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         Returns:
             The iteration date if linked, None otherwise.
         """
-        return self.__operation_links.get(operation.unique_id)
+        return self.__operation_links_index.get(operation.unique_id)
 
     def update_params(
         self,
@@ -316,5 +316,5 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
             description_hints=self.description_hints,
             approximation_date_range=self.approximation_date_range,
             approximation_amount_ratio=self.approximation_amount_ratio,
-            operation_links=self.__operation_links if preserve_links else None,
+            operation_links=self.__operation_links_tuple if preserve_links else (),
         )

@@ -7,6 +7,7 @@ from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.amount import Amount
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
+from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
 from budget_forecaster.operation_range.operation_matcher import OperationMatcher
 from budget_forecaster.operation_range.operation_range import OperationRange
 from budget_forecaster.time_range import DailyTimeRange, PeriodicTimeRange, TimeRange
@@ -703,9 +704,15 @@ class TestOperationMatcherOperationLinks:
         assert not matcher_no_link.match(non_matching_operation)
 
         # With link, should match regardless of heuristics
+        link = OperationLink(
+            operation_unique_id=100,
+            linked_type=LinkType.PLANNED_OPERATION,
+            linked_id=1,
+            iteration_date=datetime(2023, 1, 1),
+        )
         matcher_with_link = OperationMatcher(
             operation_range,
-            operation_links={100: datetime(2023, 1, 1)},
+            operation_links=(link,),
         )
         assert matcher_with_link.match(non_matching_operation)
 
@@ -745,10 +752,16 @@ class TestOperationMatcherOperationLinks:
         invalid_date = datetime(2023, 1, 15)  # operation_range starts on Jan 1
 
         # Should raise in constructor
+        invalid_link = OperationLink(
+            operation_unique_id=100,
+            linked_type=LinkType.PLANNED_OPERATION,
+            linked_id=1,
+            iteration_date=invalid_date,
+        )
         with pytest.raises(ValueError, match="Invalid iteration date"):
             OperationMatcher(
                 operation_range,
-                operation_links={100: invalid_date},
+                operation_links=(invalid_link,),
             )
 
         # Should also raise in add_operation_link
@@ -767,9 +780,15 @@ class TestOperationMatcherOperationLinks:
         )
 
         iteration_date = datetime(2023, 1, 1)
+        link = OperationLink(
+            operation_unique_id=102,
+            linked_type=LinkType.PLANNED_OPERATION,
+            linked_id=1,
+            iteration_date=iteration_date,
+        )
         matcher = OperationMatcher(
             operation_range,
-            operation_links={102: iteration_date},
+            operation_links=(link,),
         )
 
         assert matcher.get_iteration_for_operation(operation) == iteration_date
@@ -793,14 +812,21 @@ class TestOperationMatcherOperationLinks:
         but cleared when operation_range changes (because links reference
         iterations of the old operation range).
         """
+        link = OperationLink(
+            operation_unique_id=100,
+            linked_type=LinkType.PLANNED_OPERATION,
+            linked_id=1,
+            iteration_date=datetime(2023, 1, 1),
+        )
         matcher = OperationMatcher(
             operation_range,
-            operation_links={100: datetime(2023, 1, 1)},
+            operation_links=(link,),
         )
 
         # When operation_range is not replaced, links should be preserved
         same_range_matcher = matcher.replace()
-        assert same_range_matcher.operation_links == {100: datetime(2023, 1, 1)}
+        assert len(same_range_matcher.operation_links) == 1
+        assert same_range_matcher.operation_links[0].operation_unique_id == 100
 
         # When operation_range is replaced, links should be cleared
         new_operation_range = OperationRange(
@@ -814,19 +840,21 @@ class TestOperationMatcherOperationLinks:
         # Operation links should be cleared because they referenced the old range
         assert not new_matcher.operation_links
 
-    def test_operation_links_property_returns_copy(
+    def test_operation_links_property_returns_tuple(
         self, operation_range: OperationRange
     ) -> None:
-        """Test that operation_links property returns a copy, not the original dict."""
-        original_links = {100: datetime(2023, 1, 1)}
-        matcher = OperationMatcher(operation_range, operation_links=original_links)
+        """Test that operation_links property returns the original immutable tuple."""
+        link = OperationLink(
+            operation_unique_id=100,
+            linked_type=LinkType.PLANNED_OPERATION,
+            linked_id=1,
+            iteration_date=datetime(2023, 1, 1),
+        )
+        matcher = OperationMatcher(operation_range, operation_links=(link,))
 
-        # Modify the returned dict
-        returned_links = matcher.operation_links
-        returned_links[200] = datetime(2023, 2, 1)
-
-        # Original should not be affected
-        assert 200 not in matcher.operation_links
+        # Should return the same tuple (tuples are immutable, no need to copy)
+        assert matcher.operation_links == (link,)
+        assert len(matcher.operation_links) == 1
 
     def test_heuristic_match_still_works_without_operation_links(
         self,
@@ -872,9 +900,15 @@ class TestOperationMatcherOperationLinks:
 
         # Link to the February iteration specifically
         february_iteration = datetime(2023, 2, 1)
+        link = OperationLink(
+            operation_unique_id=200,
+            linked_type=LinkType.PLANNED_OPERATION,
+            linked_id=1,
+            iteration_date=february_iteration,
+        )
         matcher = OperationMatcher(
             periodic_range,
-            operation_links={200: february_iteration},
+            operation_links=(link,),
         )
 
         # Should match via link
@@ -915,9 +949,15 @@ class TestOperationMatcherOperationLinks:
 
         # User explicitly links to February iteration
         february_iteration = datetime(2023, 2, 15)
+        link = OperationLink(
+            operation_unique_id=201,
+            linked_type=LinkType.PLANNED_OPERATION,
+            linked_id=1,
+            iteration_date=february_iteration,
+        )
         matcher = OperationMatcher(
             periodic_range,
-            operation_links={201: february_iteration},
+            operation_links=(link,),
         )
 
         # Should match and return the user-specified iteration
@@ -960,13 +1000,29 @@ class TestOperationMatcherOperationLinks:
             date=datetime(2023, 1, 14),
         )
 
+        links = (
+            OperationLink(
+                operation_unique_id=301,
+                linked_type=LinkType.PLANNED_OPERATION,
+                linked_id=1,
+                iteration_date=datetime(2023, 1, 1),  # Week 1
+            ),
+            OperationLink(
+                operation_unique_id=302,
+                linked_type=LinkType.PLANNED_OPERATION,
+                linked_id=1,
+                iteration_date=datetime(2023, 1, 8),  # Week 2
+            ),
+            OperationLink(
+                operation_unique_id=303,
+                linked_type=LinkType.PLANNED_OPERATION,
+                linked_id=1,
+                iteration_date=datetime(2023, 1, 15),  # Week 3
+            ),
+        )
         matcher = OperationMatcher(
             periodic_range,
-            operation_links={
-                301: datetime(2023, 1, 1),  # Week 1
-                302: datetime(2023, 1, 8),  # Week 2
-                303: datetime(2023, 1, 15),  # Week 3
-            },
+            operation_links=links,
         )
 
         # All should match

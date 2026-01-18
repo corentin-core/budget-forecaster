@@ -139,13 +139,9 @@ class OperationLinkService:
         Returns:
             A configured OperationMatcher with links loaded.
         """
-        links = self.load_links_for_target(target)
-        operation_links = {
-            link.operation_unique_id: link.iteration_date for link in links
-        }
         return OperationMatcher(
             operation_range=target,
-            operation_links=operation_links,
+            operation_links=self.load_links_for_target(target),
             approximation_date_range=target.matcher.approximation_date_range,
             approximation_amount_ratio=target.matcher.approximation_amount_ratio,
             description_hints=target.matcher.description_hints,
