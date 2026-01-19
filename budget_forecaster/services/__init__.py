@@ -11,6 +11,7 @@ from budget_forecaster.services.import_service import (
     ImportService,
     ImportSummary,
 )
+from budget_forecaster.services.operation_link_service import OperationLinkService
 from budget_forecaster.services.operation_service import (
     OperationFilter,
     OperationService,
@@ -22,5 +23,6 @@ __all__ = [
     "ImportService",
     "ImportSummary",
     "OperationFilter",
+    "OperationLinkService",
     "OperationService",
 ]

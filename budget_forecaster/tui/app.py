@@ -20,6 +20,7 @@ from budget_forecaster.services import (
     ForecastService,
     ImportService,
     OperationFilter,
+    OperationLinkService,
     OperationService,
 )
 from budget_forecaster.tui.modals import (
@@ -164,14 +165,19 @@ class BudgetApp(App[None]):
         self._persistent_account.load()
 
         self._operation_service = OperationService(self._persistent_account)
+        operation_link_service = OperationLinkService(
+            self._persistent_account.repository
+        )
         self._import_service = ImportService(
             self._persistent_account,
             self._config.inbox_path,
+            operation_link_service,
             self._config.inbox_exclude_patterns,
         )
         self._forecast_service = ForecastService(
             self._persistent_account.account,
             self._persistent_account.repository,
+            operation_link_service,
         )
 
     @property
