@@ -5,6 +5,15 @@ from datetime import datetime
 OperationId = int
 """Unique identifier for a historic operation."""
 
+PlannedOperationId = int
+"""Unique identifier for a planned operation."""
+
+BudgetId = int
+"""Unique identifier for a budget."""
+
+OperationLinkId = int
+"""Unique identifier for an operation link."""
+
 IterationDate = datetime
 """Date identifying a specific iteration of a planned operation or budget."""
 

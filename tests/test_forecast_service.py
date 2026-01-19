@@ -20,6 +20,7 @@ from budget_forecaster.services.forecast_service import (
     ForecastService,
     MonthlySummary,
 )
+from budget_forecaster.services.operation_link_service import OperationLinkService
 from budget_forecaster.time_range import DailyTimeRange, TimeRange
 from budget_forecaster.types import Category
 
@@ -51,11 +52,22 @@ def repository(temp_db_path: Path) -> RepositoryInterface:
 
 
 @pytest.fixture
-def service(mock_account: Account, repository: RepositoryInterface) -> ForecastService:
+def operation_link_service(repository: RepositoryInterface) -> OperationLinkService:
+    """Create an OperationLinkService for testing."""
+    return OperationLinkService(repository)
+
+
+@pytest.fixture
+def service(
+    mock_account: Account,
+    repository: RepositoryInterface,
+    operation_link_service: OperationLinkService,
+) -> ForecastService:
     """Create a ForecastService with mock data."""
     return ForecastService(
         account=mock_account,
         repository=repository,
+        operation_link_service=operation_link_service,
     )
 
 
@@ -77,7 +89,10 @@ class TestLoadForecast:
         assert len(forecast.budgets) == 0
 
     def test_loads_budgets_from_db(
-        self, mock_account: Account, repository: RepositoryInterface
+        self,
+        mock_account: Account,
+        repository: RepositoryInterface,
+        operation_link_service: OperationLinkService,
     ) -> None:
         """load_forecast loads budgets from database."""
         # Add a budget to the database
@@ -90,14 +105,21 @@ class TestLoadForecast:
         )
         repository.upsert_budget(budget)
 
-        service = ForecastService(account=mock_account, repository=repository)
+        service = ForecastService(
+            account=mock_account,
+            repository=repository,
+            operation_link_service=operation_link_service,
+        )
         forecast = service.load_forecast()
 
         assert len(forecast.budgets) == 1
         assert forecast.budgets[0].description == "Test Budget"
 
     def test_loads_planned_operations_from_db(
-        self, mock_account: Account, repository: RepositoryInterface
+        self,
+        mock_account: Account,
+        repository: RepositoryInterface,
+        operation_link_service: OperationLinkService,
     ) -> None:
         """load_forecast loads planned operations from database."""
         # Add a planned operation to the database
@@ -110,7 +132,11 @@ class TestLoadForecast:
         )
         repository.upsert_planned_operation(op)
 
-        service = ForecastService(account=mock_account, repository=repository)
+        service = ForecastService(
+            account=mock_account,
+            repository=repository,
+            operation_link_service=operation_link_service,
+        )
         forecast = service.load_forecast()
 
         assert len(forecast.operations) == 1
@@ -121,10 +147,17 @@ class TestReloadForecast:
     """Tests for reload_forecast method."""
 
     def test_invalidates_cached_forecast(
-        self, mock_account: Account, repository: RepositoryInterface
+        self,
+        mock_account: Account,
+        repository: RepositoryInterface,
+        operation_link_service: OperationLinkService,
     ) -> None:
         """reload_forecast invalidates cached forecast."""
-        service = ForecastService(account=mock_account, repository=repository)
+        service = ForecastService(
+            account=mock_account,
+            repository=repository,
+            operation_link_service=operation_link_service,
+        )
 
         # Load initial forecast
         service.load_forecast()

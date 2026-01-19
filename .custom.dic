@@ -26,6 +26,7 @@ kwargs
 lifecycle
 matcher
 matcher's
+matchers
 minification
 minifies
 mtime
@@ -33,6 +34,7 @@ mtimes
 mypy
 params
 paribas
+pre
 prévu
 relativedelta
 réel
@@ -44,6 +46,7 @@ tui
 ui
 uncategorized
 unicode
+unlinked
 upsert
 upserting
 whitespace
