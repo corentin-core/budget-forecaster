@@ -38,7 +38,20 @@ gh issue view <number>
 
 **Present this summary to the user before continuing.**
 
-#### Step 1.2: Read relevant code and check coherence (CRITICAL)
+#### Step 1.2: Check parent design (if applicable)
+
+If the issue mentions "Related to #X" or "Part of #X", **read the parent issue first**.
+The parent issue contains the overall design and specifies which methods/classes are
+actually needed. Don't add methods not in the design.
+
+```bash
+# Check if there's a parent design issue
+gh issue view <number> | grep -i "related to\|part of\|depends on"
+# If found, read it
+gh issue view <parent-number>
+```
+
+#### Step 1.3: Read relevant code and check coherence (CRITICAL)
 
 Check existing patterns in the codebase:
 
@@ -237,6 +250,7 @@ Phase 5: CREATE PR
 ## Tips
 
 - **When in doubt, check the design** - Don't add things not in the spec
+- **Read parent issues** - If "Related to #X", the parent has the full design
 - **Read before you code** - 10 minutes reading saves hours of rework
 - **Tests are deliverables** - A feature without tests is not complete
 - **Mark todos as you go** - Shows progress and ensures nothing is missed
