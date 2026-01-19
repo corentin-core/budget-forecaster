@@ -85,29 +85,6 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
                 f"'{self.__operation_range.description}'"
             )
 
-    def add_operation_link(
-        self, operation_unique_id: OperationId, iteration_date: IterationDate
-    ) -> None:
-        """Add a link for an operation.
-
-        Args:
-            operation_unique_id: The unique ID of the historic operation.
-            iteration_date: The date of the specific iteration to link to.
-
-        Raises:
-            ValueError: If iteration_date is not a valid iteration.
-        """
-        self.__validate_iteration_date(iteration_date)
-        self.__operation_links_index[operation_unique_id] = iteration_date
-
-    def remove_operation_link(self, operation_unique_id: OperationId) -> None:
-        """Remove a link for an operation.
-
-        Args:
-            operation_unique_id: The unique ID of the historic operation.
-        """
-        self.__operation_links_index.pop(operation_unique_id, None)
-
     def is_linked(self, operation: HistoricOperation) -> bool:
         """Check if operation has a link to this matcher's operation_range.
 

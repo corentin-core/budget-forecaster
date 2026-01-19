@@ -716,34 +716,6 @@ class TestOperationMatcherOperationLinks:
         )
         assert matcher_with_link.match(non_matching_operation)
 
-    def test_add_and_remove_operation_link(
-        self, operation_range: OperationRange
-    ) -> None:
-        """Test adding and removing operation links dynamically."""
-        operation = HistoricOperation(
-            unique_id=101,
-            description="Test operation",
-            amount=Amount(500.0),
-            category=Category.OTHER,
-            date=datetime(2023, 6, 15),
-        )
-
-        matcher = OperationMatcher(operation_range)
-
-        # Initially no link
-        assert not matcher.is_linked(operation)
-        assert not matcher.match(operation)
-
-        # Add link
-        matcher.add_operation_link(101, datetime(2023, 1, 1))
-        assert matcher.is_linked(operation)
-        assert matcher.match(operation)
-
-        # Remove link
-        matcher.remove_operation_link(101)
-        assert not matcher.is_linked(operation)
-        assert not matcher.match(operation)
-
     def test_invalid_iteration_date_raises_error(
         self, operation_range: OperationRange
     ) -> None:
@@ -763,11 +735,6 @@ class TestOperationMatcherOperationLinks:
                 operation_range,
                 operation_links=(invalid_link,),
             )
-
-        # Should also raise in add_operation_link
-        matcher = OperationMatcher(operation_range)
-        with pytest.raises(ValueError, match="Invalid iteration date"):
-            matcher.add_operation_link(100, invalid_date)
 
     def test_get_iteration_for_operation(self, operation_range: OperationRange) -> None:
         """Test getting the iteration date for a linked operation."""
