@@ -49,6 +49,29 @@ python -m budget_forecaster.main -c config.yaml categorize
   `list[T]` for function return values (tuples are immutable and signal that the caller
   shouldn't modify the result)
 
+## Design principles
+
+- **Check the design before implementing** - Read linked issues (`Related to #X`) to
+  understand the full feature design. Don't add methods not specified in the design.
+
+- **Prefer domain objects over primitives** - Use `tuple[OperationLink, ...]` instead of
+  `dict[OperationId, IterationDate]`. Domain objects are more expressive and avoid
+  transformations.
+
+- **Single source of truth** - Don't maintain two representations of the same data
+  (e.g., a tuple AND an index dict). Pick one and derive the other if needed.
+
+- **Immutability by default** - Prefer immutable objects when the design allows. If an
+  object receives data at construction and doesn't need mutation methods, don't add
+  them.
+
+- **Simplify method signatures** - Accept domain objects directly
+  (`target: PlannedOperation | Budget`) rather than their decomposed parts
+  (`linked_type, linked_id, matcher`).
+
+- **Avoid redundant computations** - If you compute something in a loop, store it in the
+  result structure rather than recomputing it later.
+
 ## Data files (not versioned)
 
 - `*.xlsx` - BNP bank statements
@@ -84,8 +107,10 @@ When addressing PR review comments:
   `gh api repos/{owner}/{repo}/pulls/{pr}/comments/{id}/replies -X POST -f body="..."`
 - **Never post global comments** summarizing changes - each comment deserves its own
   inline response
-- Reference commit hashes and issue numbers in replies (e.g., "✅ Fixed in commit
-  abc123" or "📝 Issue created: #42")
+- **Prefix replies with `🤖 Claude:`** to distinguish AI-generated responses from user
+  comments (since both appear under the same GitHub account)
+- Reference commit hashes and issue numbers in replies (e.g., "🤖 Claude: ✅ Fixed in
+  commit abc123" or "🤖 Claude: 📝 Issue created: #42")
 
 ## Creating GitHub issues
 
