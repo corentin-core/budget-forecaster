@@ -24,10 +24,11 @@ git diff --staged
 4. Create the commit:
 
 ```bash
-git commit -m "type: description
-
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+git commit -m "type: description"
 ```
+
+**Note**: Do NOT add `Co-Authored-By` lines (per project conventions in
+CLAUDE.local.md).
 
 5. Show the result with `git log -1`
 
