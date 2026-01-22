@@ -15,7 +15,6 @@ from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.time_range import (
     DailyTimeRange,
     PeriodicDailyTimeRange,
-    PeriodicTimeRange,
     TimeRange,
 )
 from budget_forecaster.types import Category
@@ -42,44 +41,52 @@ def account() -> Account:
 
 
 class TestForecastActualizer:
-    """Tests for the ForecastActualizer class."""
+    """Tests for the ForecastActualizer class without operation links."""
 
     def test_no_operations(self, account: Account) -> None:
-        """
-        In this test, we have no planned operations.
-        """
+        """Empty forecast remains empty."""
         forecast = Forecast(operations=(), budgets=())
         actualizer = ForecastActualizer(account)
         actualized_forecast = actualizer(forecast)
         assert not actualized_forecast.operations
         assert not actualized_forecast.budgets
 
-    def test_late_operations(self, account: Account) -> None:
+    def test_one_time_past_operation_without_links_is_removed(
+        self, account: Account
+    ) -> None:
         """
-        In this test, the last occurrences of the planned operation are late.
-        The operations are postponed to the next period and
-        the next period is updated to start after the postponed operations.
+        A one-time planned operation in the past/present without links is removed
+        because there's no next period.
         """
-        # We add one executed operation to the account to check that it is not considered as late
-        account = account._replace(
-            operations=(
-                account.operations
-                + (
-                    HistoricOperation(
-                        unique_id=2,
-                        description="Not late operation",
-                        amount=Amount(100.0, "EUR"),
-                        category=Category.OTHER,
-                        date=datetime(2023, 1, 1),
-                    ),
-                )
-            )
-        )
         forecast = Forecast(
             operations=(
                 PlannedOperation(
                     record_id=1,
-                    description="Late Operation",
+                    description="Past Operation",
+                    amount=Amount(50.0, "EUR"),
+                    category=Category.GROCERIES,
+                    time_range=DailyTimeRange(datetime(2023, 1, 1)),
+                ),
+            ),
+            budgets=(),
+        )
+        actualizer = ForecastActualizer(account)
+        actualized_forecast = actualizer(forecast)
+        # One-time operation with no next period is removed
+        assert not actualized_forecast.operations
+
+    def test_periodic_past_operation_without_links_advances_to_next_period(
+        self, account: Account
+    ) -> None:
+        """
+        A periodic planned operation in the past without links advances to the
+        next period after the balance date.
+        """
+        forecast = Forecast(
+            operations=(
+                PlannedOperation(
+                    record_id=1,
+                    description="Periodic Operation",
                     amount=Amount(100.0, "EUR"),
                     category=Category.OTHER,
                     time_range=PeriodicDailyTimeRange(
@@ -91,70 +98,23 @@ class TestForecastActualizer:
         )
         actualizer = ForecastActualizer(account)
         actualized_forecast = actualizer(forecast)
-        # We have 5 late operations and the next period of the planned operation
-        assert len(actualized_forecast.operations) == 6
-        for _ in range(5):
-            planned_operation = actualized_forecast.operations[0]
-            assert isinstance(planned_operation.time_range, DailyTimeRange)
-            assert planned_operation.description == "Late Operation"
-            assert planned_operation.amount == 100.0
-            assert planned_operation.time_range.initial_date == datetime(2023, 1, 2)
-        planned_operation = actualized_forecast.operations[5]
-        assert isinstance(planned_operation.time_range, PeriodicDailyTimeRange)
-        assert planned_operation.description == "Late Operation"
-        assert planned_operation.time_range.initial_date == datetime(2023, 1, 3)
-        assert planned_operation.time_range.last_date == datetime.max
+        # Without links, operation advances to next period after balance_date
+        assert len(actualized_forecast.operations) == 1
+        op = actualized_forecast.operations[0]
+        assert op.time_range.initial_date == datetime(2023, 1, 2)
 
-    def test_executed_operations(self, account: Account) -> None:
+    def test_future_operation_without_links_is_kept(self, account: Account) -> None:
         """
-        In this test, the planned operation is executed.
+        A planned operation in the future without links is kept as-is.
         """
         forecast = Forecast(
             operations=(
                 PlannedOperation(
                     record_id=1,
-                    description="Executed Operation",
-                    amount=Amount(50.0, "EUR"),
-                    category=Category.GROCERIES,
-                    time_range=DailyTimeRange(datetime(2023, 1, 1)),
-                ),
-            ),
-            budgets=(),
-        )
-        actualizer = ForecastActualizer(account)
-        actualized_forecast = actualizer(forecast)
-        assert not actualized_forecast.operations
-
-    def test_anticipated_operations(self, account: Account) -> None:
-        """
-        In this test, several operations matches future time ranges of the planned operation.
-        We consider as executed all operations that match the planned operation and
-        close to the balance date.
-        The next period of the planned operation is updated to start after the
-        last executed operation.
-        """
-        account = account._replace(
-            operations=tuple(
-                HistoricOperation(
-                    unique_id=id,
-                    description="Executed Operation",
-                    amount=Amount(50.0, "EUR"),
-                    category=Category.GROCERIES,
-                    date=datetime(2023, 1, 1),
-                )
-                for id in range(10)
-            )
-        )
-        forecast = Forecast(
-            operations=(
-                PlannedOperation(
-                    record_id=1,
-                    description="Anticipated Operation",
-                    amount=Amount(50.0, "EUR"),
-                    category=Category.GROCERIES,
-                    time_range=PeriodicDailyTimeRange(
-                        datetime(2023, 1, 2), relativedelta(days=1)
-                    ),
+                    description="Future Operation",
+                    amount=Amount(100.0, "EUR"),
+                    category=Category.OTHER,
+                    time_range=DailyTimeRange(datetime(2023, 1, 5)),
                 ),
             ),
             budgets=(),
@@ -162,83 +122,37 @@ class TestForecastActualizer:
         actualizer = ForecastActualizer(account)
         actualized_forecast = actualizer(forecast)
         assert len(actualized_forecast.operations) == 1
-        planned_operation = actualized_forecast.operations[0]
-        assert planned_operation.description == "Anticipated Operation"
-        assert isinstance(planned_operation.time_range, PeriodicDailyTimeRange)
-        # Only the operations within the approximation date range are considered
-        # The next period of the planned operation is updated to start after
-        # the last executed operation
-        assert planned_operation.time_range.initial_date == datetime(2023, 1, 7)
-        assert planned_operation.time_range.last_date == datetime.max
+        op = actualized_forecast.operations[0]
+        assert op.time_range.initial_date == datetime(2023, 1, 5)
 
-    def test_budgets(self, account: Account) -> None:
+    def test_budget_without_links_is_not_consumed(self, account: Account) -> None:
         """
-        In this test we have 3 budgets and one executed operation of 50.0 EUR.
-        The first budget is a one-time operation that is completely
-        consumed by the executed operation.
-        The second budget is a periodic operation that is partially
-        consumed by the executed operation.
-        The remaining of the second budget is assigned to the next period.
-        The third budget is a one-time operation that is not
-        consumed by the executed operation.
+        A budget without links is not consumed by operations, even if they match
+        by category. The budget amount stays intact.
         """
         forecast = Forecast(
             operations=(),
             budgets=(
                 Budget(
                     record_id=1,
-                    description="Budget Operation 1",
-                    amount=Amount(10.0, "EUR"),
+                    description="Groceries Budget",
+                    amount=Amount(100.0, "EUR"),
                     category=Category.GROCERIES,
                     time_range=TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
-                ),
-                Budget(
-                    record_id=2,
-                    description="Budget Operation 2",
-                    amount=Amount(100.0, "EUR"),
-                    category=Category.GROCERIES,
-                    time_range=PeriodicTimeRange(
-                        TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
-                        relativedelta(months=1),
-                    ),
-                ),
-                Budget(
-                    record_id=3,
-                    description="Budget Operation 3",
-                    amount=Amount(100.0, "EUR"),
-                    category=Category.GROCERIES,
-                    time_range=TimeRange(datetime(2023, 2, 1), relativedelta(months=1)),
                 ),
             ),
         )
         actualizer = ForecastActualizer(account)
         actualized_forecast = actualizer(forecast)
-        assert len(actualized_forecast.budgets) == 3
-        budget_1 = actualized_forecast.budgets[0]
-        assert budget_1.description == "Budget Operation 2"
-        assert budget_1.time_range.initial_date == datetime(2023, 1, 2)
-        assert budget_1.time_range.last_date == datetime(2023, 1, 31)
-        # budget of Operation 1 is completely consumed
-        # the remaining of the operation is assigned to Operation 2
-        assert budget_1.amount == 60.0
-        budget_2 = actualized_forecast.budgets[1]
-        assert budget_2.description == "Budget Operation 2"
-        assert budget_2.time_range.initial_date == datetime(2023, 2, 1)
-        assert budget_2.time_range.last_date == datetime.max
-        assert budget_2.amount == 100.0
-        budget_3 = actualized_forecast.budgets[2]
-        assert budget_3.description == "Budget Operation 3"
-        assert budget_3.time_range.initial_date == datetime(2023, 2, 1)
-        assert budget_3.time_range.last_date == datetime(2023, 2, 28)
-        assert budget_3.amount == 100.0
+        assert len(actualized_forecast.budgets) == 1
+        budget = actualized_forecast.budgets[0]
+        # Budget is NOT consumed without links
+        assert budget.amount == 100.0
+        # But the time range is adjusted to start from tomorrow
+        assert budget.time_range.initial_date == datetime(2023, 1, 2)
 
-    def test_expired_budget(self, account: Account) -> None:
-        """
-        In this test we have 2 budgets, one of them is expired.
-        The expired budget is discarded and the other budget is partially
-        consumed by the executed operation.
-        The remaining of the budget is assigned to the next period.
-        """
+    def test_expired_budget_is_discarded(self, account: Account) -> None:
+        """An expired budget is discarded regardless of links."""
         forecast = Forecast(
             operations=(),
             budgets=(
@@ -249,63 +163,32 @@ class TestForecastActualizer:
                     category=Category.GROCERIES,
                     time_range=TimeRange(datetime(2022, 12, 31), relativedelta(days=1)),
                 ),
+            ),
+        )
+        actualizer = ForecastActualizer(account)
+        actualized_forecast = actualizer(forecast)
+        assert not actualized_forecast.budgets
+
+    def test_future_budget_without_links_is_kept(self, account: Account) -> None:
+        """A future budget without links is kept as-is."""
+        forecast = Forecast(
+            operations=(),
+            budgets=(
                 Budget(
-                    record_id=2,
-                    description="Budget Operation",
+                    record_id=1,
+                    description="Future Budget",
                     amount=Amount(100.0, "EUR"),
                     category=Category.GROCERIES,
-                    time_range=TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+                    time_range=TimeRange(datetime(2023, 2, 1), relativedelta(months=1)),
                 ),
             ),
         )
         actualizer = ForecastActualizer(account)
         actualized_forecast = actualizer(forecast)
         assert len(actualized_forecast.budgets) == 1
-        assert actualized_forecast.budgets[0].description == "Budget Operation"
-        assert actualized_forecast.budgets[0].time_range.initial_date == datetime(
-            2023, 1, 2
-        )
-        assert actualized_forecast.budgets[0].time_range.last_date == datetime(
-            2023, 1, 31
-        )
-        assert actualized_forecast.budgets[0].amount == 50.0
-
-    def test_budget_last_day(self, account: Account) -> None:
-        """
-        Budget in their last day can be assigned to operations but are not
-        reported on future periods.
-        """
-        budget_1 = Budget(
-            record_id=1,
-            description="Expired Budget",
-            amount=Amount(10.0, "EUR"),
-            category=Category.GROCERIES,
-            time_range=TimeRange(datetime(2023, 1, 1), relativedelta(days=1)),
-        )
-        budget_2 = Budget(
-            record_id=2,
-            description="Budget Operation",
-            amount=Amount(50.0, "EUR"),
-            category=Category.GROCERIES,
-            time_range=TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
-        )
-
-        for budgets in (
-            (budget_1, budget_2),
-            (budget_2, budget_1),
-        ):
-            forecast = Forecast(operations=(), budgets=budgets)
-            actualizer = ForecastActualizer(account)
-            actualized_forecast = actualizer(forecast)
-            assert len(actualized_forecast.budgets) == 1
-            assert actualized_forecast.budgets[0].description == "Budget Operation"
-            assert actualized_forecast.budgets[0].time_range.initial_date == datetime(
-                2023, 1, 2
-            )
-            assert actualized_forecast.budgets[0].time_range.last_date == datetime(
-                2023, 1, 31
-            )
-            assert actualized_forecast.budgets[0].amount == 10.0
+        budget = actualized_forecast.budgets[0]
+        assert budget.amount == 100.0
+        assert budget.time_range.initial_date == datetime(2023, 2, 1)
 
 
 class TestForecastActualizerWithLinks:
@@ -464,39 +347,51 @@ class TestForecastActualizerWithLinks:
         updated_budget = actualized_forecast.budgets[0]
         assert updated_budget.amount == 70.0
 
-    def test_no_links_uses_matcher_behavior(self, account: Account) -> None:
+    def test_links_for_future_iterations_do_not_count_as_executed(
+        self, account: Account
+    ) -> None:
         """
-        When no operation links are provided, the matcher-based logic is used.
-        This ensures backwards compatibility.
+        Links for future iterations (after balance_date) don't count as executed.
+        The planned operation is kept as-is.
         """
-        forecast = Forecast(
-            operations=(
-                PlannedOperation(
-                    record_id=1,
-                    description="Executed Operation",
-                    amount=Amount(50.0, "EUR"),
-                    category=Category.GROCERIES,
-                    time_range=DailyTimeRange(datetime(2023, 1, 1)),
-                ),
+        planned_op = PlannedOperation(
+            record_id=1,
+            description="Future Linked Operation",
+            amount=Amount(50.0, "EUR"),
+            category=Category.GROCERIES,
+            time_range=PeriodicDailyTimeRange(
+                datetime(2023, 1, 1), relativedelta(days=1)
             ),
-            budgets=(),
         )
 
-        # No links passed (default empty tuple)
-        actualizer = ForecastActualizer(account)
+        # Link for a future iteration (Jan 5, after balance_date Jan 1)
+        links = (
+            OperationLink(
+                operation_unique_id=1,
+                linked_type=LinkType.PLANNED_OPERATION,
+                linked_id=1,
+                iteration_date=datetime(2023, 1, 5),
+                is_manual=False,
+            ),
+        )
+
+        forecast = Forecast(operations=(planned_op,), budgets=())
+        actualizer = ForecastActualizer(account, operation_links=links)
         actualized_forecast = actualizer(forecast)
 
-        # Matcher-based logic should detect the executed operation
-        assert not actualized_forecast.operations
+        # Future links don't count as executed, so operation advances to next period
+        assert len(actualized_forecast.operations) == 1
+        op = actualized_forecast.operations[0]
+        # No past iterations, operation is not future, so advances to Jan 2
+        assert op.time_range.initial_date == datetime(2023, 1, 2)
 
-    def test_links_without_matching_planned_operation_id(
+    def test_links_without_matching_planned_operation_id_are_ignored(
         self, account: Account
     ) -> None:
         """
         Links for non-existent planned operation IDs are ignored.
-        Planned operations without links fall back to matcher behavior.
+        The planned operation without matching links is treated as having no links.
         """
-        # Use a different category and amount to avoid matching account operations
         planned_op = PlannedOperation(
             record_id=5,
             description="Unrelated Operation",
@@ -520,6 +415,9 @@ class TestForecastActualizerWithLinks:
         actualizer = ForecastActualizer(account, operation_links=links)
         actualized_forecast = actualizer(forecast)
 
-        # The planned operation should still be in the forecast (is_future)
+        # The planned operation is future, so it's kept as-is
         assert len(actualized_forecast.operations) == 1
         assert actualized_forecast.operations[0].description == "Unrelated Operation"
+        assert actualized_forecast.operations[0].time_range.initial_date == datetime(
+            2023, 1, 2
+        )
