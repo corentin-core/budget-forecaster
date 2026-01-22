@@ -15,6 +15,7 @@ from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.time_range import (
     DailyTimeRange,
     PeriodicDailyTimeRange,
+    PeriodicTimeRange,
     TimeRange,
 )
 from budget_forecaster.types import Category
@@ -421,3 +422,78 @@ class TestForecastActualizerWithLinks:
         assert actualized_forecast.operations[0].time_range.initial_date == datetime(
             2023, 1, 2
         )
+
+    def test_budget_links_from_other_iterations_do_not_consume_current_budget(
+        self, account: Account
+    ) -> None:
+        """
+        Regression test: Budget links are indexed by (budget_id, iteration_date).
+        Operations linked to a different iteration should not consume the current
+        month's budget.
+        """
+        # Account with balance_date in January
+        account_jan = account._replace(
+            balance_date=datetime(2023, 1, 15),
+            operations=(
+                # Operation from December, linked to December's budget iteration
+                HistoricOperation(
+                    unique_id=1,
+                    description="December Groceries",
+                    amount=Amount(-200.0, "EUR"),
+                    category=Category.GROCERIES,
+                    date=datetime(2022, 12, 15),
+                ),
+                # Operation from January, linked to January's budget iteration
+                HistoricOperation(
+                    unique_id=2,
+                    description="January Groceries",
+                    amount=Amount(-30.0, "EUR"),
+                    category=Category.GROCERIES,
+                    date=datetime(2023, 1, 10),
+                ),
+            ),
+        )
+
+        # Monthly budget: -100 EUR per month
+        budget = Budget(
+            record_id=1,
+            description="Groceries Budget",
+            amount=Amount(-100.0, "EUR"),
+            category=Category.GROCERIES,
+            time_range=PeriodicTimeRange(
+                TimeRange(datetime(2022, 12, 1), relativedelta(months=1)),
+                relativedelta(months=1),
+            ),
+        )
+
+        # Links for both operations to the same budget, but different iterations
+        links = (
+            OperationLink(
+                operation_unique_id=1,
+                linked_type=LinkType.BUDGET,
+                linked_id=1,
+                iteration_date=datetime(2022, 12, 1),  # December iteration
+                is_manual=False,
+            ),
+            OperationLink(
+                operation_unique_id=2,
+                linked_type=LinkType.BUDGET,
+                linked_id=1,
+                iteration_date=datetime(2023, 1, 1),  # January iteration
+                is_manual=False,
+            ),
+        )
+
+        forecast = Forecast(operations=(), budgets=(budget,))
+        actualizer = ForecastActualizer(account_jan, operation_links=links)
+        actualized_forecast = actualizer(forecast)
+
+        # January's budget should only be consumed by January's operation (-30)
+        # leaving -70 EUR remaining, NOT -100 + 200 + 30 = +130 (if all ops consumed)
+        january_budgets = [
+            b
+            for b in actualized_forecast.budgets
+            if b.time_range.initial_date.month == 1
+        ]
+        assert len(january_budgets) == 1
+        assert january_budgets[0].amount == -70.0  # -100 - (-30) = -70

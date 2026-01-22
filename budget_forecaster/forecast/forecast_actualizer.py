@@ -1,4 +1,5 @@
 """Module to actualize a forecast with actual data."""
+import logging
 from datetime import datetime, timedelta
 from typing import Final, Iterable
 
@@ -18,6 +19,8 @@ from budget_forecaster.types import (
     PlannedOperationId,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class ForecastActualizer:  # pylint: disable=too-few-public-methods
     """Actualize a forecast with actual data."""
@@ -33,7 +36,9 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         self.__operation_links: Final = operation_links
         # Internal indexes built from operation_links
         self.__linked_iterations: dict[PlannedOperationId, set[IterationDate]] = {}
-        self.__linked_op_ids: dict[BudgetId, set[OperationId]] = {}
+        self.__linked_op_ids: dict[
+            tuple[BudgetId, IterationDate], set[OperationId]
+        ] = {}
         self.__build_indexes()
 
     def __build_indexes(self) -> None:
@@ -45,9 +50,16 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
                         link.iteration_date
                     )
                 case LinkType.BUDGET:
-                    self.__linked_op_ids.setdefault(link.linked_id, set()).add(
+                    key = (link.linked_id, link.iteration_date)
+                    self.__linked_op_ids.setdefault(key, set()).add(
                         link.operation_unique_id
                     )
+        logger.debug(
+            "Built indexes from %d links: %d planned op entries, %d budget entries",
+            len(self.__operation_links),
+            len(self.__linked_iterations),
+            len(self.__linked_op_ids),
+        )
 
     def __call__(self, forecast: Forecast) -> Forecast:
         self.__not_assigned_operations = {
@@ -77,11 +89,13 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             return set()
         return self.__linked_iterations.get(planned_operation.id, set())
 
-    def __get_linked_operation_ids(self, budget: Budget) -> set[OperationId]:
-        """Get operation IDs linked to a budget."""
+    def __get_linked_operation_ids(
+        self, budget: Budget, iteration_date: IterationDate
+    ) -> set[OperationId]:
+        """Get operation IDs linked to a budget for a specific iteration."""
         if budget.id is None:
             return set()
-        return self.__linked_op_ids.get(budget.id, set())
+        return self.__linked_op_ids.get((budget.id, iteration_date), set())
 
     def __actualize_planned_operation_with_links(
         self, planned_operation: PlannedOperation, linked_iterations: set[datetime]
@@ -149,6 +163,12 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         self, budget: Budget, linked_op_ids: set[OperationId]
     ) -> Budget | None:
         """Actualize a budget using linked operations as source of truth."""
+        logger.debug(
+            "Actualizing budget %s (%s) with %d linked operations",
+            budget.id,
+            budget.category,
+            len(linked_op_ids),
+        )
         updated_amount = budget.amount
         operations_by_id = {op.unique_id: op for op in self.__account.operations}
 
@@ -180,11 +200,20 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
                 amount=Amount(consumed_amount, operation.currency)
             )
             if updated_amount == 0.0:
+                logger.debug("Budget %s fully consumed", budget.id)
                 return None
 
         if updated_amount == 0.0:
+            logger.debug("Budget %s fully consumed", budget.id)
             return None
 
+        consumed_total = budget.amount - updated_amount
+        logger.debug(
+            "Budget %s: consumed %.2f, remaining %.2f",
+            budget.id,
+            consumed_total,
+            updated_amount,
+        )
         new_budget_start = self.__account.balance_date + timedelta(days=1)
         if new_budget_start > budget.time_range.last_date:
             return None
@@ -214,8 +243,11 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             if current_time_range is not None:
                 # create a budget for the current period and update it
                 current_budget = budget.replace(time_range=current_time_range)
+                iteration_date = current_time_range.initial_date
 
-                linked_op_ids = self.__get_linked_operation_ids(current_budget)
+                linked_op_ids = self.__get_linked_operation_ids(
+                    current_budget, iteration_date
+                )
                 new_budget = self.__actualize_budget_with_links(
                     current_budget, linked_op_ids
                 )
