@@ -45,9 +45,8 @@ python -m budget_forecaster.main -c config.yaml categorize
 - pytest tests for any new feature
 - No dependencies not listed in setup.py
 - Always run tests (`pytest tests/`) before committing changes
-- **Prefer tuples over lists for return types** - Use `tuple[T, ...]` instead of
-  `list[T]` for function return values (tuples are immutable and signal that the caller
-  shouldn't modify the result)
+
+See `.claude/rules/python-quality.md` for detailed patterns and examples.
 
 ## Design principles
 
@@ -90,14 +89,10 @@ python -m budget_forecaster.main -c config.yaml categorize
 ## Git workflow
 
 - **NEVER commit directly to main** - always create a feature branch and submit a PR
-- When working on an issue:
-  1. Create a branch from up-to-date main:
-     `git checkout main && git pull && git checkout -b issue/<number>-<short-description>`
-  2. Make commits on the feature branch
-  3. Push the branch and create a PR with `gh pr create`
-- **Never use `git add -A` or `git add .`** - always stage files explicitly to avoid
-  committing untracked files (venv, data files, etc.)
-- Use `git add <file1> <file2>` to stage only the files you intend to commit
+- **Never use `git add -A` or `git add .`** - always stage files explicitly
+
+See `.claude/rules/git-conventions.md` for branch naming, commit message format, and
+detailed workflow.
 
 ## PR review workflow
 
@@ -176,34 +171,89 @@ gh issue edit $ISSUE_NUM --add-label "enhancement" --add-label "P2-medium"
 
 **Test the feature, not just the code.** Unit tests alone are not sufficient.
 
-When implementing or reviewing tests:
+- **End-to-end tests are required** for every feature
+- **Use fixtures** for expected outputs (`tests/fixtures/`)
+- **Validate actual output**, not just existence
 
-1. **End-to-end tests are required** - Every feature needs at least one test that
-   exercises the complete flow, not just individual components with mocks
-
-2. **Use fixtures for expected outputs** - For features that generate files (CSV, Excel,
-   JSON), include reference files in `tests/fixtures/` and compare against them
-
-3. **Validate actual output** - A test that only checks "no exception thrown" or "file
-   exists" is insufficient. Verify the content matches expectations
-
-Example of insufficient vs. sufficient testing:
-
-```python
-# Insufficient - only checks file exists
-def test_export():
-    exporter.export(data, "output.csv")
-    assert Path("output.csv").exists()
-
-# Sufficient - validates actual content
-def test_export():
-    exporter.export(data, "output.csv")
-    expected = Path("tests/fixtures/expected.csv").read_text()
-    assert Path("output.csv").read_text() == expected
-```
+See `.claude/rules/testing.md` for detailed patterns and examples.
 
 ## Workflow Automation
 
 - **Use commands proactively** - Do not wait for the user to explicitly call them.
   Invoke them automatically when relevant to the current task (e.g., `/lint`, `/test`,
   `/review`, `/create-pr`)
+
+## Working Principles
+
+### Coherence with Existing Codebase
+
+When using internal modules, check how they're used in related code:
+
+```bash
+grep -r "from budget_forecaster" --include="*.py" -l | head -5
+```
+
+### Apply Changes Globally
+
+When a fix or pattern is requested (via review comments or direct feedback), don't just
+apply it where explicitly mentioned. Search for the same pattern elsewhere in the code
+and fix all occurrences for consistency.
+
+```bash
+# Example: if asked to change list to tuple returns, search for similar patterns
+grep -r "-> list\[" --include="*.py"
+```
+
+## META - Self-Improvement System
+
+This section teaches Claude how to learn from mistakes and write effective rules.
+
+### When You Make a Mistake
+
+If the user says **"Reflect on this mistake"**, follow this process:
+
+1. **Reflect** - Analyze what went wrong using available context
+2. **Abstract** - Extract the general pattern from the specific instance
+3. **Generalize** - Create a reusable rule that prevents this class of errors
+4. **Document** - Write the rule to `.claude/rules/` or update CLAUDE.md
+
+### How to Write Effective Rules
+
+| Principle                   | Description                                                      |
+| --------------------------- | ---------------------------------------------------------------- |
+| **Absolute directives**     | Start with "NEVER" or "ALWAYS" when the rule has no exceptions   |
+| **Lead with why**           | Explain the problem (1-3 bullets) before the solution            |
+| **Be concrete**             | Include actual code examples from the budget-forecaster codebase |
+| **One point per example**   | Don't combine multiple lessons in one code block                 |
+| **Bullets over paragraphs** | Keep explanations concise and scannable                          |
+
+### Rule Format Template
+
+````markdown
+## Rule Name
+
+**Why**: [1-3 bullet points explaining the problem this rule prevents]
+
+**Rule**: ALWAYS/NEVER [specific instruction]
+
+```python
+# BAD - [brief explanation]
+[code example]
+
+# GOOD - [brief explanation]
+[code example]
+```
+````
+
+### Anti-Bloat Rules
+
+- NEVER add warning sections to obvious rules
+- NEVER show bad examples for trivial mistakes
+- NEVER use paragraphs when bullets suffice
+- NEVER add generic examples - use real project code
+
+### When NOT to Create a Rule
+
+- One-off mistakes that won't recur
+- Mistakes already covered by existing rules (reinforce, don't duplicate)
+- Style preferences without clear justification

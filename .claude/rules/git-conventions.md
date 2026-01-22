@@ -1,0 +1,69 @@
+# Git Conventions
+
+## Pre-commit Validation
+
+**BEFORE committing changes**, you MUST:
+
+1. **Run tests** to verify your changes don't break existing functionality
+2. **Run linters** (pre-commit or project-specific) to ensure code quality
+
+```bash
+# Run tests first
+pytest tests/
+
+# Then commit (pre-commit hooks will run automatically)
+git add <files> && git commit -m "message"
+```
+
+Never commit without running tests first, even for "simple" changes.
+
+## Branch Naming
+
+Format: `issue/<number>-<kebab-case-description>` or `feature/<number>-<description>`
+
+Example: `issue/42-add-multi-currency-support`
+
+## Commit Messages
+
+Conventional Commits format:
+
+```
+type: Description using sentence case without terminal dot
+```
+
+**Types:**
+
+| Type     | Purpose                                               |
+| -------- | ----------------------------------------------------- |
+| feat     | New feature                                           |
+| fix      | Bug fix                                               |
+| refactor | Code changes that neither fix a bug nor add a feature |
+| test     | Adding or updating tests                              |
+| docs     | Documentation updates                                 |
+| chore    | Maintenance tasks                                     |
+
+**Examples:**
+
+```bash
+# Good
+feat: add multi-currency support for accounts
+fix: correct balance calculation with pending operations
+refactor: simplify forecast generation logic
+
+# Bad
+fix: bug fix                    # Too vague
+update styles                   # No type specified
+Added new feature.              # Wrong casing, unnecessary period
+```
+
+## Important
+
+- **NEVER commit directly to main** - always create a feature branch
+- **NEVER use `git add -A` or `git add .`** - stage files explicitly
+- Use imperative mood: "add feature" not "added feature"
+- Keep first line under 50 characters
+- Reference issue numbers in the body if relevant
+
+---
+
+For PR workflow and issue creation, see `CLAUDE.md`.
