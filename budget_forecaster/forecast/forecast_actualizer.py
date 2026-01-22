@@ -1,5 +1,5 @@
 """Module to actualize a forecast with actual data."""
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Final, Iterable
 
 from dateutil.relativedelta import relativedelta
@@ -9,6 +9,7 @@ from budget_forecaster.amount import Amount
 from budget_forecaster.forecast.forecast import Forecast
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
+from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.time_range import DailyTimeRange, TimeRangeInterface
 from budget_forecaster.types import OperationId
@@ -17,10 +18,32 @@ from budget_forecaster.types import OperationId
 class ForecastActualizer:  # pylint: disable=too-few-public-methods
     """Actualize a forecast with actual data."""
 
-    def __init__(self, account: Account) -> None:
+    def __init__(
+        self,
+        account: Account,
+        operation_links: tuple[OperationLink, ...] = (),
+    ) -> None:
         self.__not_assigned_operations: dict[OperationId, HistoricOperation] = {}
         self.__assigned_operations: dict[OperationId, HistoricOperation] = {}
         self.__account: Final = account
+        self.__operation_links: Final = operation_links
+        # Internal indexes built from operation_links
+        self.__linked_iterations: dict[int, set[datetime]] = {}
+        self.__linked_op_ids: dict[int, set[OperationId]] = {}
+        self.__build_indexes()
+
+    def __build_indexes(self) -> None:
+        """Build internal indexes from operation links for efficient lookups."""
+        for link in self.__operation_links:
+            if link.linked_type == LinkType.PLANNED_OPERATION:
+                if link.linked_id not in self.__linked_iterations:
+                    self.__linked_iterations[link.linked_id] = set()
+                if link.iteration_date is not None:
+                    self.__linked_iterations[link.linked_id].add(link.iteration_date)
+            elif link.linked_type == LinkType.BUDGET:
+                if link.linked_id not in self.__linked_op_ids:
+                    self.__linked_op_ids[link.linked_id] = set()
+                self.__linked_op_ids[link.linked_id].add(link.operation_unique_id)
 
     def __call__(self, forecast: Forecast) -> Forecast:
         self.__not_assigned_operations = {
@@ -41,6 +64,56 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
     def __assign_operation(self, operation: HistoricOperation) -> None:
         self.__assigned_operations[operation.unique_id] = operation
         self.__not_assigned_operations.pop(operation.unique_id)
+
+    def __get_linked_iterations(
+        self, planned_operation: PlannedOperation
+    ) -> set[datetime]:
+        """Get iteration dates linked to a planned operation."""
+        if planned_operation.id is None:
+            return set()
+        return self.__linked_iterations.get(planned_operation.id, set())
+
+    def __get_linked_operation_ids(self, budget: Budget) -> set[OperationId]:
+        """Get operation IDs linked to a budget."""
+        if budget.id is None:
+            return set()
+        return self.__linked_op_ids.get(budget.id, set())
+
+    def __actualize_planned_operation_with_links(
+        self, planned_operation: PlannedOperation, linked_iterations: set[datetime]
+    ) -> PlannedOperation | None:
+        """Actualize a planned operation using linked iterations as source of truth."""
+        balance_date = self.__account.balance_date
+
+        # Find the last linked iteration up to balance_date
+        if not (past_iterations := [d for d in linked_iterations if d <= balance_date]):
+            # No past iterations linked, keep the operation as-is if future
+            if planned_operation.time_range.is_future(balance_date):
+                return planned_operation
+            # Current/past operation with no links: advance to next period
+            next_time_range = planned_operation.time_range.next_time_range(balance_date)
+            if next_time_range is None:
+                return None
+            return planned_operation.replace(
+                time_range=planned_operation.time_range.replace(
+                    initial_date=next_time_range.initial_date
+                )
+            )
+
+        last_linked_iteration = max(past_iterations)
+
+        # Advance the planned operation to start after the last linked iteration
+        next_time_range = planned_operation.time_range.next_time_range(
+            last_linked_iteration
+        )
+        if next_time_range is None:
+            return None
+
+        return planned_operation.replace(
+            time_range=planned_operation.time_range.replace(
+                initial_date=next_time_range.initial_date
+            )
+        )
 
     def __handle_late_operations(
         self, planned_operation: PlannedOperation
@@ -127,6 +200,16 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         for planned_operation in sorted(
             planned_operations, key=lambda op: op.time_range.initial_date
         ):
+            if linked_iterations := self.__get_linked_iterations(planned_operation):
+                # Use links as source of truth
+                updated = self.__actualize_planned_operation_with_links(
+                    planned_operation, linked_iterations
+                )
+                if updated is not None:
+                    actualized_planned_operations.append(updated)
+                continue
+
+            # Fall back to matcher-based logic (no links available)
             if update := self.__handle_late_operations(planned_operation):
                 actualized_planned_operations.extend(update)
                 continue
@@ -164,6 +247,60 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             min(operation_amount, budget_amount)
             if budget_amount > 0.0
             else max(operation_amount, budget_amount)
+        )
+
+    def __actualize_budget_with_links(
+        self, budget: Budget, linked_op_ids: set[OperationId]
+    ) -> Budget | None:
+        """Actualize a budget using linked operations as source of truth."""
+        updated_amount = budget.amount
+        operations_by_id = {op.unique_id: op for op in self.__account.operations}
+
+        for op_id in linked_op_ids:
+            if op_id not in operations_by_id:
+                continue
+            operation = operations_by_id[op_id]
+
+            # Skip if sign mismatch (positive budget expects positive operations)
+            if operation.amount * updated_amount < 0.0:
+                continue
+
+            if operation.unique_id not in self.__assigned_operations:
+                self.__assign_operation(operation)
+                consumed_amount = self.__compute_consumed_budget_amount(
+                    operation.amount, updated_amount
+                )
+            else:
+                unassigned_operation_amount = (
+                    operation.amount
+                    - self.__assigned_operations[operation.unique_id].amount
+                )
+                consumed_amount = self.__compute_consumed_budget_amount(
+                    unassigned_operation_amount, updated_amount
+                )
+
+            updated_amount -= consumed_amount
+            self.__assigned_operations[operation.unique_id] = operation.replace(
+                amount=Amount(consumed_amount, operation.currency)
+            )
+            if updated_amount == 0.0:
+                return None
+
+        if updated_amount == 0.0:
+            return None
+
+        new_budget_start = self.__account.balance_date + timedelta(days=1)
+        if new_budget_start > budget.time_range.last_date:
+            return None
+
+        return budget.replace(
+            time_range=budget.time_range.replace(
+                initial_date=new_budget_start,
+                duration=budget.time_range.last_date
+                - new_budget_start
+                + relativedelta(days=1),
+            ),
+            amount=Amount(updated_amount, budget.currency),
         )
 
     def __actualize_budget(self, budget: Budget) -> Budget | None:
@@ -225,11 +362,17 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             current_time_range = budget.time_range.current_time_range(balance_date)
             if current_time_range is not None:
                 # create a budget for the current period and update it
-                new_budget = self.__actualize_budget(
-                    budget.replace(
-                        time_range=current_time_range,
+                current_budget = budget.replace(time_range=current_time_range)
+
+                if linked_op_ids := self.__get_linked_operation_ids(current_budget):
+                    # Use links as source of truth
+                    new_budget = self.__actualize_budget_with_links(
+                        current_budget, linked_op_ids
                     )
-                )
+                else:
+                    # Fall back to matcher-based logic
+                    new_budget = self.__actualize_budget(current_budget)
+
                 if new_budget is not None:
                     updated_budgets.append(new_budget)
 

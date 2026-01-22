@@ -24,6 +24,7 @@ iterable
 json
 kwargs
 lifecycle
+lookups
 matcher
 matcher's
 matchers

@@ -110,6 +110,14 @@ class OperationLinkService:
         """
         self._repository = repository
 
+    def get_all_links(self) -> tuple[OperationLink, ...]:
+        """Get all operation links from the repository.
+
+        Returns:
+            Tuple of all OperationLinks.
+        """
+        return self._repository.get_all_links()
+
     def load_links_for_target(
         self, target: PlannedOperation | Budget
     ) -> tuple[OperationLink, ...]:

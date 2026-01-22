@@ -10,6 +10,7 @@ from budget_forecaster.forecast.forecast import Forecast
 from budget_forecaster.forecast.forecast_actualizer import ForecastActualizer
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
+from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.time_range import (
     DailyTimeRange,
@@ -305,3 +306,220 @@ class TestForecastActualizer:
                 2023, 1, 31
             )
             assert actualized_forecast.budgets[0].amount == 10.0
+
+
+class TestForecastActualizerWithLinks:
+    """Tests for ForecastActualizer using operation links as source of truth."""
+
+    def test_planned_operation_with_linked_iterations(self, account: Account) -> None:
+        """
+        When operation links exist for a planned operation, the linked iterations
+        determine which iterations are considered executed.
+        """
+        planned_op = PlannedOperation(
+            record_id=1,
+            description="Linked Operation",
+            amount=Amount(50.0, "EUR"),
+            category=Category.GROCERIES,
+            time_range=PeriodicDailyTimeRange(
+                datetime(2022, 12, 1), relativedelta(days=1)
+            ),
+        )
+
+        # Create links for 3 iterations (Dec 28, 29, 30)
+        links = (
+            OperationLink(
+                operation_unique_id=1,
+                linked_type=LinkType.PLANNED_OPERATION,
+                linked_id=1,
+                iteration_date=datetime(2022, 12, 28),
+                is_manual=False,
+            ),
+            OperationLink(
+                operation_unique_id=2,
+                linked_type=LinkType.PLANNED_OPERATION,
+                linked_id=1,
+                iteration_date=datetime(2022, 12, 29),
+                is_manual=False,
+            ),
+            OperationLink(
+                operation_unique_id=3,
+                linked_type=LinkType.PLANNED_OPERATION,
+                linked_id=1,
+                iteration_date=datetime(2022, 12, 30),
+                is_manual=False,
+            ),
+        )
+
+        forecast = Forecast(operations=(planned_op,), budgets=())
+        actualizer = ForecastActualizer(account, operation_links=links)
+        actualized_forecast = actualizer(forecast)
+
+        # The planned operation should start after the last linked iteration (Dec 30)
+        assert len(actualized_forecast.operations) == 1
+        op = actualized_forecast.operations[0]
+        assert op.time_range.initial_date == datetime(2022, 12, 31)
+
+    def test_planned_operation_with_links_ignores_matchers(
+        self, account: Account
+    ) -> None:
+        """
+        When links exist, the matcher-based late/anticipated detection is bypassed.
+        """
+        # Create an operation that would match the planned operation
+        account_with_matching_op = account._replace(
+            operations=(
+                HistoricOperation(
+                    unique_id=10,
+                    description="Matching Operation",
+                    amount=Amount(100.0, "EUR"),
+                    category=Category.OTHER,
+                    date=datetime(2023, 1, 1),
+                ),
+            )
+        )
+
+        planned_op = PlannedOperation(
+            record_id=2,
+            description="Matching Operation",
+            amount=Amount(100.0, "EUR"),
+            category=Category.OTHER,
+            time_range=PeriodicDailyTimeRange(
+                datetime(2022, 12, 25), relativedelta(days=1)
+            ),
+        )
+
+        # Link only specifies Dec 28, so next iteration is Dec 29
+        # Without link, matcher would detect late operations
+        links = (
+            OperationLink(
+                operation_unique_id=10,
+                linked_type=LinkType.PLANNED_OPERATION,
+                linked_id=2,
+                iteration_date=datetime(2022, 12, 28),
+                is_manual=True,
+            ),
+        )
+
+        forecast = Forecast(operations=(planned_op,), budgets=())
+        actualizer = ForecastActualizer(account_with_matching_op, operation_links=links)
+        actualized_forecast = actualizer(forecast)
+
+        # With links, only the linked iteration counts as executed
+        assert len(actualized_forecast.operations) == 1
+        op = actualized_forecast.operations[0]
+        # Next iteration after Dec 28 is Dec 29
+        assert op.time_range.initial_date == datetime(2022, 12, 29)
+
+    def test_budget_with_linked_operations(self, account: Account) -> None:
+        """
+        When operation links exist for a budget, only linked operations
+        consume the budget amount.
+        """
+        # Account with multiple operations
+        account_with_ops = account._replace(
+            operations=(
+                HistoricOperation(
+                    unique_id=1,
+                    description="Linked Expense",
+                    amount=Amount(30.0, "EUR"),
+                    category=Category.GROCERIES,
+                    date=datetime(2023, 1, 1),
+                ),
+                HistoricOperation(
+                    unique_id=2,
+                    description="Unlinked Expense",
+                    amount=Amount(40.0, "EUR"),
+                    category=Category.GROCERIES,
+                    date=datetime(2023, 1, 1),
+                ),
+            )
+        )
+
+        budget = Budget(
+            record_id=1,
+            description="Groceries Budget",
+            amount=Amount(100.0, "EUR"),
+            category=Category.GROCERIES,
+            time_range=TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+        )
+
+        # Only link operation 1 to the budget
+        links = (
+            OperationLink(
+                operation_unique_id=1,
+                linked_type=LinkType.BUDGET,
+                linked_id=1,
+                iteration_date=datetime(2023, 1, 1),
+                is_manual=False,
+            ),
+        )
+
+        forecast = Forecast(operations=(), budgets=(budget,))
+        actualizer = ForecastActualizer(account_with_ops, operation_links=links)
+        actualized_forecast = actualizer(forecast)
+
+        # Only the linked 30 EUR operation should be consumed, leaving 70 EUR
+        assert len(actualized_forecast.budgets) == 1
+        updated_budget = actualized_forecast.budgets[0]
+        assert updated_budget.amount == 70.0
+
+    def test_no_links_uses_matcher_behavior(self, account: Account) -> None:
+        """
+        When no operation links are provided, the matcher-based logic is used.
+        This ensures backwards compatibility.
+        """
+        forecast = Forecast(
+            operations=(
+                PlannedOperation(
+                    record_id=1,
+                    description="Executed Operation",
+                    amount=Amount(50.0, "EUR"),
+                    category=Category.GROCERIES,
+                    time_range=DailyTimeRange(datetime(2023, 1, 1)),
+                ),
+            ),
+            budgets=(),
+        )
+
+        # No links passed (default empty tuple)
+        actualizer = ForecastActualizer(account)
+        actualized_forecast = actualizer(forecast)
+
+        # Matcher-based logic should detect the executed operation
+        assert not actualized_forecast.operations
+
+    def test_links_without_matching_planned_operation_id(
+        self, account: Account
+    ) -> None:
+        """
+        Links for non-existent planned operation IDs are ignored.
+        Planned operations without links fall back to matcher behavior.
+        """
+        # Use a different category and amount to avoid matching account operations
+        planned_op = PlannedOperation(
+            record_id=5,
+            description="Unrelated Operation",
+            amount=Amount(200.0, "EUR"),
+            category=Category.OTHER,
+            time_range=DailyTimeRange(datetime(2023, 1, 2)),
+        )
+
+        # Links for a different planned operation ID
+        links = (
+            OperationLink(
+                operation_unique_id=1,
+                linked_type=LinkType.PLANNED_OPERATION,
+                linked_id=999,  # Different ID
+                iteration_date=datetime(2023, 1, 1),
+                is_manual=False,
+            ),
+        )
+
+        forecast = Forecast(operations=(planned_op,), budgets=())
+        actualizer = ForecastActualizer(account, operation_links=links)
+        actualized_forecast = actualizer(forecast)
+
+        # The planned operation should still be in the forecast (is_future)
+        assert len(actualized_forecast.operations) == 1
+        assert actualized_forecast.operations[0].description == "Unrelated Operation"
