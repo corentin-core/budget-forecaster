@@ -18,6 +18,7 @@ datetime
 deserialization
 deserialize
 dialogs
+dicts
 enum
 historicoperation
 iterable
@@ -47,6 +48,7 @@ tui
 ui
 uncategorized
 unicode
+unlink
 unlinked
 upsert
 upserting
