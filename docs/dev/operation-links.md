@@ -1,0 +1,464 @@
+# Operation Links - Developer Documentation
+
+This document describes the architecture and implementation of the operation links
+feature, which connects historic bank operations to planned operations or budgets.
+
+## Architecture Overview
+
+```mermaid
+graph TB
+    subgraph "Presentation Layer"
+        TUI[TUI App]
+        LinkTargetModal[LinkTargetModal]
+        LinkIterationModal[LinkIterationModal]
+        OperationTable[OperationTable]
+    end
+
+    subgraph "Service Layer"
+        OLS[OperationLinkService]
+        FS[ForecastService]
+        IS[ImportService]
+    end
+
+    subgraph "Domain Layer"
+        OM[OperationMatcher]
+        OL[OperationLink]
+        PO[PlannedOperation]
+        B[Budget]
+        HO[HistoricOperation]
+    end
+
+    subgraph "Persistence Layer"
+        Repo[SqliteRepository]
+        DB[(SQLite DB)]
+    end
+
+    TUI --> LinkTargetModal
+    TUI --> LinkIterationModal
+    TUI --> OperationTable
+    TUI --> OLS
+    TUI --> FS
+
+    LinkTargetModal --> OLS
+    FS --> OLS
+    IS --> OLS
+
+    OLS --> OM
+    OLS --> Repo
+    FS --> OM
+
+    OM --> OL
+    OM --> PO
+    OM --> B
+    OM --> HO
+
+    Repo --> DB
+```
+
+## Data Model
+
+### Class Diagram
+
+```mermaid
+classDiagram
+    class LinkType {
+        <<StrEnum>>
+        PLANNED_OPERATION = "planned_operation"
+        BUDGET = "budget"
+    }
+
+    class OperationLink {
+        <<NamedTuple>>
+        +int id
+        +int operation_unique_id
+        +LinkType target_type
+        +int target_id
+        +datetime iteration_date
+        +bool is_manual
+    }
+
+    class OperationMatcher {
+        -OperationRange operation_range
+        -tuple~OperationLink~ operation_links
+        -timedelta approximation_date_range
+        -float approximation_amount_ratio
+        -set~str~ description_hints
+        +match(operation) bool
+        +match_heuristic(operation) bool
+        +is_linked(operation) bool
+    }
+
+    class OperationLinkService {
+        -OperationLinkRepositoryInterface repository
+        +get_all_links() tuple~OperationLink~
+        +load_links_for_target(target) tuple~OperationLink~
+        +create_matcher_with_links(target) OperationMatcher
+        +create_heuristic_links(operations, matchers) tuple~OperationLink~
+        +recalculate_links_for_target(target, operations) tuple~OperationLink~
+    }
+
+    class OperationLinkRepositoryInterface {
+        <<interface>>
+        +get_link_for_operation(unique_id) OperationLink?
+        +get_all_links() tuple~OperationLink~
+        +get_links_for_planned_operation(id) tuple~OperationLink~
+        +get_links_for_budget(id) tuple~OperationLink~
+        +upsert_link(link) void
+        +delete_link(unique_id) void
+        +delete_automatic_links_for_target(type, id) void
+    }
+
+    OperationLink --> LinkType
+    OperationMatcher --> OperationLink
+    OperationLinkService --> OperationLinkRepositoryInterface
+    OperationLinkService --> OperationMatcher
+```
+
+### Database Schema
+
+```mermaid
+erDiagram
+    operations {
+        int unique_id PK
+        int account_id FK
+        text description
+        text category
+        timestamp date
+        real amount
+        text currency
+    }
+
+    planned_operations {
+        int id PK
+        text description
+        real amount
+        text currency
+        text category
+        timestamp start_date
+        int period_value
+        text period_unit
+        timestamp end_date
+        text description_hints
+        int approximation_date_days
+        real approximation_amount_ratio
+    }
+
+    budgets {
+        int id PK
+        text description
+        real amount
+        text currency
+        text category
+        timestamp start_date
+        int period_value
+        text period_unit
+        timestamp end_date
+    }
+
+    operation_links {
+        int id PK
+        int operation_unique_id FK,UK
+        text target_type
+        int target_id
+        timestamp iteration_date
+        bool is_manual
+        timestamp created_at
+    }
+
+    operations ||--o| operation_links : "has (0..1)"
+    planned_operations ||--o{ operation_links : "targeted by"
+    budgets ||--o{ operation_links : "targeted by"
+```
+
+**Key constraints:**
+
+- `UNIQUE(operation_unique_id)`: An operation can only have ONE link
+- `target_type`: Either `"planned_operation"` or `"budget"`
+- `is_manual`: Protects manual links from automatic recalculation
+
+## Key Components
+
+### OperationLink (`operation_range/operation_link.py`)
+
+Immutable NamedTuple representing a link between an operation and a target iteration.
+
+```python
+class OperationLink(NamedTuple):
+    operation_unique_id: int
+    target_type: LinkType
+    target_id: int
+    iteration_date: datetime
+    is_manual: bool = False
+    id: int | None = None
+```
+
+### OperationMatcher (`operation_range/operation_matcher.py`)
+
+Handles both link-based and heuristic matching. Links always take priority.
+
+```python
+def match(self, operation: HistoricOperation) -> bool:
+    # 1. Check operation link first (always wins)
+    if self.is_linked(operation):
+        return True
+    # 2. Fall back to heuristic matching
+    return self.match_heuristic(operation)
+```
+
+### OperationLinkService (`services/operation_link_service.py`)
+
+Orchestrates link lifecycle between matchers and repository.
+
+**Responsibilities:**
+
+| Method                           | Purpose                                        |
+| -------------------------------- | ---------------------------------------------- |
+| `get_all_links()`                | Fetch all links for display                    |
+| `load_links_for_target()`        | Load links for a specific target               |
+| `create_matcher_with_links()`    | Create pre-configured matcher                  |
+| `create_heuristic_links()`       | Create automatic links for unlinked operations |
+| `recalculate_links_for_target()` | Refresh links after target edit                |
+
+### Match Score (`services/operation_link_service.py`)
+
+The `compute_match_score()` function calculates match quality (0-100):
+
+```python
+def compute_match_score(
+    operation: HistoricOperation,
+    operation_range: OperationRange,
+    iteration_date: datetime,
+) -> float:
+    score = 0.0
+
+    # Amount: 40% (only for PlannedOperation, not Budget)
+    if not isinstance(operation_range, Budget):
+        # ... amount scoring logic
+
+    # Date: 30%
+    # ... date proximity scoring
+
+    # Category: 20%
+    if operation.category == operation_range.category:
+        score += 20.0
+
+    # Description: 10%
+    # ... description hints scoring
+
+    return score
+```
+
+**Note:** Budgets skip amount scoring because budget amounts represent totals, not
+individual operation amounts.
+
+## Data Flows
+
+### 1. Import Operations
+
+```mermaid
+sequenceDiagram
+    participant CLI as CLI/TUI
+    participant IS as ImportService
+    participant OLS as OperationLinkService
+    participant Repo as Repository
+    participant OM as OperationMatcher
+
+    CLI->>IS: import_operations(file)
+    IS->>Repo: save operations
+    IS->>OLS: create_heuristic_links(operations, matchers)
+
+    loop For each unlinked operation
+        OLS->>Repo: get_link_for_operation(id)
+        Repo-->>OLS: None
+
+        loop For each matcher
+            OLS->>OM: match_heuristic(operation)
+            OM-->>OLS: True/False
+
+            alt Match found
+                OLS->>OLS: compute_match_score()
+                Note over OLS: Track best match
+            end
+        end
+
+        alt Best match exists
+            OLS->>Repo: upsert_link(link)
+        end
+    end
+
+    OLS-->>IS: created links
+    IS-->>CLI: import result
+```
+
+### 2. Manual Linking (TUI)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant TUI as BudgetApp
+    participant LTM as LinkTargetModal
+    participant LIM as LinkIterationModal
+    participant OLS as OperationLinkService
+    participant Repo as Repository
+
+    User->>TUI: Press L on operation
+    TUI->>TUI: Get selected operation
+    TUI->>Repo: get_link_for_operation(id)
+    Repo-->>TUI: current_link or None
+    TUI->>LTM: push_screen(operation, current_link, targets)
+
+    alt User selects "Supprimer le lien"
+        LTM-->>TUI: "unlink"
+        TUI->>Repo: delete_link(operation_id)
+    else User selects target
+        LTM-->>TUI: selected_target
+        TUI->>LIM: push_screen(operation, target)
+        User->>LIM: Select iteration
+        LIM-->>TUI: iteration_date
+        TUI->>Repo: upsert_link(OperationLink)
+    else User cancels
+        LTM-->>TUI: None
+    end
+
+    TUI->>TUI: refresh_screens()
+```
+
+### 3. Edit Planned Operation / Budget
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant TUI as BudgetApp
+    participant FS as ForecastService
+    participant OLS as OperationLinkService
+    participant Repo as Repository
+
+    User->>TUI: Edit planned operation
+    TUI->>FS: update_planned_operation(op)
+    FS->>Repo: save planned operation
+
+    FS->>OLS: recalculate_links_for_target(target, operations)
+    OLS->>Repo: delete_automatic_links_for_target(type, id)
+    Note over Repo: Manual links preserved
+
+    OLS->>OLS: create_heuristic_links(operations, {target: matcher})
+    OLS->>Repo: upsert_link() for each new match
+
+    OLS-->>FS: new links
+    FS-->>TUI: update complete
+    TUI->>TUI: refresh_screens()
+```
+
+### 4. Forecast Calculation
+
+```mermaid
+sequenceDiagram
+    participant CLI as CLI/TUI
+    participant FS as ForecastService
+    participant FA as ForecastActualizer
+    participant OLS as OperationLinkService
+    participant OM as OperationMatcher
+
+    CLI->>FS: generate_forecast()
+    FS->>OLS: get_all_links()
+
+    loop For each planned operation
+        FS->>OLS: create_matcher_with_links(planned_op)
+        OLS-->>FS: configured matcher
+
+        FS->>FA: actualize(planned_op, operations, matcher)
+
+        loop For each iteration
+            FA->>OM: get matched operations
+            Note over FA: Linked operations matched first
+            FA->>FA: Mark iteration as actualized
+            FA->>FA: Use actual amount instead of planned
+        end
+    end
+
+    loop For each budget
+        FS->>OLS: create_matcher_with_links(budget)
+        FS->>FA: actualize_budget(budget, operations, matcher)
+        Note over FA: Linked operations decrement budget
+    end
+
+    FS-->>CLI: forecast result
+```
+
+## Link Lifecycle State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Unlinked: Operation imported
+
+    Unlinked --> AutoLinked: Heuristic match found
+    Unlinked --> ManualLinked: User creates link
+
+    AutoLinked --> Unlinked: Target edited (no match)
+    AutoLinked --> AutoLinked: Target edited (still matches)
+    AutoLinked --> ManualLinked: User creates manual link
+    AutoLinked --> Unlinked: User deletes link
+
+    ManualLinked --> Unlinked: User deletes link
+    ManualLinked --> ManualLinked: Target edited (preserved)
+
+    note right of AutoLinked: is_manual = false
+    note right of ManualLinked: is_manual = true
+```
+
+**Key rules:**
+
+- Manual links are never automatically deleted
+- Automatic links are recalculated when their target is edited
+- User can always override automatic links with manual ones
+
+## File Structure
+
+```
+budget_forecaster/
+├── account/
+│   ├── repository_interface.py    # OperationLinkRepositoryInterface
+│   └── sqlite_repository.py       # Link CRUD + migration v3
+├── operation_range/
+│   ├── operation_link.py          # OperationLink, LinkType
+│   └── operation_matcher.py       # Link-aware matching
+├── services/
+│   ├── operation_link_service.py  # Link orchestration + scoring
+│   ├── forecast_service.py        # Uses links for forecast
+│   └── import_service.py          # Creates links on import
+└── tui/
+    ├── app.py                     # L key binding, modal handlers
+    ├── modals/
+    │   ├── link_target.py         # Step 1: Select target
+    │   └── link_iteration.py      # Step 2: Select iteration
+    ├── screens/
+    │   └── operations.py          # Displays link column
+    └── widgets/
+        └── operation_table.py     # Renders link indicator
+```
+
+## Testing Strategy
+
+### Unit Tests
+
+| File                                   | Coverage                               |
+| -------------------------------------- | -------------------------------------- |
+| `tests/test_operation_link.py`         | OperationLink dataclass, LinkType enum |
+| `tests/test_operation_matcher.py`      | Link priority, heuristic fallback      |
+| `tests/test_operation_link_service.py` | Service orchestration                  |
+| `tests/test_sqlite_repository.py`      | Link CRUD, migration                   |
+
+### Integration Tests
+
+| File                                | Coverage                |
+| ----------------------------------- | ----------------------- |
+| `tests/test_forecast_actualizer.py` | Links in actualization  |
+| `tests/test_import_service.py`      | Heuristic link creation |
+
+### Key Scenarios
+
+1. **Link priority**: Linked operation matches even if heuristics fail
+2. **Heuristic creation**: Unlinked operation gets automatic link on import
+3. **Manual preservation**: Manual link survives target edit
+4. **Recalculation**: Automatic links updated when target changes
+5. **Forecast impact**: Linked iterations excluded from future forecast
