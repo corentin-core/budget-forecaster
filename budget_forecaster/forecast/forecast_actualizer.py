@@ -174,10 +174,6 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
                 logger.debug("Budget %s fully consumed", budget.id)
                 return None
 
-        if updated_amount == 0.0:
-            logger.debug("Budget %s fully consumed", budget.id)
-            return None
-
         consumed_total = budget.amount - updated_amount
         logger.debug(
             "Budget %s: consumed %.2f, remaining %.2f",
