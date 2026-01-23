@@ -244,14 +244,15 @@ class TestForecastActualizerWithLinks:
         op = actualized_forecast.operations[0]
         assert op.time_range.initial_date == datetime(2022, 12, 31)
 
-    def test_planned_operation_with_links_ignores_matchers(
+    def test_only_linked_iterations_are_marked_as_executed(
         self, account: Account
     ) -> None:
         """
-        When links exist, the matcher-based late/anticipated detection is bypassed.
+        Only iterations explicitly linked to an operation are considered executed.
+        The planned operation advances to the iteration after the last linked one.
         """
-        # Create an operation that would match the planned operation
-        account_with_matching_op = account._replace(
+        # Create an operation linked to a specific iteration
+        account_with_linked_op = account._replace(
             operations=(
                 HistoricOperation(
                     unique_id=10,
@@ -274,7 +275,7 @@ class TestForecastActualizerWithLinks:
         )
 
         # Link only specifies Dec 28, so next iteration is Dec 29
-        # Without link, matcher would detect late operations
+        # Link only Dec 28 iteration, so next iteration is Dec 29
         links = (
             OperationLink(
                 operation_unique_id=10,
@@ -286,7 +287,7 @@ class TestForecastActualizerWithLinks:
         )
 
         forecast = Forecast(operations=(planned_op,), budgets=())
-        actualizer = ForecastActualizer(account_with_matching_op, operation_links=links)
+        actualizer = ForecastActualizer(account_with_linked_op, operation_links=links)
         actualized_forecast = actualizer(forecast)
 
         # With links, only the linked iteration counts as executed
