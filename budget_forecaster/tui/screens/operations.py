@@ -13,7 +13,7 @@ from budget_forecaster.services.forecast_service import ForecastService
 from budget_forecaster.services.operation_link_service import OperationLinkService
 from budget_forecaster.tui.widgets.category_select import CategorySelect
 from budget_forecaster.tui.widgets.operation_table import OperationTable
-from budget_forecaster.types import Category
+from budget_forecaster.types import Category, OperationId, TargetId
 
 
 class OperationDetailPanel(Vertical):
@@ -308,8 +308,8 @@ class OperationsScreen(Container):
         operations = self._service.get_operations(self._current_filter)
 
         # Build links and targets lookup dicts
-        links: dict[int, OperationLink] = {}
-        targets: dict[tuple[LinkType, int], str] = {}
+        links: dict[OperationId, OperationLink] = {}
+        targets: dict[tuple[LinkType, TargetId], str] = {}
 
         if self._link_service:
             for link in self._link_service.get_all_links():

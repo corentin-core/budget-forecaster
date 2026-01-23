@@ -17,6 +17,9 @@ OperationLinkId = int
 IterationDate = datetime
 """Date identifying a specific iteration of a planned operation or budget."""
 
+TargetId = PlannedOperationId | BudgetId
+"""Identifier for a link target (planned operation or budget)."""
+
 
 class Category(enum.StrEnum):
     """A category is a group of transactions."""
