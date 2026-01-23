@@ -8,7 +8,7 @@ from textual.widgets.data_table import RowKey
 
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
 from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
-from budget_forecaster.types import OperationId, TargetId
+from budget_forecaster.types import OperationId, TargetId, TargetName
 
 
 def get_row_key_at_cursor(table: DataTable) -> RowKey | None:  # type: ignore[type-arg]
@@ -71,7 +71,7 @@ class OperationTable(DataTable[str]):
         self,
         operations: list[HistoricOperation],
         links: dict[OperationId, OperationLink] | None = None,
-        targets: dict[tuple[LinkType, TargetId], str] | None = None,
+        targets: dict[tuple[LinkType, TargetId], TargetName] | None = None,
     ) -> None:
         """Load operations into the table.
 

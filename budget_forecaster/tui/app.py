@@ -38,7 +38,7 @@ from budget_forecaster.tui.screens.forecast import ForecastWidget
 from budget_forecaster.tui.screens.imports import ImportWidget
 from budget_forecaster.tui.screens.planned_operations import PlannedOperationsWidget
 from budget_forecaster.tui.widgets import OperationTable
-from budget_forecaster.types import Category, OperationId, TargetId
+from budget_forecaster.types import Category, OperationId, TargetId, TargetName
 
 # Logger instance (configured via Config.setup_logging)
 logger = logging.getLogger("budget_forecaster")
@@ -267,7 +267,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
 
         # Build links and targets lookup dicts for operation tables
         links: dict[OperationId, OperationLink] = {}
-        targets: dict[tuple[LinkType, TargetId], str] = {}
+        targets: dict[tuple[LinkType, TargetId], TargetName] = {}
 
         for link in self.operation_link_service.get_all_links():
             links[link.operation_unique_id] = link

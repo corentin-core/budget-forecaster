@@ -20,6 +20,9 @@ IterationDate = datetime
 TargetId = PlannedOperationId | BudgetId
 """Identifier for a link target (planned operation or budget)."""
 
+TargetName = str
+"""Display name/description of a link target."""
+
 
 class Category(enum.StrEnum):
     """A category is a group of transactions."""
