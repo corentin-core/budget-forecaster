@@ -41,10 +41,14 @@ def compute_match_score(
     """Compute a match score (0-100) for an operation against a specific iteration.
 
     Uses the same criteria as OperationMatcher with weighted scoring:
-    - Amount: 40% of score
+    - Amount: 40% of score (only for PlannedOperation, not Budget)
     - Date: 30% of score
     - Category: 20% of score
     - Description: 10% of score
+
+    Note: Budgets don't use amount scoring because budget amounts represent
+    total budget, not individual operation amounts. This also ensures planned
+    operations are prioritized over budgets when both match on other criteria.
 
     Args:
         operation: The historic operation to score.
@@ -62,8 +66,10 @@ def compute_match_score(
 
     score = 0.0
 
-    # Amount score (40%)
-    if (planned_amount := abs(operation_range.amount)) > 0:
+    # Amount score (40%) - only for PlannedOperation, not Budget
+    # Budget amounts represent total budget, not individual operation amounts
+    is_budget = isinstance(operation_range, Budget)
+    if not is_budget and (planned_amount := abs(operation_range.amount)) > 0:
         amount_diff = abs(abs(operation.amount) - planned_amount) / planned_amount
         if amount_diff <= approximation_amount_ratio:
             score += 40.0  # Full score if within tolerance
