@@ -7,7 +7,10 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Select, Static
 
+from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
 from budget_forecaster.services import OperationFilter, OperationService
+from budget_forecaster.services.forecast_service import ForecastService
+from budget_forecaster.services.operation_link_service import OperationLinkService
 from budget_forecaster.tui.widgets.category_select import CategorySelect
 from budget_forecaster.tui.widgets.operation_table import OperationTable
 from budget_forecaster.types import Category
@@ -254,6 +257,8 @@ class OperationsScreen(Container):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._service: OperationService | None = None
+        self._link_service: OperationLinkService | None = None
+        self._forecast_service: ForecastService | None = None
         self._current_filter = OperationFilter()
 
     def compose(self) -> ComposeResult:
@@ -277,13 +282,22 @@ class OperationsScreen(Container):
 
         yield Static("0 opérations", id="status-bar")
 
-    def refresh_data(self, service: OperationService) -> None:
+    def refresh_data(
+        self,
+        service: OperationService,
+        link_service: OperationLinkService | None = None,
+        forecast_service: ForecastService | None = None,
+    ) -> None:
         """Refresh the operations list.
 
         Args:
             service: The operation service to get data from.
+            link_service: Service for operation links (optional).
+            forecast_service: Service for planned operations/budgets (optional).
         """
         self._service = service
+        self._link_service = link_service
+        self._forecast_service = forecast_service
         self._apply_filter()
 
     def _apply_filter(self) -> None:
@@ -292,8 +306,27 @@ class OperationsScreen(Container):
             return
 
         operations = self._service.get_operations(self._current_filter)
+
+        # Build links and targets lookup dicts
+        links: dict[int, OperationLink] = {}
+        targets: dict[tuple[LinkType, int], str] = {}
+
+        if self._link_service:
+            for link in self._link_service.get_all_links():
+                links[link.operation_unique_id] = link
+
+        if self._forecast_service:
+            for planned_op in self._forecast_service.get_all_planned_operations():
+                if planned_op.id is not None:
+                    targets[
+                        (LinkType.PLANNED_OPERATION, planned_op.id)
+                    ] = planned_op.description
+            for budget in self._forecast_service.get_all_budgets():
+                if budget.id is not None:
+                    targets[(LinkType.BUDGET, budget.id)] = budget.description
+
         table = self.query_one("#operations-table", OperationTable)
-        table.load_operations(operations)
+        table.load_operations(operations, links, targets)
 
         status = self.query_one("#status-bar", Static)
         status.update(f"{len(operations)} opération(s)")
