@@ -183,6 +183,14 @@ class OperationLinkRepositoryInterface(ABC):
         """
 
     @abstractmethod
+    def get_all_links(self) -> tuple[OperationLink, ...]:
+        """Get all operation links.
+
+        Returns:
+            Tuple of all OperationLinks in the repository.
+        """
+
+    @abstractmethod
     def get_links_for_planned_operation(
         self, planned_op_id: int
     ) -> tuple[OperationLink, ...]:

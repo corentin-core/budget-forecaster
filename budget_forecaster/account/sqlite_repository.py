@@ -746,6 +746,17 @@ class SqliteRepository(RepositoryInterface):
             return None
         return self._row_to_operation_link(row)
 
+    def get_all_links(self) -> tuple[OperationLink, ...]:
+        """Get all operation links."""
+        conn = self._get_connection()
+        cursor = conn.execute(
+            """SELECT operation_unique_id, linked_type, linked_id, iteration_date,
+               is_manual, notes
+               FROM operation_links
+               ORDER BY linked_type, linked_id, iteration_date"""
+        )
+        return tuple(self._row_to_operation_link(row) for row in cursor.fetchall())
+
     def get_links_for_planned_operation(
         self, planned_op_id: int
     ) -> tuple[OperationLink, ...]:

@@ -213,7 +213,8 @@ class ForecastService:
 
         logger.info("Computing forecast report from %s to %s", start_date, end_date)
 
-        analyzer = AccountAnalyzer(self._account, self._forecast)
+        operation_links = self._operation_link_service.get_all_links()
+        analyzer = AccountAnalyzer(self._account, self._forecast, operation_links)
         self._report = analyzer.compute_report(
             datetime.combine(start_date, time()),
             datetime.combine(end_date, time()),
