@@ -95,24 +95,19 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             return set()
         return self.__linked_op_ids.get((budget.id, iteration_date), set())
 
-    def __is_iteration_linked(
-        self, planned_op_id: PlannedOperationId, iteration_date: IterationDate
-    ) -> bool:
-        """Check if an iteration has a link to an operation."""
-        key = (planned_op_id, iteration_date)
-        return bool(self.__planned_op_linked_ops.get(key))
-
     def __get_late_iterations(
         self,
         planned_operation: PlannedOperation,
         linked_iterations: set[datetime],
     ) -> list[datetime]:
-        """Find iterations that are late (past due, no link, no matching operation).
+        """Find iterations that are late (past due and no link).
 
         An iteration is considered late if:
-        1. It's past but within the approximation window of balance_date
+        1. It's past (before balance_date) but within the approximation window
         2. It has no link to an operation
-        3. There's no historic operation that matches it (via heuristic)
+
+        Note: Heuristic matching is handled by automatic link creation during import,
+        so we only need to check for links here.
         """
         if planned_operation.id is None:
             return []
@@ -121,51 +116,20 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         late_iterations: list[datetime] = []
         approximation = planned_operation.matcher.approximation_date_range
 
-        # Build set of unassigned operations (not linked to any iteration)
-        linked_op_ids = {
-            op_id
-            for ops in self.__planned_op_linked_ops.values()
-            for op_id in ops
-        }
-        unassigned_operations = [
-            op
-            for op in self.__account.operations
-            if op.unique_id not in linked_op_ids
-        ]
-
         # Iterate over time ranges starting before the approximation window
         for time_range in planned_operation.time_range.iterate_over_time_ranges(
             balance_date - approximation
         ):
-            iteration_date = time_range.initial_date
-
             # Stop if we've reached or passed balance_date (not late yet)
-            if iteration_date >= balance_date:
+            if (iteration_date := time_range.initial_date) >= balance_date:
                 break
 
             # Check if within the approximation window (not too old)
             if not time_range.is_within(balance_date, approx_after=approximation):
                 continue
 
-            # Check if this iteration has a link
-            if iteration_date in linked_iterations:
-                # Has a link, not late
-                continue
-
-            # Check if any unassigned operation matches this iteration
-            matched = False
-            for operation in unassigned_operations:
-                if time_range.is_within(
-                    operation.date,
-                    approx_before=approximation,
-                    approx_after=approximation,
-                ):
-                    # Found a matching operation, not late
-                    matched = True
-                    break
-
-            if not matched:
-                # No link and no matching operation, this iteration is late
+            # Check if this iteration has a link - if not, it's late
+            if iteration_date not in linked_iterations:
                 late_iterations.append(iteration_date)
 
         return late_iterations
@@ -294,33 +258,31 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         for planned_operation in sorted(
             planned_operations, key=lambda op: op.time_range.initial_date
         ):
-            linked_iterations = self.__get_linked_iterations(planned_operation)
-
-            if linked_iterations:
-                # Has links: use link-based actualization (no late logic)
-                updated = self.__actualize_planned_operation_with_links(
-                    planned_operation, linked_iterations
-                )
-                if updated is not None:
-                    actualized_planned_operations.append(updated)
-            else:
-                # No links: check for late iterations and use heuristic approach
+            if linked_iterations := self.__get_linked_iterations(planned_operation):
+                # Has links: check for late iterations (past iterations without links)
                 late_iterations = self.__get_late_iterations(
                     planned_operation, linked_iterations
                 )
                 if late_iterations:
-                    # Handle late operations by postponing them
+                    # Some iterations are late, postpone them
                     postponed = self.__handle_late_iterations(
                         planned_operation, late_iterations
                     )
                     actualized_planned_operations.extend(postponed)
                 else:
-                    # No late iterations, use standard actualization
+                    # No late iterations, use link-based actualization
                     updated = self.__actualize_planned_operation_with_links(
                         planned_operation, linked_iterations
                     )
                     if updated is not None:
                         actualized_planned_operations.append(updated)
+            else:
+                # No links: just advance to next period (no late logic)
+                updated = self.__actualize_planned_operation_with_links(
+                    planned_operation, linked_iterations
+                )
+                if updated is not None:
+                    actualized_planned_operations.append(updated)
 
         return tuple(actualized_planned_operations)
 

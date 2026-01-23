@@ -195,10 +195,12 @@ class TestForecastActualizer:
 class TestForecastActualizerWithLinks:
     """Tests for ForecastActualizer using operation links as source of truth."""
 
-    def test_planned_operation_with_linked_iterations(self, account: Account) -> None:
+    def test_planned_operation_with_linked_iterations_no_late(
+        self, account: Account
+    ) -> None:
         """
-        When operation links exist for a planned operation, the linked iterations
-        determine which iterations are considered executed.
+        When all iterations in the approximation window have links, there are no
+        late iterations, and the planned operation advances normally.
         """
         planned_op = PlannedOperation(
             record_id=1,
@@ -210,27 +212,42 @@ class TestForecastActualizerWithLinks:
             ),
         )
 
-        # Create links for 3 iterations (Dec 28, 29, 30)
+        # Create links for all iterations in the approximation window (Dec 27-31)
+        # With balance_date Jan 1 and default approximation of 5 days
         links = (
             OperationLink(
                 operation_unique_id=1,
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2022, 12, 28),
+                iteration_date=datetime(2022, 12, 27),
                 is_manual=False,
             ),
             OperationLink(
                 operation_unique_id=2,
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2022, 12, 29),
+                iteration_date=datetime(2022, 12, 28),
                 is_manual=False,
             ),
             OperationLink(
                 operation_unique_id=3,
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
+                iteration_date=datetime(2022, 12, 29),
+                is_manual=False,
+            ),
+            OperationLink(
+                operation_unique_id=4,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
                 iteration_date=datetime(2022, 12, 30),
+                is_manual=False,
+            ),
+            OperationLink(
+                operation_unique_id=5,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
+                iteration_date=datetime(2022, 12, 31),
                 is_manual=False,
             ),
         )
@@ -239,34 +256,20 @@ class TestForecastActualizerWithLinks:
         actualizer = ForecastActualizer(account, operation_links=links)
         actualized_forecast = actualizer(forecast)
 
-        # The planned operation should start after the last linked iteration (Dec 30)
+        # All iterations in window have links, no late iterations
+        # Operation advances to Jan 1 (next after last linked Dec 31)
         assert len(actualized_forecast.operations) == 1
         op = actualized_forecast.operations[0]
-        assert op.time_range.initial_date == datetime(2022, 12, 31)
+        assert op.time_range.initial_date == datetime(2023, 1, 1)
 
-    def test_only_linked_iterations_are_marked_as_executed(
-        self, account: Account
-    ) -> None:
+    def test_missing_links_in_window_are_late(self, account: Account) -> None:
         """
-        Only iterations explicitly linked to an operation are considered executed.
-        The planned operation advances to the iteration after the last linked one.
+        When some iterations in the approximation window have no links,
+        they are considered late and postponed to balance_date + 1.
         """
-        # Create an operation linked to a specific iteration
-        account_with_linked_op = account._replace(
-            operations=(
-                HistoricOperation(
-                    unique_id=10,
-                    description="Matching Operation",
-                    amount=Amount(100.0, "EUR"),
-                    category=Category.OTHER,
-                    date=datetime(2023, 1, 1),
-                ),
-            )
-        )
-
         planned_op = PlannedOperation(
             record_id=2,
-            description="Matching Operation",
+            description="Partially Linked Operation",
             amount=Amount(100.0, "EUR"),
             category=Category.OTHER,
             time_range=PeriodicDailyTimeRange(
@@ -274,8 +277,8 @@ class TestForecastActualizerWithLinks:
             ),
         )
 
-        # Link only specifies Dec 28, so next iteration is Dec 29
-        # Link only Dec 28 iteration, so next iteration is Dec 29
+        # Link only Dec 28, leaving Dec 27, 29, 30, 31 as late
+        # (within the 5-day approximation window before Jan 1 balance_date)
         links = (
             OperationLink(
                 operation_unique_id=10,
@@ -287,14 +290,21 @@ class TestForecastActualizerWithLinks:
         )
 
         forecast = Forecast(operations=(planned_op,), budgets=())
-        actualizer = ForecastActualizer(account_with_linked_op, operation_links=links)
+        actualizer = ForecastActualizer(account, operation_links=links)
         actualized_forecast = actualizer(forecast)
 
-        # With links, only the linked iteration counts as executed
-        assert len(actualized_forecast.operations) == 1
-        op = actualized_forecast.operations[0]
-        # Next iteration after Dec 28 is Dec 29
-        assert op.time_range.initial_date == datetime(2022, 12, 29)
+        # Dec 27, 29, 30, 31 are late (4 iterations without links in window)
+        # Each gets postponed to Jan 2, plus the periodic continuation from Jan 3
+        assert len(actualized_forecast.operations) == 5
+
+        # First 4 are postponed one-time operations
+        for i in range(4):
+            op = actualized_forecast.operations[i]
+            assert op.time_range.initial_date == datetime(2023, 1, 2)
+
+        # Last one is the periodic continuation
+        periodic_op = actualized_forecast.operations[4]
+        assert periodic_op.time_range.initial_date == datetime(2023, 1, 3)
 
     def test_budget_with_linked_operations(self, account: Account) -> None:
         """
