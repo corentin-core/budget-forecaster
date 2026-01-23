@@ -44,7 +44,7 @@ from budget_forecaster.types import Category
 logger = logging.getLogger("budget_forecaster")
 
 
-class BudgetApp(App[None]):
+class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
     """Main TUI application for budget management."""
 
     TITLE = "Budget Forecaster"

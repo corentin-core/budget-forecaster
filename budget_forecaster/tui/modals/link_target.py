@@ -201,7 +201,8 @@ class LinkTargetModal(
             with Vertical(id="current-link-info", classes=current_link_class):
                 link_text = "Liaison actuelle: "
                 if self._current_link:
-                    link_text += f"{self._current_link.target_type.value} #{self._current_link.target_id}"
+                    target_type = self._current_link.target_type.value
+                    link_text += f"{target_type} #{self._current_link.target_id}"
                 yield Static(link_text, id="current-link-text")
                 yield Button("Délier", id="btn-unlink", variant="error")
 
