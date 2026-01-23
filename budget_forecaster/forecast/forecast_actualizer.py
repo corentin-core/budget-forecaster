@@ -9,7 +9,6 @@ from budget_forecaster.account.account import Account
 from budget_forecaster.amount import Amount
 from budget_forecaster.forecast.forecast import Forecast
 from budget_forecaster.operation_range.budget import Budget
-from budget_forecaster.operation_range.historic_operation import HistoricOperation
 from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.types import (
@@ -30,8 +29,6 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         account: Account,
         operation_links: tuple[OperationLink, ...] = (),
     ) -> None:
-        self.__not_assigned_operations: dict[OperationId, HistoricOperation] = {}
-        self.__assigned_operations: dict[OperationId, HistoricOperation] = {}
         self.__account: Final = account
         self.__operation_links: Final = operation_links
         # Internal indexes built from operation_links
@@ -62,24 +59,11 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         )
 
     def __call__(self, forecast: Forecast) -> Forecast:
-        self.__not_assigned_operations = {
-            operation.unique_id: operation for operation in self.__account.operations
-        }
-        self.__assigned_operations.clear()
-
         actualized_planned_operations = self.__actualize_planned_operations(
             forecast.operations
         )
         actualized_budgets = self.__actualize_budgets(forecast.budgets)
-
-        self.__not_assigned_operations.clear()
-        self.__assigned_operations.clear()
-
         return Forecast(actualized_planned_operations, actualized_budgets)
-
-    def __assign_operation(self, operation: HistoricOperation) -> None:
-        self.__assigned_operations[operation.unique_id] = operation
-        self.__not_assigned_operations.pop(operation.unique_id)
 
     def __get_linked_iterations(
         self, planned_operation: PlannedOperation
@@ -181,24 +165,11 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             if operation.amount * updated_amount < 0.0:
                 continue
 
-            if operation.unique_id not in self.__assigned_operations:
-                self.__assign_operation(operation)
-                consumed_amount = self.__compute_consumed_budget_amount(
-                    operation.amount, updated_amount
-                )
-            else:
-                unassigned_operation_amount = (
-                    operation.amount
-                    - self.__assigned_operations[operation.unique_id].amount
-                )
-                consumed_amount = self.__compute_consumed_budget_amount(
-                    unassigned_operation_amount, updated_amount
-                )
-
-            updated_amount -= consumed_amount
-            self.__assigned_operations[operation.unique_id] = operation.replace(
-                amount=Amount(consumed_amount, operation.currency)
+            consumed_amount = self.__compute_consumed_budget_amount(
+                operation.amount, updated_amount
             )
+            updated_amount -= consumed_amount
+
             if updated_amount == 0.0:
                 logger.debug("Budget %s fully consumed", budget.id)
                 return None
