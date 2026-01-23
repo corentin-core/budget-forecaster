@@ -151,7 +151,12 @@ class LinkTargetModal(
         self._planned_operations = planned_operations
         self._budgets = budgets
         self._selected_target: PlannedOperation | Budget | None = None
-        self._current_type: str = "planned"  # "planned" or "budget"
+
+        # Set initial type based on current link
+        if current_link and current_link.target_type == LinkType.BUDGET:
+            self._current_type = "budget"
+        else:
+            self._current_type = "planned"
 
         # Pre-compute scores for all targets
         self._planned_op_scores: dict[int, float] = {}
@@ -253,7 +258,7 @@ class LinkTargetModal(
                         ("Opérations planifiées", "planned"),
                         ("Budgets", "budget"),
                     ],
-                    value="planned",
+                    value=self._current_type,
                     id="type-select",
                     allow_blank=False,
                 )
@@ -262,7 +267,12 @@ class LinkTargetModal(
             yield Static(self._build_header_text(), id="list-header")
 
             # Target list (single list, content changes based on type)
-            yield OptionList(*self._build_planned_options(), id="target-list")
+            initial_options = (
+                self._build_budget_options()
+                if self._current_type == "budget"
+                else self._build_planned_options()
+            )
+            yield OptionList(*initial_options, id="target-list")
 
             # Buttons
             unlink_class = "" if self._current_link else "hidden"
@@ -276,6 +286,38 @@ class LinkTargetModal(
                 yield Static("", id="buttons-spacer")
                 yield Button("Annuler", id="btn-cancel", variant="default")
                 yield Button("Suivant", id="btn-next", variant="primary")
+
+    def on_mount(self) -> None:
+        """Highlight the currently linked target if any."""
+        if not self._current_link:
+            return
+
+        target_id = self._current_link.target_id
+        target_list = self.query_one("#target-list", OptionList)
+
+        # Find the option that matches the current link
+        if self._current_type == "planned":
+            option_id = f"planned_{target_id}"
+        else:
+            option_id = f"budget_{target_id}"
+
+        # Find index of the option and highlight it
+        for idx in range(target_list.option_count):
+            option = target_list.get_option_at_index(idx)
+            if option.id == option_id:
+                target_list.highlighted = idx
+                # Also set as selected target
+                if self._current_type == "planned":
+                    self._selected_target = next(
+                        (op for op in self._planned_operations if op.id == target_id),
+                        None,
+                    )
+                else:
+                    self._selected_target = next(
+                        (b for b in self._budgets if b.id == target_id),
+                        None,
+                    )
+                break
 
     def _build_planned_options(self) -> list[Option]:
         """Build options for planned operations list."""
