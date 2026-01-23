@@ -215,14 +215,13 @@ class OperationLinkRepositoryInterface(ABC):
         """
 
     @abstractmethod
-    def create_link(self, link: OperationLink) -> None:
-        """Create a link.
+    def upsert_link(self, link: OperationLink) -> None:
+        """Insert or replace a link.
+
+        If the operation already has a link, it is replaced with the new one.
 
         Args:
-            link: The OperationLink to create.
-
-        Raises:
-            sqlite3.IntegrityError: If the operation is already linked.
+            link: The OperationLink to insert or replace.
         """
 
     @abstractmethod
@@ -235,15 +234,15 @@ class OperationLinkRepositoryInterface(ABC):
 
     @abstractmethod
     def delete_automatic_links_for_target(
-        self, linked_type: LinkType, linked_id: int
+        self, target_type: LinkType, target_id: int
     ) -> None:
         """Delete all automatic links for a given target.
 
         Used for recalculation when a planned operation or budget is modified.
 
         Args:
-            linked_type: The type of target (planned operation or budget).
-            linked_id: The ID of the target.
+            target_type: The type of target (planned operation or budget).
+            target_id: The ID of the target.
         """
 
 

@@ -1,6 +1,6 @@
 """Tests for OperationLinkService."""
 
-# pylint: disable=redefined-outer-name,protected-access,too-few-public-methods
+# pylint: disable=redefined-outer-name,protected-access,too-few-public-methods,import-outside-toplevel
 
 import tempfile
 from datetime import datetime, timedelta
@@ -146,20 +146,20 @@ class TestLoadLinksForTarget:
         # Create some links
         link1 = OperationLink(
             operation_unique_id=100,
-            linked_type=LinkType.PLANNED_OPERATION,
-            linked_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
             iteration_date=datetime(2024, 1, 1),
             is_manual=False,
         )
         link2 = OperationLink(
             operation_unique_id=200,
-            linked_type=LinkType.PLANNED_OPERATION,
-            linked_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
             iteration_date=datetime(2024, 2, 1),
             is_manual=True,
         )
-        repository.create_link(link1)
-        repository.create_link(link2)
+        repository.upsert_link(link1)
+        repository.upsert_link(link2)
 
         result = link_service.load_links_for_target(monthly_rent_planned_op)
 
@@ -183,11 +183,11 @@ class TestLoadLinksForTarget:
         )
         link = OperationLink(
             operation_unique_id=300,
-            linked_type=LinkType.BUDGET,
-            linked_id=5,
+            target_type=LinkType.BUDGET,
+            target_id=5,
             iteration_date=datetime(2024, 1, 1),
         )
-        repository.create_link(link)
+        repository.upsert_link(link)
 
         result = link_service.load_links_for_target(budget)
 
@@ -208,11 +208,11 @@ class TestCreateMatcherWithLinks:
         # Create a link
         link = OperationLink(
             operation_unique_id=100,
-            linked_type=LinkType.PLANNED_OPERATION,
-            linked_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
             iteration_date=datetime(2024, 1, 1),
         )
-        repository.create_link(link)
+        repository.upsert_link(link)
 
         matcher = link_service.create_matcher_with_links(monthly_rent_planned_op)
 
@@ -252,12 +252,12 @@ class TestCreateHeuristicLinks:
         # Pre-create a link for operation 1
         existing_link = OperationLink(
             operation_unique_id=1,
-            linked_type=LinkType.BUDGET,
-            linked_id=99,
+            target_type=LinkType.BUDGET,
+            target_id=99,
             iteration_date=datetime(2024, 1, 1),
             is_manual=True,
         )
-        repository.create_link(existing_link)
+        repository.upsert_link(existing_link)
 
         matchers = {(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher}
         created_links = link_service.create_heuristic_links(sample_operations, matchers)
@@ -334,12 +334,12 @@ class TestRecalculateLinksForTarget:
         # Create an automatic link
         auto_link = OperationLink(
             operation_unique_id=1,
-            linked_type=LinkType.PLANNED_OPERATION,
-            linked_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
             iteration_date=datetime(2024, 1, 1),
             is_manual=False,
         )
-        repository.create_link(auto_link)
+        repository.upsert_link(auto_link)
 
         # Recalculate (should delete the old automatic link)
         link_service.recalculate_links_for_target(
@@ -361,13 +361,13 @@ class TestRecalculateLinksForTarget:
         # Create a manual link
         manual_link = OperationLink(
             operation_unique_id=1,
-            linked_type=LinkType.PLANNED_OPERATION,
-            linked_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
             iteration_date=datetime(2024, 1, 15),  # Manually linked to different date
             is_manual=True,
             notes="Manually linked",
         )
-        repository.create_link(manual_link)
+        repository.upsert_link(manual_link)
 
         # Recalculate
         link_service.recalculate_links_for_target(
@@ -539,13 +539,13 @@ class TestManualLinkProtection:
         # Create a manual link with custom iteration date and notes
         manual_link = OperationLink(
             operation_unique_id=1,
-            linked_type=LinkType.PLANNED_OPERATION,
-            linked_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
             iteration_date=datetime(2024, 3, 1),  # Future date, not matching heuristic
             is_manual=True,
             notes="User manually linked this",
         )
-        repository.create_link(manual_link)
+        repository.upsert_link(manual_link)
 
         # Perform multiple recalculations
         for _ in range(3):

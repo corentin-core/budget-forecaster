@@ -706,8 +706,8 @@ class TestOperationMatcherOperationLinks:
         # With link, should match regardless of heuristics
         link = OperationLink(
             operation_unique_id=100,
-            linked_type=LinkType.PLANNED_OPERATION,
-            linked_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
             iteration_date=datetime(2023, 1, 1),
         )
         matcher_with_link = OperationMatcher(
@@ -726,8 +726,8 @@ class TestOperationMatcherOperationLinks:
         # Should raise in constructor
         invalid_link = OperationLink(
             operation_unique_id=100,
-            linked_type=LinkType.PLANNED_OPERATION,
-            linked_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
             iteration_date=invalid_date,
         )
         with pytest.raises(ValueError, match="Invalid iteration date"):
@@ -749,8 +749,8 @@ class TestOperationMatcherOperationLinks:
         iteration_date = datetime(2023, 1, 1)
         link = OperationLink(
             operation_unique_id=102,
-            linked_type=LinkType.PLANNED_OPERATION,
-            linked_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
             iteration_date=iteration_date,
         )
         matcher = OperationMatcher(
@@ -781,8 +781,8 @@ class TestOperationMatcherOperationLinks:
         """
         link = OperationLink(
             operation_unique_id=100,
-            linked_type=LinkType.PLANNED_OPERATION,
-            linked_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
             iteration_date=datetime(2023, 1, 1),
         )
         matcher = OperationMatcher(
@@ -813,8 +813,8 @@ class TestOperationMatcherOperationLinks:
         """Test that operation_links property returns the original immutable tuple."""
         link = OperationLink(
             operation_unique_id=100,
-            linked_type=LinkType.PLANNED_OPERATION,
-            linked_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
             iteration_date=datetime(2023, 1, 1),
         )
         matcher = OperationMatcher(operation_range, operation_links=(link,))
@@ -869,8 +869,8 @@ class TestOperationMatcherOperationLinks:
         february_iteration = datetime(2023, 2, 1)
         link = OperationLink(
             operation_unique_id=200,
-            linked_type=LinkType.PLANNED_OPERATION,
-            linked_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
             iteration_date=february_iteration,
         )
         matcher = OperationMatcher(
@@ -918,8 +918,8 @@ class TestOperationMatcherOperationLinks:
         february_iteration = datetime(2023, 2, 15)
         link = OperationLink(
             operation_unique_id=201,
-            linked_type=LinkType.PLANNED_OPERATION,
-            linked_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
             iteration_date=february_iteration,
         )
         matcher = OperationMatcher(
@@ -970,20 +970,20 @@ class TestOperationMatcherOperationLinks:
         links = (
             OperationLink(
                 operation_unique_id=301,
-                linked_type=LinkType.PLANNED_OPERATION,
-                linked_id=1,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
                 iteration_date=datetime(2023, 1, 1),  # Week 1
             ),
             OperationLink(
                 operation_unique_id=302,
-                linked_type=LinkType.PLANNED_OPERATION,
-                linked_id=1,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
                 iteration_date=datetime(2023, 1, 8),  # Week 2
             ),
             OperationLink(
                 operation_unique_id=303,
-                linked_type=LinkType.PLANNED_OPERATION,
-                linked_id=1,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
                 iteration_date=datetime(2023, 1, 15),  # Week 3
             ),
         )

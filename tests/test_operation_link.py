@@ -43,19 +43,19 @@ class TestOperationLinkRepository:
 
         link = OperationLink(
             operation_unique_id=100,
-            linked_type=LinkType.PLANNED_OPERATION,
-            linked_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
             iteration_date=datetime(2024, 1, 15),
             is_manual=False,
             notes=None,
         )
-        repository.create_link(link)
+        repository.upsert_link(link)
 
         retrieved = repository.get_link_for_operation(100)
         assert retrieved is not None
         assert retrieved.operation_unique_id == 100
-        assert retrieved.linked_type == LinkType.PLANNED_OPERATION
-        assert retrieved.linked_id == 1
+        assert retrieved.target_type == LinkType.PLANNED_OPERATION
+        assert retrieved.target_id == 1
         assert retrieved.iteration_date == datetime(2024, 1, 15)
         assert retrieved.is_manual is False
         assert retrieved.notes is None
@@ -69,13 +69,13 @@ class TestOperationLinkRepository:
 
         link = OperationLink(
             operation_unique_id=200,
-            linked_type=LinkType.BUDGET,
-            linked_id=5,
+            target_type=LinkType.BUDGET,
+            target_id=5,
             iteration_date=datetime(2024, 3, 1),
             is_manual=True,
             notes="Linked manually due to different description",
         )
-        repository.create_link(link)
+        repository.upsert_link(link)
 
         retrieved = repository.get_link_for_operation(200)
         assert retrieved is not None
@@ -84,28 +84,42 @@ class TestOperationLinkRepository:
 
         repository.close()
 
-    def test_create_link_duplicate_raises_error(self, temp_db_path: Path) -> None:
-        """Test that creating a duplicate link raises IntegrityError."""
+    def test_upsert_link_replaces_existing_and_preserves_id(
+        self, temp_db_path: Path
+    ) -> None:
+        """Test that upserting a link replaces it while preserving the database id."""
         repository = SqliteRepository(temp_db_path)
         repository.initialize()
 
         link1 = OperationLink(
             operation_unique_id=300,
-            linked_type=LinkType.PLANNED_OPERATION,
-            linked_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
             iteration_date=datetime(2024, 1, 1),
         )
-        repository.create_link(link1)
+        repository.upsert_link(link1)
 
-        # Try to create another link for the same operation
+        # Get the original link_id
+        original = repository.get_link_for_operation(300)
+        assert original is not None
+        original_link_id = original.link_id
+
+        # Upsert another link for the same operation
         link2 = OperationLink(
             operation_unique_id=300,
-            linked_type=LinkType.BUDGET,
-            linked_id=2,
+            target_type=LinkType.BUDGET,
+            target_id=2,
             iteration_date=datetime(2024, 2, 1),
         )
-        with pytest.raises(sqlite3.IntegrityError):
-            repository.create_link(link2)
+        repository.upsert_link(link2)
+
+        # Should have replaced the first link but kept the same link_id
+        result = repository.get_link_for_operation(300)
+        assert result is not None
+        assert result.link_id == original_link_id  # link_id preserved
+        assert result.target_type == LinkType.BUDGET
+        assert result.target_id == 2
+        assert result.iteration_date == datetime(2024, 2, 1)
 
         repository.close()
 
@@ -116,11 +130,11 @@ class TestOperationLinkRepository:
 
         link = OperationLink(
             operation_unique_id=400,
-            linked_type=LinkType.PLANNED_OPERATION,
-            linked_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
             iteration_date=datetime(2024, 1, 1),
         )
-        repository.create_link(link)
+        repository.upsert_link(link)
 
         # Verify it exists
         assert repository.get_link_for_operation(400) is not None
@@ -150,31 +164,31 @@ class TestOperationLinkRepository:
         links = [
             OperationLink(
                 operation_unique_id=501,
-                linked_type=LinkType.PLANNED_OPERATION,
-                linked_id=10,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=10,
                 iteration_date=datetime(2024, 1, 15),
             ),
             OperationLink(
                 operation_unique_id=502,
-                linked_type=LinkType.PLANNED_OPERATION,
-                linked_id=10,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=10,
                 iteration_date=datetime(2024, 2, 15),
             ),
             OperationLink(
                 operation_unique_id=503,
-                linked_type=LinkType.PLANNED_OPERATION,
-                linked_id=20,  # Different planned op
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=20,  # Different planned op
                 iteration_date=datetime(2024, 1, 20),
             ),
             OperationLink(
                 operation_unique_id=504,
-                linked_type=LinkType.BUDGET,  # Budget, not planned op
-                linked_id=10,
+                target_type=LinkType.BUDGET,  # Budget, not planned op
+                target_id=10,
                 iteration_date=datetime(2024, 1, 1),
             ),
         ]
         for link in links:
-            repository.create_link(link)
+            repository.upsert_link(link)
 
         # Get links for planned operation 10
         result = repository.get_links_for_planned_operation(10)
@@ -201,25 +215,25 @@ class TestOperationLinkRepository:
         links = [
             OperationLink(
                 operation_unique_id=601,
-                linked_type=LinkType.BUDGET,
-                linked_id=5,
+                target_type=LinkType.BUDGET,
+                target_id=5,
                 iteration_date=datetime(2024, 1, 1),
             ),
             OperationLink(
                 operation_unique_id=602,
-                linked_type=LinkType.BUDGET,
-                linked_id=5,
+                target_type=LinkType.BUDGET,
+                target_id=5,
                 iteration_date=datetime(2024, 2, 1),
             ),
             OperationLink(
                 operation_unique_id=603,
-                linked_type=LinkType.PLANNED_OPERATION,  # Not a budget
-                linked_id=5,
+                target_type=LinkType.PLANNED_OPERATION,  # Not a budget
+                target_id=5,
                 iteration_date=datetime(2024, 1, 15),
             ),
         ]
         for link in links:
-            repository.create_link(link)
+            repository.upsert_link(link)
 
         result = repository.get_links_for_budget(5)
         assert len(result) == 2
@@ -237,35 +251,35 @@ class TestOperationLinkRepository:
         links = [
             OperationLink(
                 operation_unique_id=701,
-                linked_type=LinkType.PLANNED_OPERATION,
-                linked_id=15,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=15,
                 iteration_date=datetime(2024, 1, 1),
                 is_manual=False,  # Automatic
             ),
             OperationLink(
                 operation_unique_id=702,
-                linked_type=LinkType.PLANNED_OPERATION,
-                linked_id=15,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=15,
                 iteration_date=datetime(2024, 2, 1),
                 is_manual=True,  # Manual - should be preserved
             ),
             OperationLink(
                 operation_unique_id=703,
-                linked_type=LinkType.PLANNED_OPERATION,
-                linked_id=15,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=15,
                 iteration_date=datetime(2024, 3, 1),
                 is_manual=False,  # Automatic
             ),
             OperationLink(
                 operation_unique_id=704,
-                linked_type=LinkType.PLANNED_OPERATION,
-                linked_id=16,  # Different target
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=16,  # Different target
                 iteration_date=datetime(2024, 1, 1),
                 is_manual=False,
             ),
         ]
         for link in links:
-            repository.create_link(link)
+            repository.upsert_link(link)
 
         # Delete automatic links for planned operation 15
         repository.delete_automatic_links_for_target(LinkType.PLANNED_OPERATION, 15)
@@ -290,21 +304,21 @@ class TestOperationLinkRepository:
         links = [
             OperationLink(
                 operation_unique_id=801,
-                linked_type=LinkType.BUDGET,
-                linked_id=25,
+                target_type=LinkType.BUDGET,
+                target_id=25,
                 iteration_date=datetime(2024, 1, 1),
                 is_manual=False,
             ),
             OperationLink(
                 operation_unique_id=802,
-                linked_type=LinkType.BUDGET,
-                linked_id=25,
+                target_type=LinkType.BUDGET,
+                target_id=25,
                 iteration_date=datetime(2024, 2, 1),
                 is_manual=True,
             ),
         ]
         for link in links:
-            repository.create_link(link)
+            repository.upsert_link(link)
 
         repository.delete_automatic_links_for_target(LinkType.BUDGET, 25)
 
@@ -368,7 +382,7 @@ class TestOperationLinkSchemaMigration:
         # Insert first link
         conn.execute(
             """INSERT INTO operation_links
-               (operation_unique_id, linked_type, linked_id, iteration_date, is_manual)
+               (operation_unique_id, target_type, target_id, iteration_date, is_manual)
                VALUES (?, ?, ?, ?, ?)""",
             (999, "planned_operation", 1, "2024-01-01", False),
         )
@@ -378,7 +392,7 @@ class TestOperationLinkSchemaMigration:
         with pytest.raises(sqlite3.IntegrityError):
             conn.execute(
                 """INSERT INTO operation_links
-                   (operation_unique_id, linked_type, linked_id, iteration_date, is_manual)
+                   (operation_unique_id, target_type, target_id, iteration_date, is_manual)
                    VALUES (?, ?, ?, ?, ?)""",
                 (999, "budget", 2, "2024-02-01", False),
             )

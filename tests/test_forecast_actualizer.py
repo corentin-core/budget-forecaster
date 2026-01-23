@@ -214,22 +214,22 @@ class TestForecastActualizerWithLinks:
         links = (
             OperationLink(
                 operation_unique_id=1,
-                linked_type=LinkType.PLANNED_OPERATION,
-                linked_id=1,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
                 iteration_date=datetime(2022, 12, 28),
                 is_manual=False,
             ),
             OperationLink(
                 operation_unique_id=2,
-                linked_type=LinkType.PLANNED_OPERATION,
-                linked_id=1,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
                 iteration_date=datetime(2022, 12, 29),
                 is_manual=False,
             ),
             OperationLink(
                 operation_unique_id=3,
-                linked_type=LinkType.PLANNED_OPERATION,
-                linked_id=1,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
                 iteration_date=datetime(2022, 12, 30),
                 is_manual=False,
             ),
@@ -279,8 +279,8 @@ class TestForecastActualizerWithLinks:
         links = (
             OperationLink(
                 operation_unique_id=10,
-                linked_type=LinkType.PLANNED_OPERATION,
-                linked_id=2,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=2,
                 iteration_date=datetime(2022, 12, 28),
                 is_manual=True,
             ),
@@ -333,8 +333,8 @@ class TestForecastActualizerWithLinks:
         links = (
             OperationLink(
                 operation_unique_id=1,
-                linked_type=LinkType.BUDGET,
-                linked_id=1,
+                target_type=LinkType.BUDGET,
+                target_id=1,
                 iteration_date=datetime(2023, 1, 1),
                 is_manual=False,
             ),
@@ -370,8 +370,8 @@ class TestForecastActualizerWithLinks:
         links = (
             OperationLink(
                 operation_unique_id=1,
-                linked_type=LinkType.PLANNED_OPERATION,
-                linked_id=1,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
                 iteration_date=datetime(2023, 1, 5),
                 is_manual=False,
             ),
@@ -406,8 +406,8 @@ class TestForecastActualizerWithLinks:
         links = (
             OperationLink(
                 operation_unique_id=1,
-                linked_type=LinkType.PLANNED_OPERATION,
-                linked_id=999,  # Different ID
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=999,  # Different ID
                 iteration_date=datetime(2023, 1, 1),
                 is_manual=False,
             ),
@@ -471,15 +471,15 @@ class TestForecastActualizerWithLinks:
         links = (
             OperationLink(
                 operation_unique_id=1,
-                linked_type=LinkType.BUDGET,
-                linked_id=1,
+                target_type=LinkType.BUDGET,
+                target_id=1,
                 iteration_date=datetime(2022, 12, 1),  # December iteration
                 is_manual=False,
             ),
             OperationLink(
                 operation_unique_id=2,
-                linked_type=LinkType.BUDGET,
-                linked_id=1,
+                target_type=LinkType.BUDGET,
+                target_id=1,
                 iteration_date=datetime(2023, 1, 1),  # January iteration
                 is_manual=False,
             ),
