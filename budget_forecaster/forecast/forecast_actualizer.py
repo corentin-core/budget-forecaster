@@ -99,7 +99,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         self,
         planned_operation: PlannedOperation,
         linked_iterations: set[datetime],
-    ) -> list[datetime]:
+    ) -> tuple[datetime, ...]:
         """Find iterations that are late (past due and no link).
 
         An iteration is considered late if:
@@ -110,7 +110,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         so we only need to check for links here.
         """
         if planned_operation.id is None:
-            return []
+            return ()
 
         balance_date = self.__account.balance_date
         late_iterations: list[datetime] = []
@@ -132,12 +132,12 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             if iteration_date not in linked_iterations:
                 late_iterations.append(iteration_date)
 
-        return late_iterations
+        return tuple(late_iterations)
 
     def __handle_late_iterations(
         self,
         planned_operation: PlannedOperation,
-        late_iterations: list[datetime],
+        late_iterations: tuple[datetime, ...],
     ) -> tuple[PlannedOperation, ...]:
         """Create postponed operations for late iterations.
 
@@ -215,11 +215,11 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             return planned_operation
 
         # Find actualized iterations (either past or linked to past operations)
-        actualized_iterations = [
+        actualized_iterations = tuple(
             d
             for d in linked_iterations
             if self.__is_iteration_actualized(planned_operation.id, d)
-        ]
+        )
 
         if not actualized_iterations:
             # No actualized iterations, keep the operation as-is if future
