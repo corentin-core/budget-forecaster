@@ -289,6 +289,12 @@ class LinkTargetModal(
 
     def on_mount(self) -> None:
         """Highlight the currently linked target if any."""
+        if self._current_link:
+            # Delay highlighting to ensure the list is fully rendered
+            self.call_after_refresh(self._highlight_current_link)
+
+    def _highlight_current_link(self) -> None:
+        """Highlight the currently linked target in the list."""
         if not self._current_link:
             return
 
@@ -304,8 +310,9 @@ class LinkTargetModal(
         # Find index of the option and highlight it
         for idx in range(target_list.option_count):
             option = target_list.get_option_at_index(idx)
-            if option.id == option_id:
+            if str(option.id) == option_id:
                 target_list.highlighted = idx
+                target_list.scroll_to_highlight()
                 # Also set as selected target
                 if self._current_type == "planned":
                     self._selected_target = next(
