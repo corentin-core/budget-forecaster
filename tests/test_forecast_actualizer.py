@@ -349,12 +349,12 @@ class TestForecastActualizerWithLinks:
         updated_budget = actualized_forecast.budgets[0]
         assert updated_budget.amount == 70.0
 
-    def test_links_for_future_iterations_do_not_count_as_executed(
+    def test_link_to_future_iteration_with_past_operation_is_actualized(
         self, account: Account
     ) -> None:
         """
-        Links for future iterations (after balance_date) don't count as executed.
-        The planned operation is kept as-is.
+        When an operation that already happened is linked to a future iteration,
+        the iteration is considered actualized (the user manually linked them).
         """
         planned_op = PlannedOperation(
             record_id=1,
@@ -366,14 +366,15 @@ class TestForecastActualizerWithLinks:
             ),
         )
 
-        # Link for a future iteration (Jan 5, after balance_date Jan 1)
+        # Link operation 1 (which happened Jan 1) to future iteration Jan 5
+        # Since the operation already happened, the iteration is actualized
         links = (
             OperationLink(
-                operation_unique_id=1,
+                operation_unique_id=1,  # Operation date is Jan 1 (from fixture)
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
                 iteration_date=datetime(2023, 1, 5),
-                is_manual=False,
+                is_manual=True,
             ),
         )
 
@@ -381,11 +382,11 @@ class TestForecastActualizerWithLinks:
         actualizer = ForecastActualizer(account, operation_links=links)
         actualized_forecast = actualizer(forecast)
 
-        # Future links don't count as executed, so operation advances to next period
+        # The iteration is actualized because the linked operation already happened
         assert len(actualized_forecast.operations) == 1
         op = actualized_forecast.operations[0]
-        # No past iterations, operation is not future, so advances to Jan 2
-        assert op.time_range.initial_date == datetime(2023, 1, 2)
+        # Advances to Jan 6 (day after the actualized iteration Jan 5)
+        assert op.time_range.initial_date == datetime(2023, 1, 6)
 
     def test_links_without_matching_planned_operation_id_are_ignored(
         self, account: Account
