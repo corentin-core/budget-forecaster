@@ -66,7 +66,7 @@ See `.claude/rules/python-quality.md` for detailed patterns and examples.
 
 - **Simplify method signatures** - Accept domain objects directly
   (`target: PlannedOperation | Budget`) rather than their decomposed parts
-  (`linked_type, linked_id, matcher`).
+  (`target_type, target_id, matcher`).
 
 - **Avoid redundant computations** - If you compute something in a loop, store it in the
   result structure rather than recomputing it later.

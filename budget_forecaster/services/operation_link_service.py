@@ -185,7 +185,7 @@ class OperationLinkService:
             # Try each matcher to find a match
             best_match: _MatchCandidate | None = None
 
-            for (linked_type, linked_id), matcher in matchers_by_target.items():
+            for (target_type, target_id), matcher in matchers_by_target.items():
                 # Check if operation matches this target using the matcher's logic
                 if not matcher.match(operation):
                     continue
@@ -215,8 +215,8 @@ class OperationLinkService:
                 if best_match is None or score > best_match.score:
                     link = OperationLink(
                         operation_unique_id=operation.unique_id,
-                        linked_type=linked_type,
-                        linked_id=linked_id,
+                        target_type=target_type,
+                        target_id=target_id,
                         iteration_date=iteration_date,
                         is_manual=False,
                     )
@@ -224,7 +224,7 @@ class OperationLinkService:
 
             # Persist best match
             if best_match is not None:
-                self._repository.create_link(best_match.link)
+                self._repository.upsert_link(best_match.link)
                 created_links.append(best_match.link)
 
         return tuple(created_links)
@@ -251,17 +251,17 @@ class OperationLinkService:
         if target.id is None:
             return ()
 
-        linked_type = (
+        target_type = (
             LinkType.PLANNED_OPERATION
             if isinstance(target, PlannedOperation)
             else LinkType.BUDGET
         )
 
         # Delete only heuristic links for this target (manual links preserved)
-        self._repository.delete_automatic_links_for_target(linked_type, target.id)
+        self._repository.delete_automatic_links_for_target(target_type, target.id)
 
         # Recreate heuristic links
         return self.create_heuristic_links(
             operations,
-            {(linked_type, target.id): target.matcher},
+            {(target_type, target.id): target.matcher},
         )

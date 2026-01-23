@@ -41,13 +41,13 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
     def __build_indexes(self) -> None:
         """Build internal indexes from operation links for efficient lookups."""
         for link in self.__operation_links:
-            match link.linked_type:
+            match link.target_type:
                 case LinkType.PLANNED_OPERATION:
-                    self.__linked_iterations.setdefault(link.linked_id, set()).add(
+                    self.__linked_iterations.setdefault(link.target_id, set()).add(
                         link.iteration_date
                     )
                 case LinkType.BUDGET:
-                    key = (link.linked_id, link.iteration_date)
+                    key = (link.target_id, link.iteration_date)
                     self.__linked_op_ids.setdefault(key, set()).add(
                         link.operation_unique_id
                     )
