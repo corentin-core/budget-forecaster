@@ -16,6 +16,12 @@ from budget_forecaster.operation_range.operation_link import LinkType, Operation
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.services.operation_link_service import compute_match_score
 
+# Column widths for alignment
+COL_SCORE = 6
+COL_DESCRIPTION = 35
+COL_AMOUNT = 12
+COL_CATEGORY = 15
+
 
 class LinkTargetModal(
     ModalScreen[PlannedOperation | Budget | Literal["unlink"] | None]
@@ -28,8 +34,8 @@ class LinkTargetModal(
     }
 
     LinkTargetModal #modal-container {
-        width: 80;
-        height: 35;
+        width: 90;
+        height: 38;
         border: solid $primary;
         background: $surface;
         padding: 1 2;
@@ -66,7 +72,7 @@ class LinkTargetModal(
     }
 
     LinkTargetModal #current-link-row {
-        height: 3;
+        height: 2;
         margin-bottom: 1;
     }
 
@@ -76,11 +82,6 @@ class LinkTargetModal(
 
     LinkTargetModal #current-link-text {
         width: 1fr;
-        padding: 0 1;
-    }
-
-    LinkTargetModal #btn-unlink {
-        width: 5;
     }
 
     LinkTargetModal #type-select-row {
@@ -92,6 +93,13 @@ class LinkTargetModal(
         width: 100%;
     }
 
+    LinkTargetModal #list-header {
+        height: 1;
+        background: $surface-darken-1;
+        color: $text-muted;
+        text-style: bold;
+    }
+
     LinkTargetModal #target-list {
         height: 1fr;
     }
@@ -100,6 +108,18 @@ class LinkTargetModal(
         height: 3;
         margin-top: 1;
         dock: bottom;
+    }
+
+    LinkTargetModal #btn-unlink {
+        background: $error;
+    }
+
+    LinkTargetModal #btn-unlink.hidden {
+        display: none;
+    }
+
+    LinkTargetModal #buttons-spacer {
+        width: 1fr;
     }
 
     LinkTargetModal Button {
@@ -195,6 +215,14 @@ class LinkTargetModal(
         # Fallback to ID if not found
         return f"#{target_id}"
 
+    def _build_header_text(self) -> str:
+        """Build the header row text."""
+        score = "Score".ljust(COL_SCORE)
+        desc = "Description".ljust(COL_DESCRIPTION)
+        amount = "Montant".rjust(COL_AMOUNT)
+        category = "Catégorie".ljust(COL_CATEGORY)
+        return f"{score}{desc}{amount}  {category}"
+
     def compose(self) -> ComposeResult:
         """Create the modal layout."""
         op = self._operation
@@ -216,8 +244,7 @@ class LinkTargetModal(
             current_link_class = "" if self._current_link else "hidden"
             with Horizontal(id="current-link-row", classes=current_link_class):
                 link_name = self._get_current_link_name()
-                yield Static(f"🔗 {link_name}", id="current-link-text")
-                yield Button("❌", id="btn-unlink", variant="error")
+                yield Static(f"🔗 Lié à: {link_name}", id="current-link-text")
 
             # Type selector
             with Horizontal(id="type-select-row"):
@@ -231,11 +258,22 @@ class LinkTargetModal(
                     allow_blank=False,
                 )
 
+            # List header
+            yield Static(self._build_header_text(), id="list-header")
+
             # Target list (single list, content changes based on type)
             yield OptionList(*self._build_planned_options(), id="target-list")
 
             # Buttons
+            unlink_class = "" if self._current_link else "hidden"
             with Horizontal(id="buttons-row"):
+                yield Button(
+                    "Supprimer le lien",
+                    id="btn-unlink",
+                    variant="error",
+                    classes=unlink_class,
+                )
+                yield Static("", id="buttons-spacer")
                 yield Button("Annuler", id="btn-cancel", variant="default")
                 yield Button("Suivant", id="btn-next", variant="primary")
 
@@ -254,13 +292,12 @@ class LinkTargetModal(
             if planned_op.id is None:
                 continue
             score = self._planned_op_scores.get(planned_op.id, 0)
-            # Use Text to avoid Rich markup interpretation
-            label = Text()
-            if score > 0:
-                label.append(f"{score:3.0f}%  ", style="bold")
-            else:
-                label.append("  -   ", style="dim")
-            label.append(planned_op.description[:50])
+            label = self._build_option_label(
+                score=score,
+                description=planned_op.description,
+                amount=planned_op.amount,
+                category=planned_op.category.value,
+            )
             options.append(Option(label, id=f"planned_{planned_op.id}"))
 
         return options
@@ -280,16 +317,48 @@ class LinkTargetModal(
             if budget.id is None:
                 continue
             score = self._budget_scores.get(budget.id, 0)
-            # Use Text to avoid Rich markup interpretation
-            label = Text()
-            if score > 0:
-                label.append(f"{score:3.0f}%  ", style="bold")
-            else:
-                label.append("  -   ", style="dim")
-            label.append(f"{budget.description[:30]} ({budget.category.value})")
+            label = self._build_option_label(
+                score=score,
+                description=budget.description,
+                amount=budget.amount,
+                category=budget.category.value,
+            )
             options.append(Option(label, id=f"budget_{budget.id}"))
 
         return options
+
+    def _build_option_label(
+        self,
+        score: float,
+        description: str,
+        amount: float,
+        category: str,
+    ) -> Text:
+        """Build a formatted option label with columns."""
+        label = Text()
+
+        # Score column
+        if score > 0:
+            label.append(f"{score:3.0f}%  ", style="bold")
+        else:
+            label.append("  -   ", style="dim")
+
+        # Description column (truncated)
+        desc_truncated = description[: COL_DESCRIPTION - 1].ljust(COL_DESCRIPTION)
+        label.append(desc_truncated)
+
+        # Amount column
+        amount_str = f"{amount:+.0f} €".rjust(COL_AMOUNT)
+        if amount < 0:
+            label.append(amount_str, style="red")
+        else:
+            label.append(amount_str, style="green")
+
+        # Category column
+        label.append("  ")
+        label.append(category[:COL_CATEGORY].ljust(COL_CATEGORY), style="dim")
+
+        return label
 
     def on_select_changed(self, event: Select.Changed) -> None:
         """Handle type selection change."""
