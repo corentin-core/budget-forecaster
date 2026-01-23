@@ -3,22 +3,23 @@
 from datetime import timedelta
 from typing import Any, Literal
 
+from rich.text import Text  # type: ignore[import]
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, OptionList, Static
+from textual.widgets import Button, OptionList, Select, Static
 from textual.widgets.option_list import Option
 
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.operation_range.operation_link import OperationLink
+from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.services.operation_link_service import compute_match_score
 
 
 class LinkTargetModal(
     ModalScreen[PlannedOperation | Budget | Literal["unlink"] | None]
-):
+):  # pylint: disable=too-many-instance-attributes
     """Modal for selecting a link target (planned operation or budget)."""
 
     DEFAULT_CSS = """
@@ -27,8 +28,8 @@ class LinkTargetModal(
     }
 
     LinkTargetModal #modal-container {
-        width: 90;
-        height: 40;
+        width: 80;
+        height: 35;
         border: solid $primary;
         background: $surface;
         padding: 1 2;
@@ -64,34 +65,34 @@ class LinkTargetModal(
         color: $error;
     }
 
-    LinkTargetModal #current-link-info {
-        height: auto;
+    LinkTargetModal #current-link-row {
+        height: 3;
         margin-bottom: 1;
-        padding: 1;
-        border: solid $warning;
-        background: $surface-darken-1;
     }
 
-    LinkTargetModal #current-link-info.hidden {
+    LinkTargetModal #current-link-row.hidden {
         display: none;
     }
 
-    LinkTargetModal #lists-container {
-        height: 1fr;
-    }
-
-    LinkTargetModal .list-section {
+    LinkTargetModal #current-link-text {
         width: 1fr;
-        height: 100%;
-        margin: 0 1;
+        padding: 0 1;
     }
 
-    LinkTargetModal .section-title {
-        text-style: bold;
-        height: 2;
+    LinkTargetModal #btn-unlink {
+        width: 5;
     }
 
-    LinkTargetModal OptionList {
+    LinkTargetModal #type-select-row {
+        height: 3;
+        margin-bottom: 1;
+    }
+
+    LinkTargetModal #type-select {
+        width: 100%;
+    }
+
+    LinkTargetModal #target-list {
         height: 1fr;
     }
 
@@ -103,10 +104,6 @@ class LinkTargetModal(
 
     LinkTargetModal Button {
         margin-left: 1;
-    }
-
-    LinkTargetModal #btn-unlink {
-        background: $error;
     }
     """
 
@@ -134,6 +131,7 @@ class LinkTargetModal(
         self._planned_operations = planned_operations
         self._budgets = budgets
         self._selected_target: PlannedOperation | Budget | None = None
+        self._current_type: str = "planned"  # "planned" or "budget"
 
         # Pre-compute scores for all targets
         self._planned_op_scores: dict[int, float] = {}
@@ -179,6 +177,24 @@ class LinkTargetModal(
 
         return best_score
 
+    def _get_current_link_name(self) -> str:
+        """Get the name of the currently linked target."""
+        if not self._current_link:
+            return ""
+
+        target_id = self._current_link.target_id
+        if self._current_link.target_type == LinkType.PLANNED_OPERATION:
+            for op in self._planned_operations:
+                if op.id == target_id:
+                    return op.description
+        else:
+            for budget in self._budgets:
+                if budget.id == target_id:
+                    return budget.description
+
+        # Fallback to ID if not found
+        return f"#{target_id}"
+
     def compose(self) -> ComposeResult:
         """Create the modal layout."""
         op = self._operation
@@ -198,27 +214,25 @@ class LinkTargetModal(
 
             # Current link info (hidden if not linked)
             current_link_class = "" if self._current_link else "hidden"
-            with Vertical(id="current-link-info", classes=current_link_class):
-                link_text = "Liaison actuelle: "
-                if self._current_link:
-                    target_type = self._current_link.target_type.value
-                    link_text += f"{target_type} #{self._current_link.target_id}"
-                yield Static(link_text, id="current-link-text")
-                yield Button("Délier", id="btn-unlink", variant="error")
+            with Horizontal(id="current-link-row", classes=current_link_class):
+                link_name = self._get_current_link_name()
+                yield Static(f"🔗 {link_name}", id="current-link-text")
+                yield Button("❌", id="btn-unlink", variant="error")
 
-            # Lists container
-            with Horizontal(id="lists-container"):
-                # Planned operations section
-                with Vertical(classes="list-section"):
-                    yield Static("Opérations planifiées:", classes="section-title")
-                    planned_options = self._build_planned_options()
-                    yield OptionList(*planned_options, id="planned-list")
+            # Type selector
+            with Horizontal(id="type-select-row"):
+                yield Select(
+                    [
+                        ("Opérations planifiées", "planned"),
+                        ("Budgets", "budget"),
+                    ],
+                    value="planned",
+                    id="type-select",
+                    allow_blank=False,
+                )
 
-                # Budgets section
-                with Vertical(classes="list-section"):
-                    yield Static("Budgets:", classes="section-title")
-                    budget_options = self._build_budget_options()
-                    yield OptionList(*budget_options, id="budget-list")
+            # Target list (single list, content changes based on type)
+            yield OptionList(*self._build_planned_options(), id="target-list")
 
             # Buttons
             with Horizontal(id="buttons-row"):
@@ -240,8 +254,13 @@ class LinkTargetModal(
             if planned_op.id is None:
                 continue
             score = self._planned_op_scores.get(planned_op.id, 0)
-            score_str = f"{score:.0f}%" if score > 0 else "-"
-            label = f"[{score_str:>4}] {planned_op.description[:40]}"
+            # Use Text to avoid Rich markup interpretation
+            label = Text()
+            if score > 0:
+                label.append(f"{score:3.0f}%  ", style="bold")
+            else:
+                label.append("  -   ", style="dim")
+            label.append(planned_op.description[:50])
             options.append(Option(label, id=f"planned_{planned_op.id}"))
 
         return options
@@ -261,41 +280,40 @@ class LinkTargetModal(
             if budget.id is None:
                 continue
             score = self._budget_scores.get(budget.id, 0)
-            score_str = f"{score:.0f}%" if score > 0 else "-"
-            label = f"[{score_str:>4}] {budget.description[:40]}"
+            # Use Text to avoid Rich markup interpretation
+            label = Text()
+            if score > 0:
+                label.append(f"{score:3.0f}%  ", style="bold")
+            else:
+                label.append("  -   ", style="dim")
+            label.append(f"{budget.description[:30]} ({budget.category.value})")
             options.append(Option(label, id=f"budget_{budget.id}"))
 
         return options
 
-    def on_option_list_option_selected(self, event: OptionList.OptionSelected) -> None:
-        """Handle option selection in either list."""
-        if event.option.id is None:
+    def on_select_changed(self, event: Select.Changed) -> None:
+        """Handle type selection change."""
+        if event.value == Select.BLANK:
             return
 
-        option_id = str(event.option.id)
-        if option_id.startswith("planned_"):
-            target_id = int(option_id.replace("planned_", ""))
-            self._selected_target = next(
-                (op for op in self._planned_operations if op.id == target_id),
-                None,
-            )
-            # Deselect other list
-            budget_list = self.query_one("#budget-list", OptionList)
-            budget_list.highlighted = None
-        elif option_id.startswith("budget_"):
-            target_id = int(option_id.replace("budget_", ""))
-            self._selected_target = next(
-                (b for b in self._budgets if b.id == target_id),
-                None,
-            )
-            # Deselect other list
-            planned_list = self.query_one("#planned-list", OptionList)
-            planned_list.highlighted = None
+        self._current_type = str(event.value)
+        self._selected_target = None
+
+        # Rebuild the list with new options
+        target_list = self.query_one("#target-list", OptionList)
+        target_list.clear_options()
+
+        if self._current_type == "planned":
+            for option in self._build_planned_options():
+                target_list.add_option(option)
+        else:
+            for option in self._build_budget_options():
+                target_list.add_option(option)
 
     def on_option_list_option_highlighted(
         self, event: OptionList.OptionHighlighted
     ) -> None:
-        """Handle option highlight in either list."""
+        """Handle option highlight."""
         if event.option is None or event.option.id is None:
             return
 
