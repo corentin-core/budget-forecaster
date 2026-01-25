@@ -38,6 +38,7 @@ graph TB
     TUI --> OperationTable
     TUI --> OLS
     TUI --> FS
+    TUI --> IS
 
     LinkTargetModal --> OLS
     FS --> OLS
