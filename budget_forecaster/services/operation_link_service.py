@@ -142,25 +142,6 @@ class OperationLinkService:
             return self._repository.get_links_for_planned_operation(target.id)
         return self._repository.get_links_for_budget(target.id)
 
-    def create_matcher_with_links(
-        self, target: PlannedOperation | Budget
-    ) -> OperationMatcher:
-        """Create an OperationMatcher pre-loaded with links from DB.
-
-        Args:
-            target: The planned operation or budget to create a matcher for.
-
-        Returns:
-            A configured OperationMatcher with links loaded.
-        """
-        return OperationMatcher(
-            operation_range=target,
-            operation_links=self.load_links_for_target(target),
-            approximation_date_range=target.matcher.approximation_date_range,
-            approximation_amount_ratio=target.matcher.approximation_amount_ratio,
-            description_hints=target.matcher.description_hints,
-        )
-
     def create_heuristic_links(
         self,
         operations: tuple[HistoricOperation, ...],

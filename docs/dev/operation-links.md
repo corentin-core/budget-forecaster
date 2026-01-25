@@ -93,7 +93,6 @@ classDiagram
         -OperationLinkRepositoryInterface repository
         +get_all_links() tuple~OperationLink~
         +load_links_for_target(target) tuple~OperationLink~
-        +create_matcher_with_links(target) OperationMatcher
         +create_heuristic_links(operations, matchers) tuple~OperationLink~
         +recalculate_links_for_target(target, operations) tuple~OperationLink~
     }
@@ -179,7 +178,7 @@ erDiagram
 
 ## Key Components
 
-### OperationLink (`operation_range/operation_link.py`)
+### OperationLink
 
 Immutable NamedTuple representing a link between an operation and a target iteration.
 
@@ -193,7 +192,7 @@ class OperationLink(NamedTuple):
     id: int | None = None
 ```
 
-### OperationMatcher (`operation_range/operation_matcher.py`)
+### OperationMatcher
 
 Handles both link-based and heuristic matching. Links always take priority.
 
@@ -206,7 +205,7 @@ def match(self, operation: HistoricOperation) -> bool:
     return self.match_heuristic(operation)
 ```
 
-### OperationLinkService (`services/operation_link_service.py`)
+### OperationLinkService
 
 Orchestrates link lifecycle between matchers and repository.
 
@@ -216,11 +215,10 @@ Orchestrates link lifecycle between matchers and repository.
 | -------------------------------- | ---------------------------------------------- |
 | `get_all_links()`                | Fetch all links for display                    |
 | `load_links_for_target()`        | Load links for a specific target               |
-| `create_matcher_with_links()`    | Create pre-configured matcher                  |
 | `create_heuristic_links()`       | Create automatic links for unlinked operations |
 | `recalculate_links_for_target()` | Refresh links after target edit                |
 
-### Match Score (`services/operation_link_service.py`)
+### Match Score
 
 The `compute_match_score()` function calculates match quality (0-100):
 
@@ -362,10 +360,12 @@ sequenceDiagram
 
     CLI->>FS: generate_forecast()
     FS->>OLS: get_all_links()
+    OLS-->>FS: all links
 
     loop For each planned operation
-        FS->>OLS: create_matcher_with_links(planned_op)
-        OLS-->>FS: configured matcher
+        FS->>OLS: load_links_for_target(planned_op)
+        OLS-->>FS: links for this target
+        FS->>FS: create matcher with links
 
         FS->>FA: actualize(planned_op, operations, matcher)
 
@@ -378,7 +378,7 @@ sequenceDiagram
     end
 
     loop For each budget
-        FS->>OLS: create_matcher_with_links(budget)
+        FS->>OLS: load_links_for_target(budget)
         FS->>FA: actualize_budget(budget, operations, matcher)
         Note over FA: Linked operations decrement budget
     end
@@ -413,48 +413,23 @@ stateDiagram-v2
 - Automatic links are recalculated when their target is edited
 - User can always override automatic links with manual ones
 
-## File Structure
-
-```
-budget_forecaster/
-├── account/
-│   ├── repository_interface.py    # OperationLinkRepositoryInterface
-│   └── sqlite_repository.py       # Link CRUD + migration v3
-├── operation_range/
-│   ├── operation_link.py          # OperationLink, LinkType
-│   └── operation_matcher.py       # Link-aware matching
-├── services/
-│   ├── operation_link_service.py  # Link orchestration + scoring
-│   ├── forecast_service.py        # Uses links for forecast
-│   └── import_service.py          # Creates links on import
-└── tui/
-    ├── app.py                     # L key binding, modal handlers
-    ├── modals/
-    │   ├── link_target.py         # Step 1: Select target
-    │   └── link_iteration.py      # Step 2: Select iteration
-    ├── screens/
-    │   └── operations.py          # Displays link column
-    └── widgets/
-        └── operation_table.py     # Renders link indicator
-```
-
 ## Testing Strategy
 
 ### Unit Tests
 
-| File                                   | Coverage                               |
-| -------------------------------------- | -------------------------------------- |
-| `tests/test_operation_link.py`         | OperationLink dataclass, LinkType enum |
-| `tests/test_operation_matcher.py`      | Link priority, heuristic fallback      |
-| `tests/test_operation_link_service.py` | Service orchestration                  |
-| `tests/test_sqlite_repository.py`      | Link CRUD, migration                   |
+| Component            | Coverage                          |
+| -------------------- | --------------------------------- |
+| OperationLink        | Dataclass, LinkType enum          |
+| OperationMatcher     | Link priority, heuristic fallback |
+| OperationLinkService | Service orchestration             |
+| SqliteRepository     | Link CRUD, migration              |
 
 ### Integration Tests
 
-| File                                | Coverage                |
-| ----------------------------------- | ----------------------- |
-| `tests/test_forecast_actualizer.py` | Links in actualization  |
-| `tests/test_import_service.py`      | Heuristic link creation |
+| Component          | Coverage                |
+| ------------------ | ----------------------- |
+| ForecastActualizer | Links in actualization  |
+| ImportService      | Heuristic link creation |
 
 ### Key Scenarios
 
