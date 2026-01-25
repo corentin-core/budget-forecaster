@@ -360,36 +360,25 @@ sequenceDiagram
 sequenceDiagram
     participant CLI as CLI/TUI
     participant FS as ForecastService
-    participant FA as ForecastActualizer
     participant OLS as OperationLinkService
-    participant OM as OperationMatcher
+    participant AA as AccountAnalyzer
+    participant FA as ForecastActualizer
 
-    CLI->>FS: generate_forecast()
+    CLI->>FS: compute_report(start, end)
     FS->>OLS: get_all_links()
     OLS-->>FS: all links
 
-    loop For each planned operation
-        FS->>OLS: load_links_for_target(planned_op)
-        OLS-->>FS: links for this target
-        FS->>FS: create matcher with links
+    FS->>AA: new AccountAnalyzer(account, forecast, links)
+    FS->>AA: compute_report(start, end)
 
-        FS->>FA: actualize(planned_op, operations, matcher)
+    AA->>FA: ForecastActualizer(account, links)(forecast)
+    Note over FA: Actualizes planned ops and budgets using links
+    FA-->>AA: actualized forecast
 
-        loop For each iteration
-            FA->>OM: get matched operations
-            Note over FA: Linked operations matched first
-            FA->>FA: Mark iteration as actualized
-            FA->>FA: Use actual amount instead of planned
-        end
-    end
+    AA->>AA: compute balance evolution
+    AA-->>FS: AccountAnalysisReport
 
-    loop For each budget
-        FS->>OLS: load_links_for_target(budget)
-        FS->>FA: actualize_budget(budget, operations, matcher)
-        Note over FA: Linked operations decrement budget
-    end
-
-    FS-->>CLI: forecast result
+    FS-->>CLI: report
 ```
 
 ## Link Lifecycle State Machine
