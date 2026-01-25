@@ -10,7 +10,8 @@ docs/
 │   ├── backup.md           # Automatic database backup
 │   └── operation-links.md  # Linking operations to forecasts
 └── dev/        # Developer documentation
-    └── operation-links.md  # Architecture and data flows
+    ├── forecast-calculation.md  # Forecast system architecture
+    └── operation-links.md       # Operation links architecture
 ```
 
 ## User Documentation (`user/`)
