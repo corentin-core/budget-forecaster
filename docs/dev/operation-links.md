@@ -313,12 +313,14 @@ sequenceDiagram
     alt User selects "Supprimer le lien"
         LTM-->>TUI: "unlink"
         TUI->>OLS: delete_link(operation_id)
+        OLS->>Repo: delete_link(operation_id)
     else User selects target
         LTM-->>TUI: selected_target
         TUI->>LIM: push_screen(operation, target)
         User->>LIM: Select iteration
         LIM-->>TUI: iteration_date
         TUI->>OLS: upsert_link(OperationLink)
+        OLS->>Repo: upsert_link(link)
     else User cancels
         LTM-->>TUI: None
     end
