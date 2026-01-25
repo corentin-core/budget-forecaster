@@ -175,6 +175,8 @@ Operation links are critical for accurate forecast calculation:
 1. **Iteration actualization**: A linked iteration is considered "done"
 2. **Start date advancement**: Periodic operations advance past linked iterations
 3. **Late detection**: Iterations in the past without links are flagged as late
+4. **Anticipated iterations**: Future iterations with links are also actualized (paid
+   early)
 
 ```mermaid
 timeline
@@ -183,10 +185,11 @@ timeline
         Jan 1 : Iteration expected
         Jan 3 : Bank operation received
         Jan 3 : Link created → Iteration actualized
+        Jan 25 : February rent paid early
+        Jan 25 : Link to Feb iteration → Also actualized
     section February
-        Feb 1 : Iteration expected
-        Feb 5 : No operation yet
-        Feb 5 : Flagged as LATE
+        Feb 1 : Iteration already actualized
+        Feb 1 : Skipped in forecast
     section March
         Mar 1 : Future iteration
         Mar 1 : Shown in forecast

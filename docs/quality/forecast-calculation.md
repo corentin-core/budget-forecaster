@@ -45,3 +45,12 @@
 > **When** the forecast is actualized
 >
 > **Then** the operation's effective start date advances to March 1st
+
+## Anticipated Future Iteration Is Actualized
+
+> **Given** a monthly planned operation (rent on 1st of each month), and today is
+> January 25th, and an operation is linked to the February iteration (paid early)
+>
+> **When** the forecast is actualized
+>
+> **Then** the February iteration is marked as actualized and skipped in the forecast
