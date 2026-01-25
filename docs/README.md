@@ -22,8 +22,8 @@ step-by-step instructions and troubleshooting sections.
 
 Technical documentation for developers working on the codebase. Includes:
 
-- Architecture diagrams (Mermaid)
-- Data models and schemas
-- Sequence diagrams for key flows
-- Component responsibilities
+- Architecture and component interactions
+- Data models and database schemas
+- Event flows and state transitions
+- Service APIs and responsibilities
 - Testing strategies
