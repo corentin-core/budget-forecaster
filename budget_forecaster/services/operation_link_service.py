@@ -124,6 +124,22 @@ class OperationLinkService:
         """
         return self._repository.get_all_links()
 
+    def upsert_link(self, link: OperationLink) -> None:
+        """Create or update an operation link.
+
+        Args:
+            link: The OperationLink to create or update.
+        """
+        self._repository.upsert_link(link)
+
+    def delete_link(self, operation_unique_id: int) -> None:
+        """Delete an operation link.
+
+        Args:
+            operation_unique_id: The unique ID of the operation to unlink.
+        """
+        self._repository.delete_link(operation_unique_id)
+
     def load_links_for_target(
         self, target: PlannedOperation | Budget
     ) -> tuple[OperationLink, ...]:

@@ -92,6 +92,8 @@ classDiagram
     class OperationLinkService {
         -OperationLinkRepositoryInterface repository
         +get_all_links() tuple~OperationLink~
+        +upsert_link(link) void
+        +delete_link(operation_unique_id) void
         +load_links_for_target(target) tuple~OperationLink~
         +create_heuristic_links(operations, matchers) tuple~OperationLink~
         +recalculate_links_for_target(target, operations) tuple~OperationLink~
@@ -214,6 +216,8 @@ Orchestrates link lifecycle between matchers and repository.
 | Method                           | Purpose                                        |
 | -------------------------------- | ---------------------------------------------- |
 | `get_all_links()`                | Fetch all links for display                    |
+| `upsert_link()`                  | Create or update a link                        |
+| `delete_link()`                  | Delete a link by operation ID                  |
 | `load_links_for_target()`        | Load links for a specific target               |
 | `create_heuristic_links()`       | Create automatic links for unlinked operations |
 | `recalculate_links_for_target()` | Refresh links after target edit                |
@@ -302,19 +306,19 @@ sequenceDiagram
 
     User->>TUI: Press L on operation
     TUI->>TUI: Get selected operation
-    TUI->>Repo: get_link_for_operation(id)
-    Repo-->>TUI: current_link or None
+    TUI->>OLS: get_all_links()
+    OLS-->>TUI: current_link or None
     TUI->>LTM: push_screen(operation, current_link, targets)
 
     alt User selects "Supprimer le lien"
         LTM-->>TUI: "unlink"
-        TUI->>Repo: delete_link(operation_id)
+        TUI->>OLS: delete_link(operation_id)
     else User selects target
         LTM-->>TUI: selected_target
         TUI->>LIM: push_screen(operation, target)
         User->>LIM: Select iteration
         LIM-->>TUI: iteration_date
-        TUI->>Repo: upsert_link(OperationLink)
+        TUI->>OLS: upsert_link(OperationLink)
     else User cancels
         LTM-->>TUI: None
     end

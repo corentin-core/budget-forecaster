@@ -478,9 +478,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
 
         # Handle unlink
         if result == "unlink":
-            self.persistent_account.repository.delete_link(
-                self._linking_operation.unique_id
-            )
+            self.operation_link_service.delete_link(self._linking_operation.unique_id)
             self.notify("Liaison supprimée")
             self._refresh_screens()
             self._linking_operation = None
@@ -522,7 +520,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         )
 
         # Upsert (replace any existing link for this operation)
-        self.persistent_account.repository.upsert_link(link)
+        self.operation_link_service.upsert_link(link)
 
         self.notify(f"Opération liée à '{target.description}'")
         self._refresh_screens()
