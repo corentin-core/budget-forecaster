@@ -64,12 +64,9 @@ determine which planned iterations are actualized.
 
 **Responsibilities:**
 
-| Method                             | Purpose                                   |
-| ---------------------------------- | ----------------------------------------- |
-| `__call__(forecast)`               | Returns actualized forecast               |
-| `__actualize_planned_operations()` | Advance or remove past iterations         |
-| `__actualize_budgets()`            | Compute remaining budget amounts          |
-| `__handle_late_iterations()`       | Flag iterations that should have occurred |
+- Actualize planned operations by advancing past linked iterations
+- Compute remaining budget amounts from linked operations
+- Flag iterations that should have occurred but have no link (late)
 
 ### AccountForecaster
 
@@ -78,11 +75,9 @@ forecast projections.
 
 **Responsibilities:**
 
-| Method                  | Purpose                                  |
-| ----------------------- | ---------------------------------------- |
-| `__call__(target_date)` | Returns AccountState at date             |
-| `__get_past_state()`    | Account state using historic operations  |
-| `__get_future_state()`  | Account state using forecast projections |
+- Compute account state at any target date
+- Use historic operations for past dates
+- Use forecast projections for future dates
 
 ### AccountAnalyzer
 
@@ -90,12 +85,10 @@ Orchestrates the analysis and produces the final report.
 
 **Responsibilities:**
 
-| Method                                | Purpose                             |
-| ------------------------------------- | ----------------------------------- |
-| `compute_report()`                    | Generate full AccountAnalysisReport |
-| `compute_balance_evolution_per_day()` | Daily balance projection            |
-| `compute_budget_forecast()`           | Budget consumption forecast         |
-| `compute_budget_statistics()`         | Category spending stats             |
+- Generate the full AccountAnalysisReport
+- Compute daily balance projections
+- Compute budget consumption forecasts
+- Compute category spending statistics
 
 ## Data Flow
 

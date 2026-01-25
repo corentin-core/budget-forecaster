@@ -44,6 +44,34 @@ Focus on concepts that help understand the system:
 - Service APIs and responsibilities
 - Testing strategies
 
+## Describe Responsibilities, Not Methods
+
+**Why**: Method signatures are implementation details that change frequently and
+duplicate what's already in the code.
+
+**Rule**: Describe component responsibilities in natural language bullet points, not
+method tables.
+
+```markdown
+# BAD - lists methods (couples doc to implementation)
+
+**Responsibilities:**
+
+| Method                  | Purpose                        |
+| ----------------------- | ------------------------------ |
+| `__call__(target_date)` | Returns AccountState at date   |
+| `__get_past_state()`    | Account state from history     |
+| `__get_future_state()`  | Account state from projections |
+
+# GOOD - describes what the component does
+
+**Responsibilities:**
+
+- Compute account state at any target date
+- Use historic operations for past dates
+- Use forecast projections for future dates
+```
+
 Use Mermaid diagrams for:
 
 - Architecture overviews (graph TB)

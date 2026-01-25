@@ -213,14 +213,11 @@ Orchestrates link lifecycle between matchers and repository.
 
 **Responsibilities:**
 
-| Method                           | Purpose                                        |
-| -------------------------------- | ---------------------------------------------- |
-| `get_all_links()`                | Fetch all links for display                    |
-| `upsert_link()`                  | Create or update a link                        |
-| `delete_link()`                  | Delete a link by operation ID                  |
-| `load_links_for_target()`        | Load links for a specific target               |
-| `create_heuristic_links()`       | Create automatic links for unlinked operations |
-| `recalculate_links_for_target()` | Refresh links after target edit                |
+- Fetch all links for display
+- Create, update, or delete links
+- Load links for a specific target
+- Create automatic links for unlinked operations (heuristic matching)
+- Refresh links after target edit (recalculation)
 
 ### Match Score
 
