@@ -48,7 +48,7 @@ class OperationFilter:
         if self.max_amount is not None and operation.amount > self.max_amount:
             return False
 
-        if self.uncategorized_only and operation.category != Category.OTHER:
+        if self.uncategorized_only and operation.category != Category.UNCATEGORIZED:
             return False
 
         return True
@@ -243,10 +243,10 @@ class OperationService:
         if not (similar := self.find_similar_operations(operation)):
             return None
 
-        # Find the most common category (excluding OTHER)
+        # Find the most common category (excluding UNCATEGORIZED)
         if not (
             categories := [
-                op.category for op in similar if op.category != Category.OTHER
+                op.category for op in similar if op.category != Category.UNCATEGORIZED
             ]
         ):
             return None

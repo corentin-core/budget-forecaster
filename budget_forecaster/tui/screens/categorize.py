@@ -325,7 +325,9 @@ class CategorizeScreen(Container):
         similar = self._service.find_similar_operations(
             self._current_operation, limit=20
         )
-        similar_ids = [op.unique_id for op in similar if op.category == Category.OTHER]
+        similar_ids = [
+            op.unique_id for op in similar if op.category == Category.UNCATEGORIZED
+        ]
 
         # Include current operation
         all_ids = [self._current_operation.unique_id, *similar_ids]
