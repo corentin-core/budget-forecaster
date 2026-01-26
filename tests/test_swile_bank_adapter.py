@@ -126,11 +126,11 @@ class TestSwileBankAdapterLoad:
         swile_adapter: SwileBankAdapter,
         operation_factory: HistoricOperationFactory,
     ) -> None:
-        """Test that all operations are categorized as OTHER."""
+        """Test that all operations are categorized as UNCATEGORIZED."""
         swile_adapter.load_bank_export(FIXTURES_DIR, operation_factory)
 
         for operation in swile_adapter.operations:
-            assert operation.category == Category.OTHER
+            assert operation.category == Category.UNCATEGORIZED
 
     def test_load_operations_currency(
         self,
