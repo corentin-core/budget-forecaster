@@ -133,7 +133,13 @@ class TestAccountAnalyzer:
     def test_balance_evolution_planned_operations(
         self, account: Account, planned_operations: tuple[PlannedOperation, ...]
     ) -> None:
-        """Test the balance evolution with planned operations."""
+        """Test the balance evolution with planned operations.
+
+        Without operation links, past/current planned operations are advanced
+        to the next period (not automatically executed via matcher).
+        - Recurring op (2023-03-01, -20€/month until 2023-06-01): advanced to 2023-04-01
+        - Isolated op (2023-03-15, -50€): kept as-is (future)
+        """
         account_analyzer = AccountAnalyzer(account, Forecast(planned_operations, ()))
         balance_evolution = account_analyzer.compute_balance_evolution_per_day(
             datetime(2023, 2, 1), datetime(2023, 8, 1)
@@ -143,13 +149,18 @@ class TestAccountAnalyzer:
         for date, expected_balance in {
             "2023-02-01": 1030.0,
             "2023-03-01": 1000.0,
-            "2023-03-02": 980.0,
-            "2023-03-15": 930.0,
-            "2023-04-01": 910.0,
-            "2023-05-01": 890.0,
-            "2023-06-01": 870.0,
-            "2023-07-01": 870.0,
-            "2023-08-01": 870.0,
+            # No execution on 2023-03-02 - recurring op advanced to April
+            "2023-03-02": 1000.0,
+            # Isolated op executed
+            "2023-03-15": 950.0,
+            # Recurring op (advanced from March) + normal April occurrence
+            "2023-04-01": 930.0,
+            # Recurring op
+            "2023-05-01": 910.0,
+            # Recurring op executes on expiration date (inclusive)
+            "2023-06-01": 890.0,
+            "2023-07-01": 890.0,
+            "2023-08-01": 890.0,
         }.items():
             assert balance_evolution.loc[date]["Solde"] == pytest.approx(
                 expected_balance
@@ -190,7 +201,13 @@ class TestAccountAnalyzer:
         planned_operations: tuple[PlannedOperation, ...],
         budgets: tuple[Budget, ...],
     ) -> None:
-        """Test the expenses per category and month."""
+        """Test the expenses per category and month.
+
+        Without operation links:
+        - "Prévu" shows the raw forecast (budget + planned ops)
+        - "Actualisé" shows the forecast after actualizing past/current ops
+          Past/current planned ops are advanced to next period (not executed)
+        """
         account_analyzer = AccountAnalyzer(
             account, Forecast(planned_operations, budgets)
         )
@@ -209,6 +226,7 @@ class TestAccountAnalyzer:
             ]
             == -30.0
         )
+        # "Prévu" = raw forecast: budget (-300) + planned op (-20) = -320
         assert (
             expenses_per_category_and_month.loc[str(Category.GROCERIES)]["2023-03-01"][
                 "Prévu"
@@ -227,11 +245,12 @@ class TestAccountAnalyzer:
             ]
             == -50.0
         )
+        # "Actualisé" = after actualization: planned op advanced to April, only budget remains
         assert (
             expenses_per_category_and_month.loc[str(Category.GROCERIES)]["2023-03-01"][
                 "Actualisé"
             ]
-            == -320.0
+            == -300.0
         )
         assert (
             expenses_per_category_and_month.loc[str(Category.CAR_FUEL)]["2023-03-01"][

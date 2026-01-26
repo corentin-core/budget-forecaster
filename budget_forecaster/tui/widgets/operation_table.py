@@ -7,6 +7,8 @@ from textual.widgets import DataTable
 from textual.widgets.data_table import RowKey
 
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
+from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
+from budget_forecaster.types import OperationId, TargetId, TargetName
 
 
 def get_row_key_at_cursor(table: DataTable) -> RowKey | None:  # type: ignore[type-arg]
@@ -62,18 +64,28 @@ class OperationTable(DataTable[str]):
     def _ensure_columns(self) -> None:
         """Ensure table columns exist (only once)."""
         if not self._columns_added:
-            self.add_columns("Date", "Description", "Montant", "Catégorie")
+            self.add_columns("Date", "Description", "Montant", "Catégorie", "Lien")
             self._columns_added = True
 
-    def load_operations(self, operations: list[HistoricOperation]) -> None:
+    def load_operations(
+        self,
+        operations: list[HistoricOperation],
+        links: dict[OperationId, OperationLink] | None = None,
+        targets: dict[tuple[LinkType, TargetId], TargetName] | None = None,
+    ) -> None:
         """Load operations into the table.
 
         Args:
             operations: List of operations to display.
+            links: Mapping of operation_unique_id to OperationLink (optional).
+            targets: Mapping of (type, id) to target name for display (optional).
         """
         self._ensure_columns()
         self.clear()
         self._operations.clear()
+
+        links = links or {}
+        targets = targets or {}
 
         for op in operations:
             row_key = str(op.unique_id)
@@ -82,11 +94,21 @@ class OperationTable(DataTable[str]):
             # Format amount with color hint
             amount_str = f"{op.amount:+.2f} €"
 
+            # Build link column value
+            link_str = ""
+            if link := links.get(op.unique_id):
+                target_key = (link.target_type, link.target_id)
+                if target_name := targets.get(target_key):
+                    link_str = f"🔗 {self._truncate(target_name, 12)}"
+                else:
+                    link_str = "🔗"
+
             self.add_row(
                 op.date.strftime("%d/%m/%Y"),
                 self._truncate(op.description, 50),
                 amount_str,
                 op.category.value,
+                link_str,
                 key=row_key,
             )
 
