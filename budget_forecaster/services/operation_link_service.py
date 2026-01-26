@@ -124,6 +124,22 @@ class OperationLinkService:
         """
         return self._repository.get_all_links()
 
+    def upsert_link(self, link: OperationLink) -> None:
+        """Create or update an operation link.
+
+        Args:
+            link: The OperationLink to create or update.
+        """
+        self._repository.upsert_link(link)
+
+    def delete_link(self, operation_unique_id: int) -> None:
+        """Delete an operation link.
+
+        Args:
+            operation_unique_id: The unique ID of the operation to unlink.
+        """
+        self._repository.delete_link(operation_unique_id)
+
     def load_links_for_target(
         self, target: PlannedOperation | Budget
     ) -> tuple[OperationLink, ...]:
@@ -141,25 +157,6 @@ class OperationLinkService:
         if isinstance(target, PlannedOperation):
             return self._repository.get_links_for_planned_operation(target.id)
         return self._repository.get_links_for_budget(target.id)
-
-    def create_matcher_with_links(
-        self, target: PlannedOperation | Budget
-    ) -> OperationMatcher:
-        """Create an OperationMatcher pre-loaded with links from DB.
-
-        Args:
-            target: The planned operation or budget to create a matcher for.
-
-        Returns:
-            A configured OperationMatcher with links loaded.
-        """
-        return OperationMatcher(
-            operation_range=target,
-            operation_links=self.load_links_for_target(target),
-            approximation_date_range=target.matcher.approximation_date_range,
-            approximation_amount_ratio=target.matcher.approximation_amount_ratio,
-            description_hints=target.matcher.description_hints,
-        )
 
     def create_heuristic_links(
         self,

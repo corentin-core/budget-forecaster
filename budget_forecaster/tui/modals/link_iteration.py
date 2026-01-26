@@ -82,6 +82,13 @@ class LinkIterationModal(ModalScreen[datetime | None]):
         padding: 0 1;
     }
 
+    LinkIterationModal #list-header {
+        height: 1;
+        background: $surface-darken-1;
+        color: $text-muted;
+        text-style: bold;
+    }
+
     LinkIterationModal #iteration-list {
         height: 1fr;
     }
@@ -159,6 +166,9 @@ class LinkIterationModal(ModalScreen[datetime | None]):
                 yield Static(self._get_date_range_text(), id="date-range")
                 yield Button(">", id="btn-next-month")
 
+            # List header
+            yield Static("Score  Itération", id="list-header")
+
             # Iterations list
             yield OptionList(*self._build_iteration_options(), id="iteration-list")
 
@@ -216,9 +226,9 @@ class LinkIterationModal(ModalScreen[datetime | None]):
         iterations_with_scores.sort(key=lambda x: x[0])
 
         for iteration_date, score in iterations_with_scores:
-            score_str = f"{score:.0f}%"
+            score_str = f"{score:3.0f}%"
             date_str = iteration_date.strftime("%d/%m/%Y")
-            label = f"[{score_str:>4}] {date_str}"
+            label = f"{score_str}  {date_str}"
             option_id = iteration_date.strftime("%Y-%m-%d")
             options.append(Option(label, id=option_id))
 

@@ -195,32 +195,6 @@ class TestLoadLinksForTarget:
         assert result[0].operation_unique_id == 300
 
 
-class TestCreateMatcherWithLinks:
-    """Tests for create_matcher_with_links method."""
-
-    def test_creates_matcher_with_loaded_links(
-        self,
-        link_service: OperationLinkService,
-        repository: SqliteRepository,
-        monthly_rent_planned_op: PlannedOperation,
-    ) -> None:
-        """Test that the created matcher has links loaded."""
-        # Create a link
-        link = OperationLink(
-            operation_unique_id=100,
-            target_type=LinkType.PLANNED_OPERATION,
-            target_id=1,
-            iteration_date=datetime(2024, 1, 1),
-        )
-        repository.upsert_link(link)
-
-        matcher = link_service.create_matcher_with_links(monthly_rent_planned_op)
-
-        assert len(matcher.operation_links) == 1
-        assert matcher.operation_links[0].operation_unique_id == 100
-        assert matcher.operation_links[0].iteration_date == datetime(2024, 1, 1)
-
-
 class TestCreateHeuristicLinks:
     """Tests for create_heuristic_links method."""
 
