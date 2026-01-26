@@ -15,17 +15,22 @@ from budget_forecaster.account.sqlite_repository import SqliteRepository
 from budget_forecaster.backup import BackupService
 from budget_forecaster.config import Config
 from budget_forecaster.operation_range.budget import Budget
+from budget_forecaster.operation_range.historic_operation import HistoricOperation
+from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.services import (
     ForecastService,
     ImportService,
     OperationFilter,
+    OperationLinkService,
     OperationService,
 )
 from budget_forecaster.tui.modals import (
     BudgetEditModal,
     CategoryModal,
     FileBrowserModal,
+    LinkIterationModal,
+    LinkTargetModal,
     PlannedOperationEditModal,
 )
 from budget_forecaster.tui.screens.budgets import BudgetsWidget
@@ -33,13 +38,13 @@ from budget_forecaster.tui.screens.forecast import ForecastWidget
 from budget_forecaster.tui.screens.imports import ImportWidget
 from budget_forecaster.tui.screens.planned_operations import PlannedOperationsWidget
 from budget_forecaster.tui.widgets import OperationTable
-from budget_forecaster.types import Category
+from budget_forecaster.types import Category, OperationId, TargetId, TargetName
 
 # Logger instance (configured via Config.setup_logging)
 logger = logging.getLogger("budget_forecaster")
 
 
-class BudgetApp(App[None]):
+class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
     """Main TUI application for budget management."""
 
     TITLE = "Budget Forecaster"
@@ -116,6 +121,7 @@ class BudgetApp(App[None]):
     BINDINGS = [
         Binding("r", "refresh_data", "Rafraîchir", show=True),
         Binding("c", "categorize", "Catégoriser", show=True),
+        Binding("l", "link_operation", "Lier", show=True),
         Binding("q", "quit", "Quitter", show=True),
     ]
 
@@ -137,7 +143,9 @@ class BudgetApp(App[None]):
         self._operation_service: OperationService | None = None
         self._import_service: ImportService | None = None
         self._forecast_service: ForecastService | None = None
+        self._operation_link_service: OperationLinkService | None = None
         self._categorizing_operation_id: int | None = None
+        self._linking_operation: HistoricOperation | None = None
 
     def _load_config(self) -> None:
         """Load configuration and account."""
@@ -164,14 +172,19 @@ class BudgetApp(App[None]):
         self._persistent_account.load()
 
         self._operation_service = OperationService(self._persistent_account)
+        self._operation_link_service = OperationLinkService(
+            self._persistent_account.repository
+        )
         self._import_service = ImportService(
             self._persistent_account,
             self._config.inbox_path,
+            self._operation_link_service,
             self._config.inbox_exclude_patterns,
         )
         self._forecast_service = ForecastService(
             self._persistent_account.account,
             self._persistent_account.repository,
+            self._operation_link_service,
         )
 
     @property
@@ -201,6 +214,13 @@ class BudgetApp(App[None]):
         if self._forecast_service is None:
             raise RuntimeError("Application not initialized")
         return self._forecast_service
+
+    @property
+    def operation_link_service(self) -> OperationLinkService:
+        """Get the operation link service."""
+        if self._operation_link_service is None:
+            raise RuntimeError("Application not initialized")
+        return self._operation_link_service
 
     def compose(self) -> ComposeResult:
         """Create the UI layout."""
@@ -245,6 +265,22 @@ class BudgetApp(App[None]):
         """Refresh all screens with current data."""
         service = self.operation_service
 
+        # Build links and targets lookup dicts for operation tables
+        links: dict[OperationId, OperationLink] = {}
+        targets: dict[tuple[LinkType, TargetId], TargetName] = {}
+
+        for link in self.operation_link_service.get_all_links():
+            links[link.operation_unique_id] = link
+
+        for planned_op in self.forecast_service.get_all_planned_operations():
+            if planned_op.id is not None:
+                targets[
+                    (LinkType.PLANNED_OPERATION, planned_op.id)
+                ] = planned_op.description
+        for budget in self.forecast_service.get_all_budgets():
+            if budget.id is not None:
+                targets[(LinkType.BUDGET, budget.id)] = budget.description
+
         # Update dashboard stats
         balance = service.balance
         stat_balance = self.query_one("#stat-balance", Static)
@@ -270,13 +306,15 @@ class BudgetApp(App[None]):
         stat_uncat.remove_class("stat-positive", "stat-negative")
         stat_uncat.add_class("stat-negative" if uncategorized else "stat-positive")
 
-        # Refresh tables
-        self.query_one("#dashboard-table", OperationTable).load_operations(recent_ops)
+        # Refresh tables with link data
+        self.query_one("#dashboard-table", OperationTable).load_operations(
+            recent_ops, links, targets
+        )
         self.query_one("#operations-table", OperationTable).load_operations(
-            service.get_operations()
+            service.get_operations(), links, targets
         )
         self.query_one("#categorize-table", OperationTable).load_operations(
-            uncategorized
+            uncategorized, links, targets
         )
 
         # Refresh import widget
@@ -380,6 +418,113 @@ class BudgetApp(App[None]):
             self._persistent_account.load()
         self._refresh_screens()
         self.notify(f"Catégorie '{category.value}' assignée")
+
+    def action_link_operation(self) -> None:
+        """Open link modal for the currently selected operation."""
+        # Get the active tab and prioritize its table
+        tabbed = self.query_one(TabbedContent)
+        active_tab = tabbed.active
+
+        # Map tab IDs to table IDs
+        tab_to_table = {
+            "dashboard": "#dashboard-table",
+            "operations": "#operations-table",
+            "categorize": "#categorize-table",
+        }
+
+        # Try active tab's table first, then others
+        table_order = [tab_to_table.get(active_tab, "#operations-table")]
+        for table_id in ("#operations-table", "#dashboard-table", "#categorize-table"):
+            if table_id not in table_order:
+                table_order.append(table_id)
+
+        for table_id in table_order:
+            table = self.query_one(table_id, OperationTable)
+            if operation := table.get_selected_operation():
+                self._linking_operation = operation
+
+                # Get current link if any
+                current_link = None
+                for link in self.operation_link_service.get_all_links():
+                    if link.operation_unique_id == operation.unique_id:
+                        current_link = link
+                        break
+
+                # Get all targets
+                planned_operations = list(
+                    self.forecast_service.get_all_planned_operations()
+                )
+                budgets = list(self.forecast_service.get_all_budgets())
+
+                self.push_screen(
+                    LinkTargetModal(
+                        operation,
+                        current_link,
+                        planned_operations,
+                        budgets,
+                    ),
+                    self._on_target_selected,
+                )
+                return
+
+        self.notify("Aucune opération sélectionnée", severity="warning")
+
+    def _on_target_selected(
+        self, result: PlannedOperation | Budget | str | None
+    ) -> None:
+        """Handle target selection from link modal."""
+        if result is None or self._linking_operation is None:
+            return
+
+        # Handle unlink
+        if result == "unlink":
+            self.operation_link_service.delete_link(self._linking_operation.unique_id)
+            self.notify("Liaison supprimée")
+            self._refresh_screens()
+            self._linking_operation = None
+            return
+
+        # Target selected - show iteration modal
+        if isinstance(result, (PlannedOperation, Budget)):
+            self.push_screen(
+                LinkIterationModal(self._linking_operation, result),
+                lambda date: self._on_iteration_selected(date, result),
+            )
+
+    def _on_iteration_selected(
+        self,
+        iteration_date: datetime | None,
+        target: PlannedOperation | Budget,
+    ) -> None:
+        """Handle iteration selection from link modal."""
+        if iteration_date is None or self._linking_operation is None:
+            return
+
+        # Determine target type and id
+        if isinstance(target, PlannedOperation):
+            target_type = LinkType.PLANNED_OPERATION
+        else:
+            target_type = LinkType.BUDGET
+
+        if target.id is None:
+            self.notify("Cible invalide", severity="error")
+            return
+
+        # Create the link
+        link = OperationLink(
+            operation_unique_id=self._linking_operation.unique_id,
+            target_type=target_type,
+            target_id=target.id,
+            iteration_date=iteration_date,
+            is_manual=True,
+        )
+
+        # Upsert (replace any existing link for this operation)
+        self.operation_link_service.upsert_link(link)
+
+        self.notify(f"Opération liée à '{target.description}'")
+        self._refresh_screens()
+        self._linking_operation = None
 
     # Budget event handlers
 

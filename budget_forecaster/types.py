@@ -1,5 +1,27 @@
 """Module containing custom types for the budget_forecaster package."""
 import enum
+from datetime import datetime
+
+OperationId = int
+"""Unique identifier for a historic operation."""
+
+PlannedOperationId = int
+"""Unique identifier for a planned operation."""
+
+BudgetId = int
+"""Unique identifier for a budget."""
+
+OperationLinkId = int
+"""Unique identifier for an operation link."""
+
+IterationDate = datetime
+"""Date identifying a specific iteration of a planned operation or budget."""
+
+TargetId = PlannedOperationId | BudgetId
+"""Identifier for a link target (planned operation or budget)."""
+
+TargetName = str
+"""Display name/description of a link target."""
 
 
 class Category(enum.StrEnum):

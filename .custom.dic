@@ -18,13 +18,17 @@ datetime
 deserialization
 deserialize
 dialogs
+dicts
 enum
 historicoperation
 iterable
 json
 kwargs
 lifecycle
+lookups
 matcher
+matcher's
+matchers
 minification
 minifies
 mtime
@@ -32,6 +36,7 @@ mtimes
 mypy
 params
 paribas
+pre
 prévu
 relativedelta
 réel
@@ -43,6 +48,8 @@ tui
 ui
 uncategorized
 unicode
+unlink
+unlinked
 upsert
 upserting
 whitespace

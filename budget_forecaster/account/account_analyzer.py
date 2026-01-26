@@ -10,6 +10,7 @@ from budget_forecaster.account.account_analysis_report import AccountAnalysisRep
 from budget_forecaster.account.account_forecaster import AccountForecaster
 from budget_forecaster.forecast.forecast import Forecast
 from budget_forecaster.forecast.forecast_actualizer import ForecastActualizer
+from budget_forecaster.operation_range.operation_link import OperationLink
 from budget_forecaster.operation_range.operations_categorizer import (
     OperationsCategorizer,
 )
@@ -24,11 +25,13 @@ class AccountAnalyzer:
         self,
         account: Account,
         forecast: Forecast,
+        operation_links: tuple[OperationLink, ...] = (),
     ) -> None:
         self.__account = account._replace(
             operations=OperationsCategorizer(forecast)(account.operations)
         )
         self.__forecast = forecast
+        self.__operation_links = operation_links
 
     def compute_report(
         self, start_date: datetime, end_date: datetime
@@ -132,7 +135,9 @@ class AccountAnalyzer:
         """Compute the balance of the account between two dates."""
         assert start_date <= end_date
 
-        actualized_forecast = ForecastActualizer(self.__account)(self.__forecast)
+        actualized_forecast = ForecastActualizer(
+            self.__account, self.__operation_links
+        )(self.__forecast)
         account_forecaster = AccountForecaster(self.__account, actualized_forecast)
 
         initial_state = account_forecaster(start_date)
@@ -171,7 +176,9 @@ class AccountAnalyzer:
             ).setdefault(amount_type, 0.0)
             expenses_per_month_and_category[category][month][amount_type] += amount
 
-        actualized_forecast = ForecastActualizer(self.__account)(self.__forecast)
+        actualized_forecast = ForecastActualizer(
+            self.__account, self.__operation_links
+        )(self.__forecast)
         account_forecaster = AccountForecaster(self.__account, actualized_forecast)
 
         # Actualized expenses are only computed for the current period

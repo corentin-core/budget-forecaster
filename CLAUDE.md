@@ -66,7 +66,7 @@ See `.claude/rules/python-quality.md` for detailed patterns and examples.
 
 - **Simplify method signatures** - Accept domain objects directly
   (`target: PlannedOperation | Budget`) rather than their decomposed parts
-  (`linked_type, linked_id, matcher`).
+  (`target_type, target_id, matcher`).
 
 - **Avoid redundant computations** - If you compute something in a loop, store it in the
   result structure rather than recomputing it later.
@@ -185,13 +185,22 @@ See `.claude/rules/testing.md` for detailed patterns and examples.
 
 ## Working Principles
 
+### Code Navigation with MCP Serena
+
+**Prefer MCP Serena tools** for code navigation and exploration. Performance is
+significantly better than grep/glob for symbol-based searches.
+
+- `jet_brains_find_symbol` - Find symbol definitions by name
+- `jet_brains_find_referencing_symbols` - Find all usages of a symbol
+- `jet_brains_get_symbols_overview` - Get file structure overview
+- `jet_brains_type_hierarchy` - Explore class hierarchies
+
+Use Grep/Glob only for pattern searches in non-code files or when searching for strings
+that aren't symbols.
+
 ### Coherence with Existing Codebase
 
-When using internal modules, check how they're used in related code:
-
-```bash
-grep -r "from budget_forecaster" --include="*.py" -l | head -5
-```
+When using internal modules, check how they're used in related code.
 
 ### Apply Changes Globally
 
