@@ -1,5 +1,6 @@
 """Widget for displaying operations in a table."""
 
+from collections.abc import Iterable
 from typing import Any
 
 from textual.message import Message
@@ -7,8 +8,8 @@ from textual.widgets import DataTable
 from textual.widgets.data_table import RowKey
 
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
-from budget_forecaster.types import OperationId, TargetId, TargetName
+from budget_forecaster.operation_range.operation_link import OperationLink
+from budget_forecaster.types import MatcherKey, OperationId, TargetName
 
 
 def get_row_key_at_cursor(table: DataTable) -> RowKey | None:  # type: ignore[type-arg]
@@ -69,14 +70,14 @@ class OperationTable(DataTable[str]):
 
     def load_operations(
         self,
-        operations: list[HistoricOperation],
+        operations: Iterable[HistoricOperation],
         links: dict[OperationId, OperationLink] | None = None,
-        targets: dict[tuple[LinkType, TargetId], TargetName] | None = None,
+        targets: dict[MatcherKey, TargetName] | None = None,
     ) -> None:
         """Load operations into the table.
 
         Args:
-            operations: List of operations to display.
+            operations: Operations to display.
             links: Mapping of operation_unique_id to OperationLink (optional).
             targets: Mapping of (type, id) to target name for display (optional).
         """

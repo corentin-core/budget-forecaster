@@ -17,10 +17,6 @@ from budget_forecaster.bank_adapter.bank_adapter_factory import BankAdapterFacto
 from budget_forecaster.operation_range.historic_operation_factory import (
     HistoricOperationFactory,
 )
-from budget_forecaster.operation_range.operation_link import LinkType
-from budget_forecaster.operation_range.operation_matcher import OperationMatcher
-from budget_forecaster.services.operation_link_service import OperationLinkService
-from budget_forecaster.types import BudgetId, PlannedOperationId
 
 logger = logging.getLogger(__name__)
 
@@ -50,15 +46,14 @@ class ImportService:
     """Service for importing bank exports.
 
     This service provides methods to import bank statements from files or
-    the inbox folder. Automatically creates heuristic links to planned
-    operations and budgets after import.
+    the inbox folder. It only handles import logic; link creation is
+    orchestrated by ApplicationService.
     """
 
     def __init__(
         self,
         persistent_account: PersistentAccount,
         inbox_path: Path,
-        operation_link_service: OperationLinkService,
         exclude_patterns: list[str] | None = None,
     ) -> None:
         """Initialize the service.
@@ -66,12 +61,10 @@ class ImportService:
         Args:
             persistent_account: The persistent account to import to.
             inbox_path: Path to the inbox folder.
-            operation_link_service: Service for managing operation links.
             exclude_patterns: List of glob patterns to exclude from inbox.
         """
         self._persistent_account = persistent_account
         self._inbox_path = inbox_path
-        self._operation_link_service = operation_link_service
         self._exclude_patterns = exclude_patterns or []
         self._bank_adapter_factory = BankAdapterFactory()
 
@@ -171,9 +164,6 @@ class ImportService:
 
             operations_count = len(bank_adapter.operations)
 
-            # Create heuristic links
-            self.create_heuristic_links()
-
             if move_to_processed:
                 self._move_to_processed(path)
 
@@ -262,43 +252,3 @@ class ImportService:
     def pending_import_count(self) -> int:
         """Get the number of pending imports."""
         return len(self.get_supported_exports_in_inbox())
-
-    def create_heuristic_links(self) -> int:
-        """Create heuristic links for all unlinked operations.
-
-        Matches operations against all planned operations and budgets,
-        creating links where heuristic matching succeeds.
-
-        Returns:
-            Number of links created.
-        """
-        repository = self._persistent_account.repository
-        operations = self._persistent_account.account.operations
-
-        # Build matchers for all planned operations and budgets
-        matchers_by_target: dict[
-            tuple[LinkType, PlannedOperationId | BudgetId], OperationMatcher
-        ] = {}
-
-        # Add matchers for planned operations
-        for planned_op in repository.get_all_planned_operations():
-            if planned_op.id is not None:
-                matchers_by_target[
-                    (LinkType.PLANNED_OPERATION, planned_op.id)
-                ] = planned_op.matcher
-
-        # Add matchers for budgets
-        for budget in repository.get_all_budgets():
-            if budget.id is not None:
-                matchers_by_target[(LinkType.BUDGET, budget.id)] = budget.matcher
-
-        if not matchers_by_target:
-            return 0
-
-        # Create heuristic links
-        created_links = self._operation_link_service.create_heuristic_links(
-            operations, matchers_by_target
-        )
-
-        logger.info("Created %d heuristic links", len(created_links))
-        return len(created_links)

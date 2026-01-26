@@ -12,8 +12,8 @@ from budget_forecaster.account.account_analyzer import AccountAnalyzer
 from budget_forecaster.account.repository_interface import RepositoryInterface
 from budget_forecaster.forecast.forecast import Forecast
 from budget_forecaster.operation_range.budget import Budget
+from budget_forecaster.operation_range.operation_link import OperationLink
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
-from budget_forecaster.services.operation_link_service import OperationLinkService
 from budget_forecaster.types import BudgetId, PlannedOperationId
 
 logger = logging.getLogger(__name__)
@@ -37,26 +37,24 @@ class MonthlySummary(TypedDict):
 class ForecastService:
     """Service for generating and managing forecasts.
 
-    Automatically recalculates heuristic operation links when planned
-    operations or budgets are added or modified.
+    This service handles forecast computation and CRUD operations for
+    planned operations and budgets. Link management is orchestrated by
+    ApplicationService.
     """
 
     def __init__(
         self,
         account: Account,
         repository: RepositoryInterface,
-        operation_link_service: OperationLinkService,
     ) -> None:
         """Initialize the forecast service.
 
         Args:
             account: The account to forecast.
             repository: Repository for data persistence.
-            operation_link_service: Service for managing operation links.
         """
         self._account = account
         self._repository = repository
-        self._operation_link_service = operation_link_service
         self._forecast: Forecast | None = None
         self._report: AccountAnalysisReport | None = None
 
@@ -104,31 +102,33 @@ class ForecastService:
         """Get a budget by ID."""
         return self._repository.get_budget_by_id(budget_id)
 
-    def add_budget(self, budget: Budget) -> BudgetId:
+    def add_budget(self, budget: Budget) -> Budget:
         """Add a new budget.
 
         Args:
-            budget: Budget to add (id should be -1).
+            budget: Budget to add (id should be None).
 
         Returns:
-            The ID of the newly created budget.
+            The newly created budget with its assigned ID.
         """
         budget_id = self._repository.upsert_budget(budget)
         self._invalidate_cache()
-        self._recalculate_budget_links(budget_id)
-        return budget_id
+        return budget.replace(record_id=budget_id)
 
-    def update_budget(self, budget: Budget) -> None:
+    def update_budget(self, budget: Budget) -> Budget:
         """Update an existing budget.
 
         Args:
             budget: Budget with updated values (id must not be None).
+
+        Returns:
+            The updated budget.
         """
         if budget.id is None:
             raise ValueError("Budget must have a valid ID for update")
         self._repository.upsert_budget(budget)
         self._invalidate_cache()
-        self._recalculate_budget_links(budget.id)
+        return budget
 
     def delete_budget(self, budget_id: BudgetId) -> None:
         """Delete a budget.
@@ -151,31 +151,33 @@ class ForecastService:
         """Get a planned operation by ID."""
         return self._repository.get_planned_operation_by_id(op_id)
 
-    def add_planned_operation(self, op: PlannedOperation) -> PlannedOperationId:
+    def add_planned_operation(self, op: PlannedOperation) -> PlannedOperation:
         """Add a new planned operation.
 
         Args:
             op: Planned operation to add (id should be None).
 
         Returns:
-            The ID of the newly created planned operation.
+            The newly created planned operation with its assigned ID.
         """
         op_id = self._repository.upsert_planned_operation(op)
         self._invalidate_cache()
-        self._recalculate_planned_operation_links(op_id)
-        return op_id
+        return op.replace(record_id=op_id)
 
-    def update_planned_operation(self, op: PlannedOperation) -> None:
+    def update_planned_operation(self, op: PlannedOperation) -> PlannedOperation:
         """Update an existing planned operation.
 
         Args:
             op: Planned operation with updated values (id must not be None).
+
+        Returns:
+            The updated planned operation.
         """
         if op.id is None:
             raise ValueError("Planned operation must have a valid ID for update")
         self._repository.upsert_planned_operation(op)
         self._invalidate_cache()
-        self._recalculate_planned_operation_links(op.id)
+        return op
 
     def delete_planned_operation(self, op_id: PlannedOperationId) -> None:
         """Delete a planned operation.
@@ -190,12 +192,14 @@ class ForecastService:
         self,
         start_date: date | None = None,
         end_date: date | None = None,
+        operation_links: tuple[OperationLink, ...] = (),
     ) -> AccountAnalysisReport:
         """Compute the forecast report.
 
         Args:
             start_date: Start date for the report (default: 4 months ago).
             end_date: End date for the report (default: 12 months from now).
+            operation_links: Tuple of operation links to use for actualization.
 
         Returns:
             The computed AccountAnalysisReport.
@@ -213,7 +217,6 @@ class ForecastService:
 
         logger.info("Computing forecast report from %s to %s", start_date, end_date)
 
-        operation_links = self._operation_link_service.get_all_links()
         analyzer = AccountAnalyzer(self._account, self._forecast, operation_links)
         self._report = analyzer.compute_report(
             datetime.combine(start_date, time()),
@@ -306,33 +309,3 @@ class ForecastService:
             (str(cat), float(row["Total"]), float(row["Moyenne mensuelle"]))
             for cat, row in df.iterrows()
         ]
-
-    # Link recalculation methods
-
-    def _recalculate_planned_operation_links(self, op_id: PlannedOperationId) -> None:
-        """Recalculate heuristic links for a planned operation.
-
-        Args:
-            op_id: The ID of the planned operation.
-        """
-        if (planned_op := self._repository.get_planned_operation_by_id(op_id)) is None:
-            return
-
-        self._operation_link_service.recalculate_links_for_target(
-            planned_op, self._account.operations
-        )
-        logger.debug("Recalculated links for planned operation %d", op_id)
-
-    def _recalculate_budget_links(self, budget_id: BudgetId) -> None:
-        """Recalculate heuristic links for a budget.
-
-        Args:
-            budget_id: The ID of the budget.
-        """
-        if (budget := self._repository.get_budget_by_id(budget_id)) is None:
-            return
-
-        self._operation_link_service.recalculate_links_for_target(
-            budget, self._account.operations
-        )
-        logger.debug("Recalculated links for budget %d", budget_id)

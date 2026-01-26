@@ -24,6 +24,17 @@ TargetName = str
 """Display name/description of a link target."""
 
 
+class LinkType(enum.StrEnum):
+    """Type of link target."""
+
+    PLANNED_OPERATION = "planned_operation"
+    BUDGET = "budget"
+
+
+MatcherKey = tuple[LinkType, TargetId]
+"""Key identifying a matcher: (link type, target id)."""
+
+
 class Category(enum.StrEnum):
     """A category is a group of transactions."""
 

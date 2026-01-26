@@ -15,9 +15,11 @@ graph TB
     end
 
     subgraph "Service Layer"
+        AS[ApplicationService]
         OLS[OperationLinkService]
         FS[ForecastService]
         IS[ImportService]
+        OS[OperationService]
     end
 
     subgraph "Domain Layer"
@@ -33,20 +35,22 @@ graph TB
         DB[(SQLite DB)]
     end
 
+    TUI --> AS
     TUI --> LinkTargetModal
     TUI --> LinkIterationModal
     TUI --> OperationTable
-    TUI --> OLS
-    TUI --> FS
-    TUI --> IS
+
+    AS --> IS
+    AS --> FS
+    AS --> OLS
+    AS --> OS
+    AS --> OM
 
     LinkTargetModal --> OLS
-    FS --> OLS
-    IS --> OLS
 
-    OLS --> OM
     OLS --> Repo
-    FS --> OM
+    FS --> Repo
+    IS --> Repo
 
     OM --> OL
     OM --> PO
@@ -55,6 +59,13 @@ graph TB
 
     Repo --> DB
 ```
+
+**ApplicationService** is the central orchestrator that:
+
+- Coordinates imports and creates heuristic links afterward
+- Manages CRUD for planned operations and budgets with automatic link recalculation
+- Caches matchers for efficient link creation
+- Handles categorization with potential link creation
 
 ## Data Model
 
@@ -92,11 +103,32 @@ classDiagram
     class OperationLinkService {
         -OperationLinkRepositoryInterface repository
         +get_all_links() tuple~OperationLink~
+        +get_link_for_operation(operation_id) OperationLink?
         +upsert_link(link) void
         +delete_link(operation_unique_id) void
         +load_links_for_target(target) tuple~OperationLink~
         +create_heuristic_links(operations, matchers) tuple~OperationLink~
-        +recalculate_links_for_target(target, operations) tuple~OperationLink~
+        +delete_automatic_links_for_target(type, id) void
+        +delete_links_for_target(type, id) void
+    }
+
+    class ApplicationService {
+        -PersistentAccount persistent_account
+        -ImportService import_service
+        -OperationService operation_service
+        -ForecastService forecast_service
+        -OperationLinkService operation_link_service
+        -dict matchers_cache
+        +import_file(path) ImportResult
+        +import_from_inbox(callback) ImportSummary
+        +categorize_operation(id, category) OperationCategoryUpdate?
+        +bulk_categorize(ids, category) tuple~OperationCategoryUpdate~
+        +add_planned_operation(op) PlannedOperation
+        +update_planned_operation(op) PlannedOperation
+        +delete_planned_operation(id) void
+        +add_budget(budget) Budget
+        +update_budget(budget) Budget
+        +delete_budget(id) void
     }
 
     class OperationLinkRepositoryInterface {
@@ -108,6 +140,7 @@ classDiagram
         +upsert_link(link) void
         +delete_link(unique_id) void
         +delete_automatic_links_for_target(type, id) void
+        +delete_links_for_target(type, id) void
     }
 
     OperationLink --> LinkType
@@ -209,7 +242,7 @@ def match(self, operation: HistoricOperation) -> bool:
 
 ### OperationLinkService
 
-Orchestrates link lifecycle between matchers and repository.
+Manages link persistence and heuristic link creation.
 
 **Responsibilities:**
 
@@ -217,7 +250,20 @@ Orchestrates link lifecycle between matchers and repository.
 - Create, update, or delete links
 - Load links for a specific target
 - Create automatic links for unlinked operations (heuristic matching)
-- Refresh links after target edit (recalculation)
+- Delete automatic or all links for a target
+
+### ApplicationService
+
+Central orchestrator that coordinates data flow between services.
+
+**Responsibilities:**
+
+- Coordinate imports and create heuristic links afterward
+- Manage CRUD for planned operations and budgets
+- Recalculate links when targets are updated (delete automatic + create new)
+- Delete ALL links when targets are deleted (including manual links)
+- Cache matchers for efficient link creation
+- Handle categorization with potential link creation
 
 ### Match Score
 
@@ -258,14 +304,19 @@ individual operation amounts.
 ```mermaid
 sequenceDiagram
     participant CLI as CLI/TUI
+    participant AS as ApplicationService
     participant IS as ImportService
     participant OLS as OperationLinkService
     participant Repo as Repository
     participant OM as OperationMatcher
 
-    CLI->>IS: import_operations(file)
+    CLI->>AS: import_file(path)
+    AS->>IS: import_file(path)
     IS->>Repo: save operations
-    IS->>OLS: create_heuristic_links(operations, matchers)
+    IS-->>AS: ImportResult (success)
+
+    AS->>AS: get_matchers() (cached)
+    AS->>OLS: create_heuristic_links(operations, matchers)
 
     loop For each unlinked operation
         OLS->>Repo: get_link_for_operation(id)
@@ -286,8 +337,8 @@ sequenceDiagram
         end
     end
 
-    OLS-->>IS: created links
-    IS-->>CLI: import result
+    OLS-->>AS: created links
+    AS-->>CLI: ImportResult
 ```
 
 ### 2. Manual Linking (TUI)
@@ -331,23 +382,27 @@ sequenceDiagram
 sequenceDiagram
     participant User
     participant TUI as BudgetApp
+    participant AS as ApplicationService
     participant FS as ForecastService
     participant OLS as OperationLinkService
     participant Repo as Repository
 
     User->>TUI: Edit planned operation
-    TUI->>FS: update_planned_operation(op)
+    TUI->>AS: update_planned_operation(op)
+    AS->>FS: update_planned_operation(op)
     FS->>Repo: save planned operation
+    FS-->>AS: updated operation
 
-    FS->>OLS: recalculate_links_for_target(target, operations)
+    AS->>AS: update matcher cache
+    AS->>OLS: delete_automatic_links_for_target(type, id)
     OLS->>Repo: delete_automatic_links_for_target(type, id)
     Note over Repo: Manual links preserved
 
-    OLS->>OLS: create_heuristic_links(operations, {target: matcher})
+    AS->>OLS: create_heuristic_links(operations, {target: matcher})
     OLS->>Repo: upsert_link() for each new match
 
-    OLS-->>FS: new links
-    FS-->>TUI: update complete
+    OLS-->>AS: new links
+    AS-->>TUI: updated operation
     TUI->>TUI: refresh_screens()
 ```
 
@@ -361,9 +416,9 @@ sequenceDiagram
     participant AA as AccountAnalyzer
     participant FA as ForecastActualizer
 
-    CLI->>FS: compute_report(start, end)
-    FS->>OLS: get_all_links()
-    OLS-->>FS: all links
+    CLI->>OLS: get_all_links()
+    OLS-->>CLI: all links
+    CLI->>FS: compute_report(start, end, links)
 
     FS->>AA: new AccountAnalyzer(account, forecast, links)
     FS->>AA: compute_report(start, end)
@@ -377,6 +432,9 @@ sequenceDiagram
 
     FS-->>CLI: report
 ```
+
+**Note:** ForecastService now receives operation links as a parameter rather than
+fetching them internally. This decouples ForecastService from OperationLinkService.
 
 ## Link Lifecycle State Machine
 

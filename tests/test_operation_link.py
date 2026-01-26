@@ -13,7 +13,8 @@ from budget_forecaster.account.sqlite_repository import (
     CURRENT_SCHEMA_VERSION,
     SqliteRepository,
 )
-from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
+from budget_forecaster.operation_range.operation_link import OperationLink
+from budget_forecaster.types import LinkType
 
 
 @pytest.fixture

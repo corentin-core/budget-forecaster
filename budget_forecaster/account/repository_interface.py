@@ -10,8 +10,9 @@ from abc import ABC, abstractmethod
 from budget_forecaster.account.account import Account
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
+from budget_forecaster.operation_range.operation_link import OperationLink
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
+from budget_forecaster.types import LinkType
 
 
 class BudgetRepositoryInterface(ABC):
@@ -239,6 +240,17 @@ class OperationLinkRepositoryInterface(ABC):
         """Delete all automatic links for a given target.
 
         Used for recalculation when a planned operation or budget is modified.
+
+        Args:
+            target_type: The type of target (planned operation or budget).
+            target_id: The ID of the target.
+        """
+
+    @abstractmethod
+    def delete_links_for_target(self, target_type: LinkType, target_id: int) -> None:
+        """Delete all links for a given target (both manual and automatic).
+
+        Used for cascade delete when a planned operation or budget is deleted.
 
         Args:
             target_type: The type of target (planned operation or budget).
