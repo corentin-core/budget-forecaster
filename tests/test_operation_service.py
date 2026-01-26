@@ -34,7 +34,7 @@ def sample_operations() -> tuple[HistoricOperation, ...]:
             unique_id=3,
             description="CARTE AMAZON",
             amount=Amount(-99.99),
-            category=Category.OTHER,
+            category=Category.UNCATEGORIZED,
             date=datetime(2025, 1, 20),
         ),
         HistoricOperation(
@@ -130,7 +130,7 @@ class TestOperationFilter:
         filter_ = OperationFilter(uncategorized_only=True)
         matches = [op for op in sample_operations if filter_.matches(op)]
         assert len(matches) == 1
-        assert matches[0].category == Category.OTHER
+        assert matches[0].category == Category.UNCATEGORIZED
 
 
 class TestOperationService:
@@ -169,10 +169,10 @@ class TestOperationService:
         assert operation is None
 
     def test_get_uncategorized_operations(self, service: OperationService) -> None:
-        """get_uncategorized_operations returns only OTHER category."""
+        """get_uncategorized_operations returns only UNCATEGORIZED category."""
         operations = service.get_uncategorized_operations()
         assert len(operations) == 1
-        assert operations[0].category == Category.OTHER
+        assert operations[0].category == Category.UNCATEGORIZED
 
     def test_update_operation_category(
         self, service: OperationService, mock_account_manager: MagicMock

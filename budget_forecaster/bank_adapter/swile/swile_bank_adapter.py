@@ -57,7 +57,7 @@ class SwileBankAdapter(BankAdapterBase):
                         amount=Amount(
                             amount, transaction["amount"]["currency"]["iso_3"]
                         ),
-                        category=Category.OTHER,
+                        category=Category.UNCATEGORIZED,
                         date=date,
                     )
                 )
