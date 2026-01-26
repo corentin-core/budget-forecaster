@@ -3,11 +3,13 @@ from datetime import datetime, timedelta
 from typing import Any, Iterable, Iterator
 
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
+from budget_forecaster.operation_range.operation_link import OperationLink
 from budget_forecaster.operation_range.operation_range import OperationRange
 from budget_forecaster.time_range import TimeRangeInterface
+from budget_forecaster.types import IterationDate
 
 
-class OperationMatcher:
+class OperationMatcher:  # pylint: disable=too-many-public-methods
     """Check if an operation matches an operation range."""
 
     def __init__(
@@ -16,11 +18,27 @@ class OperationMatcher:
         description_hints: set[str] | None = None,
         approximation_date_range: timedelta = timedelta(days=5),
         approximation_amount_ratio: float = 0.05,
+        operation_links: tuple[OperationLink, ...] = (),
     ):
+        """Initialize the matcher.
+
+        Args:
+            operation_range: The operation range to match against.
+            description_hints: Keywords that must appear in operation descriptions.
+            approximation_date_range: Tolerance for date matching.
+            approximation_amount_ratio: Tolerance ratio for amount matching.
+            operation_links: Tuple of OperationLinks for this target.
+                Links take priority over heuristic matching.
+        """
         self.__operation_range = operation_range
         self.__description_hints = description_hints or set()
         self.__approximation_date_range = approximation_date_range
         self.__approximation_amount_ratio = approximation_amount_ratio
+        self.__operation_links = operation_links
+
+        # Validate operation links
+        for link in operation_links:
+            self.__validate_iteration_date(link.iteration_date)
 
     @property
     def operation_range(self) -> OperationRange:
@@ -41,6 +59,62 @@ class OperationMatcher:
     def approximation_amount_ratio(self) -> float:
         """The approximation amount ratio to match."""
         return self.__approximation_amount_ratio
+
+    @property
+    def operation_links(self) -> tuple[OperationLink, ...]:
+        """Tuple of OperationLinks for this target."""
+        return self.__operation_links
+
+    def __validate_iteration_date(self, iteration_date: IterationDate) -> None:
+        """Validate that iteration_date is a valid iteration of the operation range.
+
+        Args:
+            iteration_date: The date to validate.
+
+        Raises:
+            ValueError: If the date is not a valid iteration.
+        """
+        time_range = self.__operation_range.time_range.current_time_range(
+            iteration_date
+        )
+        if time_range is None or time_range.initial_date != iteration_date:
+            raise ValueError(
+                f"Invalid iteration date {iteration_date} for operation range "
+                f"'{self.__operation_range.description}'"
+            )
+
+    def is_linked(self, operation: HistoricOperation) -> bool:
+        """Check if operation has a link to this matcher's operation_range.
+
+        Args:
+            operation: The historic operation to check.
+
+        Returns:
+            True if the operation has a link, False otherwise.
+        """
+        return any(
+            link.operation_unique_id == operation.unique_id
+            for link in self.__operation_links
+        )
+
+    def get_iteration_for_operation(
+        self, operation: HistoricOperation
+    ) -> IterationDate | None:
+        """Get the specific iteration date this operation is linked to.
+
+        For linked operations, returns the stored iteration date.
+        For heuristic matches, returns None (caller should use date proximity).
+
+        Args:
+            operation: The historic operation to check.
+
+        Returns:
+            The iteration date if linked, None otherwise.
+        """
+        for link in self.__operation_links:
+            if link.operation_unique_id == operation.unique_id:
+                return link.iteration_date
+        return None
 
     def update_params(
         self,
@@ -93,8 +167,18 @@ class OperationMatcher:
             approx_after=self.approximation_date_range,
         )
 
-    def match(self, operation: HistoricOperation) -> bool:
-        """Check if the operation matches the planned operation."""
+    def __match_heuristic(self, operation: HistoricOperation) -> bool:
+        """Check if the operation matches using heuristic rules only.
+
+        This method applies the original matching logic without considering
+        operation links.
+
+        Args:
+            operation: The historic operation to check.
+
+        Returns:
+            True if the operation matches heuristically, False otherwise.
+        """
         return (
             not self.__out_of_range(operation)
             and (not self.description_hints or self.match_description(operation))
@@ -102,6 +186,26 @@ class OperationMatcher:
             and self.match_category(operation)
             and self.match_date_range(operation)
         )
+
+    def match(self, operation: HistoricOperation) -> bool:
+        """Check if the operation matches the planned operation.
+
+        Operation links take priority over heuristic matching. If an operation
+        has a link to this matcher's operation range, it will match
+        regardless of heuristic criteria.
+
+        Args:
+            operation: The historic operation to check.
+
+        Returns:
+            True if the operation matches (via link or heuristically).
+        """
+        # Operation links take priority
+        if self.is_linked(operation):
+            return True
+
+        # Fall back to heuristic matching
+        return self.__match_heuristic(operation)
 
     def matches(
         self, operations: Iterable[HistoricOperation]
@@ -177,13 +281,21 @@ class OperationMatcher:
                     break
 
     def replace(self, **kwargs: Any) -> "OperationMatcher":
-        """Return a new instance of the operation matcher with the given parameters replaced."""
+        """Return a new instance of the operation matcher with the given parameters replaced.
+
+        Note: If operation_range is replaced, operation_links are cleared because
+        the existing links reference iterations of the old operation range.
+        """
         new_operation_range = kwargs.get("operation_range", self.operation_range)
         assert isinstance(new_operation_range, OperationRange)
+
+        # Clear links if operation_range changes (links are tied to specific iterations)
+        preserve_links = new_operation_range is self.operation_range
 
         return OperationMatcher(
             operation_range=new_operation_range,
             description_hints=self.description_hints,
             approximation_date_range=self.approximation_date_range,
             approximation_amount_ratio=self.approximation_amount_ratio,
+            operation_links=self.__operation_links if preserve_links else (),
         )

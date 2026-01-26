@@ -422,6 +422,7 @@ class ForecastWidget(Vertical):
         from budget_forecaster.account.account_analysis_renderer import (
             AccountAnalysisRendererExcel,
         )
+
         # pylint: enable=import-outside-toplevel
 
         report = self._forecast_service.report

@@ -12,6 +12,7 @@ from budget_forecaster.services.import_service import (
     ImportService,
     ImportSummary,
 )
+from budget_forecaster.services.operation_link_service import OperationLinkService
 
 
 @pytest.fixture
@@ -23,6 +24,12 @@ def mock_persistent_account() -> MagicMock:
 
 
 @pytest.fixture
+def mock_operation_link_service() -> MagicMock:
+    """Create a mock operation link service."""
+    return MagicMock(spec=OperationLinkService)
+
+
+@pytest.fixture
 def temp_inbox(tmp_path: Path) -> Path:
     """Create a temporary inbox directory."""
     inbox = tmp_path / "inbox"
@@ -31,11 +38,16 @@ def temp_inbox(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def service(mock_persistent_account: MagicMock, temp_inbox: Path) -> ImportService:
+def service(
+    mock_persistent_account: MagicMock,
+    temp_inbox: Path,
+    mock_operation_link_service: MagicMock,
+) -> ImportService:
     """Create an ImportService with mock data."""
     return ImportService(
         persistent_account=mock_persistent_account,
         inbox_path=temp_inbox,
+        operation_link_service=mock_operation_link_service,
         exclude_patterns=["*.tmp", "ignore_*"],
     )
 
@@ -78,6 +90,7 @@ class TestIsSupportedExport:
         mock_factory_class: MagicMock,
         service: ImportService,
         temp_inbox: Path,
+        mock_operation_link_service: MagicMock,
     ) -> None:
         """is_supported_export returns True when adapter is found."""
         # Create a file
@@ -92,6 +105,7 @@ class TestIsSupportedExport:
         new_service = ImportService(
             persistent_account=MagicMock(),
             inbox_path=temp_inbox,
+            operation_link_service=mock_operation_link_service,
         )
         new_service._bank_adapter_factory = mock_factory
 
@@ -149,11 +163,16 @@ class TestGetSupportedExportsInInbox:
         assert "ignore_me.xlsx" not in names
 
     def test_nonexistent_inbox(
-        self, mock_persistent_account: MagicMock, tmp_path: Path
+        self,
+        mock_persistent_account: MagicMock,
+        tmp_path: Path,
+        mock_operation_link_service: MagicMock,
     ) -> None:
         """Returns empty list when inbox doesn't exist."""
         nonexistent = tmp_path / "nonexistent_inbox"
-        service = ImportService(mock_persistent_account, nonexistent)
+        service = ImportService(
+            mock_persistent_account, nonexistent, mock_operation_link_service
+        )
         exports = service.get_supported_exports_in_inbox()
         assert not exports
 
@@ -180,6 +199,7 @@ class TestImportFile:
         mock_factory_class: MagicMock,
         mock_persistent_account: MagicMock,
         temp_inbox: Path,
+        mock_operation_link_service: MagicMock,
     ) -> None:
         """import_file returns success for valid files."""
         # Setup mock
@@ -194,7 +214,9 @@ class TestImportFile:
         mock_factory_class.return_value = mock_factory
 
         # Create service and file
-        service = ImportService(mock_persistent_account, temp_inbox)
+        service = ImportService(
+            mock_persistent_account, temp_inbox, mock_operation_link_service
+        )
         test_file = temp_inbox / "bank.xlsx"
         test_file.write_bytes(b"fake xlsx")
 
@@ -212,6 +234,7 @@ class TestImportFile:
         mock_factory_class: MagicMock,
         mock_persistent_account: MagicMock,
         temp_inbox: Path,
+        mock_operation_link_service: MagicMock,
     ) -> None:
         """import_file moves file to processed folder when requested."""
         # Setup mock
@@ -225,7 +248,9 @@ class TestImportFile:
         mock_factory.create_bank_adapter.return_value = mock_adapter
         mock_factory_class.return_value = mock_factory
 
-        service = ImportService(mock_persistent_account, temp_inbox)
+        service = ImportService(
+            mock_persistent_account, temp_inbox, mock_operation_link_service
+        )
         test_file = temp_inbox / "to_process.xlsx"
         test_file.write_bytes(b"fake")
 
@@ -250,11 +275,16 @@ class TestImportFromInbox:
         assert summary.results == []
 
     def test_creates_inbox_if_missing(
-        self, mock_persistent_account: MagicMock, tmp_path: Path
+        self,
+        mock_persistent_account: MagicMock,
+        tmp_path: Path,
+        mock_operation_link_service: MagicMock,
     ) -> None:
         """import_from_inbox creates inbox directory if it doesn't exist."""
         nonexistent = tmp_path / "new_inbox"
-        service = ImportService(mock_persistent_account, nonexistent)
+        service = ImportService(
+            mock_persistent_account, nonexistent, mock_operation_link_service
+        )
 
         service.import_from_inbox()
 
@@ -266,6 +296,7 @@ class TestImportFromInbox:
         mock_factory_class: MagicMock,
         mock_persistent_account: MagicMock,
         temp_inbox: Path,
+        mock_operation_link_service: MagicMock,
     ) -> None:
         """import_from_inbox calls progress callback for each file."""
         # Setup mock adapter
@@ -283,7 +314,9 @@ class TestImportFromInbox:
         (temp_inbox / "file1.xlsx").write_bytes(b"data")
         (temp_inbox / "file2.xlsx").write_bytes(b"data")
 
-        service = ImportService(mock_persistent_account, temp_inbox)
+        service = ImportService(
+            mock_persistent_account, temp_inbox, mock_operation_link_service
+        )
         progress_calls: list[tuple[int, int, str]] = []
 
         def on_progress(current: int, total: int, name: str) -> None:
