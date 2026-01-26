@@ -27,6 +27,9 @@ TargetName = str
 class Category(enum.StrEnum):
     """A category is a group of transactions."""
 
+    # Uncategorized (default for imports)
+    UNCATEGORIZED = "Non catégorisé"
+
     # Income
     SALARY = "Salaire"
     TAX_CREDIT = "Crédit d'impot"

@@ -225,6 +225,6 @@ class DashboardScreen(Container):
         categories_list.remove_children()
 
         for cat, amount in sorted_categories[:15]:  # Top 15 expenses
-            if cat != Category.OTHER or amount != 0:
+            if cat not in (Category.OTHER, Category.UNCATEGORIZED) or amount != 0:
                 row = CategoryRow(cat.value, amount, max_expense)
                 categories_list.mount(row)

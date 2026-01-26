@@ -145,7 +145,7 @@ class BnpParibasBankAdapter(BankAdapterBase):
                 return category
 
         self._unknown_categories.add(bnp_category)
-        return Category.OTHER
+        return Category.UNCATEGORIZED
 
     @property
     def unknown_categories(self) -> set[str]:
