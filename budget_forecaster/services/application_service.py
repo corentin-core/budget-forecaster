@@ -110,8 +110,8 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
         logger.debug(
             "Built %d matchers (%d planned operations, %d budgets)",
             len(matchers),
-            sum(1 for k in matchers if k[0] == LinkType.PLANNED_OPERATION),
-            sum(1 for k in matchers if k[0] == LinkType.BUDGET),
+            sum(1 for k in matchers if k.link_type == LinkType.PLANNED_OPERATION),
+            sum(1 for k in matchers if k.link_type == LinkType.BUDGET),
         )
 
         return matchers
