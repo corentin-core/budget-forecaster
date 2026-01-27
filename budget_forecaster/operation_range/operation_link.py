@@ -6,7 +6,13 @@ and a specific iteration of a planned operation or budget.
 
 from typing import NamedTuple
 
-from budget_forecaster.types import IterationDate, LinkType, OperationId
+from budget_forecaster.types import (
+    IterationDate,
+    LinkType,
+    OperationId,
+    OperationLinkId,
+    TargetId,
+)
 
 
 class OperationLink(NamedTuple):
@@ -26,8 +32,8 @@ class OperationLink(NamedTuple):
 
     operation_unique_id: OperationId
     target_type: LinkType
-    target_id: int
+    target_id: TargetId
     iteration_date: IterationDate
     is_manual: bool = False
     notes: str | None = None
-    link_id: int | None = None
+    link_id: OperationLinkId | None = None

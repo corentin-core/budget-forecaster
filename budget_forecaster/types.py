@@ -1,6 +1,7 @@
 """Module containing custom types for the budget_forecaster package."""
 import enum
 from datetime import datetime
+from typing import Callable, NamedTuple
 
 OperationId = int
 """Unique identifier for a historic operation."""
@@ -31,8 +32,27 @@ class LinkType(enum.StrEnum):
     BUDGET = "budget"
 
 
-MatcherKey = tuple[LinkType, TargetId]
-"""Key identifying a matcher: (link type, target id)."""
+class MatcherKey(NamedTuple):
+    """Key identifying a matcher (link type + target id)."""
+
+    link_type: LinkType
+    target_id: TargetId
+
+
+# Import progress callback type aliases
+ImportProgressCurrent = int
+"""Current progress count (number of files processed)."""
+
+ImportProgressTotal = int
+"""Total number of files to process."""
+
+ImportProgressFilename = str
+"""Name of the file currently being processed."""
+
+ImportProgressCallback = Callable[
+    [ImportProgressCurrent, ImportProgressTotal, ImportProgressFilename], None
+]
+"""Callback for import progress updates: (current, total, filename) -> None."""
 
 
 class Category(enum.StrEnum):

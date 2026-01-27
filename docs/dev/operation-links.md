@@ -40,13 +40,14 @@ graph TB
     TUI --> LinkIterationModal
     TUI --> OperationTable
 
+    LinkTargetModal --> AS
+    LinkIterationModal --> AS
+
     AS --> IS
     AS --> FS
     AS --> OLS
     AS --> OS
     AS --> OM
-
-    LinkTargetModal --> OLS
 
     OLS --> Repo
     FS --> Repo
@@ -129,6 +130,11 @@ classDiagram
         +add_budget(budget) Budget
         +update_budget(budget) Budget
         +delete_budget(id) void
+        +get_all_links() tuple~OperationLink~
+        +get_link_for_operation(id) OperationLink?
+        +delete_link(operation_id) void
+        +create_manual_link(link) void
+        +compute_report(start, end) AccountAnalysisReport
     }
 
     class OperationLinkRepositoryInterface {
@@ -347,6 +353,7 @@ sequenceDiagram
 sequenceDiagram
     participant User
     participant TUI as BudgetApp
+    participant AS as ApplicationService
     participant LTM as LinkTargetModal
     participant LIM as LinkIterationModal
     participant OLS as OperationLinkService
@@ -354,20 +361,24 @@ sequenceDiagram
 
     User->>TUI: Press L on operation
     TUI->>TUI: Get selected operation
-    TUI->>OLS: get_all_links()
-    OLS-->>TUI: current_link or None
+    TUI->>AS: get_all_links()
+    AS->>OLS: get_all_links()
+    OLS-->>AS: all links
+    AS-->>TUI: current_link or None
     TUI->>LTM: push_screen(operation, current_link, targets)
 
     alt User selects "Supprimer le lien"
         LTM-->>TUI: "unlink"
-        TUI->>OLS: delete_link(operation_id)
+        TUI->>AS: delete_link(operation_id)
+        AS->>OLS: delete_link(operation_id)
         OLS->>Repo: delete_link(operation_id)
     else User selects target
         LTM-->>TUI: selected_target
         TUI->>LIM: push_screen(operation, target)
         User->>LIM: Select iteration
         LIM-->>TUI: iteration_date
-        TUI->>OLS: upsert_link(OperationLink)
+        TUI->>AS: create_manual_link(OperationLink)
+        AS->>OLS: upsert_link(link)
         OLS->>Repo: upsert_link(link)
     else User cancels
         LTM-->>TUI: None
@@ -411,14 +422,16 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant CLI as CLI/TUI
-    participant FS as ForecastService
+    participant AS as ApplicationService
     participant OLS as OperationLinkService
+    participant FS as ForecastService
     participant AA as AccountAnalyzer
     participant FA as ForecastActualizer
 
-    CLI->>OLS: get_all_links()
-    OLS-->>CLI: all links
-    CLI->>FS: compute_report(start, end, links)
+    CLI->>AS: compute_report(start, end)
+    AS->>OLS: get_all_links()
+    OLS-->>AS: all links
+    AS->>FS: compute_report(start, end, links)
 
     FS->>AA: new AccountAnalyzer(account, forecast, links)
     FS->>AA: compute_report(start, end)
@@ -430,11 +443,12 @@ sequenceDiagram
     AA->>AA: compute balance evolution
     AA-->>FS: AccountAnalysisReport
 
-    FS-->>CLI: report
+    FS-->>AS: report
+    AS-->>CLI: report
 ```
 
-**Note:** ForecastService now receives operation links as a parameter rather than
-fetching them internally. This decouples ForecastService from OperationLinkService.
+**Note:** ApplicationService orchestrates report computation by fetching links and
+passing them to ForecastService. This decouples the TUI from OperationLinkService.
 
 ## Link Lifecycle State Machine
 

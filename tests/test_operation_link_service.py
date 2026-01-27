@@ -27,7 +27,7 @@ from budget_forecaster.time_range import (
     PeriodicTimeRange,
     TimeRange,
 )
-from budget_forecaster.types import Category, LinkType
+from budget_forecaster.types import Category, LinkType, MatcherKey
 
 if TYPE_CHECKING:
     from budget_forecaster.account.persistent_account import PersistentAccount
@@ -212,7 +212,7 @@ class TestCreateHeuristicLinks:
         sample_operations: tuple[HistoricOperation, ...],
     ) -> None:
         """Test that heuristic links are created for matching operations."""
-        matchers = {(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher}
+        matchers = {MatcherKey(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher}
 
         created_links = link_service.create_heuristic_links(sample_operations, matchers)
 
@@ -240,7 +240,7 @@ class TestCreateHeuristicLinks:
         )
         repository.upsert_link(existing_link)
 
-        matchers = {(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher}
+        matchers = {MatcherKey(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher}
         created_links = link_service.create_heuristic_links(sample_operations, matchers)
 
         # Should only create link for operation 2 (operation 1 is already linked)
@@ -254,7 +254,7 @@ class TestCreateHeuristicLinks:
         sample_operations: tuple[HistoricOperation, ...],
     ) -> None:
         """Test that created links are marked as non-manual (heuristic)."""
-        matchers = {(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher}
+        matchers = {MatcherKey(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher}
 
         created_links = link_service.create_heuristic_links(sample_operations, matchers)
 
@@ -269,7 +269,7 @@ class TestCreateHeuristicLinks:
         sample_operations: tuple[HistoricOperation, ...],
     ) -> None:
         """Test that created links are persisted to the repository."""
-        matchers = {(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher}
+        matchers = {MatcherKey(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher}
 
         link_service.create_heuristic_links(sample_operations, matchers)
 
@@ -294,7 +294,7 @@ class TestCreateHeuristicLinks:
             time_range=DailyTimeRange(datetime(2024, 1, 1)),
         )
         different_matcher = OperationMatcher(operation_range=different_range)
-        matchers = {(LinkType.PLANNED_OPERATION, 99): different_matcher}
+        matchers = {MatcherKey(LinkType.PLANNED_OPERATION, 99): different_matcher}
 
         created_links = link_service.create_heuristic_links(sample_operations, matchers)
 
@@ -555,7 +555,7 @@ class TestManualLinkProtection:
             # Create new heuristic links (simulating recalculation)
             link_service.create_heuristic_links(
                 sample_operations,
-                {(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher},
+                {MatcherKey(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher},
             )
 
         # Manual link should still exist with original values
@@ -576,7 +576,7 @@ class TestManualLinkProtection:
         # First create heuristic links
         link_service.create_heuristic_links(
             sample_operations,
-            {(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher},
+            {MatcherKey(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher},
         )
 
         initial_link = repository.get_link_for_operation(1)
@@ -587,7 +587,7 @@ class TestManualLinkProtection:
         link_service.delete_automatic_links_for_target(LinkType.PLANNED_OPERATION, 1)
         link_service.create_heuristic_links(
             sample_operations,
-            {(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher},
+            {MatcherKey(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher},
         )
 
         # Link should still exist (recreated)

@@ -98,7 +98,7 @@ class OperationTable(DataTable[str]):
             # Build link column value
             link_str = ""
             if link := links.get(op.unique_id):
-                target_key = (link.target_type, link.target_id)
+                target_key = MatcherKey(link.target_type, link.target_id)
                 if target_name := targets.get(target_key):
                     link_str = f"🔗 {self._truncate(target_name, 12)}"
                 else:

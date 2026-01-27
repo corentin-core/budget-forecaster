@@ -308,12 +308,12 @@ class OperationsScreen(Container):
 
         for planned_op in self._app_service.get_all_planned_operations():
             if planned_op.id is not None:
-                targets[
-                    (LinkType.PLANNED_OPERATION, planned_op.id)
-                ] = planned_op.description
+                key = MatcherKey(LinkType.PLANNED_OPERATION, planned_op.id)
+                targets[key] = planned_op.description
         for budget in self._app_service.get_all_budgets():
             if budget.id is not None:
-                targets[(LinkType.BUDGET, budget.id)] = budget.description
+                key = MatcherKey(LinkType.BUDGET, budget.id)
+                targets[key] = budget.description
 
         table = self.query_one("#operations-table", OperationTable)
         table.load_operations(operations, links, targets)

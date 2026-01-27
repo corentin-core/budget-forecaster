@@ -263,12 +263,12 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
 
         for planned_op in self.app_service.get_all_planned_operations():
             if planned_op.id is not None:
-                targets[
-                    (LinkType.PLANNED_OPERATION, planned_op.id)
-                ] = planned_op.description
+                key = MatcherKey(LinkType.PLANNED_OPERATION, planned_op.id)
+                targets[key] = planned_op.description
         for budget in self.app_service.get_all_budgets():
             if budget.id is not None:
-                targets[(LinkType.BUDGET, budget.id)] = budget.description
+                key = MatcherKey(LinkType.BUDGET, budget.id)
+                targets[key] = budget.description
 
         # Update dashboard stats
         balance = self.app_service.balance

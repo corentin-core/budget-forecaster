@@ -26,7 +26,7 @@ from budget_forecaster.time_range import (
     TimeRange,
     TimeRangeInterface,
 )
-from budget_forecaster.types import Category, LinkType
+from budget_forecaster.types import Category, LinkType, OperationId, TargetId
 
 # Current schema version
 CURRENT_SCHEMA_VERSION = 3
@@ -733,7 +733,9 @@ class SqliteRepository(RepositoryInterface):
 
     # Operation Link methods
 
-    def get_link_for_operation(self, operation_unique_id: int) -> OperationLink | None:
+    def get_link_for_operation(
+        self, operation_unique_id: OperationId
+    ) -> OperationLink | None:
         """Get the link for a historic operation, if any."""
         conn = self._get_connection()
         cursor = conn.execute(
@@ -809,7 +811,7 @@ class SqliteRepository(RepositoryInterface):
         )
         conn.commit()
 
-    def delete_link(self, operation_unique_id: int) -> None:
+    def delete_link(self, operation_unique_id: OperationId) -> None:
         """Delete the link for an operation."""
         conn = self._get_connection()
         conn.execute(
@@ -819,7 +821,7 @@ class SqliteRepository(RepositoryInterface):
         conn.commit()
 
     def delete_automatic_links_for_target(
-        self, target_type: LinkType, target_id: int
+        self, target_type: LinkType, target_id: TargetId
     ) -> None:
         """Delete all automatic links for a given target."""
         conn = self._get_connection()
@@ -830,7 +832,9 @@ class SqliteRepository(RepositoryInterface):
         )
         conn.commit()
 
-    def delete_links_for_target(self, target_type: LinkType, target_id: int) -> None:
+    def delete_links_for_target(
+        self, target_type: LinkType, target_id: TargetId
+    ) -> None:
         """Delete all links for a given target (both manual and automatic)."""
         conn = self._get_connection()
         conn.execute(

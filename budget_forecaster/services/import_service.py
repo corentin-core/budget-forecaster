@@ -9,7 +9,6 @@ import shutil
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable
 
 from budget_forecaster.account.account import AccountParameters
 from budget_forecaster.account.persistent_account import PersistentAccount
@@ -17,6 +16,7 @@ from budget_forecaster.bank_adapter.bank_adapter_factory import BankAdapterFacto
 from budget_forecaster.operation_range.historic_operation_factory import (
     HistoricOperationFactory,
 )
+from budget_forecaster.types import ImportProgressCallback
 
 logger = logging.getLogger(__name__)
 
@@ -191,7 +191,7 @@ class ImportService:
 
     def import_from_inbox(
         self,
-        on_progress: Callable[[int, int, str], None] | None = None,
+        on_progress: ImportProgressCallback | None = None,
     ) -> ImportSummary:
         """Import all supported exports from the inbox folder.
 

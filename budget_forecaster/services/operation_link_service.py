@@ -20,6 +20,8 @@ from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.types import (
     LinkType,
     MatcherKey,
+    OperationId,
+    TargetId,
 )
 
 
@@ -123,7 +125,9 @@ class OperationLinkService:
         """
         return self._repository.get_all_links()
 
-    def get_link_for_operation(self, operation_unique_id: int) -> OperationLink | None:
+    def get_link_for_operation(
+        self, operation_unique_id: OperationId
+    ) -> OperationLink | None:
         """Get the link for a specific operation.
 
         Args:
@@ -142,7 +146,7 @@ class OperationLinkService:
         """
         self._repository.upsert_link(link)
 
-    def delete_link(self, operation_unique_id: int) -> None:
+    def delete_link(self, operation_unique_id: OperationId) -> None:
         """Delete an operation link.
 
         Args:
@@ -150,7 +154,9 @@ class OperationLinkService:
         """
         self._repository.delete_link(operation_unique_id)
 
-    def delete_links_for_target(self, target_type: LinkType, target_id: int) -> None:
+    def delete_links_for_target(
+        self, target_type: LinkType, target_id: TargetId
+    ) -> None:
         """Delete all links for a target (both manual and automatic).
 
         Used for cascade delete when a planned operation or budget is deleted.
@@ -162,7 +168,7 @@ class OperationLinkService:
         self._repository.delete_links_for_target(target_type, target_id)
 
     def delete_automatic_links_for_target(
-        self, target_type: LinkType, target_id: int
+        self, target_type: LinkType, target_id: TargetId
     ) -> None:
         """Delete all automatic (heuristic) links for a target.
 

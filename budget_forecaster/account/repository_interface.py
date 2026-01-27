@@ -12,7 +12,7 @@ from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
 from budget_forecaster.operation_range.operation_link import OperationLink
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
-from budget_forecaster.types import LinkType
+from budget_forecaster.types import LinkType, OperationId, TargetId
 
 
 class BudgetRepositoryInterface(ABC):
@@ -173,7 +173,9 @@ class OperationLinkRepositoryInterface(ABC):
     """Interface for OperationLink persistence operations."""
 
     @abstractmethod
-    def get_link_for_operation(self, operation_unique_id: int) -> OperationLink | None:
+    def get_link_for_operation(
+        self, operation_unique_id: OperationId
+    ) -> OperationLink | None:
         """Get the link for a historic operation, if any.
 
         Args:
@@ -226,7 +228,7 @@ class OperationLinkRepositoryInterface(ABC):
         """
 
     @abstractmethod
-    def delete_link(self, operation_unique_id: int) -> None:
+    def delete_link(self, operation_unique_id: OperationId) -> None:
         """Delete the link for an operation.
 
         Args:
@@ -235,7 +237,7 @@ class OperationLinkRepositoryInterface(ABC):
 
     @abstractmethod
     def delete_automatic_links_for_target(
-        self, target_type: LinkType, target_id: int
+        self, target_type: LinkType, target_id: TargetId
     ) -> None:
         """Delete all automatic links for a given target.
 
@@ -247,7 +249,9 @@ class OperationLinkRepositoryInterface(ABC):
         """
 
     @abstractmethod
-    def delete_links_for_target(self, target_type: LinkType, target_id: int) -> None:
+    def delete_links_for_target(
+        self, target_type: LinkType, target_id: TargetId
+    ) -> None:
         """Delete all links for a given target (both manual and automatic).
 
         Used for cascade delete when a planned operation or budget is deleted.

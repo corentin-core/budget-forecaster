@@ -8,7 +8,6 @@ management while maintaining cached matchers for efficient link creation.
 import logging
 from datetime import date, datetime
 from pathlib import Path
-from typing import Callable
 
 from budget_forecaster.account.account_analysis_report import AccountAnalysisReport
 from budget_forecaster.account.persistent_account import PersistentAccount
@@ -36,6 +35,7 @@ from budget_forecaster.services.operation_service import (
 from budget_forecaster.types import (
     BudgetId,
     Category,
+    ImportProgressCallback,
     LinkType,
     MatcherKey,
     PlannedOperationId,
@@ -99,13 +99,13 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
 
         for planned_op in self._forecast_service.get_all_planned_operations():
             if planned_op.id is not None:
-                matchers[
-                    (LinkType.PLANNED_OPERATION, planned_op.id)
-                ] = planned_op.matcher
+                key = MatcherKey(LinkType.PLANNED_OPERATION, planned_op.id)
+                matchers[key] = planned_op.matcher
 
         for budget in self._forecast_service.get_all_budgets():
             if budget.id is not None:
-                matchers[(LinkType.BUDGET, budget.id)] = budget.matcher
+                key = MatcherKey(LinkType.BUDGET, budget.id)
+                matchers[key] = budget.matcher
 
         logger.debug(
             "Built %d matchers (%d planned operations, %d budgets)",
@@ -131,16 +131,15 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
 
         matchers = self._get_matchers()
         if isinstance(target, PlannedOperation):
-            matchers[(LinkType.PLANNED_OPERATION, target.id)] = target.matcher
+            key = MatcherKey(LinkType.PLANNED_OPERATION, target.id)
         else:
-            matchers[(LinkType.BUDGET, target.id)] = target.matcher
+            key = MatcherKey(LinkType.BUDGET, target.id)
+        matchers[key] = target.matcher
 
-    def _remove_matcher(
-        self, target_type: LinkType, target_id: PlannedOperationId | BudgetId
-    ) -> None:
+    def _remove_matcher(self, key: MatcherKey) -> None:
         """Remove a matcher from the cache."""
         matchers = self._get_matchers()
-        matchers.pop((target_type, target_id), None)
+        matchers.pop(key, None)
 
     # -------------------------------------------------------------------------
     # Import operations
@@ -173,7 +172,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
 
     def import_from_inbox(
         self,
-        on_progress: Callable[[int, int, str], None] | None = None,
+        on_progress: ImportProgressCallback | None = None,
     ) -> ImportSummary:
         """Import all bank exports from the inbox folder.
 
@@ -294,7 +293,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
             operations = self._persistent_account.account.operations
             created_links = self._operation_link_service.create_heuristic_links(
                 operations,
-                {(LinkType.PLANNED_OPERATION, new_op.id): new_op.matcher},
+                {MatcherKey(LinkType.PLANNED_OPERATION, new_op.id): new_op.matcher},
             )
             logger.debug(
                 "Created %d links for new planned operation %d",
@@ -328,7 +327,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
         operations = self._persistent_account.account.operations
         created_links = self._operation_link_service.create_heuristic_links(
             operations,
-            {(LinkType.PLANNED_OPERATION, op.id): updated_op.matcher},
+            {MatcherKey(LinkType.PLANNED_OPERATION, op.id): updated_op.matcher},
         )
         logger.debug(
             "Recalculated %d links for planned operation %d",
@@ -350,7 +349,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
         )
 
         # Remove matcher
-        self._remove_matcher(LinkType.PLANNED_OPERATION, op_id)
+        self._remove_matcher(MatcherKey(LinkType.PLANNED_OPERATION, op_id))
 
         # Delete the planned operation
         self._forecast_service.delete_planned_operation(op_id)
@@ -378,7 +377,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
             operations = self._persistent_account.account.operations
             created_links = self._operation_link_service.create_heuristic_links(
                 operations,
-                {(LinkType.BUDGET, new_budget.id): new_budget.matcher},
+                {MatcherKey(LinkType.BUDGET, new_budget.id): new_budget.matcher},
             )
             logger.debug(
                 "Created %d links for new budget %d",
@@ -412,7 +411,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
         operations = self._persistent_account.account.operations
         created_links = self._operation_link_service.create_heuristic_links(
             operations,
-            {(LinkType.BUDGET, budget.id): updated_budget.matcher},
+            {MatcherKey(LinkType.BUDGET, budget.id): updated_budget.matcher},
         )
         logger.debug(
             "Recalculated %d links for budget %d",
@@ -432,7 +431,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
         self._operation_link_service.delete_links_for_target(LinkType.BUDGET, budget_id)
 
         # Remove matcher
-        self._remove_matcher(LinkType.BUDGET, budget_id)
+        self._remove_matcher(MatcherKey(LinkType.BUDGET, budget_id))
 
         # Delete the budget
         self._forecast_service.delete_budget(budget_id)
