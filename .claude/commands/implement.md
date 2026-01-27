@@ -91,6 +91,29 @@ class MyService:
 `SqliteRepository` directly instead of an interface, requiring a facade to be created
 after the fact.
 
+### Phase 1.5: Create Feature Branch
+
+Before starting implementation, create a dedicated feature branch from an up-to-date
+target branch (usually `main`):
+
+```bash
+# Ensure working directory is clean
+git status
+
+# Fetch latest changes from remote
+git fetch origin
+
+# Update the target branch (main) to match remote
+git checkout main
+git pull origin main
+
+# Create feature branch from updated main
+git checkout -b issue/<number>-<kebab-case-description>
+```
+
+**Branch naming convention:** `issue/<number>-<description>` (e.g.,
+`issue/87-recalculate-links-on-categorize`)
+
 ### Phase 2: Create Implementation Checklist
 
 Use `TodoWrite` to create a checklist from the design:
