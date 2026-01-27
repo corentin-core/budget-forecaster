@@ -291,7 +291,9 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
                 existing = self._operation_link_service.get_link_for_operation(op_id)
                 if existing is not None and not existing.is_manual:
                     self._operation_link_service.delete_link(op_id)
-                changed_operations.append(updated)
+                    changed_operations.append(updated)
+                elif existing is None:
+                    changed_operations.append(updated)
 
             results.append(OperationCategoryUpdate(updated, category_changed, None))
 

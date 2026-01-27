@@ -343,6 +343,29 @@ class TestCategorizeOperation:
         assert result is not None
         assert result.category_changed is True
 
+    def test_no_link_recalculation_when_category_unchanged(
+        self,
+        app_service: ApplicationService,
+        mock_operation_service: MagicMock,
+        mock_operation_link_service: MagicMock,
+    ) -> None:
+        """categorize_operation skips link recalculation when category doesn't change."""
+        # Setup operation with same category as target
+        mock_operation = MagicMock()
+        mock_operation.category = Category.GROCERIES  # Same as target
+        mock_operation_service.get_operation_by_id.return_value = mock_operation
+
+        updated_op = MagicMock()
+        mock_operation_service.categorize_operation.return_value = updated_op
+
+        result = app_service.categorize_operation(1, Category.GROCERIES)
+
+        # Should NOT check for existing link (no recalculation)
+        mock_operation_link_service.get_link_for_operation.assert_not_called()
+        assert result is not None
+        assert result.category_changed is False
+        assert result.new_link is None
+
 
 class TestPlannedOperationCrud:
     """Tests for planned operation CRUD methods."""
@@ -718,3 +741,5 @@ class TestBulkCategorize:
 
         # Should NOT delete manual link
         mock_operation_link_service.delete_link.assert_not_called()
+        # Should NOT try to create links (operation not in changed_operations)
+        mock_operation_link_service.create_heuristic_links.assert_not_called()
