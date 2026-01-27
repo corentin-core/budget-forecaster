@@ -7,7 +7,8 @@ from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Static
 
-from budget_forecaster.services import OperationFilter, OperationService
+from budget_forecaster.services import OperationFilter
+from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.types import Category
 
 
@@ -141,7 +142,7 @@ class DashboardScreen(Container):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self._service: OperationService | None = None
+        self._app_service: ApplicationService | None = None
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="stats-row"):
@@ -154,26 +155,26 @@ class DashboardScreen(Container):
             yield Static("Dépenses par catégorie (ce mois)", id="categories-title")
             yield Vertical(id="categories-list")
 
-    def refresh_data(self, service: OperationService) -> None:
-        """Refresh the dashboard with current data.
+    def set_app_service(self, service: ApplicationService) -> None:
+        """Set the application service and refresh.
 
         Args:
-            service: The operation service to get data from.
+            service: The application service to get data from.
         """
-        self._service = service
+        self._app_service = service
         self._update_stats()
         self._update_categories()
 
     def _update_stats(self) -> None:
         """Update the statistics cards."""
-        if not self._service:
+        if not self._app_service:
             return
 
         # Balance
-        balance = self._service.balance
+        balance = self._app_service.balance
         balance_card = self.query_one("#balance-card", StatCard)
         balance_card.update_value(
-            f"{balance:,.2f} {self._service.currency}",
+            f"{balance:,.2f} {self._app_service.currency}",
             is_negative=balance < 0,
         )
 
@@ -181,7 +182,7 @@ class DashboardScreen(Container):
         now = datetime.now()
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         month_filter = OperationFilter(date_from=month_start)
-        month_ops = self._service.get_operations(month_filter)
+        month_ops = self._app_service.get_operations(month_filter)
 
         month_ops_card = self.query_one("#month-ops-card", StatCard)
         month_ops_card.update_value(str(len(month_ops)))
@@ -192,7 +193,7 @@ class DashboardScreen(Container):
         expenses_card.update_value(f"{expenses:,.2f} €", is_negative=expenses < 0)
 
         # Uncategorized
-        uncategorized = self._service.get_uncategorized_operations()
+        uncategorized = self._app_service.get_uncategorized_operations()
         uncat_card = self.query_one("#uncategorized-card", StatCard)
         uncat_card.update_value(
             str(len(uncategorized)),
@@ -201,7 +202,7 @@ class DashboardScreen(Container):
 
     def _update_categories(self) -> None:
         """Update the category breakdown."""
-        if not self._service:
+        if not self._app_service:
             return
 
         # Get current month's category totals
@@ -209,7 +210,7 @@ class DashboardScreen(Container):
         month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         month_filter = OperationFilter(date_from=month_start)
 
-        totals = self._service.get_category_totals(month_filter)
+        totals = self._app_service.get_category_totals(month_filter)
 
         # Filter to only expenses (negative amounts) and sort by amount
         expense_totals = {cat: amount for cat, amount in totals.items() if amount < 0}

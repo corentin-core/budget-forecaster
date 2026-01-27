@@ -7,7 +7,7 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Button, Static
 
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.services import OperationService
+from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.tui.widgets.category_select import CategorySelect
 from budget_forecaster.tui.widgets.operation_table import OperationTable
 from budget_forecaster.types import Category
@@ -201,7 +201,7 @@ class CategorizeScreen(Container):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self._service: OperationService | None = None
+        self._app_service: ApplicationService | None = None
         self._current_operation: HistoricOperation | None = None
         self._pending_operations: list[HistoricOperation] = []
 
@@ -224,14 +224,14 @@ class CategorizeScreen(Container):
                 yield Static("Opérations restantes", classes="op-title")
                 yield OperationTable(id="pending-table")
 
-    def refresh_data(self, service: OperationService) -> None:
-        """Refresh with current data.
+    def set_app_service(self, service: ApplicationService) -> None:
+        """Set the application service and refresh.
 
         Args:
-            service: The operation service to get data from.
+            service: The application service to get data from.
         """
-        self._service = service
-        self._pending_operations = service.get_uncategorized_operations()
+        self._app_service = service
+        self._pending_operations = list(service.get_uncategorized_operations())
         self._update_pending_table()
         self._show_next_operation()
 
@@ -242,10 +242,10 @@ class CategorizeScreen(Container):
 
     def _show_next_operation(self) -> None:
         """Show the next uncategorized operation."""
-        if not self._service:
+        if not self._app_service:
             return
 
-        total = len(self._service.operations)
+        total = len(self._app_service.operations)
         pending = len(self._pending_operations)
         categorized = total - pending
 
@@ -266,12 +266,12 @@ class CategorizeScreen(Container):
         current_panel.show_operation(self._current_operation)
 
         # Update similar operations
-        similar = self._service.find_similar_operations(self._current_operation)
+        similar = self._app_service.find_similar_operations(self._current_operation)
         similar_panel = self.query_one("#similar-panel", SimilarOperationsPanel)
         similar_panel.show_similar(similar)
 
         # Update category selector with suggestion
-        suggested = self._service.suggest_category(self._current_operation)
+        suggested = self._app_service.suggest_category(self._current_operation)
         category_select = self.query_one("#category-selector", CategorySelect)
         category_select.set_suggested(suggested)
 
@@ -287,10 +287,10 @@ class CategorizeScreen(Container):
         self, event: CategorySelect.CategorySelected
     ) -> None:
         """Handle category selection."""
-        if not self._service or not self._current_operation:
+        if not self._app_service or not self._current_operation:
             return
 
-        self._service.categorize_operation(
+        self._app_service.categorize_operation(
             self._current_operation.unique_id, event.category
         )
         self._save_and_refresh()
@@ -313,16 +313,18 @@ class CategorizeScreen(Container):
 
     def _bulk_categorize(self) -> None:
         """Categorize all similar operations with the same category."""
-        if not self._service or not self._current_operation:
+        if not self._app_service or not self._current_operation:
             return
 
         # Get suggested category
-        if not (suggested := self._service.suggest_category(self._current_operation)):
+        if not (
+            suggested := self._app_service.suggest_category(self._current_operation)
+        ):
             self.app.notify("Pas de suggestion disponible", severity="warning")
             return
 
         # Find similar uncategorized operations
-        similar = self._service.find_similar_operations(
+        similar = self._app_service.find_similar_operations(
             self._current_operation, limit=20
         )
         similar_ids = [
@@ -333,7 +335,7 @@ class CategorizeScreen(Container):
         all_ids = [self._current_operation.unique_id, *similar_ids]
 
         # Bulk categorize
-        updated = self._service.bulk_categorize(all_ids, suggested)
+        updated = self._app_service.bulk_categorize(all_ids, suggested)
         self.app.notify(f"{len(updated)} opération(s) catégorisée(s)")
         self._save_and_refresh()
 
@@ -346,8 +348,10 @@ class CategorizeScreen(Container):
         if isinstance(app, BudgetApp):
             app.save_changes()
 
-        if self._service:
-            self._pending_operations = self._service.get_uncategorized_operations()
+        if self._app_service:
+            self._pending_operations = list(
+                self._app_service.get_uncategorized_operations()
+            )
             self._update_pending_table()
             self._show_next_operation()
 

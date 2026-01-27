@@ -7,13 +7,18 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Select, Static
 
-from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
-from budget_forecaster.services import OperationFilter, OperationService
-from budget_forecaster.services.forecast_service import ForecastService
-from budget_forecaster.services.operation_link_service import OperationLinkService
+from budget_forecaster.operation_range.operation_link import OperationLink
+from budget_forecaster.services import OperationFilter
+from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.tui.widgets.category_select import CategorySelect
 from budget_forecaster.tui.widgets.operation_table import OperationTable
-from budget_forecaster.types import Category, OperationId, TargetId, TargetName
+from budget_forecaster.types import (
+    Category,
+    LinkType,
+    MatcherKey,
+    OperationId,
+    TargetName,
+)
 
 
 class OperationDetailPanel(Vertical):
@@ -54,7 +59,7 @@ class OperationDetailPanel(Vertical):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._operation_id: int | None = None
-        self._service: OperationService | None = None
+        self._app_service: ApplicationService | None = None
 
     def compose(self) -> ComposeResult:
         yield Static("Détail de l'opération", classes="detail-title")
@@ -72,9 +77,9 @@ class OperationDetailPanel(Vertical):
         with Vertical(id="edit-category-container", classes="hidden"):
             yield Button("Modifier la catégorie", id="btn-edit-category")
 
-    def set_service(self, service: OperationService) -> None:
-        """Set the operation service."""
-        self._service = service
+    def set_app_service(self, service: ApplicationService) -> None:
+        """Set the application service."""
+        self._app_service = service
 
     def show_operation(self, operation_id: int) -> None:
         """Display details for an operation.
@@ -84,10 +89,10 @@ class OperationDetailPanel(Vertical):
         """
         self._operation_id = operation_id
 
-        if not self._service:
+        if not self._app_service:
             return
 
-        if not (operation := self._service.get_operation_by_id(operation_id)):
+        if not (operation := self._app_service.get_operation_by_id(operation_id)):
             self._clear()
             return
 
@@ -122,7 +127,7 @@ class OperationDetailPanel(Vertical):
         if event.button.id == "btn-edit-category" and self._operation_id:
             # Push category selection modal
             self.app.push_screen(
-                CategoryEditModal(self._operation_id, self._service),
+                CategoryEditModal(self._operation_id, self._app_service),
                 self._on_category_edited,
             )
 
@@ -170,12 +175,12 @@ class CategoryEditModal(ModalScreen[bool]):
     def __init__(
         self,
         operation_id: int,
-        service: OperationService | None,
+        app_service: ApplicationService | None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self._operation_id = operation_id
-        self._service = service
+        self._app_service = app_service
 
     def compose(self) -> ComposeResult:
         with Container():
@@ -183,9 +188,11 @@ class CategoryEditModal(ModalScreen[bool]):
 
             # Get suggested category
             suggested = None
-            if self._service:
-                if operation := self._service.get_operation_by_id(self._operation_id):
-                    suggested = self._service.suggest_category(operation)
+            if self._app_service:
+                if operation := self._app_service.get_operation_by_id(
+                    self._operation_id
+                ):
+                    suggested = self._app_service.suggest_category(operation)
 
             yield CategorySelect(suggested=suggested)
             yield Button("Annuler", id="btn-cancel", variant="default")
@@ -194,8 +201,8 @@ class CategoryEditModal(ModalScreen[bool]):
         self, event: CategorySelect.CategorySelected
     ) -> None:
         """Handle category selection."""
-        if self._service:
-            self._service.categorize_operation(self._operation_id, event.category)
+        if self._app_service:
+            self._app_service.categorize_operation(self._operation_id, event.category)
             # Save changes
             # pylint: disable=import-outside-toplevel
             from budget_forecaster.tui.app import BudgetApp
@@ -256,9 +263,7 @@ class OperationsScreen(Container):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self._service: OperationService | None = None
-        self._link_service: OperationLinkService | None = None
-        self._forecast_service: ForecastService | None = None
+        self._app_service: ApplicationService | None = None
         self._current_filter = OperationFilter()
 
     def compose(self) -> ComposeResult:
@@ -282,48 +287,33 @@ class OperationsScreen(Container):
 
         yield Static("0 opérations", id="status-bar")
 
-    def refresh_data(
-        self,
-        service: OperationService,
-        link_service: OperationLinkService | None = None,
-        forecast_service: ForecastService | None = None,
-    ) -> None:
-        """Refresh the operations list.
-
-        Args:
-            service: The operation service to get data from.
-            link_service: Service for operation links (optional).
-            forecast_service: Service for planned operations/budgets (optional).
-        """
-        self._service = service
-        self._link_service = link_service
-        self._forecast_service = forecast_service
+    def set_app_service(self, service: ApplicationService) -> None:
+        """Set the application service and refresh."""
+        self._app_service = service
         self._apply_filter()
 
     def _apply_filter(self) -> None:
         """Apply the current filter and refresh the table."""
-        if not self._service:
+        if not self._app_service:
             return
 
-        operations = self._service.get_operations(self._current_filter)
+        operations = self._app_service.get_operations(self._current_filter)
 
         # Build links and targets lookup dicts
         links: dict[OperationId, OperationLink] = {}
-        targets: dict[tuple[LinkType, TargetId], TargetName] = {}
+        targets: dict[MatcherKey, TargetName] = {}
 
-        if self._link_service:
-            for link in self._link_service.get_all_links():
-                links[link.operation_unique_id] = link
+        for link in self._app_service.get_all_links():
+            links[link.operation_unique_id] = link
 
-        if self._forecast_service:
-            for planned_op in self._forecast_service.get_all_planned_operations():
-                if planned_op.id is not None:
-                    targets[
-                        (LinkType.PLANNED_OPERATION, planned_op.id)
-                    ] = planned_op.description
-            for budget in self._forecast_service.get_all_budgets():
-                if budget.id is not None:
-                    targets[(LinkType.BUDGET, budget.id)] = budget.description
+        for planned_op in self._app_service.get_all_planned_operations():
+            if planned_op.id is not None:
+                key = MatcherKey(LinkType.PLANNED_OPERATION, planned_op.id)
+                targets[key] = planned_op.description
+        for budget in self._app_service.get_all_budgets():
+            if budget.id is not None:
+                key = MatcherKey(LinkType.BUDGET, budget.id)
+                targets[key] = budget.description
 
         table = self.query_one("#operations-table", OperationTable)
         table.load_operations(operations, links, targets)

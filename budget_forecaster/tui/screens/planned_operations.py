@@ -11,7 +11,7 @@ from textual.message import Message
 from textual.widgets import Button, DataTable, Static
 
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
-from budget_forecaster.services import ForecastService
+from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.time_range import PeriodicDailyTimeRange
 
 logger = logging.getLogger(__name__)
@@ -76,7 +76,7 @@ class PlannedOperationsWidget(Vertical):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._forecast_service: ForecastService | None = None
+        self._app_service: ApplicationService | None = None
         self._operations: list[PlannedOperation] = []
         self._selected_operation: PlannedOperation | None = None
 
@@ -109,17 +109,17 @@ class PlannedOperationsWidget(Vertical):
         )
         self._update_button_states()
 
-    def set_service(self, service: ForecastService) -> None:
-        """Set the forecast service and refresh data."""
-        self._forecast_service = service
+    def set_app_service(self, service: ApplicationService) -> None:
+        """Set the application service and refresh data."""
+        self._app_service = service
         self.refresh_data()
 
     def refresh_data(self) -> None:
         """Refresh the operations list from the database."""
-        if self._forecast_service is None:
+        if self._app_service is None:
             return
 
-        self._operations = self._forecast_service.get_all_planned_operations()
+        self._operations = self._app_service.get_all_planned_operations()
         self._populate_table()
         self._update_status()
         self._update_button_states()

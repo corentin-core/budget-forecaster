@@ -6,11 +6,26 @@ It can be used by TUI, GUI, or Web interfaces.
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any, Callable, NamedTuple
 
 from budget_forecaster.account.account_interface import AccountInterface
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
+from budget_forecaster.operation_range.operation_link import OperationLink
 from budget_forecaster.types import Category
+
+
+class OperationCategoryUpdate(NamedTuple):
+    """Result of categorizing an operation.
+
+    Attributes:
+        operation: The updated HistoricOperation.
+        category_changed: True if the category was actually changed.
+        new_link: The newly created link, or None if no link was created.
+    """
+
+    operation: HistoricOperation
+    category_changed: bool
+    new_link: OperationLink | None
 
 
 @dataclass

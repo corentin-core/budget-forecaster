@@ -9,12 +9,13 @@ from budget_forecaster.account.account import Account
 from budget_forecaster.amount import Amount
 from budget_forecaster.forecast.forecast import Forecast
 from budget_forecaster.operation_range.budget import Budget
-from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
+from budget_forecaster.operation_range.operation_link import OperationLink
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.time_range import DailyTimeRange
 from budget_forecaster.types import (
     BudgetId,
     IterationDate,
+    LinkType,
     OperationId,
     PlannedOperationId,
 )
