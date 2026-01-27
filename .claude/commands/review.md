@@ -137,7 +137,35 @@ Only minor suggestions?
   -> Approve (with comments)
 ```
 
-### Step 5: Post the review
+### Step 5: Post inline comments
+
+**Always prefer inline comments** for specific issues. They provide better context and
+are easier to address.
+
+```bash
+# Get the diff to find the correct commit and positions
+gh pr diff <number>
+
+# Post inline comment on a specific file/line
+gh api repos/{owner}/{repo}/pulls/<number>/comments \
+  -X POST \
+  -f body="Your comment here" \
+  -f path="path/to/file.py" \
+  -f commit_id="$(gh pr view <number> --json headRefOid -q '.headRefOid')" \
+  -F line=42 \
+  -f side="RIGHT"
+```
+
+**When to use inline vs summary:**
+
+| Comment type | Use for                                                       |
+| ------------ | ------------------------------------------------------------- |
+| Inline       | Specific code issues, suggestions for a particular line/block |
+| Summary      | Overall verdict, general observations, praise                 |
+
+### Step 6: Submit the review
+
+After posting inline comments, submit the review with verdict and summary:
 
 ```bash
 # Approve
@@ -151,7 +179,7 @@ EOF
 # Request changes
 gh pr review <number> --request-changes --body "..."
 
-# Comment only
+# Comment only (no verdict)
 gh pr review <number> --comment --body "..."
 ```
 
