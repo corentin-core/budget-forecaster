@@ -411,7 +411,12 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         if self._persistent_account:
             self._persistent_account.load()
         self._refresh_screens()
-        self.notify(f"Catégorie '{category.value}' assignée")
+
+        # Build notification message
+        message = f"Catégorie '{category.value}' assignée"
+        if result.new_link is not None:
+            message += " (lien créé)"
+        self.notify(message)
 
     def action_link_operation(self) -> None:
         """Open link modal for the currently selected operation."""

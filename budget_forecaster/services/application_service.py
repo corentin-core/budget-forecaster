@@ -206,6 +206,10 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
     ) -> OperationCategoryUpdate | None:
         """Categorize an operation and potentially create a new link.
 
+        When the category changes:
+        1. Delete existing heuristic link (if any) - manual links are preserved
+        2. Try to create a new heuristic link with the updated category
+
         Args:
             operation_id: The ID of the operation to categorize.
             category: The category to assign.
@@ -229,20 +233,24 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
         category_changed = old_category != category
         new_link: OperationLink | None = None
 
-        # If category changed, try to create a heuristic link
+        # If category changed, recalculate heuristic link
         if category_changed:
             # Check if operation already has a link
             existing_link = self._operation_link_service.get_link_for_operation(
                 operation_id
             )
-            if existing_link is None:
-                # Try to create a link with the new category
-                if matchers := self._get_matchers():
-                    created_links = self._operation_link_service.create_heuristic_links(
-                        (updated_operation,), matchers
-                    )
-                    if created_links:
-                        new_link = created_links[0]
+
+            # Delete heuristic link (manual links are preserved)
+            if existing_link is not None and not existing_link.is_manual:
+                self._operation_link_service.delete_link(operation_id)
+
+            # Try to create a new link with the updated category
+            if matchers := self._get_matchers():
+                created_links = self._operation_link_service.create_heuristic_links(
+                    (updated_operation,), matchers
+                )
+                if created_links:
+                    new_link = created_links[0]
 
         return OperationCategoryUpdate(
             operation=updated_operation,
@@ -255,6 +263,9 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
     ) -> tuple[OperationCategoryUpdate, ...]:
         """Categorize multiple operations at once.
 
+        Optimized to batch link creation: collects all changed operations,
+        deletes their heuristic links, then creates new links in one batch.
+
         Args:
             operation_ids: List of operation IDs to categorize.
             category: The category to assign to all operations.
@@ -263,12 +274,48 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
             Tuple of OperationCategoryUpdate for each updated operation.
         """
         results: list[OperationCategoryUpdate] = []
+        changed_operations: list[HistoricOperation] = []
 
         for op_id in operation_ids:
-            if (result := self.categorize_operation(op_id, category)) is not None:
-                results.append(result)
+            if (op := self._operation_service.get_operation_by_id(op_id)) is None:
+                continue
 
-        return tuple(results)
+            old_category = op.category
+            if (
+                updated := self._operation_service.categorize_operation(op_id, category)
+            ) is None:
+                continue
+
+            if category_changed := old_category != category:
+                # Check and delete existing heuristic link
+                existing = self._operation_link_service.get_link_for_operation(op_id)
+                if existing is not None and not existing.is_manual:
+                    self._operation_link_service.delete_link(op_id)
+                    changed_operations.append(updated)
+                elif existing is None:
+                    changed_operations.append(updated)
+
+            results.append(OperationCategoryUpdate(updated, category_changed, None))
+
+        # Batch create heuristic links for all changed operations
+        created_links: dict[int, OperationLink] = {}
+        if changed_operations and (matchers := self._get_matchers()):
+            for link in self._operation_link_service.create_heuristic_links(
+                tuple(changed_operations), matchers
+            ):
+                created_links[link.operation_unique_id] = link
+
+        # Enrich results with created links
+        return tuple(
+            OperationCategoryUpdate(
+                r.operation,
+                r.category_changed,
+                created_links.get(r.operation.unique_id),
+            )
+            if r.operation.unique_id in created_links
+            else r
+            for r in results
+        )
 
     # -------------------------------------------------------------------------
     # Planned operation CRUD
