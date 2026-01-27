@@ -10,7 +10,7 @@ from textual.message import Message
 from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, Input, ProgressBar, Static
 
-from budget_forecaster.services import ImportService
+from budget_forecaster.services.application_service import ApplicationService
 
 logger = logging.getLogger(__name__)
 
@@ -56,9 +56,9 @@ class ImportProgressModal(ModalScreen[bool]):
 
     BINDINGS = [("escape", "close", "Fermer")]
 
-    def __init__(self, import_service: ImportService, **kwargs: Any) -> None:
+    def __init__(self, app_service: ApplicationService, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self._import_service = import_service
+        self._app_service = app_service
         self._import_done = False
 
     def compose(self) -> ComposeResult:
@@ -75,7 +75,7 @@ class ImportProgressModal(ModalScreen[bool]):
 
     def run_import(self) -> None:
         """Run the import process."""
-        pending = self._import_service.get_supported_exports_in_inbox()
+        pending = self._app_service.get_supported_exports_in_inbox()
 
         if (total := len(pending)) == 0:
             self._show_result("Aucun fichier à importer", success=True)
@@ -91,7 +91,7 @@ class ImportProgressModal(ModalScreen[bool]):
             self.refresh()
 
         logger.info("Starting inbox import...")
-        summary = self._import_service.import_from_inbox(on_progress=on_progress)
+        summary = self._app_service.import_from_inbox(on_progress=on_progress)
 
         # Log results
         for result in summary.results:
@@ -154,7 +154,7 @@ class ImportWidget(Vertical):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self._import_service: ImportService | None = None
+        self._app_service: ApplicationService | None = None
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="import-header"):
@@ -179,26 +179,26 @@ class ImportWidget(Vertical):
         table.add_columns("Fichier", "Type")
         table.cursor_type = "row"
 
-    def set_service(self, service: ImportService) -> None:
-        """Set the import service."""
-        self._import_service = service
+    def set_app_service(self, service: ApplicationService) -> None:
+        """Set the application service."""
+        self._app_service = service
         self.refresh_view()
 
     def refresh_view(self) -> None:
         """Refresh the view with current data."""
-        if not self._import_service:
+        if not self._app_service:
             return
 
         # Update inbox info
         inbox_info = self.query_one("#inbox-info", Static)
-        inbox_path = self._import_service.inbox_path
+        inbox_path = self._app_service.inbox_path
         inbox_info.update(f"Dossier inbox: {inbox_path}")
 
         # Update pending files table
         table = self.query_one("#pending-table", DataTable)
         table.clear()
 
-        pending = self._import_service.get_supported_exports_in_inbox()
+        pending = self._app_service.get_supported_exports_in_inbox()
         for path in pending:
             file_type = "Dossier" if path.is_dir() else path.suffix.upper()
             table.add_row(path.name, file_type, key=str(path))
@@ -233,17 +233,17 @@ class ImportWidget(Vertical):
 
     def _start_inbox_import(self) -> None:
         """Start importing from inbox."""
-        if not self._import_service:
+        if not self._app_service:
             return
 
         self.app.push_screen(
-            ImportProgressModal(self._import_service),
+            ImportProgressModal(self._app_service),
             self._on_import_complete,
         )
 
     def _start_file_import(self) -> None:
         """Start importing from a specific file."""
-        if not self._import_service:
+        if not self._app_service:
             return
 
         path_input = self.query_one("#file-path-input", Input)
@@ -259,7 +259,7 @@ class ImportWidget(Vertical):
             self.app.notify(f"Fichier non trouvé: {path}", severity="error")
             return
 
-        if not self._import_service.is_supported_export(path):
+        if not self._app_service.is_supported_export(path):
             logger.warning("Unsupported format: %s", path)
             self.app.notify("Format non supporté ou non reconnu", severity="error")
             return
@@ -267,7 +267,7 @@ class ImportWidget(Vertical):
         logger.info("Importing file: %s", path)
 
         # Import the file
-        result = self._import_service.import_file(path, move_to_processed=False)
+        result = self._app_service.import_file(path, move_to_processed=False)
 
         if result.success:
             logger.info(

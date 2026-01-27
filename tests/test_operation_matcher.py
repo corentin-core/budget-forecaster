@@ -7,11 +7,11 @@ from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.amount import Amount
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
+from budget_forecaster.operation_range.operation_link import OperationLink
 from budget_forecaster.operation_range.operation_matcher import OperationMatcher
 from budget_forecaster.operation_range.operation_range import OperationRange
 from budget_forecaster.time_range import DailyTimeRange, PeriodicTimeRange, TimeRange
-from budget_forecaster.types import Category
+from budget_forecaster.types import Category, LinkType
 
 
 @pytest.fixture

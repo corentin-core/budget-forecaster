@@ -10,7 +10,7 @@ from textual.containers import Horizontal, Vertical
 from textual.message import Message
 from textual.widgets import Button, DataTable, Input, Static
 
-from budget_forecaster.services import ForecastService
+from budget_forecaster.services.application_service import ApplicationService
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +108,7 @@ class ForecastWidget(Vertical):
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
-        self._forecast_service: ForecastService | None = None
+        self._app_service: ApplicationService | None = None
         self._start_date: date = date.today() - relativedelta(months=4)
         self._end_date: date = date.today() + relativedelta(months=12)
 
@@ -151,16 +151,16 @@ class ForecastWidget(Vertical):
         budget_table = self.query_one("#budget-table", DataTable)
         budget_table.cursor_type = "row"
 
-    def set_service(self, service: ForecastService) -> None:
-        """Set the forecast service."""
-        self._forecast_service = service
+    def set_app_service(self, service: ApplicationService) -> None:
+        """Set the application service."""
+        self._app_service = service
         self._update_status()
 
     def refresh_data(self) -> None:
         """Refresh the forecast data from the database."""
-        if self._forecast_service is not None:
+        if self._app_service is not None:
             # Reload forecast from DB (budgets and planned operations may have changed)
-            self._forecast_service.load_forecast()
+            self._app_service.load_forecast()
         self._update_status()
 
     def _update_status(self) -> None:
@@ -168,19 +168,19 @@ class ForecastWidget(Vertical):
         status = self.query_one("#forecast-status", Static)
         status.remove_class("status-ok", "status-warning", "status-error")
 
-        if self._forecast_service is None:
+        if self._app_service is None:
             status.update("Service non initialisé")
             status.add_class("status-error")
             return
 
         self.query_one("#btn-compute", Button).disabled = False
 
-        if self._forecast_service.report is None:
+        if self._app_service.report is None:
             status.update("Prêt - Cliquez sur 'Calculer' pour générer les prévisions")
             status.add_class("status-ok")
             self.query_one("#btn-export", Button).disabled = True
         else:
-            report = self._forecast_service.report
+            report = self._app_service.report
             status.update(
                 f"Rapport calculé du {report.start_date.date()} "
                 f"au {report.end_date.date()}"
@@ -224,7 +224,7 @@ class ForecastWidget(Vertical):
 
     def _compute_forecast(self) -> None:
         """Compute the forecast report."""
-        if self._forecast_service is None:
+        if self._app_service is None:
             return
 
         if (dates := self._parse_dates()) is None:
@@ -253,8 +253,8 @@ class ForecastWidget(Vertical):
         status = self.query_one("#forecast-status", Static)
 
         try:
-            if self._forecast_service is not None:
-                self._forecast_service.compute_report(start_date, end_date)
+            if self._app_service is not None:
+                self._app_service.compute_report(start_date, end_date)
             self._refresh_display()
             self.app.notify("Prévisions calculées")
             self.post_message(self.ForecastComputed(success=True))
@@ -280,11 +280,11 @@ class ForecastWidget(Vertical):
 
     def _update_balance_chart(self) -> None:
         """Update the balance evolution chart."""
-        if self._forecast_service is None or self._forecast_service.report is None:
+        if self._app_service is None or self._app_service.report is None:
             return
 
         chart = self.query_one("#balance-chart", Static)
-        if not (balance_data := self._forecast_service.get_balance_evolution_summary()):
+        if not (balance_data := self._app_service.get_balance_evolution_summary()):
             chart.update("Aucune donnée")
             return
 
@@ -357,14 +357,14 @@ class ForecastWidget(Vertical):
 
     def _update_budget_table(self) -> None:
         """Update the budget forecast table with multi-columns per month."""
-        if self._forecast_service is None or self._forecast_service.report is None:
+        if self._app_service is None or self._app_service.report is None:
             return
 
         table = self.query_one("#budget-table", DataTable)
         table.clear(columns=True)
 
         # Get budget forecast data
-        df = self._forecast_service.report.budget_forecast
+        df = self._app_service.report.budget_forecast
 
         if df.empty:
             return
@@ -411,7 +411,7 @@ class ForecastWidget(Vertical):
 
     def _export_to_excel(self) -> None:
         """Export the forecast to Excel."""
-        if self._forecast_service is None or self._forecast_service.report is None:
+        if self._app_service is None or self._app_service.report is None:
             self.app.notify("Aucun rapport à exporter", severity="warning")
             return
 
@@ -425,7 +425,7 @@ class ForecastWidget(Vertical):
 
         # pylint: enable=import-outside-toplevel
 
-        report = self._forecast_service.report
+        report = self._app_service.report
         output_path = Path(f"forecast-{date.today().isoformat()}.xlsx")
 
         try:

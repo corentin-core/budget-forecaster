@@ -61,13 +61,11 @@ def operation_link_service(repository: RepositoryInterface) -> OperationLinkServ
 def service(
     mock_account: Account,
     repository: RepositoryInterface,
-    operation_link_service: OperationLinkService,
 ) -> ForecastService:
     """Create a ForecastService with mock data."""
     return ForecastService(
         account=mock_account,
         repository=repository,
-        operation_link_service=operation_link_service,
     )
 
 
@@ -92,7 +90,6 @@ class TestLoadForecast:
         self,
         mock_account: Account,
         repository: RepositoryInterface,
-        operation_link_service: OperationLinkService,
     ) -> None:
         """load_forecast loads budgets from database."""
         # Add a budget to the database
@@ -108,7 +105,6 @@ class TestLoadForecast:
         service = ForecastService(
             account=mock_account,
             repository=repository,
-            operation_link_service=operation_link_service,
         )
         forecast = service.load_forecast()
 
@@ -119,7 +115,6 @@ class TestLoadForecast:
         self,
         mock_account: Account,
         repository: RepositoryInterface,
-        operation_link_service: OperationLinkService,
     ) -> None:
         """load_forecast loads planned operations from database."""
         # Add a planned operation to the database
@@ -135,7 +130,6 @@ class TestLoadForecast:
         service = ForecastService(
             account=mock_account,
             repository=repository,
-            operation_link_service=operation_link_service,
         )
         forecast = service.load_forecast()
 
@@ -150,13 +144,11 @@ class TestReloadForecast:
         self,
         mock_account: Account,
         repository: RepositoryInterface,
-        operation_link_service: OperationLinkService,
     ) -> None:
         """reload_forecast invalidates cached forecast."""
         service = ForecastService(
             account=mock_account,
             repository=repository,
-            operation_link_service=operation_link_service,
         )
 
         # Load initial forecast
@@ -181,7 +173,7 @@ class TestBudgetCrud:
     """Tests for budget CRUD methods."""
 
     def test_add_budget(self, service: ForecastService) -> None:
-        """add_budget adds a budget and returns its ID."""
+        """add_budget adds a budget and returns the created budget."""
         budget = Budget(
             record_id=None,
             description="Test Budget",
@@ -190,11 +182,12 @@ class TestBudgetCrud:
             time_range=TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
         )
 
-        budget_id = service.add_budget(budget)
-        assert budget_id > 0
+        created_budget = service.add_budget(budget)
+        assert created_budget.id is not None
+        assert created_budget.id > 0
 
         # Verify it was added
-        retrieved = service.get_budget_by_id(budget_id)
+        retrieved = service.get_budget_by_id(created_budget.id)
         assert retrieved is not None
         assert retrieved.description == "Test Budget"
 
@@ -208,14 +201,15 @@ class TestBudgetCrud:
             category=Category.OTHER,
             time_range=TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
         )
-        budget_id = service.add_budget(budget)
+        created_budget = service.add_budget(budget)
 
         # Update it
-        updated_budget = budget.replace(record_id=budget_id, description="Updated")
+        updated_budget = created_budget.replace(description="Updated")
         service.update_budget(updated_budget)
 
         # Verify the update
-        retrieved = service.get_budget_by_id(budget_id)
+        assert created_budget.id is not None
+        retrieved = service.get_budget_by_id(created_budget.id)
         assert retrieved is not None
         assert retrieved.description == "Updated"
 
@@ -241,11 +235,12 @@ class TestBudgetCrud:
             category=Category.OTHER,
             time_range=TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
         )
-        budget_id = service.add_budget(budget)
+        created_budget = service.add_budget(budget)
+        assert created_budget.id is not None
 
-        service.delete_budget(budget_id)
+        service.delete_budget(created_budget.id)
 
-        assert service.get_budget_by_id(budget_id) is None
+        assert service.get_budget_by_id(created_budget.id) is None
 
     def test_get_all_budgets(self, service: ForecastService) -> None:
         """get_all_budgets returns all budgets."""
@@ -267,7 +262,7 @@ class TestPlannedOperationCrud:
     """Tests for planned operation CRUD methods."""
 
     def test_add_planned_operation(self, service: ForecastService) -> None:
-        """add_planned_operation adds an operation and returns its ID."""
+        """add_planned_operation adds an operation and returns the created operation."""
         op = PlannedOperation(
             record_id=None,
             description="Test Op",
@@ -276,10 +271,11 @@ class TestPlannedOperationCrud:
             time_range=DailyTimeRange(datetime(2025, 1, 15)),
         )
 
-        op_id = service.add_planned_operation(op)
-        assert op_id > 0
+        created_op = service.add_planned_operation(op)
+        assert created_op.id is not None
+        assert created_op.id > 0
 
-        retrieved = service.get_planned_operation_by_id(op_id)
+        retrieved = service.get_planned_operation_by_id(created_op.id)
         assert retrieved is not None
         assert retrieved.description == "Test Op"
 
@@ -292,12 +288,13 @@ class TestPlannedOperationCrud:
             category=Category.SALARY,
             time_range=DailyTimeRange(datetime(2025, 1, 15)),
         )
-        op_id = service.add_planned_operation(op)
+        created_op = service.add_planned_operation(op)
 
-        updated_op = op.replace(record_id=op_id, description="Updated")
+        updated_op = created_op.replace(description="Updated")
         service.update_planned_operation(updated_op)
 
-        retrieved = service.get_planned_operation_by_id(op_id)
+        assert created_op.id is not None
+        retrieved = service.get_planned_operation_by_id(created_op.id)
         assert retrieved is not None
         assert retrieved.description == "Updated"
 
@@ -325,11 +322,12 @@ class TestPlannedOperationCrud:
             category=Category.SALARY,
             time_range=DailyTimeRange(datetime(2025, 1, 15)),
         )
-        op_id = service.add_planned_operation(op)
+        created_op = service.add_planned_operation(op)
+        assert created_op.id is not None
 
-        service.delete_planned_operation(op_id)
+        service.delete_planned_operation(created_op.id)
 
-        assert service.get_planned_operation_by_id(op_id) is None
+        assert service.get_planned_operation_by_id(created_op.id) is None
 
     def test_get_all_planned_operations(self, service: ForecastService) -> None:
         """get_all_planned_operations returns all operations."""

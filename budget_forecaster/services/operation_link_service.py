@@ -13,13 +13,15 @@ from budget_forecaster.account.repository_interface import (
 )
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
+from budget_forecaster.operation_range.operation_link import OperationLink
 from budget_forecaster.operation_range.operation_matcher import OperationMatcher
 from budget_forecaster.operation_range.operation_range import OperationRange
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.types import (
-    BudgetId,
-    PlannedOperationId,
+    LinkType,
+    MatcherKey,
+    OperationId,
+    TargetId,
 )
 
 
@@ -102,9 +104,8 @@ class OperationLinkService:
     """Orchestrates operation link lifecycle between matcher and repository.
 
     This service is responsible for:
-    - Loading links from DB and injecting them into matchers
-    - Creating heuristic links during import/actualize
-    - Recalculating links when planned ops/budgets change
+    - CRUD operations on links
+    - Creating heuristic links during import
     - Preserving manual links during recalculation
     """
 
@@ -124,6 +125,19 @@ class OperationLinkService:
         """
         return self._repository.get_all_links()
 
+    def get_link_for_operation(
+        self, operation_unique_id: OperationId
+    ) -> OperationLink | None:
+        """Get the link for a specific operation.
+
+        Args:
+            operation_unique_id: The unique ID of the operation.
+
+        Returns:
+            The OperationLink if found, None otherwise.
+        """
+        return self._repository.get_link_for_operation(operation_unique_id)
+
     def upsert_link(self, link: OperationLink) -> None:
         """Create or update an operation link.
 
@@ -132,13 +146,40 @@ class OperationLinkService:
         """
         self._repository.upsert_link(link)
 
-    def delete_link(self, operation_unique_id: int) -> None:
+    def delete_link(self, operation_unique_id: OperationId) -> None:
         """Delete an operation link.
 
         Args:
             operation_unique_id: The unique ID of the operation to unlink.
         """
         self._repository.delete_link(operation_unique_id)
+
+    def delete_links_for_target(
+        self, target_type: LinkType, target_id: TargetId
+    ) -> None:
+        """Delete all links for a target (both manual and automatic).
+
+        Used for cascade delete when a planned operation or budget is deleted.
+
+        Args:
+            target_type: The type of target (planned operation or budget).
+            target_id: The ID of the target.
+        """
+        self._repository.delete_links_for_target(target_type, target_id)
+
+    def delete_automatic_links_for_target(
+        self, target_type: LinkType, target_id: TargetId
+    ) -> None:
+        """Delete all automatic (heuristic) links for a target.
+
+        Used for link recalculation when a planned operation or budget is modified.
+        Manual links are preserved.
+
+        Args:
+            target_type: The type of target (planned operation or budget).
+            target_id: The ID of the target.
+        """
+        self._repository.delete_automatic_links_for_target(target_type, target_id)
 
     def load_links_for_target(
         self, target: PlannedOperation | Budget
@@ -161,9 +202,7 @@ class OperationLinkService:
     def create_heuristic_links(
         self,
         operations: tuple[HistoricOperation, ...],
-        matchers_by_target: dict[
-            tuple[LinkType, PlannedOperationId | BudgetId], OperationMatcher
-        ],
+        matchers_by_target: dict[MatcherKey, OperationMatcher],
     ) -> tuple[OperationLink, ...]:
         """Create and persist heuristic links for unlinked operations.
 
@@ -231,40 +270,3 @@ class OperationLinkService:
                 created_links.append(best_match.link)
 
         return tuple(created_links)
-
-    def recalculate_links_for_target(
-        self,
-        target: PlannedOperation | Budget,
-        operations: tuple[HistoricOperation, ...],
-    ) -> tuple[OperationLink, ...]:
-        """Recalculate heuristic links for a target after it was modified.
-
-        Deletes all heuristic (non-manual) links for this target, then
-        recreates them by running matching against all unlinked operations.
-
-        Manual links are preserved and never overwritten.
-
-        Args:
-            target: The planned operation or budget to recalculate links for.
-            operations: All operations to consider for linking.
-
-        Returns:
-            Tuple of newly created OperationLinks.
-        """
-        if target.id is None:
-            return ()
-
-        target_type = (
-            LinkType.PLANNED_OPERATION
-            if isinstance(target, PlannedOperation)
-            else LinkType.BUDGET
-        )
-
-        # Delete only heuristic links for this target (manual links preserved)
-        self._repository.delete_automatic_links_for_target(target_type, target.id)
-
-        # Recreate heuristic links
-        return self.create_heuristic_links(
-            operations,
-            {(target_type, target.id): target.matcher},
-        )

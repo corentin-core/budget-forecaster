@@ -39,6 +39,30 @@ def get_operations(self) -> tuple[Operation, ...]:
 
 **Rule**: ALWAYS use `tuple[T, ...]` instead of `list[T]` for function return values.
 
+## NamedTuple vs dataclass
+
+**Why**: NamedTuple is immutable and lighter. Use dataclass only when you need
+mutability or methods.
+
+| Use case                          | Choice     |
+| --------------------------------- | ---------- |
+| Immutable data, no methods        | NamedTuple |
+| Needs methods (e.g., `matches()`) | dataclass  |
+| Needs default mutable values      | dataclass  |
+
+```python
+# BAD - dataclass for simple immutable data
+@dataclass
+class UpdateResult:
+    operation: HistoricOperation
+    category_changed: bool
+
+# GOOD - NamedTuple for immutable data without methods
+class UpdateResult(NamedTuple):
+    operation: HistoricOperation
+    category_changed: bool
+```
+
 ## Domain objects over primitives
 
 Use domain objects instead of primitive types:
@@ -107,6 +131,31 @@ print(f"Imported {len(operations)} operations")
 # GOOD
 logger.info("Imported %d operations", len(operations))
 ```
+
+## Circular imports - Never work around silently
+
+**Why**: Using `TYPE_CHECKING` to avoid circular imports hides architectural problems.
+Circular imports indicate poor module organization that should be fixed properly.
+
+**Rule**: NEVER use `if TYPE_CHECKING:` to work around circular imports. Instead:
+
+1. **Stop and report** the circular import to the user
+2. **Analyze** which module depends on which
+3. **Propose** a refactoring solution (extract common types, reorganize modules)
+
+```python
+# BAD - hiding the problem
+if TYPE_CHECKING:
+    from budget_forecaster.services.forecast_service import ForecastService
+
+# GOOD - fix the architecture
+# Extract common types to a shared module, or reorganize dependencies
+```
+
+**Acceptable uses of TYPE_CHECKING**:
+
+- Forward references within the same module (self-referential types)
+- Avoiding heavy imports that are only needed for type hints (e.g., pandas, numpy)
 
 ---
 
