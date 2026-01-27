@@ -10,7 +10,7 @@ from budget_forecaster.forecast.forecast import Forecast
 from budget_forecaster.forecast.forecast_actualizer import ForecastActualizer
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
+from budget_forecaster.operation_range.operation_link import OperationLink
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.time_range import (
     DailyTimeRange,
@@ -18,7 +18,7 @@ from budget_forecaster.time_range import (
     PeriodicTimeRange,
     TimeRange,
 )
-from budget_forecaster.types import Category
+from budget_forecaster.types import Category, LinkType
 
 
 @pytest.fixture

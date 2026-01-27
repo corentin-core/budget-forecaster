@@ -16,9 +16,10 @@ from budget_forecaster.backup import BackupService
 from budget_forecaster.config import Config
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
+from budget_forecaster.operation_range.operation_link import OperationLink
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.services import (
+    ApplicationService,
     ForecastService,
     ImportService,
     OperationFilter,
@@ -38,7 +39,13 @@ from budget_forecaster.tui.screens.forecast import ForecastWidget
 from budget_forecaster.tui.screens.imports import ImportWidget
 from budget_forecaster.tui.screens.planned_operations import PlannedOperationsWidget
 from budget_forecaster.tui.widgets import OperationTable
-from budget_forecaster.types import Category, OperationId, TargetId, TargetName
+from budget_forecaster.types import (
+    Category,
+    LinkType,
+    MatcherKey,
+    OperationId,
+    TargetName,
+)
 
 # Logger instance (configured via Config.setup_logging)
 logger = logging.getLogger("budget_forecaster")
@@ -140,10 +147,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         self._config_path = config_path
         self._config: Config | None = None
         self._persistent_account: PersistentAccount | None = None
-        self._operation_service: OperationService | None = None
-        self._import_service: ImportService | None = None
-        self._forecast_service: ForecastService | None = None
-        self._operation_link_service: OperationLinkService | None = None
+        self._app_service: ApplicationService | None = None
         self._categorizing_operation_id: int | None = None
         self._linking_operation: HistoricOperation | None = None
 
@@ -171,28 +175,36 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         self._persistent_account = PersistentAccount(repository)
         self._persistent_account.load()
 
-        self._operation_service = OperationService(self._persistent_account)
-        self._operation_link_service = OperationLinkService(
+        # Create individual services
+        operation_service = OperationService(self._persistent_account)
+        operation_link_service = OperationLinkService(
             self._persistent_account.repository
         )
-        self._import_service = ImportService(
+        import_service = ImportService(
             self._persistent_account,
             self._config.inbox_path,
-            self._operation_link_service,
             self._config.inbox_exclude_patterns,
         )
-        self._forecast_service = ForecastService(
+        forecast_service = ForecastService(
             self._persistent_account.account,
             self._persistent_account.repository,
-            self._operation_link_service,
+        )
+
+        # Create the application service as central orchestrator
+        self._app_service = ApplicationService(
+            persistent_account=self._persistent_account,
+            import_service=import_service,
+            operation_service=operation_service,
+            forecast_service=forecast_service,
+            operation_link_service=operation_link_service,
         )
 
     @property
-    def operation_service(self) -> OperationService:
-        """Get the operation service."""
-        if self._operation_service is None:
+    def app_service(self) -> ApplicationService:
+        """Get the application service."""
+        if self._app_service is None:
             raise RuntimeError("Application not initialized")
-        return self._operation_service
+        return self._app_service
 
     @property
     def persistent_account(self) -> PersistentAccount:
@@ -200,27 +212,6 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         if self._persistent_account is None:
             raise RuntimeError("Application not initialized")
         return self._persistent_account
-
-    @property
-    def import_service(self) -> ImportService:
-        """Get the import service."""
-        if self._import_service is None:
-            raise RuntimeError("Application not initialized")
-        return self._import_service
-
-    @property
-    def forecast_service(self) -> ForecastService:
-        """Get the forecast service."""
-        if self._forecast_service is None:
-            raise RuntimeError("Application not initialized")
-        return self._forecast_service
-
-    @property
-    def operation_link_service(self) -> OperationLinkService:
-        """Get the operation link service."""
-        if self._operation_link_service is None:
-            raise RuntimeError("Application not initialized")
-        return self._operation_link_service
 
     def compose(self) -> ComposeResult:
         """Create the UI layout."""
@@ -263,28 +254,26 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
 
     def _refresh_screens(self) -> None:  # pylint: disable=too-many-locals
         """Refresh all screens with current data."""
-        service = self.operation_service
-
         # Build links and targets lookup dicts for operation tables
         links: dict[OperationId, OperationLink] = {}
-        targets: dict[tuple[LinkType, TargetId], TargetName] = {}
+        targets: dict[MatcherKey, TargetName] = {}
 
-        for link in self.operation_link_service.get_all_links():
+        for link in self.app_service.get_all_links():
             links[link.operation_unique_id] = link
 
-        for planned_op in self.forecast_service.get_all_planned_operations():
+        for planned_op in self.app_service.get_all_planned_operations():
             if planned_op.id is not None:
-                targets[
-                    (LinkType.PLANNED_OPERATION, planned_op.id)
-                ] = planned_op.description
-        for budget in self.forecast_service.get_all_budgets():
+                key = MatcherKey(LinkType.PLANNED_OPERATION, planned_op.id)
+                targets[key] = planned_op.description
+        for budget in self.app_service.get_all_budgets():
             if budget.id is not None:
-                targets[(LinkType.BUDGET, budget.id)] = budget.description
+                key = MatcherKey(LinkType.BUDGET, budget.id)
+                targets[key] = budget.description
 
         # Update dashboard stats
-        balance = service.balance
+        balance = self.app_service.balance
         stat_balance = self.query_one("#stat-balance", Static)
-        stat_balance.update(f"Solde: {balance:,.2f} {service.currency}")
+        stat_balance.update(f"Solde: {balance:,.2f} {self.app_service.currency}")
         stat_balance.remove_class("stat-positive", "stat-negative")
         stat_balance.add_class("stat-negative" if balance < 0 else "stat-positive")
 
@@ -294,13 +283,13 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         if month <= 0:
             month, year = month + 12, year - 1
         recent_filter = OperationFilter(date_from=datetime(year, month, 1))
-        recent_ops = service.get_operations(recent_filter)
+        recent_ops = self.app_service.get_operations(recent_filter)
         self.query_one("#stat-month-ops", Static).update(
             f"3 derniers mois: {len(recent_ops)} opérations"
         )
 
         # Uncategorized count
-        uncategorized = service.get_uncategorized_operations()
+        uncategorized = self.app_service.get_uncategorized_operations()
         stat_uncat = self.query_one("#stat-uncategorized", Static)
         stat_uncat.update(f"Non catégorisées: {len(uncategorized)}")
         stat_uncat.remove_class("stat-positive", "stat-negative")
@@ -311,7 +300,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             recent_ops, links, targets
         )
         self.query_one("#operations-table", OperationTable).load_operations(
-            service.get_operations(), links, targets
+            self.app_service.get_operations(), links, targets
         )
         self.query_one("#categorize-table", OperationTable).load_operations(
             uncategorized, links, targets
@@ -319,21 +308,21 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
 
         # Refresh import widget
         import_widget = self.query_one("#import-widget", ImportWidget)
-        import_widget.set_service(self.import_service)
+        import_widget.set_app_service(self.app_service)
 
         # Refresh forecast widget
         forecast_widget = self.query_one("#forecast-widget", ForecastWidget)
-        forecast_widget.set_service(self.forecast_service)
+        forecast_widget.set_app_service(self.app_service)
 
         # Refresh budgets widget
         budgets_widget = self.query_one("#budgets-widget", BudgetsWidget)
-        budgets_widget.set_service(self.forecast_service)
+        budgets_widget.set_app_service(self.app_service)
 
         # Refresh planned operations widget
         planned_ops_widget = self.query_one(
             "#planned-ops-widget", PlannedOperationsWidget
         )
-        planned_ops_widget.set_service(self.forecast_service)
+        planned_ops_widget.set_app_service(self.app_service)
 
     def action_refresh_data(self) -> None:
         """Refresh data from the database."""
@@ -353,7 +342,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         """Handle browse request from import widget."""
         event.stop()
         # Start in inbox directory if it exists, otherwise home
-        start_path = self.import_service.inbox_path
+        start_path = self.app_service.inbox_path
         if not start_path.exists():
             start_path = Path.home()
         self.push_screen(FileBrowserModal(start_path), self._on_file_selected)
@@ -409,9 +398,14 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         if category is None or self._categorizing_operation_id is None:
             return
 
-        self.operation_service.categorize_operation(
+        # Use ApplicationService for categorization (handles link creation)
+        result = self.app_service.categorize_operation(
             self._categorizing_operation_id, category
         )
+        if result is None:
+            self.notify("Opération non trouvée", severity="error")
+            return
+
         self.save_changes()
         # Reload data from database and refresh all screens
         if self._persistent_account:
@@ -444,17 +438,13 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
                 self._linking_operation = operation
 
                 # Get current link if any
-                current_link = None
-                for link in self.operation_link_service.get_all_links():
-                    if link.operation_unique_id == operation.unique_id:
-                        current_link = link
-                        break
+                current_link = self.app_service.get_link_for_operation(
+                    operation.unique_id
+                )
 
                 # Get all targets
-                planned_operations = list(
-                    self.forecast_service.get_all_planned_operations()
-                )
-                budgets = list(self.forecast_service.get_all_budgets())
+                planned_operations = list(self.app_service.get_all_planned_operations())
+                budgets = list(self.app_service.get_all_budgets())
 
                 self.push_screen(
                     LinkTargetModal(
@@ -478,7 +468,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
 
         # Handle unlink
         if result == "unlink":
-            self.operation_link_service.delete_link(self._linking_operation.unique_id)
+            self.app_service.delete_link(self._linking_operation.unique_id)
             self.notify("Liaison supprimée")
             self._refresh_screens()
             self._linking_operation = None
@@ -500,27 +490,14 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         if iteration_date is None or self._linking_operation is None:
             return
 
-        # Determine target type and id
-        if isinstance(target, PlannedOperation):
-            target_type = LinkType.PLANNED_OPERATION
-        else:
-            target_type = LinkType.BUDGET
-
         if target.id is None:
             self.notify("Cible invalide", severity="error")
             return
 
-        # Create the link
-        link = OperationLink(
-            operation_unique_id=self._linking_operation.unique_id,
-            target_type=target_type,
-            target_id=target.id,
-            iteration_date=iteration_date,
-            is_manual=True,
+        # Create the manual link
+        self.app_service.create_manual_link(
+            self._linking_operation, target, iteration_date
         )
-
-        # Upsert (replace any existing link for this operation)
-        self.operation_link_service.upsert_link(link)
 
         self.notify(f"Opération liée à '{target.description}'")
         self._refresh_screens()
@@ -544,7 +521,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             self.notify("Cannot delete unsaved budget", severity="error")
             return
         try:
-            self.forecast_service.delete_budget(event.budget.id)
+            self.app_service.delete_budget(event.budget.id)
             self.notify(f"Budget '{event.budget.description}' supprimé")
             self._refresh_budgets()
         except Exception as e:  # pylint: disable=broad-exception-caught
@@ -559,11 +536,11 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         try:
             if budget.id is None:
                 # New budget
-                self.forecast_service.add_budget(budget)
+                self.app_service.add_budget(budget)
                 self.notify(f"Budget '{budget.description}' créé")
             else:
                 # Update existing
-                self.forecast_service.update_budget(budget)
+                self.app_service.update_budget(budget)
                 self.notify(f"Budget '{budget.description}' modifié")
             self._refresh_budgets()
         except Exception as e:  # pylint: disable=broad-exception-caught
@@ -598,7 +575,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             self.notify("Cannot delete unsaved operation", severity="error")
             return
         try:
-            self.forecast_service.delete_planned_operation(event.operation.id)
+            self.app_service.delete_planned_operation(event.operation.id)
             self.notify(f"Opération '{event.operation.description}' supprimée")
             self._refresh_planned_operations()
         except Exception as e:  # pylint: disable=broad-exception-caught
@@ -613,11 +590,11 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         try:
             if operation.id is None:
                 # New operation
-                self.forecast_service.add_planned_operation(operation)
+                self.app_service.add_planned_operation(operation)
                 self.notify(f"Opération '{operation.description}' créée")
             else:
                 # Update existing
-                self.forecast_service.update_planned_operation(operation)
+                self.app_service.update_planned_operation(operation)
                 self.notify(f"Opération '{operation.description}' modifiée")
             self._refresh_planned_operations()
         except Exception as e:  # pylint: disable=broad-exception-caught

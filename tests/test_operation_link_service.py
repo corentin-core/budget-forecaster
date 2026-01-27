@@ -2,9 +2,12 @@
 
 # pylint: disable=redefined-outer-name,protected-access,too-few-public-methods,import-outside-toplevel
 
+from __future__ import annotations
+
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from dateutil.relativedelta import relativedelta
@@ -13,7 +16,7 @@ from budget_forecaster.account.sqlite_repository import SqliteRepository
 from budget_forecaster.amount import Amount
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
+from budget_forecaster.operation_range.operation_link import OperationLink
 from budget_forecaster.operation_range.operation_matcher import OperationMatcher
 from budget_forecaster.operation_range.operation_range import OperationRange
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
@@ -24,7 +27,11 @@ from budget_forecaster.time_range import (
     PeriodicTimeRange,
     TimeRange,
 )
-from budget_forecaster.types import Category
+from budget_forecaster.types import Category, LinkType, MatcherKey
+
+if TYPE_CHECKING:
+    from budget_forecaster.account.persistent_account import PersistentAccount
+    from budget_forecaster.services.application_service import ApplicationService
 
 
 @pytest.fixture
@@ -205,7 +212,7 @@ class TestCreateHeuristicLinks:
         sample_operations: tuple[HistoricOperation, ...],
     ) -> None:
         """Test that heuristic links are created for matching operations."""
-        matchers = {(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher}
+        matchers = {MatcherKey(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher}
 
         created_links = link_service.create_heuristic_links(sample_operations, matchers)
 
@@ -233,7 +240,7 @@ class TestCreateHeuristicLinks:
         )
         repository.upsert_link(existing_link)
 
-        matchers = {(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher}
+        matchers = {MatcherKey(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher}
         created_links = link_service.create_heuristic_links(sample_operations, matchers)
 
         # Should only create link for operation 2 (operation 1 is already linked)
@@ -247,7 +254,7 @@ class TestCreateHeuristicLinks:
         sample_operations: tuple[HistoricOperation, ...],
     ) -> None:
         """Test that created links are marked as non-manual (heuristic)."""
-        matchers = {(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher}
+        matchers = {MatcherKey(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher}
 
         created_links = link_service.create_heuristic_links(sample_operations, matchers)
 
@@ -262,7 +269,7 @@ class TestCreateHeuristicLinks:
         sample_operations: tuple[HistoricOperation, ...],
     ) -> None:
         """Test that created links are persisted to the repository."""
-        matchers = {(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher}
+        matchers = {MatcherKey(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher}
 
         link_service.create_heuristic_links(sample_operations, matchers)
 
@@ -287,22 +294,20 @@ class TestCreateHeuristicLinks:
             time_range=DailyTimeRange(datetime(2024, 1, 1)),
         )
         different_matcher = OperationMatcher(operation_range=different_range)
-        matchers = {(LinkType.PLANNED_OPERATION, 99): different_matcher}
+        matchers = {MatcherKey(LinkType.PLANNED_OPERATION, 99): different_matcher}
 
         created_links = link_service.create_heuristic_links(sample_operations, matchers)
 
         assert len(created_links) == 0
 
 
-class TestRecalculateLinksForTarget:
-    """Tests for recalculate_links_for_target method."""
+class TestDeleteLinksForTarget:
+    """Tests for delete_links_for_target and delete_automatic_links_for_target."""
 
-    def test_deletes_automatic_links_for_target(
+    def test_delete_automatic_links_for_target(
         self,
         link_service: OperationLinkService,
         repository: SqliteRepository,
-        monthly_rent_planned_op: PlannedOperation,
-        sample_operations: tuple[HistoricOperation, ...],
     ) -> None:
         """Test that automatic links for the target are deleted."""
         # Create an automatic link
@@ -315,75 +320,87 @@ class TestRecalculateLinksForTarget:
         )
         repository.upsert_link(auto_link)
 
-        # Recalculate (should delete the old automatic link)
-        link_service.recalculate_links_for_target(
-            monthly_rent_planned_op, sample_operations
-        )
+        # Delete automatic links
+        link_service.delete_automatic_links_for_target(LinkType.PLANNED_OPERATION, 1)
 
-        # Verify a new link was created (iteration date might be different)
+        # Verify link was deleted
         link = repository.get_link_for_operation(1)
-        assert link is not None
+        assert link is None
 
-    def test_preserves_manual_links(
+    def test_delete_automatic_links_preserves_manual(
         self,
         link_service: OperationLinkService,
         repository: SqliteRepository,
-        monthly_rent_planned_op: PlannedOperation,
-        sample_operations: tuple[HistoricOperation, ...],
     ) -> None:
-        """Test that manual links are preserved during recalculation."""
+        """Test that manual links are preserved when deleting automatic links."""
         # Create a manual link
         manual_link = OperationLink(
             operation_unique_id=1,
             target_type=LinkType.PLANNED_OPERATION,
             target_id=1,
-            iteration_date=datetime(2024, 1, 15),  # Manually linked to different date
+            iteration_date=datetime(2024, 1, 15),
             is_manual=True,
             notes="Manually linked",
         )
         repository.upsert_link(manual_link)
 
-        # Recalculate
-        link_service.recalculate_links_for_target(
-            monthly_rent_planned_op, sample_operations
-        )
+        # Delete automatic links
+        link_service.delete_automatic_links_for_target(LinkType.PLANNED_OPERATION, 1)
 
-        # Manual link should still exist with same values
+        # Manual link should still exist
         link = repository.get_link_for_operation(1)
         assert link is not None
         assert link.is_manual is True
         assert link.iteration_date == datetime(2024, 1, 15)
         assert link.notes == "Manually linked"
 
-    def test_creates_new_links_after_deletion(
+    def test_delete_links_for_target_deletes_all(
         self,
         link_service: OperationLinkService,
-        monthly_rent_planned_op: PlannedOperation,
-        sample_operations: tuple[HistoricOperation, ...],
+        repository: SqliteRepository,
     ) -> None:
-        """Test that new heuristic links are created after deletion."""
-        new_links = link_service.recalculate_links_for_target(
-            monthly_rent_planned_op, sample_operations
+        """Test that delete_links_for_target deletes ALL links including manual."""
+        # Create both manual and automatic links
+        manual_link = OperationLink(
+            operation_unique_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
+            iteration_date=datetime(2024, 1, 15),
+            is_manual=True,
         )
+        auto_link = OperationLink(
+            operation_unique_id=2,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
+            iteration_date=datetime(2024, 2, 1),
+            is_manual=False,
+        )
+        repository.upsert_link(manual_link)
+        repository.upsert_link(auto_link)
 
-        # Should create links for matching operations
-        assert len(new_links) == 2
+        # Delete ALL links for target
+        link_service.delete_links_for_target(LinkType.PLANNED_OPERATION, 1)
+
+        # Both links should be deleted
+        assert repository.get_link_for_operation(1) is None
+        assert repository.get_link_for_operation(2) is None
 
 
-# Integration tests for ForecastService triggers
+# Integration tests for ApplicationService link orchestration
 
 
-class TestForecastServiceLinkIntegration:
-    """Integration tests for automatic link recalculation in ForecastService."""
+class TestApplicationServiceLinkIntegration:
+    """Integration tests for automatic link creation/recalculation in ApplicationService."""
 
     @pytest.fixture
-    def populated_repository(
+    def populated_persistent_account(
         self,
         repository: SqliteRepository,
         sample_operations: tuple[HistoricOperation, ...],
-    ) -> SqliteRepository:
-        """Create a repository with an account and operations."""
+    ) -> PersistentAccount:
+        """Create a persistent account with operations."""
         from budget_forecaster.account.account import Account
+        from budget_forecaster.account.persistent_account import PersistentAccount
 
         # Create account with operations
         account = Account(
@@ -393,24 +410,43 @@ class TestForecastServiceLinkIntegration:
             balance_date=datetime(2024, 1, 1),
             operations=sample_operations,
         )
+        repository.set_aggregated_account_name("Test Account")
         repository.upsert_account(account)
-        return repository
+
+        persistent = PersistentAccount(repository)
+        persistent.load()
+        return persistent
+
+    @pytest.fixture
+    def app_service(
+        self, populated_persistent_account: PersistentAccount
+    ) -> ApplicationService:
+        """Create ApplicationService with all dependencies."""
+        from budget_forecaster.services.application_service import ApplicationService
+        from budget_forecaster.services.forecast_service import ForecastService
+        from budget_forecaster.services.import_service import ImportService
+        from budget_forecaster.services.operation_service import OperationService
+
+        repository = populated_persistent_account.repository
+        account = populated_persistent_account.account
+
+        operation_service = OperationService(populated_persistent_account)
+        operation_link_service = OperationLinkService(repository)
+        import_service = ImportService(populated_persistent_account, Path("/tmp/inbox"))
+        forecast_service = ForecastService(account, repository)
+
+        return ApplicationService(
+            persistent_account=populated_persistent_account,
+            import_service=import_service,
+            operation_service=operation_service,
+            forecast_service=forecast_service,
+            operation_link_service=operation_link_service,
+        )
 
     def test_add_planned_operation_creates_links(
-        self, populated_repository: SqliteRepository
+        self, app_service: ApplicationService, repository: SqliteRepository
     ) -> None:
         """Test that adding a planned operation creates heuristic links."""
-        from budget_forecaster.services.forecast_service import ForecastService
-
-        # Get the account
-        accounts = populated_repository.get_all_accounts()
-        assert len(accounts) == 1
-        account = accounts[0]
-
-        # Create ForecastService with injected OperationLinkService
-        operation_link_service = OperationLinkService(populated_repository)
-        service = ForecastService(account, populated_repository, operation_link_service)
-
         # Create a planned operation that matches rent operations
         planned_op = PlannedOperation(
             record_id=None,
@@ -422,23 +458,17 @@ class TestForecastServiceLinkIntegration:
             ),
         )
 
-        op_id = service.add_planned_operation(planned_op)
+        new_op = app_service.add_planned_operation(planned_op)
+        assert new_op.id is not None
 
         # Check that links were created
-        links = populated_repository.get_links_for_planned_operation(op_id)
+        links = repository.get_links_for_planned_operation(new_op.id)
         assert len(links) == 2  # Two rent operations
 
     def test_update_planned_operation_recalculates_links(
-        self, populated_repository: SqliteRepository
+        self, app_service: ApplicationService, repository: SqliteRepository
     ) -> None:
         """Test that updating a planned operation recalculates links."""
-        from budget_forecaster.services.forecast_service import ForecastService
-
-        accounts = populated_repository.get_all_accounts()
-        account = accounts[0]
-        operation_link_service = OperationLinkService(populated_repository)
-        service = ForecastService(account, populated_repository, operation_link_service)
-
         # Add initial planned operation
         planned_op = PlannedOperation(
             record_id=None,
@@ -449,7 +479,9 @@ class TestForecastServiceLinkIntegration:
                 datetime(2024, 1, 1), relativedelta(months=1)
             ),
         )
-        op_id = service.add_planned_operation(planned_op)
+        new_op = app_service.add_planned_operation(planned_op)
+        assert new_op.id is not None
+        op_id = new_op.id
 
         # Update with different amount (no matches expected)
         updated_op = PlannedOperation(
@@ -461,24 +493,17 @@ class TestForecastServiceLinkIntegration:
                 datetime(2024, 1, 1), relativedelta(months=1)
             ),
         )
-        service.update_planned_operation(updated_op)
+        app_service.update_planned_operation(updated_op)
 
         # Old links should be deleted, new ones should be created based on new criteria
-        links = populated_repository.get_links_for_planned_operation(op_id)
+        links = repository.get_links_for_planned_operation(op_id)
         # With the new amount (1500), it shouldn't match the 800 operations
         assert len(links) == 0
 
     def test_add_budget_creates_links(
-        self, populated_repository: SqliteRepository
+        self, app_service: ApplicationService, repository: SqliteRepository
     ) -> None:
         """Test that adding a budget creates heuristic links."""
-        from budget_forecaster.services.forecast_service import ForecastService
-
-        accounts = populated_repository.get_all_accounts()
-        account = accounts[0]
-        operation_link_service = OperationLinkService(populated_repository)
-        service = ForecastService(account, populated_repository, operation_link_service)
-
         # Create a budget that matches groceries
         budget = Budget(
             record_id=None,
@@ -491,10 +516,11 @@ class TestForecastServiceLinkIntegration:
             ),
         )
 
-        budget_id = service.add_budget(budget)
+        new_budget = app_service.add_budget(budget)
+        assert new_budget.id is not None
 
         # Check that a link was created for the groceries operation
-        links = populated_repository.get_links_for_budget(budget_id)
+        links = repository.get_links_for_budget(new_budget.id)
         assert len(links) == 1
         assert links[0].operation_unique_id == 3  # The groceries operation
 
@@ -502,14 +528,14 @@ class TestForecastServiceLinkIntegration:
 class TestManualLinkProtection:
     """Tests to ensure manual links are never overwritten by automatic processes."""
 
-    def test_manual_link_preserved_after_recalculation(
+    def test_manual_link_preserved_after_delete_automatic(
         self,
         link_service: OperationLinkService,
         repository: SqliteRepository,
-        monthly_rent_planned_op: PlannedOperation,
+        monthly_rent_matcher: OperationMatcher,
         sample_operations: tuple[HistoricOperation, ...],
     ) -> None:
-        """Test that manual links survive multiple recalculations."""
+        """Test that manual links survive delete_automatic_links_for_target."""
         # Create a manual link with custom iteration date and notes
         manual_link = OperationLink(
             operation_unique_id=1,
@@ -521,10 +547,15 @@ class TestManualLinkProtection:
         )
         repository.upsert_link(manual_link)
 
-        # Perform multiple recalculations
+        # Delete automatic links multiple times
         for _ in range(3):
-            link_service.recalculate_links_for_target(
-                monthly_rent_planned_op, sample_operations
+            link_service.delete_automatic_links_for_target(
+                LinkType.PLANNED_OPERATION, 1
+            )
+            # Create new heuristic links (simulating recalculation)
+            link_service.create_heuristic_links(
+                sample_operations,
+                {MatcherKey(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher},
             )
 
         # Manual link should still exist with original values
@@ -538,7 +569,6 @@ class TestManualLinkProtection:
         self,
         link_service: OperationLinkService,
         repository: SqliteRepository,
-        monthly_rent_planned_op: PlannedOperation,
         monthly_rent_matcher: OperationMatcher,
         sample_operations: tuple[HistoricOperation, ...],
     ) -> None:
@@ -546,16 +576,18 @@ class TestManualLinkProtection:
         # First create heuristic links
         link_service.create_heuristic_links(
             sample_operations,
-            {(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher},
+            {MatcherKey(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher},
         )
 
         initial_link = repository.get_link_for_operation(1)
         assert initial_link is not None
         assert initial_link.is_manual is False
 
-        # Recalculate should replace the heuristic link
-        link_service.recalculate_links_for_target(
-            monthly_rent_planned_op, sample_operations
+        # Delete and recreate (simulating recalculation)
+        link_service.delete_automatic_links_for_target(LinkType.PLANNED_OPERATION, 1)
+        link_service.create_heuristic_links(
+            sample_operations,
+            {MatcherKey(LinkType.PLANNED_OPERATION, 1): monthly_rent_matcher},
         )
 
         # Link should still exist (recreated)

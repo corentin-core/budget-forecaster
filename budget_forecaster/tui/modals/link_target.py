@@ -12,9 +12,10 @@ from textual.widgets.option_list import Option
 
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.operation_range.operation_link import LinkType, OperationLink
+from budget_forecaster.operation_range.operation_link import OperationLink
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.services.operation_link_service import compute_match_score
+from budget_forecaster.types import LinkType
 
 # Column widths for alignment
 COL_SCORE = 6
