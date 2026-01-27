@@ -336,7 +336,15 @@ class CategorizeScreen(Container):
 
         # Bulk categorize
         updated = self._app_service.bulk_categorize(all_ids, suggested)
-        self.app.notify(f"{len(updated)} opération(s) catégorisée(s)")
+
+        # Count links created
+        links_created = sum(1 for result in updated if result.new_link is not None)
+
+        # Build notification message
+        message = f"{len(updated)} opération(s) catégorisée(s)"
+        if links_created > 0:
+            message += f" ({links_created} lien(s) créé(s))"
+        self.app.notify(message)
         self._save_and_refresh()
 
     def _save_and_refresh(self) -> None:
