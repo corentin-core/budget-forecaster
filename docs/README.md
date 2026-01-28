@@ -6,10 +6,11 @@
 
 Guides for end-users explaining how to use features.
 
-| Document                                   | Description                             |
-| ------------------------------------------ | --------------------------------------- |
-| [Backup](user/backup.md)                   | Automatic database backup configuration |
-| [Operation Links](user/operation-links.md) | Linking operations to forecasts         |
+| Document                                   | Description                              |
+| ------------------------------------------ | ---------------------------------------- |
+| [Backup](user/backup.md)                   | Automatic database backup configuration  |
+| [Operation Links](user/operation-links.md) | Linking operations to forecasts          |
+| [TUI Operations](user/tui-operations.md)   | Multi-selection, categorization, linking |
 
 ### Developer Documentation
 
@@ -35,7 +36,8 @@ Test scenarios in Given-When-Then format.
 docs/
 ├── user/                        # End-user documentation
 │   ├── backup.md
-│   └── operation-links.md
+│   ├── operation-links.md
+│   └── tui-operations.md
 ├── dev/                         # Developer documentation
 │   ├── forecast-calculation.md
 │   └── operation-links.md

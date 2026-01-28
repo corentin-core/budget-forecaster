@@ -1,5 +1,12 @@
 # Documentation Guidelines
 
+## Language
+
+**Rule**: ALWAYS write documentation in English, including user documentation.
+
+This ensures consistency across the codebase and makes the project accessible to a wider
+audience.
+
 ## Structure
 
 Separate user documentation from developer documentation:

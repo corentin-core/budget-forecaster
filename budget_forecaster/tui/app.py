@@ -8,6 +8,7 @@ from typing import Any
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal
+from textual.css.query import NoMatches
 from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
 from budget_forecaster.account.persistent_account import PersistentAccount
@@ -148,8 +149,8 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         self._config: Config | None = None
         self._persistent_account: PersistentAccount | None = None
         self._app_service: ApplicationService | None = None
-        self._categorizing_operation_id: int | None = None
-        self._linking_operation: HistoricOperation | None = None
+        self._categorizing_operation_ids: tuple[OperationId, ...] = ()
+        self._linking_operations: tuple[HistoricOperation, ...] = ()
 
     def _load_config(self) -> None:
         """Load configuration and account."""
@@ -226,12 +227,6 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
                 yield OperationTable(id="dashboard-table")
             with TabPane("Opérations", id="operations"):
                 yield OperationTable(id="operations-table")
-            with TabPane("Catégorisation", id="categorize"):
-                yield Static(
-                    "Sélectionnez une opération et appuyez sur [c] pour catégoriser",
-                    id="categorize-help",
-                )
-                yield OperationTable(id="categorize-table")
             with TabPane("Import", id="import"):
                 yield ImportWidget(id="import-widget")
             with TabPane("Prévisions", id="forecast"):
@@ -302,10 +297,6 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         self.query_one("#operations-table", OperationTable).load_operations(
             self.app_service.get_operations(), links, targets
         )
-        self.query_one("#categorize-table", OperationTable).load_operations(
-            uncategorized, links, targets
-        )
-
         # Refresh import widget
         import_widget = self.query_one("#import-widget", ImportWidget)
         import_widget.set_app_service(self.app_service)
@@ -366,7 +357,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         import_widget.set_file_path(path)
 
     def action_categorize(self) -> None:
-        """Open category selection for the currently selected operation."""
+        """Open category selection for selected operations."""
         # Get the active tab and prioritize its table
         tabbed = self.query_one(TabbedContent)
         active_tab = tabbed.active
@@ -375,35 +366,52 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         tab_to_table = {
             "dashboard": "#dashboard-table",
             "operations": "#operations-table",
-            "categorize": "#categorize-table",
         }
 
         # Try active tab's table first, then others
-        table_order = [tab_to_table.get(active_tab, "#categorize-table")]
-        for table_id in ("#categorize-table", "#operations-table", "#dashboard-table"):
+        table_order = [tab_to_table.get(active_tab, "#operations-table")]
+        for table_id in ("#operations-table", "#dashboard-table"):
             if table_id not in table_order:
                 table_order.append(table_id)
 
         for table_id in table_order:
-            table = self.query_one(table_id, OperationTable)
-            if operation := table.get_selected_operation():
-                self._categorizing_operation_id = operation.unique_id
-                self.push_screen(CategoryModal(operation), self._on_category_selected)
+            try:
+                table = self.query_one(table_id, OperationTable)
+            except NoMatches:
+                continue
+            if operations := table.get_selected_operations():
+                self._categorizing_operation_ids = tuple(
+                    op.unique_id for op in operations
+                )
+                # Get similar operations and suggestion based on first operation
+                first_op = operations[0]
+                similar = tuple(self.app_service.find_similar_operations(first_op))
+                suggested = self.app_service.suggest_category(first_op)
+
+                self.push_screen(
+                    CategoryModal(
+                        operations,
+                        similar_operations=similar,
+                        suggested_category=suggested,
+                    ),
+                    self._on_category_selected,
+                )
                 return
 
         self.notify("Aucune opération sélectionnée", severity="warning")
 
     def _on_category_selected(self, category: Category | None) -> None:
         """Handle category selection from modal."""
-        if category is None or self._categorizing_operation_id is None:
+        if category is None or not self._categorizing_operation_ids:
             return
 
-        # Use ApplicationService for categorization (handles link creation)
-        result = self.app_service.categorize_operation(
-            self._categorizing_operation_id, category
+        # Use bulk_categorize for efficiency (works for single or multiple)
+        results = self.app_service.bulk_categorize(
+            list(self._categorizing_operation_ids), category
         )
-        if result is None:
-            self.notify("Opération non trouvée", severity="error")
+
+        if not results:
+            self.notify("Aucune opération trouvée", severity="error")
             return
 
         self.save_changes()
@@ -412,14 +420,31 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             self._persistent_account.load()
         self._refresh_screens()
 
+        # Clear selection in all tables
+        for table_id in ("#dashboard-table", "#operations-table"):
+            try:
+                table = self.query_one(table_id, OperationTable)
+                table.clear_selection()
+            except NoMatches:
+                pass
+
         # Build notification message
-        message = f"Catégorie '{category.value}' assignée"
-        if result.new_link is not None:
-            message += " (lien créé)"
+        links_created = sum(1 for r in results if r.new_link is not None)
+        if len(results) == 1:
+            message = f"Catégorie '{category.value}' assignée"
+            if links_created:
+                message += " (lien créé)"
+        else:
+            message = f"{len(results)} opérations catégorisées '{category.value}'"
+            if links_created:
+                message += f" ({links_created} lien(s) créé(s))"
         self.notify(message)
 
+        # Reset state
+        self._categorizing_operation_ids = ()
+
     def action_link_operation(self) -> None:
-        """Open link modal for the currently selected operation."""
+        """Open link modal for selected operations."""
         # Get the active tab and prioritize its table
         tabbed = self.query_one(TabbedContent)
         active_tab = tabbed.active
@@ -428,23 +453,25 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         tab_to_table = {
             "dashboard": "#dashboard-table",
             "operations": "#operations-table",
-            "categorize": "#categorize-table",
         }
 
         # Try active tab's table first, then others
         table_order = [tab_to_table.get(active_tab, "#operations-table")]
-        for table_id in ("#operations-table", "#dashboard-table", "#categorize-table"):
+        for table_id in ("#operations-table", "#dashboard-table"):
             if table_id not in table_order:
                 table_order.append(table_id)
 
         for table_id in table_order:
-            table = self.query_one(table_id, OperationTable)
-            if operation := table.get_selected_operation():
-                self._linking_operation = operation
+            try:
+                table = self.query_one(table_id, OperationTable)
+            except NoMatches:
+                continue
+            if operations := table.get_selected_operations():
+                self._linking_operations = operations
 
-                # Get current link if any
+                # Get current link for first operation (for display)
                 current_link = self.app_service.get_link_for_operation(
-                    operation.unique_id
+                    operations[0].unique_id
                 )
 
                 # Get all targets
@@ -453,7 +480,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
 
                 self.push_screen(
                     LinkTargetModal(
-                        operation,
+                        operations,
                         current_link,
                         planned_operations,
                         budgets,
@@ -468,21 +495,28 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         self, result: PlannedOperation | Budget | str | None
     ) -> None:
         """Handle target selection from link modal."""
-        if result is None or self._linking_operation is None:
+        if result is None or not self._linking_operations:
             return
 
-        # Handle unlink
+        # Handle unlink - only unlink operations that have a link
         if result == "unlink":
-            self.app_service.delete_link(self._linking_operation.unique_id)
-            self.notify("Liaison supprimée")
+            count = 0
+            for op in self._linking_operations:
+                if self.app_service.get_link_for_operation(op.unique_id):
+                    self.app_service.delete_link(op.unique_id)
+                    count += 1
+            if count > 0:
+                self.notify(f"{count} liaison(s) supprimée(s)")
+            else:
+                self.notify("Aucune liaison à supprimer", severity="warning")
             self._refresh_screens()
-            self._linking_operation = None
+            self._linking_operations = ()
             return
 
-        # Target selected - show iteration modal
+        # Target selected - show iteration modal (use first operation for context)
         if isinstance(result, (PlannedOperation, Budget)):
             self.push_screen(
-                LinkIterationModal(self._linking_operation, result),
+                LinkIterationModal(self._linking_operations[0], result),
                 lambda date: self._on_iteration_selected(date, result),
             )
 
@@ -492,21 +526,26 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         target: PlannedOperation | Budget,
     ) -> None:
         """Handle iteration selection from link modal."""
-        if iteration_date is None or self._linking_operation is None:
+        if iteration_date is None or not self._linking_operations:
             return
 
         if target.id is None:
             self.notify("Cible invalide", severity="error")
             return
 
-        # Create the manual link
-        self.app_service.create_manual_link(
-            self._linking_operation, target, iteration_date
-        )
+        # Create manual links for all selected operations
+        count = 0
+        for op in self._linking_operations:
+            self.app_service.create_manual_link(op, target, iteration_date)
+            count += 1
 
-        self.notify(f"Opération liée à '{target.description}'")
+        if count == 1:
+            self.notify(f"Opération liée à '{target.description}'")
+        else:
+            self.notify(f"{count} opérations liées à '{target.description}'")
+
         self._refresh_screens()
-        self._linking_operation = None
+        self._linking_operations = ()
 
     # Budget event handlers
 
