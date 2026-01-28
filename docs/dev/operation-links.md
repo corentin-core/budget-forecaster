@@ -349,6 +349,9 @@ sequenceDiagram
 
 ### 2. Manual Linking (TUI)
 
+The TUI supports linking multiple operations at once. When multiple operations are
+selected, all of them are linked to the same target and iteration.
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -359,33 +362,41 @@ sequenceDiagram
     participant OLS as OperationLinkService
     participant Repo as Repository
 
-    User->>TUI: Press L on operation
-    TUI->>TUI: Get selected operation
-    TUI->>AS: get_all_links()
-    AS->>OLS: get_all_links()
-    OLS-->>AS: all links
-    AS-->>TUI: current_link or None
-    TUI->>LTM: push_screen(operation, current_link, targets)
+    User->>TUI: Press L on selected operations
+    TUI->>TUI: Get selected operations (tuple)
+    TUI->>AS: get_link_for_operation(first_op.unique_id)
+    AS->>OLS: get_link_for_operation()
+    OLS-->>AS: current_link or None
+    AS-->>TUI: current_link
+    TUI->>LTM: push_screen(operations, current_link, targets)
 
     alt User selects "Supprimer le lien"
         LTM-->>TUI: "unlink"
-        TUI->>AS: delete_link(operation_id)
-        AS->>OLS: delete_link(operation_id)
-        OLS->>Repo: delete_link(operation_id)
+        loop For each operation with a link
+            TUI->>AS: delete_link(operation_id)
+            AS->>OLS: delete_link(operation_id)
+            OLS->>Repo: delete_link(operation_id)
+        end
+        Note over TUI: Operations without links are ignored
     else User selects target
         LTM-->>TUI: selected_target
-        TUI->>LIM: push_screen(operation, target)
+        TUI->>LIM: push_screen(first_operation, target)
         User->>LIM: Select iteration
         LIM-->>TUI: iteration_date
-        TUI->>AS: create_manual_link(OperationLink)
-        AS->>OLS: upsert_link(link)
-        OLS->>Repo: upsert_link(link)
+        loop For each operation
+            TUI->>AS: create_manual_link(operation, target, date)
+            AS->>OLS: upsert_link(link)
+            OLS->>Repo: upsert_link(link)
+        end
     else User cancels
         LTM-->>TUI: None
     end
 
     TUI->>TUI: refresh_screens()
 ```
+
+**Note:** When unlinking multiple operations, only operations that have an existing link
+are affected. Operations without links are silently ignored.
 
 ### 3. Edit Planned Operation / Budget
 

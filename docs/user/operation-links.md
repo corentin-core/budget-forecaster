@@ -81,13 +81,32 @@ In the Operations tab, the "Lien" column shows linked operations:
 
 ### Creating a Link
 
-1. Select an operation in the Operations tab
+1. Select one or more operations in the Operations tab (see Multi-selection below)
 2. Press `L` to open the link modal
 3. Choose the target type (Planned Operation or Budget)
 4. Select a target from the list (sorted by match score)
 5. Click "Suivant" to proceed
 6. Select the specific iteration date
 7. Click "Lier" to confirm
+
+**Note:** When linking multiple operations, all are linked to the same target and
+iteration. This is useful for split payments or grouping similar transactions.
+
+### Multi-selection
+
+You can select multiple operations before pressing `L` or `C`:
+
+| Shortcut     | Action                          |
+| ------------ | ------------------------------- |
+| `Space`      | Toggle selection of current row |
+| `Shift+↑`    | Extend selection upward         |
+| `Shift+↓`    | Extend selection downward       |
+| `Ctrl+A`     | Select all operations           |
+| `Ctrl+Click` | Toggle selection of clicked row |
+| `Click`      | Clear selection (if any exists) |
+| `Escape`     | Clear all selections            |
+
+Selected operations display a `►` marker before the date.
 
 #### Step 1: Select Target
 

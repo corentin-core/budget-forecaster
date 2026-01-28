@@ -50,18 +50,33 @@ class LinkTargetModal(
 
     LinkTargetModal #op-info {
         height: auto;
+        max-height: 12;
         margin-bottom: 1;
         padding: 1;
         border: solid $accent;
     }
 
-    LinkTargetModal #op-description {
-        height: auto;
-        max-height: 3;
+    LinkTargetModal .panel-title {
+        text-style: bold;
+        margin-bottom: 1;
     }
 
-    LinkTargetModal #op-details {
+    LinkTargetModal .op-row {
+        height: 1;
+    }
+
+    LinkTargetModal .op-date {
+        width: 12;
         color: $text-muted;
+    }
+
+    LinkTargetModal .op-desc {
+        width: 45;
+    }
+
+    LinkTargetModal .op-amount {
+        width: 12;
+        text-align: right;
     }
 
     LinkTargetModal .amount-positive {
@@ -132,7 +147,7 @@ class LinkTargetModal(
 
     def __init__(
         self,
-        operation: HistoricOperation,
+        operations: tuple[HistoricOperation, ...],
         current_link: OperationLink | None,
         planned_operations: list[PlannedOperation],
         budgets: list[Budget],
@@ -141,13 +156,13 @@ class LinkTargetModal(
         """Initialize the modal.
 
         Args:
-            operation: The operation to link.
-            current_link: The current link if any.
+            operations: The operations to link.
+            current_link: The current link if any (for first operation).
             planned_operations: List of available planned operations.
             budgets: List of available budgets.
         """
         super().__init__(**kwargs)
-        self._operation = operation
+        self._operations = operations
         self._current_link = current_link
         self._planned_operations = planned_operations
         self._budgets = budgets
@@ -159,7 +174,7 @@ class LinkTargetModal(
         else:
             self._current_type = "planned"
 
-        # Pre-compute scores for all targets
+        # Pre-compute scores for all targets (based on first operation)
         self._planned_op_scores: dict[int, float] = {}
         self._budget_scores: dict[int, float] = {}
         self._compute_all_scores()
@@ -179,23 +194,29 @@ class LinkTargetModal(
     def _compute_best_score(self, target: PlannedOperation | Budget) -> float:
         """Compute the best score across all iterations of a target.
 
+        Uses the first operation for score computation.
+
         Args:
             target: The planned operation or budget.
 
         Returns:
             The best match score (0-100).
         """
+        if not self._operations:
+            return 0.0
+
         best_score = 0.0
+        first_op = self._operations[0]
 
         # Get iterations within a reasonable window around the operation date
-        from_date = self._operation.date - timedelta(days=60)
+        from_date = first_op.date - timedelta(days=60)
         for iteration in target.time_range.iterate_over_time_ranges(from_date):
             # Stop if iteration is too far in the future
-            if iteration.initial_date > self._operation.date + timedelta(days=60):
+            if iteration.initial_date > first_op.date + timedelta(days=60):
                 break
 
             score = compute_match_score(
-                self._operation,
+                first_op,
                 target,
                 iteration.initial_date,
             )
@@ -229,25 +250,62 @@ class LinkTargetModal(
         category = "Catégorie".ljust(COL_CATEGORY)
         return f"{score}{desc}{amount}  {category}"
 
+    def _truncate(self, text: str, max_length: int) -> str:
+        """Truncate text to max length with ellipsis."""
+        if len(text) <= max_length:
+            return text
+        return text[: max_length - 3] + "..."
+
     def compose(self) -> ComposeResult:
         """Create the modal layout."""
-        op = self._operation
-        amount_class = "amount-negative" if op.amount < 0 else "amount-positive"
+        if not self._operations:
+            return
+
+        # Build title based on operation count
+        if (op_count := len(self._operations)) == 1:
+            title = "Lier l'opération"
+        else:
+            title = f"Lier {op_count} opérations"
 
         with Vertical(id="modal-container"):
-            yield Static("Lier l'opération", id="modal-title")
+            yield Static(title, id="modal-title")
 
-            # Operation info
+            # Operations panel - show list of operations like CategoryModal
             with Vertical(id="op-info"):
-                yield Static(op.description, id="op-description")
-                yield Static(
-                    f"{op.date.strftime('%d/%m/%Y')} | {op.amount:+.2f} €",
-                    id="op-details",
-                    classes=amount_class,
+                panel_title = (
+                    "Opération à lier"
+                    if op_count == 1
+                    else f"{op_count} opérations à lier"
                 )
+                yield Static(panel_title, classes="panel-title")
 
-            # Current link info (hidden if not linked)
-            current_link_class = "" if self._current_link else "hidden"
+                for op in self._operations[:8]:
+                    amount_class = (
+                        "amount-negative" if op.amount < 0 else "amount-positive"
+                    )
+                    with Horizontal(classes="op-row"):
+                        yield Static(
+                            op.date.strftime("%d/%m/%Y"),
+                            classes="op-date",
+                        )
+                        yield Static(
+                            self._truncate(op.description, 43),
+                            classes="op-desc",
+                        )
+                        yield Static(
+                            f"{op.amount:+.2f} €",
+                            classes=f"op-amount {amount_class}",
+                        )
+
+                if op_count > 8:
+                    yield Static(
+                        f"... et {op_count - 8} autre(s)",
+                        classes="op-date",
+                    )
+
+            # Current link info (hidden if not linked or multiple operations)
+            show_current_link = self._current_link and op_count == 1
+            current_link_class = "" if show_current_link else "hidden"
             with Horizontal(id="current-link-row", classes=current_link_class):
                 link_name = self._get_current_link_name()
                 yield Static(f"🔗 Lié à: {link_name}", id="current-link-text")
@@ -275,8 +333,11 @@ class LinkTargetModal(
             )
             yield OptionList(*initial_options, id="target-list")
 
-            # Buttons
-            unlink_class = "" if self._current_link else "hidden"
+            # Buttons - show unlink if at least one operation has a link
+            # (for single op: show if linked; for multiple: always show - code handles filtering)
+            unlink_class = (
+                "" if (self._current_link or len(self._operations) > 1) else "hidden"
+            )
             with Horizontal(id="buttons-row"):
                 yield Button(
                     "Supprimer le lien",
