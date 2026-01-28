@@ -76,12 +76,12 @@ class TestForecastActualizer:
         # One-time operation with no next period is removed
         assert not actualized_forecast.operations
 
-    def test_periodic_past_operation_without_links_advances_to_next_period(
+    def test_periodic_past_operation_outside_tolerance_advances_to_next_period(
         self, account: Account
     ) -> None:
         """
-        A periodic planned operation in the past without links advances to the
-        next period after the balance date.
+        A periodic planned operation in the past, outside the tolerance window
+        (more than 5 days before balance_date), advances to the next period.
         """
         forecast = Forecast(
             operations=(
@@ -90,8 +90,10 @@ class TestForecastActualizer:
                     description="Periodic Operation",
                     amount=Amount(100.0, "EUR"),
                     category=Category.OTHER,
+                    # Monthly operation starting Dec 20 - iteration is 12 days
+                    # before balance_date (Jan 1), outside the 5-day tolerance
                     time_range=PeriodicDailyTimeRange(
-                        datetime(2022, 12, 1), relativedelta(days=1)
+                        datetime(2022, 12, 20), relativedelta(months=1)
                     ),
                 ),
             ),
@@ -99,10 +101,47 @@ class TestForecastActualizer:
         )
         actualizer = ForecastActualizer(account)
         actualized_forecast = actualizer(forecast)
-        # Without links, operation advances to next period after balance_date
+        # Outside tolerance window: operation advances to next period
         assert len(actualized_forecast.operations) == 1
         op = actualized_forecast.operations[0]
-        assert op.time_range.initial_date == datetime(2023, 1, 2)
+        assert op.time_range.initial_date == datetime(2023, 1, 20)
+
+    def test_periodic_past_operation_within_tolerance_is_late(
+        self, account: Account
+    ) -> None:
+        """
+        A periodic planned operation in the past, within the tolerance window
+        (5 days or less before balance_date), is considered late and postponed
+        to tomorrow.
+        """
+        forecast = Forecast(
+            operations=(
+                PlannedOperation(
+                    record_id=1,
+                    description="Monthly Salary",
+                    amount=Amount(3000.0, "EUR"),
+                    category=Category.SALARY,
+                    # Monthly operation starting Dec 28 - iteration is 4 days
+                    # before balance_date (Jan 1), within the 5-day tolerance
+                    time_range=PeriodicDailyTimeRange(
+                        datetime(2022, 12, 28), relativedelta(months=1)
+                    ),
+                ),
+            ),
+            budgets=(),
+        )
+        actualizer = ForecastActualizer(account)
+        actualized_forecast = actualizer(forecast)
+        # Within tolerance window: iteration is late, postponed to tomorrow
+        # Result: 1 postponed operation + 1 periodic operation for next month
+        assert len(actualized_forecast.operations) == 2
+        # First: postponed late operation (one-time, tomorrow)
+        postponed_op = actualized_forecast.operations[0]
+        assert postponed_op.time_range.initial_date == datetime(2023, 1, 2)
+        assert isinstance(postponed_op.time_range, DailyTimeRange)
+        # Second: periodic operation continues from next month
+        periodic_op = actualized_forecast.operations[1]
+        assert periodic_op.time_range.initial_date == datetime(2023, 1, 28)
 
     def test_future_operation_without_links_is_kept(self, account: Account) -> None:
         """
