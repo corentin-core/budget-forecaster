@@ -2,6 +2,15 @@
 
 Create a well-formatted git commit.
 
+## Prerequisites
+
+**ALWAYS activate the virtual environment before committing** so pre-commit hooks can
+find linters (pylint, mypy, etc.):
+
+```bash
+source budget-forecaster-venv/bin/activate
+```
+
 ## Instructions
 
 1. Check the current status and diff:

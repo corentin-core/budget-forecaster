@@ -17,7 +17,7 @@ class CategorySelect(Vertical):
     DEFAULT_CSS = """
     CategorySelect {
         height: auto;
-        max-height: 20;
+        max-height: 12;
         border: solid $primary;
         padding: 0 1;
     }
@@ -28,7 +28,7 @@ class CategorySelect(Vertical):
 
     CategorySelect > OptionList {
         height: auto;
-        max-height: 15;
+        max-height: 8;
     }
 
     CategorySelect > Static {
@@ -70,8 +70,6 @@ class CategorySelect(Vertical):
     def on_mount(self) -> None:
         """Initialize the option list on mount."""
         self._update_options()
-        # Focus the search input
-        self.query_one("#category-search", Input).focus()
 
     def _update_options(self) -> None:
         """Update the option list with filtered categories."""
