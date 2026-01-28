@@ -259,26 +259,19 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         for planned_operation in sorted(
             planned_operations, key=lambda op: op.time_range.initial_date
         ):
-            if linked_iterations := self.__get_linked_iterations(planned_operation):
-                # Has links: check for late iterations (past iterations without links)
-                late_iterations = self.__get_late_iterations(
-                    planned_operation, linked_iterations
+            linked_iterations = self.__get_linked_iterations(planned_operation)
+            # Check for late iterations (past iterations without links)
+            late_iterations = self.__get_late_iterations(
+                planned_operation, linked_iterations
+            )
+            if late_iterations:
+                # Some iterations are late, postpone them to tomorrow
+                postponed = self.__handle_late_iterations(
+                    planned_operation, late_iterations
                 )
-                if late_iterations:
-                    # Some iterations are late, postpone them
-                    postponed = self.__handle_late_iterations(
-                        planned_operation, late_iterations
-                    )
-                    actualized_planned_operations.extend(postponed)
-                else:
-                    # No late iterations, use link-based actualization
-                    updated = self.__actualize_planned_operation_with_links(
-                        planned_operation, linked_iterations
-                    )
-                    if updated is not None:
-                        actualized_planned_operations.append(updated)
+                actualized_planned_operations.extend(postponed)
             else:
-                # No links: just advance to next period (no late logic)
+                # No late iterations, use link-based actualization
                 updated = self.__actualize_planned_operation_with_links(
                     planned_operation, linked_iterations
                 )
