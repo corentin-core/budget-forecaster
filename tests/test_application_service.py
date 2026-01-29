@@ -20,7 +20,7 @@ from budget_forecaster.services.import_service import ImportResult, ImportServic
 from budget_forecaster.services.operation_link_service import OperationLinkService
 from budget_forecaster.services.operation_service import OperationService
 from budget_forecaster.time_range import DailyTimeRange, TimeRange
-from budget_forecaster.types import Category, LinkType
+from budget_forecaster.types import Category, ImportStats, LinkType
 
 
 @pytest.fixture
@@ -134,7 +134,7 @@ class TestImportFile:
         mock_result = ImportResult(
             path=Path("/test.xlsx"),
             success=False,
-            operations_count=0,
+            stats=None,
             error_message="Test error",
         )
         mock_import_service.import_file.return_value = mock_result
@@ -159,7 +159,7 @@ class TestImportFile:
         mock_result = ImportResult(
             path=Path("/test.xlsx"),
             success=True,
-            operations_count=5,
+            stats=ImportStats(total_in_file=5, new_operations=5, duplicates_skipped=0),
         )
         mock_import_service.import_file.return_value = mock_result
 
@@ -188,7 +188,7 @@ class TestImportFile:
         mock_result = ImportResult(
             path=Path("/test.xlsx"),
             success=False,
-            operations_count=0,
+            stats=None,
             error_message="Failed",
         )
         mock_import_service.import_file.return_value = mock_result

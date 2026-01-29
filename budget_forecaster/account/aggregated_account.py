@@ -1,9 +1,17 @@
 """Module for aggregating multiple accounts into a single account."""
 from datetime import datetime
-from typing import Iterable
+from typing import Iterable, NamedTuple
 
 from budget_forecaster.account.account import Account, AccountParameters
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
+from budget_forecaster.types import ImportStats
+
+
+class UpdateResult(NamedTuple):
+    """Result of updating an account with new operations."""
+
+    account: Account
+    stats: ImportStats
 
 
 class AggregatedAccount:
@@ -53,20 +61,33 @@ class AggregatedAccount:
     @staticmethod
     def update_account(
         current_account: Account, new_account: AccountParameters
-    ) -> Account:
-        """Update an existing account with a new one."""
+    ) -> UpdateResult:
+        """Update an existing account with new operations.
+
+        Returns:
+            UpdateResult containing the updated account and import statistics.
+        """
         # Keep only the operations that are not already in the account
         current_operations_hash = {
             hash((operation.description, operation.amount, operation.date))
             for operation in current_account.operations
         }
         operations = list(current_account.operations)
+        new_count = 0
         for operation in new_account.operations:
             if (
                 hash((operation.description, operation.amount, operation.date))
                 not in current_operations_hash
             ):
                 operations.append(operation)
+                new_count += 1
+
+        total_in_file = len(new_account.operations)
+        stats = ImportStats(
+            total_in_file=total_in_file,
+            new_operations=new_count,
+            duplicates_skipped=total_in_file - new_count,
+        )
 
         # Get balance date
         export_date = new_account.balance_date or max(
@@ -97,21 +118,42 @@ class AggregatedAccount:
             )
 
         # Create the new account
-        return current_account._replace(
+        updated_account = current_account._replace(
             balance=balance,
             balance_date=balance_date,
             operations=tuple(operations),
         )
+        return UpdateResult(account=updated_account, stats=stats)
 
-    def upsert_account(self, account: AccountParameters) -> None:
-        """Add or update an account."""
-        # check if the account already exists and update it if it does
-        self.__accounts = tuple(
-            self.update_account(current_account, account)
-            if current_account.name == account.name
-            else current_account
-            for current_account in self.__accounts
-        )
+    def upsert_account(self, account: AccountParameters) -> ImportStats:
+        """Add or update an account.
+
+        Returns:
+            ImportStats with the number of new and duplicate operations.
+        """
+        updated_accounts: list[Account] = []
+        stats: ImportStats | None = None
+
+        for current_account in self.__accounts:
+            if current_account.name == account.name:
+                result = self.update_account(current_account, account)
+                updated_accounts.append(result.account)
+                stats = result.stats
+            else:
+                updated_accounts.append(current_account)
+
+        self.__accounts = tuple(updated_accounts)
+
+        # If no matching account was found, return stats for all operations as new
+        if stats is None:
+            total = len(account.operations)
+            stats = ImportStats(
+                total_in_file=total,
+                new_operations=total,
+                duplicates_skipped=0,
+            )
+
+        return stats
 
     def replace_account(self, new_account: Account) -> None:
         """Replace an account in the aggregated account."""

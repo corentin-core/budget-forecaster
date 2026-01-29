@@ -4,6 +4,7 @@ from typing import Protocol
 
 from budget_forecaster.account.account import Account, AccountParameters
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
+from budget_forecaster.types import ImportStats
 
 
 class AccountInterface(Protocol):
@@ -19,8 +20,12 @@ class AccountInterface(Protocol):
         """Return the individual accounts."""
         ...
 
-    def upsert_account(self, account: AccountParameters) -> None:
-        """Add or update an account."""
+    def upsert_account(self, account: AccountParameters) -> ImportStats:
+        """Add or update an account.
+
+        Returns:
+            ImportStats with the number of new and duplicate operations.
+        """
         ...
 
     def replace_account(self, new_account: Account) -> None:

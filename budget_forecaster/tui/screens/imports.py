@@ -95,9 +95,12 @@ class ImportProgressModal(ModalScreen[bool]):
 
         # Log results
         for result in summary.results:
-            if result.success:
+            if result.success and result.stats:
                 logger.info(
-                    "Imported %s: %d operations", result.path, result.operations_count
+                    "Imported %s: %d new, %d duplicates skipped",
+                    result.path,
+                    result.stats.new_operations,
+                    result.stats.duplicates_skipped,
                 )
             else:
                 logger.error(
@@ -108,8 +111,12 @@ class ImportProgressModal(ModalScreen[bool]):
         if summary.failed_imports == 0:
             result_msg = (
                 f"{summary.successful_imports} fichier(s) importé(s)\n"
-                f"{summary.total_operations} opération(s) ajoutée(s)"
+                f"{summary.total_new_operations} nouvelle(s) opération(s)"
             )
+            if summary.total_duplicates_skipped > 0:
+                result_msg += (
+                    f"\n{summary.total_duplicates_skipped} doublon(s) ignoré(s)"
+                )
             self._show_result(result_msg, success=True)
         else:
             result_msg = (
@@ -269,13 +276,17 @@ class ImportWidget(Vertical):
         # Import the file
         result = self._app_service.import_file(path, move_to_processed=False)
 
-        if result.success:
+        if result.success and result.stats:
             logger.info(
-                "Successfully imported %s: %d operations",
+                "Successfully imported %s: %d new, %d duplicates skipped",
                 path,
-                result.operations_count,
+                result.stats.new_operations,
+                result.stats.duplicates_skipped,
             )
-            self.app.notify(f"Importé: {result.operations_count} opération(s)")
+            msg = f"Importé: {result.stats.new_operations} nouvelle(s)"
+            if result.stats.duplicates_skipped > 0:
+                msg += f", {result.stats.duplicates_skipped} doublon(s) ignoré(s)"
+            self.app.notify(msg)
             path_input.value = ""
             self._on_import_complete(True)
         else:
