@@ -14,6 +14,7 @@ from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.services.operation_link_service import compute_match_score
+from budget_forecaster.time_range import TimeRangeInterface
 
 
 class LinkIterationModal(ModalScreen[datetime | None]):
@@ -188,7 +189,7 @@ class LinkIterationModal(ModalScreen[datetime | None]):
         options = []
 
         # Collect iterations within window
-        iterations_with_scores: list[tuple[datetime, float]] = []
+        iterations_with_scores: list[tuple[TimeRangeInterface, float]] = []
 
         for iteration in self._target.time_range.iterate_over_time_ranges(
             self._window_start - timedelta(days=31)  # Start a bit earlier
@@ -208,7 +209,7 @@ class LinkIterationModal(ModalScreen[datetime | None]):
                 self._target,
                 iteration_date,
             )
-            iterations_with_scores.append((iteration_date, score))
+            iterations_with_scores.append((iteration, score))
 
         # Sort by score descending to highlight best match
         iterations_with_scores.sort(key=lambda x: x[1], reverse=True)
@@ -219,17 +220,22 @@ class LinkIterationModal(ModalScreen[datetime | None]):
             return options
 
         # Pre-select the best match
-        best_date = iterations_with_scores[0][0]
+        best_date = iterations_with_scores[0][0].initial_date
         self._selected_date = best_date
 
         # Sort by date for display
-        iterations_with_scores.sort(key=lambda x: x[0])
+        iterations_with_scores.sort(key=lambda x: x[0].initial_date)
 
-        for iteration_date, score in iterations_with_scores:
+        for iteration, score in iterations_with_scores:
             score_str = f"{score:3.0f}%"
-            date_str = iteration_date.strftime("%d/%m/%Y")
+            if iteration.initial_date == iteration.last_date:
+                date_str = iteration.initial_date.strftime("%d/%m/%Y")
+            else:
+                start = iteration.initial_date.strftime("%d/%m/%Y")
+                end = iteration.last_date.strftime("%d/%m/%Y")
+                date_str = f"{start} → {end}"
             label = f"{score_str}  {date_str}"
-            option_id = iteration_date.strftime("%Y-%m-%d")
+            option_id = iteration.initial_date.strftime("%Y-%m-%d")
             options.append(Option(label, id=option_id))
 
         return options
