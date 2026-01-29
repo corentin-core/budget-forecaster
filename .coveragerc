@@ -1,0 +1,9 @@
+[run]
+relative_files = true
+source = budget_forecaster
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if TYPE_CHECKING:
+    raise NotImplementedError
