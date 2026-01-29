@@ -74,6 +74,7 @@ jobs:
       - name: Run tests with coverage
         run: pytest tests/ -v --cov --cov-report=term-missing
       - name: Coverage comment on PR
+        if: github.event_name == 'pull_request'
         uses: py-cov-action/python-coverage-comment-action@v3
         with:
           GITHUB_TOKEN: ${{ github.token }}
