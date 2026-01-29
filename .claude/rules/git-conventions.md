@@ -72,10 +72,29 @@ update styles                   # No type specified
 Added new feature.              # Wrong casing, unnecessary period
 ```
 
+## Pull Request Merging
+
+**NEVER merge a PR without explicit user approval.**
+
+After creating a PR:
+
+1. Share the PR URL with the user
+2. Wait for the user to review the code and CI checks
+3. Only merge when the user explicitly says to merge
+
+```
+# BAD - merging without asking
+gh pr merge 123 --squash
+
+# GOOD - ask first, wait for approval
+"PR #123 created. Let me know when you want me to merge it."
+```
+
 ## Important
 
 - **NEVER commit directly to main** - always create a feature branch
 - **NEVER use `git add -A` or `git add .`** - stage files explicitly
+- **NEVER merge PRs without explicit user approval**
 - Use imperative mood: "add feature" not "added feature"
 - Keep first line under 50 characters
 - Reference issue numbers in the body if relevant
