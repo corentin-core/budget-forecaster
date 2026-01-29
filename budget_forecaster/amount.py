@@ -3,10 +3,10 @@ from typing import NamedTuple
 
 
 class Amount(NamedTuple):
-    """An amount of money with currency."""
+    """An amount of money."""
 
     value: float
     currency: str = "EUR"
 
     def __repr__(self) -> str:
-        return f"{self.value} {self.currency}"
+        return f"{self.value}{self.currency}"
