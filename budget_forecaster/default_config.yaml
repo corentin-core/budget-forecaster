@@ -1,0 +1,8 @@
+database_path: ~/.local/share/budget-forecaster/budget.db
+account_name: "Main Account"
+account_currency: EUR
+# inbox_path: ~/Downloads  # Auto-detected if omitted (uses xdg-user-dir)
+backup:
+  enabled: true
+  max_backups: 5
+  directory: ~/.local/share/budget-forecaster/backups/
