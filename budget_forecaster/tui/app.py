@@ -185,6 +185,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             self._persistent_account,
             self._config.inbox_path,
             self._config.inbox_exclude_patterns,
+            self._config.inbox_include_patterns,
         )
         forecast_service = ForecastService(
             self._persistent_account.account,
