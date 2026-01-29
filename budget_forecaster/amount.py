@@ -9,4 +9,4 @@ class Amount(NamedTuple):
     currency: str = "EUR"
 
     def __repr__(self) -> str:
-        return f"{self.value}{self.currency}"
+        return f"{self.value} {self.currency}"
