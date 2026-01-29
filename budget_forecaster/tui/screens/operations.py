@@ -202,7 +202,9 @@ class CategoryEditModal(ModalScreen[bool]):
     ) -> None:
         """Handle category selection."""
         if self._app_service:
-            self._app_service.categorize_operation(self._operation_id, event.category)
+            self._app_service.categorize_operations(
+                (self._operation_id,), event.category
+            )
             # Save changes
             # pylint: disable=import-outside-toplevel
             from budget_forecaster.tui.app import BudgetApp

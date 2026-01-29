@@ -201,77 +201,22 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
     # Categorization operations
     # -------------------------------------------------------------------------
 
-    def categorize_operation(
-        self, operation_id: int, category: Category
-    ) -> OperationCategoryUpdate | None:
-        """Categorize an operation and potentially create a new link.
-
-        When the category changes:
-        1. Delete existing heuristic link (if any) - manual links are preserved
-        2. Try to create a new heuristic link with the updated category
-
-        Args:
-            operation_id: The ID of the operation to categorize.
-            category: The category to assign.
-
-        Returns:
-            OperationCategoryUpdate with the result, or None if operation not found.
-        """
-        if (
-            operation := self._operation_service.get_operation_by_id(operation_id)
-        ) is None:
-            return None
-
-        old_category = operation.category
-        updated_operation = self._operation_service.categorize_operation(
-            operation_id, category
-        )
-
-        if updated_operation is None:
-            return None
-
-        category_changed = old_category != category
-        new_link: OperationLink | None = None
-
-        # If category changed, recalculate heuristic link
-        if category_changed:
-            # Check if operation already has a link
-            existing_link = self._operation_link_service.get_link_for_operation(
-                operation_id
-            )
-
-            # Delete heuristic link (manual links are preserved)
-            if existing_link is not None and not existing_link.is_manual:
-                self._operation_link_service.delete_link(operation_id)
-
-            # Try to create a new link with the updated category
-            if matchers := self._get_matchers():
-                created_links = self._operation_link_service.create_heuristic_links(
-                    (updated_operation,), matchers
-                )
-                if created_links:
-                    new_link = created_links[0]
-
-        return OperationCategoryUpdate(
-            operation=updated_operation,
-            category_changed=category_changed,
-            new_link=new_link,
-        )
-
-    def bulk_categorize(
-        self, operation_ids: list[int], category: Category
+    def categorize_operations(
+        self, operation_ids: tuple[int, ...], category: Category
     ) -> tuple[OperationCategoryUpdate, ...]:
-        """Categorize multiple operations at once.
+        """Categorize one or more operations and create heuristic links.
 
-        Optimized to batch link creation: collects all changed operations,
-        deletes their heuristic links, then creates new links in one batch.
+        When a category changes:
+        1. Delete existing heuristic link (if any) - manual links are preserved
+        2. Batch create new heuristic links for all changed operations
 
         Args:
-            operation_ids: List of operation IDs to categorize.
+            operation_ids: Tuple of operation IDs to categorize.
             category: The category to assign to all operations.
 
         Returns:
-            Tuple of OperationCategoryUpdate for each updated operation.
+            Tuple of OperationCategoryUpdate for each successfully updated operation.
+            Operations not found are silently skipped.
         """
         results: list[OperationCategoryUpdate] = []
         changed_operations: list[HistoricOperation] = []
