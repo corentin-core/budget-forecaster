@@ -55,6 +55,19 @@ ImportProgressCallback = Callable[
 """Callback for import progress updates: (current, total, filename) -> None."""
 
 
+class ImportStats(NamedTuple):
+    """Statistics about an import operation."""
+
+    total_in_file: int
+    """Total number of operations in the imported file."""
+
+    new_operations: int
+    """Number of new operations added to the database."""
+
+    duplicates_skipped: int
+    """Number of duplicate operations that were already in the database."""
+
+
 class Category(enum.StrEnum):
     """A category is a group of transactions."""
 
