@@ -77,7 +77,7 @@ class BudgetsWidget(Vertical):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self._app_service: ApplicationService | None = None
-        self._budgets: list[Budget] = []
+        self._budgets: tuple[Budget, ...] = ()
         self._selected_budget: Budget | None = None
 
     def compose(self) -> ComposeResult:
