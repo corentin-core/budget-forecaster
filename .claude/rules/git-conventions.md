@@ -17,6 +17,22 @@ git add <files> && git commit -m "message"
 
 Never commit without running tests first, even for "simple" changes.
 
+## Virtual Environment Activation
+
+**ALWAYS activate the venv in the same command as git commit.**
+
+Pre-commit hooks need access to project dependencies (pylint, etc.). The venv activation
+doesn't persist between bash commands, so combine them:
+
+```bash
+# GOOD - activation persists for git commit
+source budget-forecaster-venv/bin/activate && git add <files> && git commit -m "message"
+
+# BAD - venv not available when pre-commit runs
+source budget-forecaster-venv/bin/activate
+git commit -m "message"  # pylint not found!
+```
+
 ## Branch Naming
 
 Format: `issue/<number>-<kebab-case-description>` or `feature/<number>-<description>`
