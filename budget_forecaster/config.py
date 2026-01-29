@@ -50,6 +50,7 @@ class Config:  # pylint: disable=too-few-public-methods
         # Import config (default to user's download directory)
         self.inbox_path = _get_user_download_dir()
         self.inbox_exclude_patterns: list[str] = []
+        self.inbox_include_patterns: list[str] = []
         # Logging config (native Python logging dictConfig format)
         self.logging_config: dict[str, Any] | None = None
 
@@ -66,6 +67,8 @@ class Config:  # pylint: disable=too-few-public-methods
                 self.inbox_path = Path(config["inbox_path"]).expanduser()
             if "inbox_exclude_patterns" in config:
                 self.inbox_exclude_patterns = config["inbox_exclude_patterns"] or []
+            if "inbox_include_patterns" in config:
+                self.inbox_include_patterns = config["inbox_include_patterns"] or []
             # Parse backup config
             if "backup" in config:
                 backup_cfg = config["backup"]
