@@ -198,27 +198,27 @@ class TestImportFile:
         mock_operation_link_service.create_heuristic_links.assert_not_called()
 
 
-class TestCategorizeOperation:
-    """Tests for categorize_operation method."""
+class TestCategorizeOperations:
+    """Tests for categorize_operations method."""
 
-    def test_returns_none_for_nonexistent_operation(
+    def test_returns_empty_for_nonexistent_operation(
         self,
         app_service: ApplicationService,
         mock_operation_service: MagicMock,
     ) -> None:
-        """categorize_operation returns None if operation not found."""
+        """categorize_operations returns empty tuple if operation not found."""
         mock_operation_service.get_operation_by_id.return_value = None
 
-        result = app_service.categorize_operation(999, Category.GROCERIES)
+        results = app_service.categorize_operations((999,), Category.GROCERIES)
 
-        assert result is None
+        assert results == ()
 
     def test_delegates_to_operation_service(
         self,
         app_service: ApplicationService,
         mock_operation_service: MagicMock,
     ) -> None:
-        """categorize_operation delegates to OperationService."""
+        """categorize_operations delegates to OperationService."""
         mock_operation = MagicMock()
         mock_operation.category = Category.OTHER
         mock_operation_service.get_operation_by_id.return_value = mock_operation
@@ -226,10 +226,10 @@ class TestCategorizeOperation:
         updated_op = MagicMock()
         mock_operation_service.categorize_operation.return_value = updated_op
 
-        result = app_service.categorize_operation(1, Category.GROCERIES)
+        results = app_service.categorize_operations((1,), Category.GROCERIES)
 
-        assert result is not None
-        assert result.operation is updated_op
+        assert len(results) == 1
+        assert results[0].operation is updated_op
         mock_operation_service.categorize_operation.assert_called_once_with(
             1, Category.GROCERIES
         )
@@ -241,13 +241,14 @@ class TestCategorizeOperation:
         mock_operation_link_service: MagicMock,
         mock_forecast_service: MagicMock,
     ) -> None:
-        """categorize_operation creates link when category changes."""
+        """categorize_operations creates link when category changes."""
         # Setup operation with different category
         mock_operation = MagicMock()
         mock_operation.category = Category.OTHER
         mock_operation_service.get_operation_by_id.return_value = mock_operation
 
         updated_op = MagicMock()
+        updated_op.unique_id = 1
         mock_operation_service.categorize_operation.return_value = updated_op
 
         # No existing link
@@ -262,13 +263,14 @@ class TestCategorizeOperation:
 
         # Setup link creation
         new_link = MagicMock(spec=OperationLink)
+        new_link.operation_unique_id = 1
         mock_operation_link_service.create_heuristic_links.return_value = [new_link]
 
-        result = app_service.categorize_operation(1, Category.GROCERIES)
+        results = app_service.categorize_operations((1,), Category.GROCERIES)
 
-        assert result is not None
-        assert result.category_changed is True
-        assert result.new_link is new_link
+        assert len(results) == 1
+        assert results[0].category_changed is True
+        assert results[0].new_link is new_link
 
     def test_deletes_heuristic_link_before_recalculating(
         self,
@@ -277,7 +279,7 @@ class TestCategorizeOperation:
         mock_operation_link_service: MagicMock,
         mock_forecast_service: MagicMock,
     ) -> None:
-        """categorize_operation deletes existing heuristic link when category changes."""
+        """categorize_operations deletes existing heuristic link when category changes."""
         # Setup operation with different category
         mock_operation = MagicMock()
         mock_operation.category = Category.OTHER
@@ -301,14 +303,15 @@ class TestCategorizeOperation:
 
         # Setup link creation
         new_link = MagicMock(spec=OperationLink)
+        new_link.operation_unique_id = 1
         mock_operation_link_service.create_heuristic_links.return_value = [new_link]
 
-        result = app_service.categorize_operation(1, Category.GROCERIES)
+        results = app_service.categorize_operations((1,), Category.GROCERIES)
 
         # Should delete existing heuristic link
         mock_operation_link_service.delete_link.assert_called_once_with(1)
-        assert result is not None
-        assert result.new_link is new_link
+        assert len(results) == 1
+        assert results[0].new_link is new_link
 
     def test_preserves_manual_links(
         self,
@@ -317,7 +320,7 @@ class TestCategorizeOperation:
         mock_operation_link_service: MagicMock,
         mock_forecast_service: MagicMock,
     ) -> None:
-        """categorize_operation preserves manual links when category changes."""
+        """categorize_operations preserves manual links when category changes."""
         # Setup operation with different category
         mock_operation = MagicMock()
         mock_operation.category = Category.OTHER
@@ -336,12 +339,12 @@ class TestCategorizeOperation:
         mock_forecast_service.get_all_planned_operations.return_value = []
         mock_forecast_service.get_all_budgets.return_value = []
 
-        result = app_service.categorize_operation(1, Category.GROCERIES)
+        results = app_service.categorize_operations((1,), Category.GROCERIES)
 
         # Should NOT delete manual link
         mock_operation_link_service.delete_link.assert_not_called()
-        assert result is not None
-        assert result.category_changed is True
+        assert len(results) == 1
+        assert results[0].category_changed is True
 
     def test_no_link_recalculation_when_category_unchanged(
         self,
@@ -349,7 +352,7 @@ class TestCategorizeOperation:
         mock_operation_service: MagicMock,
         mock_operation_link_service: MagicMock,
     ) -> None:
-        """categorize_operation skips link recalculation when category doesn't change."""
+        """categorize_operations skips link recalculation when category unchanged."""
         # Setup operation with same category as target
         mock_operation = MagicMock()
         mock_operation.category = Category.GROCERIES  # Same as target
@@ -358,13 +361,13 @@ class TestCategorizeOperation:
         updated_op = MagicMock()
         mock_operation_service.categorize_operation.return_value = updated_op
 
-        result = app_service.categorize_operation(1, Category.GROCERIES)
+        results = app_service.categorize_operations((1,), Category.GROCERIES)
 
         # Should NOT check for existing link (no recalculation)
         mock_operation_link_service.get_link_for_operation.assert_not_called()
-        assert result is not None
-        assert result.category_changed is False
-        assert result.new_link is None
+        assert len(results) == 1
+        assert results[0].category_changed is False
+        assert results[0].new_link is None
 
 
 class TestPlannedOperationCrud:
@@ -561,8 +564,8 @@ class TestBudgetCrud:
         mock_forecast_service.delete_budget.assert_called_once_with(1)
 
 
-class TestBulkCategorize:
-    """Tests for bulk_categorize method."""
+class TestCategorizeOperationsMultiple:
+    """Tests for categorize_operations with multiple operations."""
 
     def test_categorizes_multiple_operations(
         self,
@@ -571,7 +574,7 @@ class TestBulkCategorize:
         mock_operation_link_service: MagicMock,
         mock_forecast_service: MagicMock,
     ) -> None:
-        """bulk_categorize categorizes multiple operations."""
+        """categorize_operations categorizes multiple operations."""
         # Setup operations
         mock_op1 = MagicMock()
         mock_op1.category = Category.OTHER
@@ -592,7 +595,7 @@ class TestBulkCategorize:
         mock_forecast_service.get_all_planned_operations.return_value = []
         mock_forecast_service.get_all_budgets.return_value = []
 
-        results = app_service.bulk_categorize([1, 2], Category.GROCERIES)
+        results = app_service.categorize_operations((1, 2), Category.GROCERIES)
 
         assert len(results) == 2
         assert results[0].operation is updated_op1
@@ -603,10 +606,10 @@ class TestBulkCategorize:
         app_service: ApplicationService,
         mock_operation_service: MagicMock,
     ) -> None:
-        """bulk_categorize skips operations that don't exist."""
+        """categorize_operations skips operations that don't exist."""
         mock_operation_service.get_operation_by_id.return_value = None
 
-        results = app_service.bulk_categorize([1, 2, 3], Category.GROCERIES)
+        results = app_service.categorize_operations((1, 2, 3), Category.GROCERIES)
 
         assert len(results) == 0
 
@@ -617,7 +620,7 @@ class TestBulkCategorize:
         mock_operation_link_service: MagicMock,
         mock_forecast_service: MagicMock,
     ) -> None:
-        """bulk_categorize creates links in a single batch for all changed operations."""
+        """categorize_operations creates links in a single batch."""
         # Setup operations with different categories
         mock_op1 = MagicMock()
         mock_op1.category = Category.OTHER
@@ -655,7 +658,7 @@ class TestBulkCategorize:
             new_link2,
         ]
 
-        results = app_service.bulk_categorize([1, 2], Category.GROCERIES)
+        results = app_service.categorize_operations((1, 2), Category.GROCERIES)
 
         # Should call create_heuristic_links only once with both operations
         assert mock_operation_link_service.create_heuristic_links.call_count == 1
@@ -674,7 +677,7 @@ class TestBulkCategorize:
         mock_operation_link_service: MagicMock,
         mock_forecast_service: MagicMock,
     ) -> None:
-        """bulk_categorize deletes existing heuristic links before creating new ones."""
+        """categorize_operations deletes existing heuristic links before creating."""
         # Setup operations
         mock_op1 = MagicMock()
         mock_op1.category = Category.OTHER
@@ -706,7 +709,7 @@ class TestBulkCategorize:
         mock_forecast_service.get_all_planned_operations.return_value = []
         mock_forecast_service.get_all_budgets.return_value = []
 
-        app_service.bulk_categorize([1, 2], Category.GROCERIES)
+        app_service.categorize_operations((1, 2), Category.GROCERIES)
 
         # Should delete both heuristic links
         assert mock_operation_link_service.delete_link.call_count == 2
@@ -718,7 +721,7 @@ class TestBulkCategorize:
         mock_operation_link_service: MagicMock,
         mock_forecast_service: MagicMock,
     ) -> None:
-        """bulk_categorize preserves manual links."""
+        """categorize_operations preserves manual links."""
         # Setup operation
         mock_op = MagicMock()
         mock_op.category = Category.OTHER
@@ -737,7 +740,7 @@ class TestBulkCategorize:
         mock_forecast_service.get_all_planned_operations.return_value = []
         mock_forecast_service.get_all_budgets.return_value = []
 
-        app_service.bulk_categorize([1], Category.GROCERIES)
+        app_service.categorize_operations((1,), Category.GROCERIES)
 
         # Should NOT delete manual link
         mock_operation_link_service.delete_link.assert_not_called()
