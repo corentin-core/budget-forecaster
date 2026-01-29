@@ -55,6 +55,7 @@ class ImportService:
         persistent_account: PersistentAccount,
         inbox_path: Path,
         exclude_patterns: list[str] | None = None,
+        include_patterns: list[str] | None = None,
     ) -> None:
         """Initialize the service.
 
@@ -62,10 +63,13 @@ class ImportService:
             persistent_account: The persistent account to import to.
             inbox_path: Path to the inbox folder.
             exclude_patterns: List of glob patterns to exclude from inbox.
+            include_patterns: List of glob patterns to include in inbox.
+                If specified, only files matching at least one pattern are included.
         """
         self._persistent_account = persistent_account
         self._inbox_path = inbox_path
         self._exclude_patterns = exclude_patterns or []
+        self._include_patterns = include_patterns or []
         self._bank_adapter_factory = BankAdapterFactory()
 
     def _is_excluded(self, path: Path) -> bool:
@@ -82,6 +86,28 @@ class ImportService:
             if fnmatch.fnmatch(name, pattern):
                 return True
         return False
+
+    def _should_include(self, path: Path) -> bool:
+        """Check if a file should be included in inbox processing.
+
+        Args:
+            path: Path to check.
+
+        Returns:
+            True if the file should be included.
+        """
+        name = path.name
+
+        # If include patterns exist, file must match at least one
+        if self._include_patterns:
+            if not any(fnmatch.fnmatch(name, p) for p in self._include_patterns):
+                return False
+
+        # File must not match any exclude pattern
+        if self._is_excluded(path):
+            return False
+
+        return True
 
     def _get_last_operation_id(self) -> int:
         """Get the last operation id."""
@@ -106,7 +132,7 @@ class ImportService:
         for item in sorted(self._inbox_path.iterdir()):
             if item.name == "processed":
                 continue
-            if self._is_excluded(item):
+            if not self._should_include(item):
                 continue
             if self.is_supported_export(item):
                 exports.append(item)

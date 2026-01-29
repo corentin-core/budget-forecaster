@@ -116,6 +116,70 @@ class TestExcludePatterns:
         assert service._is_excluded(Path("data.csv")) is False
 
 
+class TestIncludePatterns:
+    """Tests for file inclusion patterns."""
+
+    def test_should_include_no_patterns(
+        self, mock_persistent_account: MagicMock, temp_inbox: Path
+    ) -> None:
+        """Without include patterns, all non-excluded files are included."""
+        service = ImportService(mock_persistent_account, temp_inbox)
+        assert service._should_include(Path("any_file.xlsx")) is True
+        assert service._should_include(Path("another.csv")) is True
+
+    def test_should_include_with_include_patterns(
+        self, mock_persistent_account: MagicMock, temp_inbox: Path
+    ) -> None:
+        """With include patterns, only matching files are included."""
+        service = ImportService(
+            mock_persistent_account,
+            temp_inbox,
+            include_patterns=["BNP-*.xlsx", "Swile-*.xlsx"],
+        )
+        assert service._should_include(Path("BNP-2025-01-01.xlsx")) is True
+        assert service._should_include(Path("Swile-export.xlsx")) is True
+        assert service._should_include(Path("other-bank.xlsx")) is False
+        assert service._should_include(Path("random.csv")) is False
+
+    def test_should_include_exclude_takes_precedence(
+        self, mock_persistent_account: MagicMock, temp_inbox: Path
+    ) -> None:
+        """Exclude patterns take precedence over include patterns."""
+        service = ImportService(
+            mock_persistent_account,
+            temp_inbox,
+            exclude_patterns=["*-backup.xlsx"],
+            include_patterns=["BNP-*.xlsx"],
+        )
+        # Matches include but also matches exclude -> excluded
+        assert service._should_include(Path("BNP-backup.xlsx")) is False
+        # Matches include and doesn't match exclude -> included
+        assert service._should_include(Path("BNP-2025-01-01.xlsx")) is True
+
+    def test_get_supported_exports_with_include_patterns(
+        self, mock_persistent_account: MagicMock, temp_inbox: Path
+    ) -> None:
+        """get_supported_exports_in_inbox respects include patterns."""
+        # Create files
+        (temp_inbox / "BNP-2025-01.xlsx").write_bytes(b"data")
+        (temp_inbox / "Swile-export.xlsx").write_bytes(b"data")
+        (temp_inbox / "other-bank.xlsx").write_bytes(b"data")
+
+        service = ImportService(
+            mock_persistent_account,
+            temp_inbox,
+            include_patterns=["BNP-*.xlsx"],
+        )
+
+        with patch.object(service, "is_supported_export", return_value=True):
+            exports = service.get_supported_exports_in_inbox()
+
+        names = [p.name for p in exports]
+        assert "BNP-2025-01.xlsx" in names
+        assert "Swile-export.xlsx" not in names
+        assert "other-bank.xlsx" not in names
+
+
 class TestGetSupportedExportsInInbox:
     """Tests for get_supported_exports_in_inbox method."""
 
