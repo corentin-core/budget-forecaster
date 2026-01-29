@@ -20,6 +20,7 @@ deserialization
 deserialize
 dialogs
 dicts
+dir
 enum
 historicoperation
 iterable
@@ -55,5 +56,6 @@ unlinked
 upsert
 upserting
 whitespace
+xdg
 xlsx
 yaml

@@ -1,10 +1,26 @@
 """Module for the Config class."""
 import logging
 import logging.config
+import subprocess
 from pathlib import Path
 from typing import Any, NamedTuple
 
 import yaml
+
+
+def _get_user_download_dir() -> Path:
+    """Get the user's download directory using xdg-user-dir or fallback."""
+    try:
+        result = subprocess.run(
+            ["xdg-user-dir", "DOWNLOAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return Path(result.stdout.strip())
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        # Fallback to ~/Downloads
+        return Path.home() / "Downloads"
 
 
 class AccountConfig(NamedTuple):
@@ -31,8 +47,8 @@ class Config:  # pylint: disable=too-few-public-methods
         self.database_path = Path("budget.db")
         # Backup config
         self.backup = BackupConfig()
-        # Import config
-        self.inbox_path = Path("inbox")
+        # Import config (default to user's download directory)
+        self.inbox_path = _get_user_download_dir()
         self.inbox_exclude_patterns: list[str] = []
         # Logging config (native Python logging dictConfig format)
         self.logging_config: dict[str, Any] | None = None
@@ -41,13 +57,13 @@ class Config:  # pylint: disable=too-few-public-methods
         """Parse a YAML configuration file."""
         with open(yaml_path, encoding="utf-8") as file:
             config = yaml.safe_load(file)
-            self.database_path = Path(config["database_path"])
+            self.database_path = Path(config["database_path"]).expanduser()
             self.account = AccountConfig(
                 name=config["account_name"],
                 currency=config["account_currency"],
             )
             if "inbox_path" in config:
-                self.inbox_path = Path(config["inbox_path"])
+                self.inbox_path = Path(config["inbox_path"]).expanduser()
             if "inbox_exclude_patterns" in config:
                 self.inbox_exclude_patterns = config["inbox_exclude_patterns"] or []
             # Parse backup config
@@ -57,7 +73,7 @@ class Config:  # pylint: disable=too-few-public-methods
                     enabled=backup_cfg.get("enabled", True),
                     max_backups=backup_cfg.get("max_backups", 5),
                     directory=(
-                        Path(backup_cfg["directory"])
+                        Path(backup_cfg["directory"]).expanduser()
                         if backup_cfg.get("directory")
                         else None
                     ),
