@@ -4,6 +4,7 @@ from budget_forecaster.account.account import Account, AccountParameters
 from budget_forecaster.account.aggregated_account import AggregatedAccount
 from budget_forecaster.account.repository_interface import RepositoryInterface
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
+from budget_forecaster.types import ImportStats
 
 
 class PersistentAccount:
@@ -48,11 +49,15 @@ class PersistentAccount:
             raise FileNotFoundError("No account found")
         return self._aggregated_account.accounts
 
-    def upsert_account(self, account: AccountParameters) -> None:
-        """Add or update an account."""
+    def upsert_account(self, account: AccountParameters) -> ImportStats:
+        """Add or update an account.
+
+        Returns:
+            ImportStats with the number of new and duplicate operations.
+        """
         if self._aggregated_account is None:
             raise FileNotFoundError("No account found")
-        self._aggregated_account.upsert_account(account)
+        return self._aggregated_account.upsert_account(account)
 
     def replace_account(self, new_account: Account) -> None:
         """Replace an existing account."""

@@ -6,9 +6,9 @@ This service provides a UI-agnostic API for importing bank statements.
 import fnmatch
 import logging
 import shutil
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import NamedTuple
 
 from budget_forecaster.account.account import AccountParameters
 from budget_forecaster.account.persistent_account import PersistentAccount
@@ -16,30 +16,30 @@ from budget_forecaster.bank_adapter.bank_adapter_factory import BankAdapterFacto
 from budget_forecaster.operation_range.historic_operation_factory import (
     HistoricOperationFactory,
 )
-from budget_forecaster.types import ImportProgressCallback
+from budget_forecaster.types import ImportProgressCallback, ImportStats
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class ImportResult:
+class ImportResult(NamedTuple):
     """Result of an import operation."""
 
     path: Path
     success: bool
-    operations_count: int
+    stats: ImportStats | None
+    """Import statistics (None if import failed)."""
     error_message: str | None = None
 
 
-@dataclass
-class ImportSummary:
+class ImportSummary(NamedTuple):
     """Summary of import operations."""
 
     total_files: int
     successful_imports: int
     failed_imports: int
-    total_operations: int
-    results: list[ImportResult]
+    total_new_operations: int
+    total_duplicates_skipped: int
+    results: tuple[ImportResult, ...]
 
 
 class ImportService:
@@ -140,7 +140,7 @@ class ImportService:
             move_to_processed: If True, move the file to processed/ after import.
 
         Returns:
-            ImportResult with the outcome.
+            ImportResult with the outcome and import statistics.
         """
         operation_factory = self._create_operation_factory()
 
@@ -156,13 +156,11 @@ class ImportService:
                 operations=bank_adapter.operations,
             )
 
-            self._persistent_account.upsert_account(account_params)
+            stats = self._persistent_account.upsert_account(account_params)
             self._persistent_account.save()
 
             # Reload to get updated operations with unique_ids
             self._persistent_account.load()
-
-            operations_count = len(bank_adapter.operations)
 
             if move_to_processed:
                 self._move_to_processed(path)
@@ -170,7 +168,7 @@ class ImportService:
             return ImportResult(
                 path=path,
                 success=True,
-                operations_count=operations_count,
+                stats=stats,
             )
 
         except Exception as e:  # pylint: disable=broad-except
@@ -178,7 +176,7 @@ class ImportService:
             return ImportResult(
                 path=path,
                 success=False,
-                operations_count=0,
+                stats=None,
                 error_message=str(e),
             )
 
@@ -211,12 +209,14 @@ class ImportService:
                 total_files=0,
                 successful_imports=0,
                 failed_imports=0,
-                total_operations=0,
-                results=[],
+                total_new_operations=0,
+                total_duplicates_skipped=0,
+                results=(),
             )
 
         results: list[ImportResult] = []
-        total_operations = 0
+        total_new_operations = 0
+        total_duplicates_skipped = 0
 
         for i, export_path in enumerate(exports):
             if on_progress:
@@ -225,8 +225,9 @@ class ImportService:
             result = self.import_file(export_path, move_to_processed=True)
             results.append(result)
 
-            if result.success:
-                total_operations += result.operations_count
+            if result.success and result.stats:
+                total_new_operations += result.stats.new_operations
+                total_duplicates_skipped += result.stats.duplicates_skipped
 
         successful = sum(1 for r in results if r.success)
 
@@ -234,8 +235,9 @@ class ImportService:
             total_files=len(exports),
             successful_imports=successful,
             failed_imports=len(exports) - successful,
-            total_operations=total_operations,
-            results=results,
+            total_new_operations=total_new_operations,
+            total_duplicates_skipped=total_duplicates_skipped,
+            results=tuple(results),
         )
 
     @property
