@@ -77,7 +77,7 @@ class PlannedOperationsWidget(Vertical):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self._app_service: ApplicationService | None = None
-        self._operations: list[PlannedOperation] = []
+        self._operations: tuple[PlannedOperation, ...] = ()
         self._selected_operation: PlannedOperation | None = None
 
     def compose(self) -> ComposeResult:

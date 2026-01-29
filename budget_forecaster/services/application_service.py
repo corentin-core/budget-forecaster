@@ -553,13 +553,15 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
     # Forecast read methods (delegated to ForecastService)
     # -------------------------------------------------------------------------
 
-    def get_all_planned_operations(self) -> list[PlannedOperation]:
-        """Get all planned operations."""
-        return self._forecast_service.get_all_planned_operations()
+    def get_all_planned_operations(self) -> tuple[PlannedOperation, ...]:
+        """Get all planned operations sorted alphabetically by description."""
+        operations = self._forecast_service.get_all_planned_operations()
+        return tuple(sorted(operations, key=lambda op: op.description.lower()))
 
-    def get_all_budgets(self) -> list[Budget]:
-        """Get all budgets."""
-        return self._forecast_service.get_all_budgets()
+    def get_all_budgets(self) -> tuple[Budget, ...]:
+        """Get all budgets sorted alphabetically by description."""
+        budgets = self._forecast_service.get_all_budgets()
+        return tuple(sorted(budgets, key=lambda b: b.description.lower()))
 
     def get_budget_by_id(self, budget_id: BudgetId) -> Budget | None:
         """Get a budget by ID."""
