@@ -61,6 +61,9 @@ jobs:
   test:
     needs: [pre-commit, mypy, pylint]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -77,3 +80,9 @@ jobs:
         with:
           files: coverage.xml
           fail_ci_if_error: false
+      - name: Coverage comment on PR
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          MINIMUM_GREEN: 80
+          MINIMUM_ORANGE: 60
