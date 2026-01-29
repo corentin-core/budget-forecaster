@@ -405,9 +405,8 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         if category is None or not self._categorizing_operation_ids:
             return
 
-        # Use bulk_categorize for efficiency (works for single or multiple)
-        results = self.app_service.bulk_categorize(
-            list(self._categorizing_operation_ids), category
+        results = self.app_service.categorize_operations(
+            self._categorizing_operation_ids, category
         )
 
         if not results:
