@@ -3,7 +3,7 @@ from typing import NamedTuple
 
 
 class Amount(NamedTuple):
-    """An amount of money."""
+    """An amount of money with currency."""
 
     value: float
     currency: str = "EUR"
