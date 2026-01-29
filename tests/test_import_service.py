@@ -12,6 +12,7 @@ from budget_forecaster.services.import_service import (
     ImportService,
     ImportSummary,
 )
+from budget_forecaster.types import ImportStats
 
 
 @pytest.fixture
@@ -179,7 +180,7 @@ class TestImportFile:
         result = service.import_file(unsupported)
 
         assert result.success is False
-        assert result.operations_count == 0
+        assert result.stats is None
         assert result.error_message is not None
 
     @patch("budget_forecaster.services.import_service.BankAdapterFactory")
@@ -201,6 +202,12 @@ class TestImportFile:
         mock_factory.create_bank_adapter.return_value = mock_adapter
         mock_factory_class.return_value = mock_factory
 
+        # Mock upsert_account to return stats
+        mock_stats = ImportStats(
+            total_in_file=2, new_operations=2, duplicates_skipped=0
+        )
+        mock_persistent_account.upsert_account.return_value = mock_stats
+
         # Create service and file
         service = ImportService(
             mock_persistent_account,
@@ -212,7 +219,8 @@ class TestImportFile:
         result = service.import_file(test_file)
 
         assert result.success is True
-        assert result.operations_count == 2
+        assert result.stats is not None
+        assert result.stats.new_operations == 2
         assert result.error_message is None
         mock_persistent_account.upsert_account.assert_called_once()
         mock_persistent_account.save.assert_called_once()
@@ -235,6 +243,12 @@ class TestImportFile:
         mock_factory = MagicMock()
         mock_factory.create_bank_adapter.return_value = mock_adapter
         mock_factory_class.return_value = mock_factory
+
+        # Mock upsert_account to return stats
+        mock_stats = ImportStats(
+            total_in_file=0, new_operations=0, duplicates_skipped=0
+        )
+        mock_persistent_account.upsert_account.return_value = mock_stats
 
         service = ImportService(
             mock_persistent_account,
@@ -260,8 +274,9 @@ class TestImportFromInbox:
         assert summary.total_files == 0
         assert summary.successful_imports == 0
         assert summary.failed_imports == 0
-        assert summary.total_operations == 0
-        assert summary.results == []
+        assert summary.total_new_operations == 0
+        assert summary.total_duplicates_skipped == 0
+        assert summary.results == ()
 
     def test_creates_inbox_if_missing(
         self,
@@ -298,6 +313,12 @@ class TestImportFromInbox:
         mock_factory.create_bank_adapter.return_value = mock_adapter
         mock_factory_class.return_value = mock_factory
 
+        # Mock upsert_account to return stats
+        mock_stats = ImportStats(
+            total_in_file=0, new_operations=0, duplicates_skipped=0
+        )
+        mock_persistent_account.upsert_account.return_value = mock_stats
+
         # Create files
         (temp_inbox / "file1.xlsx").write_bytes(b"data")
         (temp_inbox / "file2.xlsx").write_bytes(b"data")
@@ -321,17 +342,20 @@ class TestImportFromInbox:
 
 
 class TestImportResult:
-    """Tests for ImportResult dataclass."""
+    """Tests for ImportResult NamedTuple."""
 
     def test_success_result(self, tmp_path: Path) -> None:
         """ImportResult correctly represents success."""
+        stats = ImportStats(total_in_file=10, new_operations=8, duplicates_skipped=2)
         result = ImportResult(
             path=tmp_path / "file.xlsx",
             success=True,
-            operations_count=10,
+            stats=stats,
         )
         assert result.success is True
-        assert result.operations_count == 10
+        assert result.stats is not None
+        assert result.stats.new_operations == 8
+        assert result.stats.duplicates_skipped == 2
         assert result.error_message is None
 
     def test_failure_result(self, tmp_path: Path) -> None:
@@ -339,32 +363,42 @@ class TestImportResult:
         result = ImportResult(
             path=tmp_path / "file.xlsx",
             success=False,
-            operations_count=0,
+            stats=None,
             error_message="File corrupted",
         )
         assert result.success is False
-        assert result.operations_count == 0
+        assert result.stats is None
         assert result.error_message == "File corrupted"
 
 
 class TestImportSummary:
-    """Tests for ImportSummary dataclass."""
+    """Tests for ImportSummary NamedTuple."""
 
     def test_summary_calculation(self, tmp_path: Path) -> None:
         """ImportSummary correctly aggregates results."""
-        results = [
-            ImportResult(tmp_path / "f1.xlsx", True, 10),
-            ImportResult(tmp_path / "f2.xlsx", True, 5),
-            ImportResult(tmp_path / "f3.xlsx", False, 0, "Error"),
-        ]
+        results = (
+            ImportResult(
+                tmp_path / "f1.xlsx",
+                True,
+                ImportStats(total_in_file=10, new_operations=8, duplicates_skipped=2),
+            ),
+            ImportResult(
+                tmp_path / "f2.xlsx",
+                True,
+                ImportStats(total_in_file=5, new_operations=5, duplicates_skipped=0),
+            ),
+            ImportResult(tmp_path / "f3.xlsx", False, None, "Error"),
+        )
         summary = ImportSummary(
             total_files=3,
             successful_imports=2,
             failed_imports=1,
-            total_operations=15,
+            total_new_operations=13,
+            total_duplicates_skipped=2,
             results=results,
         )
         assert summary.total_files == 3
         assert summary.successful_imports == 2
         assert summary.failed_imports == 1
-        assert summary.total_operations == 15
+        assert summary.total_new_operations == 13
+        assert summary.total_duplicates_skipped == 2
