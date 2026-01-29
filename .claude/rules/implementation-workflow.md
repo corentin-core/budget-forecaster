@@ -4,6 +4,8 @@
 
 **NEVER** start coding immediately. Follow this workflow:
 
+**This applies to ALL issues, including quick wins.** No exceptions.
+
 ### 1. Present the issue
 
 - Read and understand the issue
