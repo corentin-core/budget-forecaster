@@ -348,52 +348,101 @@ sequenceDiagram
     LinkService->>Repository: save new links
 ```
 
-## Design Principles
+## Configuration & Bootstrapping
 
-### Domain Objects over Primitives
+### Configuration Loading
 
-Use rich domain types instead of dictionaries or tuples:
+The application loads configuration from YAML files:
 
-- `OperationLink` instead of `dict[OperationId, IterationDate]`
-- `Amount` instead of `float`
-- `TimeRange` instead of `tuple[date, date]`
+1. `default_config.yaml` (embedded in package) - default values
+2. User-provided config file via `-c` flag - overrides defaults
 
-### Immutability by Default
+Configuration includes: database path, inbox folder, date formats, and display
+preferences.
 
-Most domain objects are immutable (NamedTuple or frozen dataclass):
+### Application Bootstrap
 
-- `Account`, `Amount`, `Forecast`, `OperationLink` are NamedTuples
-- Modifications return new instances via `replace()` methods
+```mermaid
+graph LR
+    main.py --> Config[Load Config]
+    Config --> SR[SqliteRepository]
+    SR --> PA[PersistentAccount]
+    SR --> Services[Create Services]
+    Services --> AS[ApplicationService]
+    AS --> TUI[Start TUI]
+```
 
-### Single Link per Operation
+`main.py` is the composition root:
 
-An operation can only link to ONE target iteration. This constraint:
+- Parses CLI arguments
+- Loads configuration
+- Instantiates SqliteRepository (single instance)
+- Creates all services with their dependencies
+- Passes ApplicationService to TUI or executes CLI command
 
-- Simplifies the linking logic
-- Prevents ambiguity in forecast actualization
-- Enforced by UNIQUE constraint in database
+## TUI Structure
 
-### Manual Links Override Heuristics
+The TUI layer uses [Textual](https://textual.textualize.io/) framework.
 
-When recalculating links:
+```
+tui/
+├── app.py              # BudgetApp - main application, screen routing
+├── screens/            # Full-screen views
+│   ├── dashboard.py    # Home screen with balance and summary
+│   ├── operations.py   # Historic operations list
+│   ├── forecast.py     # Forecast visualization
+│   ├── planned_operations.py
+│   ├── budgets.py
+│   └── imports.py      # Inbox file browser
+├── modals/             # Overlay dialogs
+│   ├── category.py     # Category picker
+│   ├── budget_edit.py
+│   ├── planned_operation_edit.py
+│   ├── link_target.py  # Link operation to target
+│   ├── link_iteration.py
+│   └── file_browser.py
+└── widgets/            # Reusable components
+    ├── operation_table.py
+    └── category_select.py
+```
 
-- Manual links (user-created) are preserved
-- Heuristic links (auto-created) are deleted and recalculated
-- This allows users to correct wrong automatic matches
+Screens access domain logic exclusively through ApplicationService. No direct repository
+or domain object manipulation from the presentation layer.
 
-### Lazy Matcher Cache
+## Known Limitations
 
-ApplicationService caches matchers for performance:
+This section documents architectural decisions that may need revisiting as the project
+grows.
 
-- Loaded on first access
-- Invalidated when targets are created/updated/deleted
-- Provides O(1) lookup for heuristic linking
+### ApplicationService Size
 
-## Key Invariants
+ApplicationService (~640 lines, 40+ methods) acts as a facade for all TUI operations.
+This centralizes logic but creates a large class with multiple responsibilities.
 
-1. **Operation uniqueness**: Operations are deduplicated by (description, amount, date)
-   hash
-2. **Balance date ordering**: Account balance_date must be the most recent export date
-3. **Link consistency**: Links are recalculated when their target is modified
-4. **Forecast actualization**: Late iterations are postponed to tomorrow, not deleted
-5. **Budget consumption**: Linked operations reduce remaining budget by their amount
+**Tracked in**: #118
+
+### Single Repository Implementation
+
+SqliteRepository implements all four repository interfaces. This simplifies the current
+architecture but couples all persistence together.
+
+**Trade-off**: Simpler dependency wiring vs. harder to mock individual repositories in
+tests.
+
+### Package Organization
+
+Some packages mix concerns:
+
+- `account/` contains domain objects, services, persistence, and presentation logic
+- `operation_range/` name doesn't reflect all its contents (includes OperationLink,
+  OperationMatcher)
+- Primitives (`Amount`, `TimeRange`) sit at package root instead of a dedicated module
+
+**Tracked in**: #119
+
+### OperationLink Target Discrimination
+
+OperationLink uses a `LinkType` enum to distinguish between PlannedOperation and Budget
+targets. This requires type-checking code wherever links are processed.
+
+**Alternative**: Polymorphic link types or a unified `LinkTarget` interface.
