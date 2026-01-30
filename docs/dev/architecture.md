@@ -445,4 +445,4 @@ Some packages mix concerns:
 OperationLink uses a `LinkType` enum to distinguish between PlannedOperation and Budget
 targets. This requires type-checking code wherever links are processed.
 
-**Alternative**: Polymorphic link types or a unified `LinkTarget` interface.
+**Tracked in**: #120
