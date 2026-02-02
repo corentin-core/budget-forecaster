@@ -2,10 +2,12 @@
 
 # pylint: disable=redefined-outer-name,too-few-public-methods
 
+from collections.abc import Iterator
 from datetime import date, datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pandas as pd
 import pytest
 from dateutil.relativedelta import relativedelta
 
@@ -44,11 +46,10 @@ def temp_db_path(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def repository(temp_db_path: Path) -> RepositoryInterface:
+def repository(temp_db_path: Path) -> Iterator[RepositoryInterface]:
     """Create an initialized repository."""
-    repo = SqliteRepository(temp_db_path)
-    repo.initialize()
-    return repo
+    with SqliteRepository(temp_db_path) as repo:
+        yield repo
 
 
 @pytest.fixture
@@ -400,7 +401,6 @@ class TestGetBalanceEvolutionSummary:
         service: ForecastService,
     ) -> None:
         """get_balance_evolution_summary returns (date, balance) tuples."""
-        import pandas as pd
 
         # Create a simple DataFrame for balance evolution
         dates = pd.date_range("2025-01-01", periods=10, freq="D")
@@ -437,7 +437,6 @@ class TestGetMonthlySummary:
         service: ForecastService,
     ) -> None:
         """get_monthly_summary returns correctly typed MonthlySummary list."""
-        import pandas as pd
 
         # Create mock budget forecast DataFrame
         month = pd.Timestamp("2025-01-01")
@@ -490,7 +489,6 @@ class TestGetCategoryStatistics:
         service: ForecastService,
     ) -> None:
         """get_category_statistics returns (category, total, avg) tuples."""
-        import pandas as pd
 
         # Create mock budget statistics DataFrame
         df = pd.DataFrame(
@@ -528,7 +526,6 @@ class TestTypedDicts:
 
     def test_monthly_summary_structure(self) -> None:
         """MonthlySummary has correct structure."""
-        import pandas as pd
 
         month = pd.Timestamp("2025-01-01")
         categories = {

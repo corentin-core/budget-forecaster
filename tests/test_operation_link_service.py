@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import tempfile
+from collections.abc import Iterator
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -42,11 +43,10 @@ def temp_db_path() -> Path:
 
 
 @pytest.fixture
-def repository(temp_db_path: Path) -> SqliteRepository:
+def repository(temp_db_path: Path) -> Iterator[SqliteRepository]:
     """Fixture that provides an initialized repository."""
-    repo = SqliteRepository(temp_db_path)
-    repo.initialize()
-    return repo
+    with SqliteRepository(temp_db_path) as repo:
+        yield repo
 
 
 @pytest.fixture

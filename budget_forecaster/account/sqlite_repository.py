@@ -9,7 +9,7 @@ import logging
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Self
 
 from dateutil.relativedelta import relativedelta
 
@@ -199,6 +199,20 @@ class SqliteRepository(RepositoryInterface):
         if self._connection is not None:
             self._connection.close()
             self._connection = None
+
+    def __enter__(self) -> Self:
+        """Enter the context manager."""
+        self.initialize()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
+        """Exit the context manager."""
+        self.close()
 
     # Aggregated Account methods
 
