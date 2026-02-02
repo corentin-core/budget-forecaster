@@ -86,12 +86,6 @@ provide the foundational types.
 The **Infrastructure** layer handles external concerns: SQLite persistence, bank file
 parsing (BNP, Swile), configuration, and exports.
 
-## Key Invariants
-
-- An operation can be linked to at most one planned operation or budget iteration
-- Manual links are never overwritten by heuristic matching
-- Balance projection is deterministic given the same inputs
-
 ## Configuration
 
 The application uses YAML configuration with:
