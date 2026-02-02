@@ -16,10 +16,14 @@ Guides for end-users explaining how to use features.
 
 Technical documentation for developers: architecture, data flows, APIs.
 
-| Document                                            | Description                       |
-| --------------------------------------------------- | --------------------------------- |
-| [Operation Links](dev/operation-links.md)           | Links architecture and data model |
-| [Forecast Calculation](dev/forecast-calculation.md) | Forecast system architecture      |
+| Document                              | Description                                  |
+| ------------------------------------- | -------------------------------------------- |
+| [Architecture](dev/architecture.md)   | Layer diagram, overview                      |
+| [Operations](dev/operations.md)       | Operation hierarchy, linking, categorization |
+| [Forecast](dev/forecast.md)           | Forecast structure, actualization            |
+| [Account](dev/account.md)             | Account management, balance projection       |
+| [Persistence](dev/persistence.md)     | Repository interfaces, service layer         |
+| [Configuration](dev/configuration.md) | YAML config, logging, backup settings        |
 
 ### Quality Documentation
 
@@ -39,8 +43,12 @@ docs/
 │   ├── operation-links.md
 │   └── tui-operations.md
 ├── dev/                         # Developer documentation
-│   ├── forecast-calculation.md
-│   └── operation-links.md
+│   ├── architecture.md
+│   ├── operations.md
+│   ├── forecast.md
+│   ├── account.md
+│   ├── persistence.md
+│   └── configuration.md
 └── quality/                     # Test scenarios
     ├── forecast-calculation.md
     └── operation-links.md

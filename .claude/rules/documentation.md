@@ -87,6 +87,32 @@ Use Mermaid diagrams for:
 - Sequence flows (sequenceDiagram)
 - State machines (stateDiagram-v2)
 
+## Prefer Diagrams Over Text
+
+**Why**: Diagrams are more expressive and easier to scan. Duplicating the same
+information in text adds maintenance burden without value.
+
+**Rule**: When a diagram clearly conveys the information, don't add redundant text that
+says the same thing.
+
+```markdown
+# BAD - text duplicates what the diagram shows
+
+The ForecastActualizer adjusts planned operations:
+
+1. Identify actualized iterations
+2. Detect late iterations
+3. Postpone late iterations
+
+\`\`\`mermaid stateDiagram-v2 [*] --> Pending Pending --> Actualized: operation linked
+Pending --> Late: past due date Late --> Postponed: tolerance exceeded \`\`\`
+
+# GOOD - diagram speaks for itself
+
+\`\`\`mermaid stateDiagram-v2 [*] --> Pending Pending --> Actualized: operation linked
+Pending --> Late: past due date Late --> Postponed: tolerance exceeded \`\`\`
+```
+
 ## User Documentation Content
 
 Focus on practical usage:
