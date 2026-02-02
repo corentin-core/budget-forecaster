@@ -21,14 +21,6 @@ Both are loaded from CSV files and stored in the repository.
 
 ## Actualization Algorithm
 
-The ForecastActualizer adjusts planned operations based on actual data:
-
-1. **Identify actualized iterations** - iterations with links to past operations
-2. **Detect late iterations** - past iterations without links (within tolerance window)
-3. **Postpone late iterations** - create one-time operations for tomorrow
-4. **Advance periodic operations** - move start date past last actualized iteration
-5. **Consume budgets** - reduce remaining amount based on linked operations
-
 ```mermaid
 stateDiagram-v2
     [*] --> Pending: iteration scheduled
@@ -57,10 +49,3 @@ sequenceDiagram
     AccountAnalyzer->>AccountForecaster: project balance
     AccountAnalyzer-->>TUI: AccountAnalysisReport
 ```
-
-The computation flow:
-
-1. Load raw forecast (planned operations + budgets)
-2. Actualize based on existing links
-3. Generate balance projections using the actualized forecast
-4. Produce the analysis report with statistics
