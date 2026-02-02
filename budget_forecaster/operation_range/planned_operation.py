@@ -30,9 +30,11 @@ class PlannedOperation(ForecastOperationRange):
         category: Category,
         time_range: TimeRangeInterface,
     ):
-        assert isinstance(
-            time_range, (DailyTimeRange, PeriodicDailyTimeRange)
-        ), "Only daily time ranges are supported."
+        if not isinstance(time_range, (DailyTimeRange, PeriodicDailyTimeRange)):
+            raise TypeError(
+                f"time_range must be DailyTimeRange or PeriodicDailyTimeRange, "
+                f"got {type(time_range)}"
+            )
         super().__init__(
             record_id=record_id,
             description=description,
@@ -56,19 +58,23 @@ class PlannedOperation(ForecastOperationRange):
     def replace(self, **kwargs: Any) -> "PlannedOperation":
         """Return a new instance of the planned operation with the given parameters replaced."""
         new_id = kwargs.get("record_id", self.id)
-        assert new_id is None or isinstance(
-            new_id, int
-        ), "record_id should be an int or None"
+        if new_id is not None and not isinstance(new_id, int):
+            raise TypeError(f"record_id must be int or None, got {type(new_id)}")
         new_description = kwargs.get("description", self.description)
-        assert isinstance(new_description, str), "description should be a string"
+        if not isinstance(new_description, str):
+            raise TypeError(f"description must be str, got {type(new_description)}")
         new_amount = kwargs.get("amount", Amount(self.amount, self.currency))
-        assert isinstance(new_amount, Amount), "amount should be an Amount"
+        if not isinstance(new_amount, Amount):
+            raise TypeError(f"amount must be Amount, got {type(new_amount)}")
         new_category = kwargs.get("category", self.category)
-        assert isinstance(new_category, Category), "category should be a Category"
+        if not isinstance(new_category, Category):
+            raise TypeError(f"category must be Category, got {type(new_category)}")
         new_time_range = kwargs.get("time_range", self.time_range)
-        assert isinstance(
-            new_time_range, (DailyTimeRange, PeriodicDailyTimeRange)
-        ), "Only daily time ranges are supported."
+        if not isinstance(new_time_range, (DailyTimeRange, PeriodicDailyTimeRange)):
+            raise TypeError(
+                f"time_range must be DailyTimeRange or PeriodicDailyTimeRange, "
+                f"got {type(new_time_range)}"
+            )
         return PlannedOperation(
             record_id=new_id,
             description=new_description,

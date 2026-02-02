@@ -113,9 +113,10 @@ class OperationRange(OperationRangeInterface):
         return self.__time_range
 
     def amount_on_period(self, start_date: datetime, end_date: datetime) -> float:
-        assert (
-            start_date <= end_date
-        ), f"Start date should be before end date, got {start_date} - {end_date}"
+        if start_date > end_date:
+            raise ValueError(
+                f"start_date must be <= end_date, got {start_date} > {end_date}"
+            )
 
         if self.time_range.is_expired(start_date) or self.time_range.is_future(
             end_date
@@ -153,15 +154,19 @@ class OperationRange(OperationRangeInterface):
 
     def replace(self, **kwargs: Any) -> "OperationRange":
         new_description = kwargs.get("description", self.__description)
-        assert isinstance(new_description, str), "description should be a string"
+        if not isinstance(new_description, str):
+            raise TypeError(f"description must be str, got {type(new_description)}")
         new_amount = kwargs.get("amount", self.__amount)
-        assert isinstance(new_amount, Amount), "amount should be an Amount"
+        if not isinstance(new_amount, Amount):
+            raise TypeError(f"amount must be Amount, got {type(new_amount)}")
         new_category = kwargs.get("category", self.__category)
-        assert isinstance(new_category, Category), "category should be a Category"
+        if not isinstance(new_category, Category):
+            raise TypeError(f"category must be Category, got {type(new_category)}")
         new_time_range = kwargs.get("time_range", self.__time_range)
-        assert isinstance(
-            new_time_range, TimeRangeInterface
-        ), "time_range should be a TimeRangeInterface"
+        if not isinstance(new_time_range, TimeRangeInterface):
+            raise TypeError(
+                f"time_range must be TimeRangeInterface, got {type(new_time_range)}"
+            )
         return OperationRange(
             description=new_description,
             amount=new_amount,
