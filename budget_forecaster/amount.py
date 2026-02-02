@@ -1,8 +1,9 @@
 """A module for representing amounts of money."""
-from typing import NamedTuple
+from dataclasses import dataclass
 
 
-class Amount(NamedTuple):
+@dataclass(frozen=True)
+class Amount:
     """An amount of money."""
 
     value: float
@@ -11,7 +12,7 @@ class Amount(NamedTuple):
     def __repr__(self) -> str:
         return f"{self.value}{self.currency}"
 
-    def __add__(self, other: "Amount") -> "Amount":  # type: ignore[override]
+    def __add__(self, other: "Amount") -> "Amount":
         """Add two amounts together."""
         if self.currency != other.currency:
             raise ValueError(f"Cannot add {self.currency} and {other.currency}")
@@ -27,11 +28,11 @@ class Amount(NamedTuple):
         """Return the negation of this amount."""
         return Amount(-self.value, self.currency)
 
-    def __mul__(self, scalar: float) -> "Amount":  # type: ignore[override]
+    def __mul__(self, scalar: float) -> "Amount":
         """Multiply the amount by a scalar."""
         return Amount(self.value * scalar, self.currency)
 
-    def __rmul__(self, scalar: float) -> "Amount":  # type: ignore[override]
+    def __rmul__(self, scalar: float) -> "Amount":
         """Multiply the amount by a scalar (reverse)."""
         return Amount(self.value * scalar, self.currency)
 
