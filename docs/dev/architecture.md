@@ -86,18 +86,6 @@ provide the foundational types.
 The **Infrastructure** layer handles external concerns: SQLite persistence, bank file
 parsing (BNP, Swile), configuration, and exports.
 
-## Configuration
-
-The application uses YAML configuration with:
-
-- **Database path**: SQLite file location
-- **Inbox path**: Folder for bank exports (auto-import)
-- **Backup settings**: Enable/disable, max backups, rotation
-- **Logging**: Python dictConfig format for flexible logging setup
-
-Default configuration is created on first run at
-`~/.config/budget-forecaster/config.yaml`.
-
 ## Documentation Index
 
 - [Operations & Linking](operations.md) - Operation hierarchy, linking system,
@@ -105,3 +93,4 @@ Default configuration is created on first run at
 - [Forecast](forecast.md) - Forecast structure, actualization algorithm
 - [Account](account.md) - Account management, balance projection, bank import
 - [Persistence](persistence.md) - Repository interfaces, service layer
+- [Configuration](configuration.md) - YAML config, logging, backup settings
