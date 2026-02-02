@@ -5,19 +5,41 @@ budgets, and actualizes them based on real transactions.
 
 ## Components
 
+```mermaid
+classDiagram
+    class Forecast {
+        +operations: tuple~PlannedOperation~
+        +budgets: tuple~Budget~
+    }
+
+    class ForecastActualizer {
+        -account: Account
+        -links: tuple~OperationLink~
+        +__call__(forecast) Forecast
+    }
+
+    class PlannedOperation {
+        +id
+        +time_range
+        +matcher
+    }
+
+    class Budget {
+        +id
+        +time_range
+        +matcher
+    }
+
+    Forecast "1" *-- "*" PlannedOperation
+    Forecast "1" *-- "*" Budget
+    ForecastActualizer --> Forecast : transforms
+    ForecastActualizer --> OperationLink : uses
+```
+
 | Component              | Responsibilities                                                                             |
 | ---------------------- | -------------------------------------------------------------------------------------------- |
 | **Forecast**           | Container for planned operations and budgets.                                                |
 | **ForecastActualizer** | Updates forecast based on links. Handles late iterations, postponements, budget consumption. |
-
-## Forecast Structure
-
-A Forecast holds:
-
-- **Planned operations**: Expected recurring or one-time transactions
-- **Budgets**: Allocated amounts for categories over time periods
-
-Both are loaded from CSV files and stored in the repository.
 
 ## Actualization Algorithm
 
