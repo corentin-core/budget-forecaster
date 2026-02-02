@@ -301,7 +301,7 @@ class TestBudgetRepository:
         """Test getting budgets when none exist."""
         with SqliteRepository(temp_db_path) as repository:
             budgets = repository.get_all_budgets()
-            assert budgets == []
+            assert budgets == ()
 
     def test_upsert_budget_insert(self, temp_db_path: Path) -> None:
         """Test inserting a new budget."""
@@ -418,7 +418,7 @@ class TestPlannedOperationRepository:
         """Test getting planned operations when none exist."""
         with SqliteRepository(temp_db_path) as repository:
             ops = repository.get_all_planned_operations()
-            assert ops == []
+            assert ops == ()
 
     def test_upsert_planned_operation_insert(self, temp_db_path: Path) -> None:
         """Test inserting a new planned operation."""
