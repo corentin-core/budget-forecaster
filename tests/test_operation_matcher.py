@@ -1001,3 +1001,29 @@ class TestOperationMatcherOperationLinks:
         assert matcher.get_iteration_for_operation(op_week1) == datetime(2023, 1, 1)
         assert matcher.get_iteration_for_operation(op_week2) == datetime(2023, 1, 8)
         assert matcher.get_iteration_for_operation(op_week3) == datetime(2023, 1, 15)
+
+
+class TestOperationMatcherReplaceErrors:
+    """Tests for errors in OperationMatcher.replace()."""
+
+    def test_replace_invalid_operation_range(
+        self, operation_range: OperationRange
+    ) -> None:
+        """Test replace() raises TypeError for invalid operation_range."""
+        matcher = OperationMatcher(operation_range)
+        with pytest.raises(TypeError, match="operation_range must be OperationRange"):
+            matcher.replace(operation_range="invalid")
+
+    def test_replace_valid_operation_range(
+        self, operation_range: OperationRange
+    ) -> None:
+        """Test replace() works with valid operation_range."""
+        matcher = OperationMatcher(operation_range)
+        new_range = OperationRange(
+            "New Operation",
+            Amount(200, "EUR"),
+            Category.OTHER,
+            TimeRange(datetime(2023, 2, 1), relativedelta(months=1)),
+        )
+        new_matcher = matcher.replace(operation_range=new_range)
+        assert new_matcher.operation_range == new_range
