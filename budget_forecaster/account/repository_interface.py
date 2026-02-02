@@ -6,6 +6,7 @@ combines them all.
 """
 
 from abc import ABC, abstractmethod
+from typing import Self
 
 from budget_forecaster.account.account import Account
 from budget_forecaster.operation_range.budget import Budget
@@ -289,4 +290,23 @@ class RepositoryInterface(
         """Close the repository and release resources.
 
         This method should be called when the repository is no longer needed.
+        """
+
+    @abstractmethod
+    def __enter__(self) -> Self:
+        """Enter the context manager.
+
+        Initializes the repository and returns it.
+        """
+
+    @abstractmethod
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
+        """Exit the context manager.
+
+        Closes the repository.
         """

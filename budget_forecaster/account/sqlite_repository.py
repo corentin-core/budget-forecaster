@@ -5,10 +5,11 @@
 # pylint: disable=too-many-public-methods
 
 import json
+import logging
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Self
 
 from dateutil.relativedelta import relativedelta
 
@@ -27,6 +28,8 @@ from budget_forecaster.time_range import (
     TimeRangeInterface,
 )
 from budget_forecaster.types import Category, LinkType, OperationId, TargetId
+
+logger = logging.getLogger(__name__)
 
 # Current schema version
 CURRENT_SCHEMA_VERSION = 3
@@ -180,7 +183,7 @@ class SqliteRepository(RepositoryInterface):
                     f"Invalid migration chain: {from_version} -> {target_version}"
                 )
 
-            print(f"Applying migration to schema version {target_version}...")
+            logger.info("Applying migration to schema version %d", target_version)
 
             if isinstance(migration, str):
                 conn.executescript(migration)
@@ -189,13 +192,27 @@ class SqliteRepository(RepositoryInterface):
 
             self._set_schema_version(target_version)
 
-        print(f"Database schema is at version {CURRENT_SCHEMA_VERSION}")
+        logger.info("Database schema is at version %d", CURRENT_SCHEMA_VERSION)
 
     def close(self) -> None:
         """Close the database connection."""
         if self._connection is not None:
             self._connection.close()
             self._connection = None
+
+    def __enter__(self) -> Self:
+        """Enter the context manager."""
+        self.initialize()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: object,
+    ) -> None:
+        """Exit the context manager."""
+        self.close()
 
     # Aggregated Account methods
 
