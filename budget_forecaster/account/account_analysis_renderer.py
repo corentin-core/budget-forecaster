@@ -1,6 +1,8 @@
 """Module to render account analysis data."""
 import abc
 import pathlib
+import shutil
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -38,6 +40,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         money_fmt = {"num_format": "#,##0.00 €"}
         self.__money_format = workbook.add_format(money_fmt)  # type: ignore[union-attr]
         self.__saved_plots: list[pathlib.Path] = []
+        self.__temp_dir = Path(tempfile.mkdtemp(prefix="budget_forecaster_"))
 
     def render_report(self, report: AccountAnalysisReport) -> None:
         self.__add_balance_evolution(
@@ -127,12 +130,6 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
 
         return balance_evolution_per_month
 
-    @staticmethod
-    def __make_random_temp_path(file_name: str) -> pathlib.Path:
-        path = Path(f"/tmp/{round(datetime.now().timestamp(), 0)}/{file_name}")
-        path.parent.mkdir(parents=True, exist_ok=True)
-        return path
-
     def plot_balance_evolution(
         self, balance_date: datetime, balance_evolution: pd.DataFrame
     ) -> pathlib.Path:
@@ -152,7 +149,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         plt.legend(["Solde", "Marge"])
         plt.grid()
         plt.title("Evolution du solde du compte")
-        saved_path = self.__make_random_temp_path("balance_evolution.png")
+        saved_path = self.__temp_dir / "balance_evolution.png"
         plt.savefig(saved_path)
         return saved_path
 
@@ -243,14 +240,12 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
             autopct="%1.1f%%",
         )
         plt.title("Répartition des dépenses")
-        plot_path = self.__make_random_temp_path("expenses_pie.png")
+        plot_path = self.__temp_dir / "expenses_pie.png"
         plt.savefig(plot_path)
         worksheet.insert_image("E1", plot_path)
         self.__saved_plots.append(plot_path)
 
     def __do_export(self) -> None:
         self.__writer.close()
-        # remove the saved plots files
-        for plot_path in self.__saved_plots:
-            plot_path.unlink()
+        shutil.rmtree(self.__temp_dir)
         self.__saved_plots = []
