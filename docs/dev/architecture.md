@@ -71,18 +71,6 @@ graph TB
     CFG --> BK
 ```
 
-## Design Principles
-
-- **Immutability by default** - Domain objects (Amount, TimeRange, Operation) are
-  immutable. Modifications return new instances.
-
-- **Single link per operation** - A historic operation can be linked to at most one
-  planned operation or budget iteration. Manual links take precedence over heuristic
-  ones.
-
-- **Separation of concerns** - Services orchestrate, domain objects encapsulate business
-  logic, infrastructure handles I/O.
-
 ## Key Invariants
 
 - An operation cannot be linked to multiple targets
