@@ -36,10 +36,10 @@ classDiagram
     ForecastActualizer --> OperationLink : uses
 ```
 
-| Component              | Responsibilities                                                                             |
-| ---------------------- | -------------------------------------------------------------------------------------------- |
-| **Forecast**           | Container for planned operations and budgets.                                                |
-| **ForecastActualizer** | Updates forecast based on links. Handles late iterations, postponements, budget consumption. |
+ForecastActualizer transforms a raw forecast into an actualized one by examining
+operation links. It advances periodic operations past linked iterations, flags late
+iterations that should have occurred but weren't linked, and computes remaining budget
+amounts from linked operations.
 
 ## Actualization Algorithm
 

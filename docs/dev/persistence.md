@@ -45,14 +45,8 @@ classDiagram
     RepositoryInterface <|.. SqliteRepository
 ```
 
-| Interface                               | Responsibilities                             |
-| --------------------------------------- | -------------------------------------------- |
-| **BudgetRepositoryInterface**           | CRUD for budgets.                            |
-| **PlannedOperationRepositoryInterface** | CRUD for planned operations.                 |
-| **AccountRepositoryInterface**          | Account and aggregated account management.   |
-| **OperationRepositoryInterface**        | Historic operation updates.                  |
-| **OperationLinkRepositoryInterface**    | Link management (create, delete, query).     |
-| **RepositoryInterface**                 | Facade combining all interfaces + lifecycle. |
+Each interface handles CRUD for a specific entity. RepositoryInterface is the facade
+that combines them all and adds lifecycle methods (initialize/close).
 
 ### Why ISP?
 
@@ -175,20 +169,6 @@ classDiagram
     ImportService --> BankAdapterFactory : uses
 ```
 
-| Service                  | Responsibilities                                                                          |
-| ------------------------ | ----------------------------------------------------------------------------------------- |
-| **ApplicationService**   | Central facade for TUI. Manages matcher cache, coordinates imports, categorization, CRUD. |
-| **ForecastService**      | Loads forecast data, computes reports, provides statistics.                               |
-| **ImportService**        | Handles bank file imports. Manages inbox folder, deduplicates operations.                 |
-| **OperationService**     | CRUD for historic operations. Filtering, category suggestions.                            |
-| **OperationLinkService** | Implements heuristic linking algorithm. Bridges matchers and repository.                  |
-
-## Infrastructure Components
-
-| Component                   | Responsibilities                                                 |
-| --------------------------- | ---------------------------------------------------------------- |
-| **SqliteRepository**        | SQLite implementation of all repository interfaces.              |
-| **BankAdapters**            | Parse bank export files (BNP Excel, Swile JSON).                 |
-| **Config**                  | YAML configuration loading and logging setup.                    |
-| **BackupService**           | Automatic database backups with rotation.                        |
-| **AccountAnalysisRenderer** | Excel export with charts (balance evolution, expense breakdown). |
+ApplicationService is the central facade for the TUI, coordinating all operations and
+caching matchers for efficient link creation. The other services handle specific
+concerns: imports, forecasts, operations CRUD, and link management.

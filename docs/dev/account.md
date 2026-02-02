@@ -59,14 +59,10 @@ classDiagram
     AccountAnalysisRenderer --> AccountAnalyzer : renders
 ```
 
-| Component                   | Responsibilities                                                               |
-| --------------------------- | ------------------------------------------------------------------------------ |
-| **PersistentAccount**       | Facade for multi-account management. Loads/saves accounts, detects duplicates. |
-| **AggregatedAccount**       | Combines multiple bank accounts into a single view.                            |
-| **Account**                 | Single bank account with balance, date, and operations.                        |
-| **AccountForecaster**       | Computes account state at any date (past or future).                           |
-| **AccountAnalyzer**         | Generates analysis reports with statistics.                                    |
-| **AccountAnalysisRenderer** | Excel export with charts.                                                      |
+PersistentAccount is the entry point for account management, handling persistence and
+duplicate detection on import. AggregatedAccount combines multiple bank accounts (e.g.,
+checking + savings) into a unified view. AccountForecaster projects balance at any date
+by combining historic operations with forecast data.
 
 ## Balance Projection
 
@@ -122,10 +118,5 @@ sequenceDiagram
     LinkService->>Repository: save links
 ```
 
-The import process:
-
-1. User selects a bank export file (BNP Excel or Swile JSON)
-2. BankAdapter auto-detects format and parses the file
-3. Operations are deduplicated against existing data
-4. New operations are saved to the repository
-5. Heuristic links are created for categorized operations
+BankAdapter auto-detects the file format (BNP Excel or Swile JSON). Operations are
+deduplicated against existing data before saving.

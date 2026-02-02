@@ -48,12 +48,9 @@ classDiagram
     OperationRangeInterface <|.. HistoricOperation
 ```
 
-| Component                   | Responsibilities                                       |
-| --------------------------- | ------------------------------------------------------ |
-| **HistoricOperation**       | A completed bank transaction.                          |
-| **PlannedOperation**        | Expected recurring or one-time operation with matcher. |
-| **Budget**                  | Allocated amount for a category over a time period.    |
-| **OperationRangeInterface** | Common interface for amount calculations.              |
+HistoricOperation represents actual bank transactions (imported). PlannedOperation and
+Budget represent expected future activity and include an OperationMatcher for automatic
+linking. All share amount_on_period() which computes the amount over any time slice.
 
 ## TimeRange Hierarchy
 
@@ -103,12 +100,9 @@ classDiagram
     PeriodicTimeRange <|-- PeriodicDailyTimeRange
 ```
 
-| Component                  | Responsibilities                                 |
-| -------------------------- | ------------------------------------------------ |
-| **TimeRange**              | Single time period with start date and duration. |
-| **DailyTimeRange**         | Single-day time range.                           |
-| **PeriodicTimeRange**      | Repeating time range with configurable period.   |
-| **PeriodicDailyTimeRange** | Daily iteration over a periodic range.           |
+PeriodicTimeRange enables recurring operations (monthly rent, weekly groceries) by
+generating iterations via iterate_over_time_ranges(). DailyTimeRange is used for
+one-time operations on a specific date.
 
 ## Linking System
 
@@ -153,10 +147,10 @@ classDiagram
     Budget "1" *-- "1" OperationMatcher
 ```
 
-| Component            | Responsibilities                                                  |
-| -------------------- | ----------------------------------------------------------------- |
-| **OperationLink**    | Associates a historic operation to a target iteration.            |
-| **OperationMatcher** | Scoring rules for matching (category, amount, date, description). |
+OperationMatcher uses configurable tolerances (amount ratio, date window) and
+description hints to score potential matches. The is_manual flag on OperationLink
+distinguishes user-created links (protected) from heuristic ones (recalculated on target
+changes).
 
 ### Key Constraint
 
