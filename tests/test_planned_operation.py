@@ -7,7 +7,11 @@ from dateutil.relativedelta import relativedelta
 from budget_forecaster.amount import Amount
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
-from budget_forecaster.time_range import DailyTimeRange, PeriodicDailyTimeRange
+from budget_forecaster.time_range import (
+    DailyTimeRange,
+    PeriodicDailyTimeRange,
+    TimeRange,
+)
 from budget_forecaster.types import Category
 
 
@@ -197,4 +201,71 @@ class TestIsolatedPlannedOperation:
             assert (
                 isolated_planned_operation.amount_on_period(date_start, date_end)
                 == expected_amount
+            )
+
+
+class TestPlannedOperationTypeErrors:
+    """Tests for TypeError when passing invalid types to PlannedOperation."""
+
+    def test_init_invalid_time_range_type(self) -> None:
+        """Test PlannedOperation raises TypeError for invalid time_range type."""
+        with pytest.raises(
+            TypeError,
+            match="time_range must be DailyTimeRange or PeriodicDailyTimeRange",
+        ):
+            PlannedOperation(
+                record_id=1,
+                description="Test",
+                amount=Amount(100.0),
+                category=Category.GROCERIES,
+                time_range=TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+            )
+
+    @pytest.fixture
+    def planned_operation(self) -> PlannedOperation:
+        """Create a planned operation for testing."""
+        return PlannedOperation(
+            record_id=1,
+            description="Test",
+            amount=Amount(100.0),
+            category=Category.GROCERIES,
+            time_range=DailyTimeRange(datetime(2023, 1, 1)),
+        )
+
+    def test_replace_invalid_record_id(
+        self, planned_operation: PlannedOperation
+    ) -> None:
+        """Test PlannedOperation.replace() raises TypeError for invalid record_id."""
+        with pytest.raises(TypeError, match="record_id must be int or None"):
+            planned_operation.replace(record_id="1")
+
+    def test_replace_invalid_description(
+        self, planned_operation: PlannedOperation
+    ) -> None:
+        """Test PlannedOperation.replace() raises TypeError for invalid description."""
+        with pytest.raises(TypeError, match="description must be str"):
+            planned_operation.replace(description=123)
+
+    def test_replace_invalid_amount(self, planned_operation: PlannedOperation) -> None:
+        """Test PlannedOperation.replace() raises TypeError for invalid amount."""
+        with pytest.raises(TypeError, match="amount must be Amount"):
+            planned_operation.replace(amount=100.0)
+
+    def test_replace_invalid_category(
+        self, planned_operation: PlannedOperation
+    ) -> None:
+        """Test PlannedOperation.replace() raises TypeError for invalid category."""
+        with pytest.raises(TypeError, match="category must be Category"):
+            planned_operation.replace(category="GROCERIES")
+
+    def test_replace_invalid_time_range(
+        self, planned_operation: PlannedOperation
+    ) -> None:
+        """Test PlannedOperation.replace() raises TypeError for invalid time_range."""
+        with pytest.raises(
+            TypeError,
+            match="time_range must be DailyTimeRange or PeriodicDailyTimeRange",
+        ):
+            planned_operation.replace(
+                time_range=TimeRange(datetime(2023, 1, 1), relativedelta(months=1))
             )
