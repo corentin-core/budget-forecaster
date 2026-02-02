@@ -50,7 +50,7 @@ classDiagram
 
 | Component                   | Responsibilities                                       |
 | --------------------------- | ------------------------------------------------------ |
-| **HistoricOperation**       | Immutable record of a completed bank transaction.      |
+| **HistoricOperation**       | A completed bank transaction.                          |
 | **PlannedOperation**        | Expected recurring or one-time operation with matcher. |
 | **Budget**                  | Allocated amount for a category over a time period.    |
 | **OperationRangeInterface** | Common interface for amount calculations.              |

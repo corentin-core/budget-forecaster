@@ -7,12 +7,12 @@ budgets, and actualizes them based on real transactions.
 
 | Component              | Responsibilities                                                                             |
 | ---------------------- | -------------------------------------------------------------------------------------------- |
-| **Forecast**           | Immutable container (NamedTuple) for planned operations and budgets.                         |
+| **Forecast**           | Container for planned operations and budgets.                                                |
 | **ForecastActualizer** | Updates forecast based on links. Handles late iterations, postponements, budget consumption. |
 
 ## Forecast Structure
 
-A Forecast is an immutable container holding:
+A Forecast holds:
 
 - **Planned operations**: Expected recurring or one-time transactions
 - **Budgets**: Allocated amounts for categories over time periods
