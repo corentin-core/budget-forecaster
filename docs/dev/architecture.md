@@ -405,16 +405,12 @@ classDiagram
 
     class SqliteRepository
 
-    RepositoryInterface <|-- BudgetRepositoryInterface
-    RepositoryInterface <|-- PlannedOperationRepositoryInterface
-    RepositoryInterface <|-- AccountRepositoryInterface
-    RepositoryInterface <|-- OperationRepositoryInterface
-    RepositoryInterface <|-- OperationLinkRepositoryInterface
-    BudgetRepositoryInterface <|.. SqliteRepository
-    PlannedOperationRepositoryInterface <|.. SqliteRepository
-    AccountRepositoryInterface <|.. SqliteRepository
-    OperationRepositoryInterface <|.. SqliteRepository
-    OperationLinkRepositoryInterface <|.. SqliteRepository
+    RepositoryInterface --|> BudgetRepositoryInterface
+    RepositoryInterface --|> PlannedOperationRepositoryInterface
+    RepositoryInterface --|> AccountRepositoryInterface
+    RepositoryInterface --|> OperationRepositoryInterface
+    RepositoryInterface --|> OperationLinkRepositoryInterface
+    RepositoryInterface <|.. SqliteRepository
 ```
 
 ## Data Flows
