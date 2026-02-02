@@ -49,3 +49,39 @@ sequenceDiagram
     AccountAnalyzer->>AccountForecaster: project balance
     AccountAnalyzer-->>TUI: AccountAnalysisReport
 ```
+
+## Examples
+
+### Planned Operation Actualization
+
+```mermaid
+timeline
+    title Monthly Rent (1st of month)
+    section January
+        Jan 1 : Iteration expected
+        Jan 3 : Bank operation received
+        Jan 3 : Link created → Iteration actualized
+        Jan 25 : February rent paid early
+        Jan 25 : Link to Feb iteration → Also actualized
+    section February
+        Feb 1 : Iteration already actualized
+        Feb 1 : Skipped in forecast
+    section March
+        Mar 1 : Future iteration
+        Mar 1 : Shown in forecast
+```
+
+### Budget Consumption
+
+```mermaid
+timeline
+    title Groceries Budget (500€/month)
+    section Week 1
+        Mon : Supermarket -80€ → linked
+        Wed : Market -25€ → linked
+    section Week 2
+        Sat : Supermarket -95€ → linked
+        : Remaining: 500 - 200 = 300€
+    section Week 3
+        : Forecast shows 300€ remaining
+```

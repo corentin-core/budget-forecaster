@@ -64,6 +64,62 @@ Services can depend on only the interface they need:
 
 This reduces coupling and makes testing easier.
 
+## Database Schema
+
+```mermaid
+erDiagram
+    operations {
+        int unique_id PK
+        int account_id FK
+        text description
+        text category
+        timestamp date
+        real amount
+        text currency
+    }
+
+    planned_operations {
+        int id PK
+        text description
+        real amount
+        text currency
+        text category
+        timestamp start_date
+        int period_value
+        text period_unit
+        timestamp end_date
+        text description_hints
+        int approximation_date_days
+        real approximation_amount_ratio
+    }
+
+    budgets {
+        int id PK
+        text description
+        real amount
+        text currency
+        text category
+        timestamp start_date
+        int period_value
+        text period_unit
+        timestamp end_date
+    }
+
+    operation_links {
+        int id PK
+        int operation_unique_id FK,UK
+        text target_type
+        int target_id
+        timestamp iteration_date
+        bool is_manual
+        timestamp created_at
+    }
+
+    operations ||--o| operation_links : "has (0..1)"
+    planned_operations ||--o{ operation_links : "targeted by"
+    budgets ||--o{ operation_links : "targeted by"
+```
+
 ## Service Layer
 
 Services orchestrate business logic and coordinate between domain objects.

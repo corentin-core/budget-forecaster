@@ -195,8 +195,23 @@ sequenceDiagram
     AppService->>LinkService: create new heuristic links
 ```
 
-When a user categorizes an operation:
+## Link Lifecycle
 
-1. The operation's category is updated
-2. Any existing heuristic links are removed (category may have changed)
-3. New heuristic links are computed based on the new category
+```mermaid
+stateDiagram-v2
+    [*] --> Unlinked: Operation imported
+
+    Unlinked --> AutoLinked: Heuristic match found
+    Unlinked --> ManualLinked: User creates link
+
+    AutoLinked --> Unlinked: Target edited (no match)
+    AutoLinked --> AutoLinked: Target edited (still matches)
+    AutoLinked --> ManualLinked: User creates manual link
+    AutoLinked --> Unlinked: User deletes link
+
+    ManualLinked --> Unlinked: User deletes link
+    ManualLinked --> ManualLinked: Target edited (preserved)
+
+    note right of AutoLinked: is_manual = false
+    note right of ManualLinked: is_manual = true
+```
