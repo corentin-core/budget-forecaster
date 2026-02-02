@@ -208,7 +208,10 @@ class ForecastService:
             self.load_forecast()
 
         # After load_forecast(), _forecast is guaranteed to be set
-        assert self._forecast is not None
+        if self._forecast is None:
+            raise RuntimeError(
+                "_forecast is None after load_forecast() - this should never happen"
+            )
 
         if start_date is None:
             start_date = date.today() - relativedelta(months=4)
