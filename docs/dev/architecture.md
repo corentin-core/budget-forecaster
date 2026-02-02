@@ -218,6 +218,161 @@ classDiagram
     Budget "1" *-- "1" OperationMatcher
 ```
 
+### TimeRange Hierarchy
+
+```mermaid
+classDiagram
+    class TimeRangeInterface {
+        <<interface>>
+        +initial_date
+        +last_date
+        +duration
+        +total_duration
+        +is_expired()
+        +is_future()
+        +is_within()
+        +iterate_over_time_ranges()
+        +current_time_range()
+        +replace()
+    }
+
+    class TimeRange {
+        -initial_date
+        -duration
+    }
+
+    class DailyTimeRange {
+        +iterate_over_time_ranges()
+    }
+
+    class PeriodicTimeRange {
+        -period
+        -end_date
+        +iterate_over_time_ranges()
+        +current_time_range()
+        +next_time_range()
+        +last_time_range()
+    }
+
+    class PeriodicDailyTimeRange {
+        +iterate_over_time_ranges()
+    }
+
+    TimeRangeInterface <|.. TimeRange
+    TimeRange <|-- DailyTimeRange
+    TimeRange <|-- PeriodicTimeRange
+    PeriodicTimeRange <|-- PeriodicDailyTimeRange
+```
+
+### Account Components
+
+```mermaid
+classDiagram
+    class PersistentAccount {
+        -repository
+        -aggregated_account
+        +save()
+        +load()
+        +upsert_account()
+        +replace_account()
+    }
+
+    class AggregatedAccount {
+        -accounts
+        -aggregated_account
+        +account()
+        +accounts()
+        +update_account()
+        +upsert_account()
+    }
+
+    class AccountForecaster {
+        -account
+        -forecast
+        +__call__(target_date)
+    }
+
+    class AccountAnalyzer {
+        -account
+        -forecast
+        -operation_links
+        +compute_report()
+        +compute_forecast()
+        +compute_balance_evolution_per_day()
+        +compute_budget_statistics()
+    }
+
+    class AccountAnalysisRenderer {
+        +render_to_excel()
+    }
+
+    class Account {
+        +balance
+        +balance_date
+        +currency
+        +operations
+    }
+
+    PersistentAccount "1" *-- "1" AggregatedAccount
+    PersistentAccount --> SqliteRepository : uses
+    AggregatedAccount "1" *-- "*" Account
+    AccountAnalyzer --> AccountForecaster : uses
+    AccountAnalysisRenderer --> AccountAnalyzer : renders
+```
+
+### Service Layer
+
+```mermaid
+classDiagram
+    class ApplicationService {
+        -persistent_account
+        -import_service
+        -operation_service
+        -forecast_service
+        -operation_link_service
+        +import_file()
+        +categorize_operations()
+        +compute_report()
+    }
+
+    class ForecastService {
+        -account
+        -repository
+        +load_forecast()
+        +compute_report()
+        +get_monthly_summary()
+    }
+
+    class ImportService {
+        -persistent_account
+        -bank_adapter_factory
+        +import_file()
+        +import_from_inbox()
+    }
+
+    class OperationService {
+        -account_manager
+        +get_operations()
+        +categorize_operation()
+        +suggest_category()
+    }
+
+    class OperationLinkService {
+        -repository
+        +get_all_links()
+        +create_heuristic_links()
+        +delete_link()
+    }
+
+    ApplicationService "1" *-- "1" ForecastService
+    ApplicationService "1" *-- "1" ImportService
+    ApplicationService "1" *-- "1" OperationService
+    ApplicationService "1" *-- "1" OperationLinkService
+    ForecastService --> AccountAnalyzer : uses
+    ForecastService --> ForecastActualizer : uses
+    ImportService --> BankAdapterFactory : uses
+```
+
 ### Repository Interfaces (ISP)
 
 ```mermaid
