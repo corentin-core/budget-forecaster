@@ -71,9 +71,24 @@ graph TB
     CFG --> BK
 ```
 
+Budget Forecaster is a personal finance application that imports bank statements,
+categorizes transactions, and generates balance forecasts.
+
+The **Presentation** layer provides user interfaces: a Terminal UI for interactive use
+and a CLI for scripted operations. Both delegate to **Services**, which orchestrate
+business logic without containing domain knowledge.
+
+The **Domain** layer holds the core model: accounts with their operations, planned
+operations and budgets for forecasting, and the linking system that connects actual
+transactions to their planned counterparts. Primitives (Amount, TimeRange, Category)
+provide the foundational types.
+
+The **Infrastructure** layer handles external concerns: SQLite persistence, bank file
+parsing (BNP, Swile), configuration, and exports.
+
 ## Key Invariants
 
-- An operation cannot be linked to multiple targets
+- An operation can be linked to at most one planned operation or budget iteration
 - Manual links are never overwritten by heuristic matching
 - Balance projection is deterministic given the same inputs
 
