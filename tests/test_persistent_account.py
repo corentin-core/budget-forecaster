@@ -76,6 +76,32 @@ def sample_account(sample_operations: tuple[HistoricOperation, ...]) -> Account:
     )
 
 
+class TestContextManager:
+    """Tests for the SqliteRepository context manager support."""
+
+    def test_enter_initializes_repository(self, temp_db_path: Path) -> None:
+        """Test that __enter__ calls initialize()."""
+        repo = SqliteRepository(temp_db_path)
+        assert repo._connection is None
+        with repo:
+            assert repo._connection is not None
+
+    def test_exit_closes_connection(self, temp_db_path: Path) -> None:
+        """Test that __exit__ calls close()."""
+        repo = SqliteRepository(temp_db_path)
+        with repo:
+            assert repo._connection is not None
+        assert repo._connection is None
+
+    def test_exit_closes_on_exception(self, temp_db_path: Path) -> None:
+        """Test that connection is closed even when an exception occurs."""
+        repo = SqliteRepository(temp_db_path)
+        with pytest.raises(ValueError):
+            with repo:
+                raise ValueError("test error")
+        assert repo._connection is None
+
+
 class TestSqliteRepository:  # pylint: disable=protected-access
     """Tests for the SqliteRepository class."""
 
