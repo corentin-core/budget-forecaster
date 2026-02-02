@@ -39,29 +39,38 @@ def get_operations(self) -> tuple[Operation, ...]:
 
 **Rule**: ALWAYS use `tuple[T, ...]` instead of `list[T]` for function return values.
 
-## NamedTuple vs dataclass
+## NamedTuple vs frozen dataclass
 
-**Why**: NamedTuple is immutable and lighter. Use dataclass only when you need
-mutability or methods.
+**NamedTuple** inherits from `tuple`, which provides unpacking and indexing but also
+brings `__add__` (concatenation) and `__mul__` (repetition) methods that conflict with
+custom arithmetic operators.
 
-| Use case                          | Choice     |
-| --------------------------------- | ---------- |
-| Immutable data, no methods        | NamedTuple |
-| Needs methods (e.g., `matches()`) | dataclass  |
-| Needs default mutable values      | dataclass  |
+| Use case                                | Choice                    |
+| --------------------------------------- | ------------------------- |
+| Pure data, no methods                   | NamedTuple                |
+| Need unpacking `a, b = obj`             | NamedTuple                |
+| Need indexing `obj[0]`                  | NamedTuple                |
+| Custom operators (`__add__`, `__mul__`) | `@dataclass(frozen=True)` |
+| Complex default values                  | `@dataclass(frozen=True)` |
 
 ```python
-# BAD - dataclass for simple immutable data
-@dataclass
-class UpdateResult:
-    operation: HistoricOperation
-    category_changed: bool
-
-# GOOD - NamedTuple for immutable data without methods
+# GOOD - NamedTuple for pure data records
 class UpdateResult(NamedTuple):
     operation: HistoricOperation
     category_changed: bool
+
+# GOOD - frozen dataclass for domain objects with arithmetic
+@dataclass(frozen=True)
+class Amount:
+    value: float
+    currency: str
+
+    def __add__(self, other: "Amount") -> "Amount":  # No conflict with tuple
+        ...
 ```
+
+**Rule**: Use `NamedTuple` for simple records. Use `@dataclass(frozen=True)` when you
+need custom methods, especially arithmetic operators.
 
 ## Domain objects over primitives
 
