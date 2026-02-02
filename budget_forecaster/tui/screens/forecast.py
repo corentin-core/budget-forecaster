@@ -429,8 +429,8 @@ class ForecastWidget(Vertical):
         output_path = Path(f"forecast-{date.today().isoformat()}.xlsx")
 
         try:
-            renderer = AccountAnalysisRendererExcel(output_path)
-            renderer.render_report(report)
+            with AccountAnalysisRendererExcel(output_path) as renderer:
+                renderer.render_report(report)
             logger.info("Exported forecast to %s", output_path)
             self.app.notify(f"Exporté vers {output_path}")
         except Exception as e:  # pylint: disable=broad-except

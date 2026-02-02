@@ -1,10 +1,11 @@
 """Module to render account analysis data."""
+from __future__ import annotations
+
 import abc
-import pathlib
-import shutil
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from types import TracebackType
 
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -12,35 +13,83 @@ from matplotlib import pyplot as plt
 from budget_forecaster.account.account_analysis_report import AccountAnalysisReport
 
 
-class AccountAnalysisRenderer(abc.ABC):  # pylint: disable=too-few-public-methods
+class AccountAnalysisRenderer(abc.ABC):
     """
-    A class to render account analysis data.
+    Abstract base class for account analysis renderers.
+
+    Must be used as a context manager.
     """
 
     @abc.abstractmethod
+    def __enter__(self) -> AccountAnalysisRenderer:
+        """Enter context manager and initialize resources."""
+
+    @abc.abstractmethod
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        """Exit context manager and cleanup resources."""
+
+    @abc.abstractmethod
     def render_report(self, report: AccountAnalysisReport) -> None:
-        """
-        Render an account analysis report.
-        """
+        """Render an account analysis report."""
 
 
 class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
     """
     Exports account analysis data to an Excel file.
+
+    Must be used as a context manager:
+        with AccountAnalysisRendererExcel(path) as renderer:
+            renderer.render_report(report)
     """
 
     def __init__(self, path: Path) -> None:
-        self.__writer = pd.ExcelWriter(
-            path,
+        self._path = path
+        self._writer: pd.ExcelWriter | None = None
+        self._money_format: object = None
+        self._temp_dir: tempfile.TemporaryDirectory[str] | None = None
+
+    @property
+    def _active_writer(self) -> pd.ExcelWriter:
+        """Return the writer, raising if not in context manager."""
+        if self._writer is None:
+            raise RuntimeError("Renderer must be used as a context manager")
+        return self._writer
+
+    @property
+    def _active_temp_dir(self) -> Path:
+        """Return the temp directory path, raising if not in context manager."""
+        if self._temp_dir is None:
+            raise RuntimeError("Renderer must be used as a context manager")
+        return Path(self._temp_dir.name)
+
+    def __enter__(self) -> AccountAnalysisRendererExcel:
+        self._temp_dir = tempfile.TemporaryDirectory(prefix="budget_forecaster_")
+        self._writer = pd.ExcelWriter(
+            self._path,
             engine="xlsxwriter",
             datetime_format="mmm yy",
             date_format="dd/mm/yyyy",
         )
-        workbook = self.__writer.book
+        workbook = self._writer.book
         money_fmt = {"num_format": "#,##0.00 €"}
-        self.__money_format = workbook.add_format(money_fmt)  # type: ignore[union-attr]
-        self.__saved_plots: list[pathlib.Path] = []
-        self.__temp_dir = Path(tempfile.mkdtemp(prefix="budget_forecaster_"))
+        self._money_format = workbook.add_format(money_fmt)  # type: ignore[union-attr]
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
+        if self._writer is not None:
+            self._writer.close()
+        if self._temp_dir is not None:
+            self._temp_dir.cleanup()
 
     def render_report(self, report: AccountAnalysisReport) -> None:
         self.__add_balance_evolution(
@@ -50,7 +99,6 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         self.__add_expenses_statistics(report.budget_statistics)
         self.__add_operations(report.operations)
         self.__add_forecast(report.forecast)
-        self.__do_export()
 
     def __add_operations(self, operations: pd.DataFrame) -> None:
         sheet_name = "Opérations"
@@ -64,13 +112,13 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         operations_reformatted = operations_reformatted.sort_index(ascending=False)
 
         operations_reformatted.to_excel(
-            self.__writer, sheet_name=sheet_name, index=True
+            self._active_writer, sheet_name=sheet_name, index=True
         )
-        worksheet = self.__writer.sheets[sheet_name]
+        worksheet = self._active_writer.sheets[sheet_name]
         worksheet.autofit()
         worksheet.set_column(0, 0, 20)
         worksheet.set_column(2, 2, 100)
-        worksheet.set_column(3, 3, 12, self.__money_format)
+        worksheet.set_column(3, 3, 12, self._money_format)
         worksheet.autofilter("A1:D1")
         worksheet.freeze_panes(1, 0)
 
@@ -85,11 +133,13 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
             lambda x: x.date() if not pd.isnull(x) else x
         )
 
-        forecast_reformatted.to_excel(self.__writer, sheet_name=sheet_name, index=True)
-        worksheet = self.__writer.sheets[sheet_name]
+        forecast_reformatted.to_excel(
+            self._active_writer, sheet_name=sheet_name, index=True
+        )
+        worksheet = self._active_writer.sheets[sheet_name]
         worksheet.autofit()
         worksheet.set_column(2, 5, 20)
-        worksheet.set_column(2, 2, 20, self.__money_format)
+        worksheet.set_column(2, 2, 20, self._money_format)
         worksheet.autofilter("A1:F1")
         worksheet.freeze_panes(1, 0)
 
@@ -132,7 +182,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
 
     def plot_balance_evolution(
         self, balance_date: datetime, balance_evolution: pd.DataFrame
-    ) -> pathlib.Path:
+    ) -> Path:
         """
         Plot the balance evolution with a safe margin.
         Return the path of the saved plot.
@@ -149,7 +199,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         plt.legend(["Solde", "Marge"])
         plt.grid()
         plt.title("Evolution du solde du compte")
-        saved_path = self.__temp_dir / "balance_evolution.png"
+        saved_path = self._active_temp_dir / "balance_evolution.png"
         plt.savefig(saved_path)
         return saved_path
 
@@ -162,11 +212,11 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
             balance_date, balance_evolution
         )
         balance_evolution_per_month.to_excel(
-            self.__writer, sheet_name=sheet_name, index=True
+            self._active_writer, sheet_name=sheet_name, index=True
         )
-        worksheet = self.__writer.sheets[sheet_name]
+        worksheet = self._active_writer.sheets[sheet_name]
         worksheet.autofit()
-        worksheet.set_column(1, 3, 12, self.__money_format)
+        worksheet.set_column(1, 3, 12, self._money_format)
 
         # add conditional formatting
         last_row = len(balance_evolution_per_month) + 1
@@ -184,16 +234,17 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
 
         plot_path = self.plot_balance_evolution(balance_date, balance_evolution)
         worksheet.insert_image("F1", plot_path)
-        self.__saved_plots.append(plot_path)
 
     def __add_expenses_forecast(self, expenses_forecast: pd.DataFrame) -> None:
         sheet_name = "Prévisions des dépenses"
 
         expenses_forecast = expenses_forecast.mask(expenses_forecast.eq(0))
-        expenses_forecast.to_excel(self.__writer, sheet_name=sheet_name, index=True)
-        worksheet = self.__writer.sheets[sheet_name]
+        expenses_forecast.to_excel(
+            self._active_writer, sheet_name=sheet_name, index=True
+        )
+        worksheet = self._active_writer.sheets[sheet_name]
         worksheet.autofit()
-        worksheet.set_column(1, 21, 12, self.__money_format)
+        worksheet.set_column(1, 21, 12, self._money_format)
 
         # compare "Prévu" and "Réel" columns
         # and highlight the cells where the "Réel" value is lower than the "Prévu" value
@@ -213,7 +264,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
                 {
                     "type": "formula",
                     "criteria": f"={real_column_letter}2<{forecast_column_letter}2",
-                    "format": self.__writer.book.add_format(  # type: ignore[union-attr]
+                    "format": self._active_writer.book.add_format(  # type: ignore[union-attr]
                         {"bg_color": "red"}
                     ),
                 },
@@ -225,10 +276,12 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         sheet_name = "Statistiques des dépenses"
 
         expenses_statistics = expenses_statistics.sort_index()
-        expenses_statistics.to_excel(self.__writer, sheet_name=sheet_name, index=True)
-        worksheet = self.__writer.sheets[sheet_name]
+        expenses_statistics.to_excel(
+            self._active_writer, sheet_name=sheet_name, index=True
+        )
+        worksheet = self._active_writer.sheets[sheet_name]
         worksheet.autofit()
-        worksheet.set_column(1, 2, 25, self.__money_format)
+        worksheet.set_column(1, 2, 25, self._money_format)
 
         # create a pie plot for the total expenses
         # filter only negative values corresponding to expenses and get their absolute value
@@ -240,12 +293,6 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
             autopct="%1.1f%%",
         )
         plt.title("Répartition des dépenses")
-        plot_path = self.__temp_dir / "expenses_pie.png"
+        plot_path = self._active_temp_dir / "expenses_pie.png"
         plt.savefig(plot_path)
         worksheet.insert_image("E1", plot_path)
-        self.__saved_plots.append(plot_path)
-
-    def __do_export(self) -> None:
-        self.__writer.close()
-        shutil.rmtree(self.__temp_dir)
-        self.__saved_plots = []
