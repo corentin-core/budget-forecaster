@@ -165,18 +165,23 @@ This is enforced at the repository level.
 
 ## Heuristic Link Matching
 
-When an operation is imported or categorized, the system attempts to link it to a
-planned operation or budget:
+```mermaid
+flowchart TD
+    START[Operation imported/categorized] --> CHECK{Already manually linked?}
+    CHECK -->|Yes| SKIP[Skip - preserve manual link]
+    CHECK -->|No| FILTER[Filter candidates by category]
+    FILTER --> SCORE[Score each candidate]
 
-1. **Filter candidates** by category match
-2. **Score each candidate** based on:
-   - Amount proximity (within tolerance ratio)
-   - Date proximity (within tolerance days)
-   - Description hint matches (substring matching)
-3. **Select best match** if score exceeds threshold
-4. **Determine iteration date** from the planned operation's time range
+    subgraph Scoring
+        SCORE --> S1[Amount proximity]
+        SCORE --> S2[Date proximity]
+        SCORE --> S3[Description hints]
+    end
 
-Manual links (user-created) are never overwritten by heuristic matching.
+    S1 & S2 & S3 --> BEST{Best score > threshold?}
+    BEST -->|No| UNLINKED[No link created]
+    BEST -->|Yes| LINK[Create link with iteration date]
+```
 
 ## Categorization Flow
 
