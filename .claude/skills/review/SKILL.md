@@ -60,18 +60,44 @@ git diff main...HEAD
 # Check CI status
 gh pr checks <number>
 
-# Get coverage report from CI artifacts or check annotations
-gh api repos/{owner}/{repo}/actions/runs --jq '.workflow_runs[0].id' | head -1
-# Then check the workflow run for coverage details
+# Get coverage comment from PR (posted by python-coverage-comment-action)
+gh api repos/{owner}/{repo}/issues/<number>/comments \
+  --jq '.[] | select(.body | contains("Coverage report")) | .body'
 ```
 
-Verify:
+#### CI Checks
 
-- All CI checks pass (tests, linting, type checking)
-- Coverage doesn't decrease (check coverage report/badge)
-- No new untested code paths flagged
+- All checks must pass (tests, linting, type checking)
+- If CI is still running, wait for results
 
-If CI is still running, wait for it or check the most recent results.
+#### Coverage Analysis (CRITICAL)
+
+**Don't just look at percentages** - analyze the "Lines missing" column in the coverage
+report.
+
+For each file modified by the PR, check:
+
+1. **New statements coverage** - What percentage of NEW code is covered?
+2. **Lines missing** - Which specific lines are NOT tested?
+3. **Are missing lines acceptable?** Examples:
+   - Error handlers that are hard to trigger → often acceptable
+   - Core business logic → NOT acceptable, request tests
+   - TUI event handlers → depends on existing patterns
+
+**Red flags to catch:**
+
+- New feature code with 0% coverage
+- Critical paths (data mutation, external calls) without tests
+- Complex conditionals where only one branch is tested
+
+**Example analysis:**
+
+```
+app.py: 15% (7/44 new statements covered)
+  Lines missing: 639-640, 646-656, 665-684...
+  → These are the split event handlers - NO tests for the TUI integration!
+  → Flag this: "The split button handlers in app.py have no test coverage"
+```
 
 ### Step 4: Review the changes
 
@@ -154,8 +180,11 @@ For features involving periodic time ranges or recursive structures, verify test
 Runtime bug or incorrect logic?
   -> Changes requested
 
-Missing tests for new feature?
-  -> Changes requested
+Missing tests for new feature code?
+  -> Changes requested (check "Lines missing" in coverage report!)
+
+New code paths with 0% coverage?
+  -> Changes requested (unless justified pattern like existing TUI code)
 
 Implementation doesn't match requirements?
   -> Changes requested
@@ -163,6 +192,13 @@ Implementation doesn't match requirements?
 Only minor suggestions?
   -> Approve (with comments)
 ```
+
+**Coverage verdict rules:**
+
+- Domain/business logic not covered → **Changes requested**
+- Service layer not covered → **Changes requested**
+- TUI glue code not covered → Check existing pattern. If similar code is already
+  untested, note it but don't block. If it's a regression, request changes.
 
 ### Step 6: Post inline comments
 
@@ -243,6 +279,10 @@ gh pr review <number> --comment --body "..."
 - "Consider using a dataclass here for clarity"
 - "These tests are useless - they test Python's StrEnum/NamedTuple behavior, not your
   code"
+- "Lines 639-684 in app.py (split event handlers) have 0% test coverage. Please add
+  integration tests for the button→modal→service flow."
+- "application_service.py:647 - this error path is not covered. Add a test for the 'not
+  found' case."
 
 ## Avoid
 
