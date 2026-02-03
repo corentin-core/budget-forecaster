@@ -1,3 +1,10 @@
+---
+name: refactor-check
+description:
+  Analyze code for refactoring opportunities, encapsulation issues, and test quality
+  problems
+---
+
 # Refactor Check
 
 Analyze code for refactoring opportunities: encapsulation issues, missing validations,

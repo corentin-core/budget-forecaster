@@ -1,3 +1,9 @@
+---
+name: review
+description:
+  Review a GitHub pull request for code quality, correctness, and test coverage
+---
+
 # Review Pull Request
 
 Review a GitHub pull request for code quality, correctness, and test coverage.
