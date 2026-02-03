@@ -234,7 +234,7 @@ class SqliteRepository(RepositoryInterface):
 
     # Account methods
 
-    def get_all_accounts(self) -> list[Account]:
+    def get_all_accounts(self) -> tuple[Account, ...]:
         """Get all accounts with their operations."""
         conn = self._get_connection()
         cursor = conn.execute(
@@ -252,7 +252,7 @@ class SqliteRepository(RepositoryInterface):
                     operations=tuple(operations),
                 )
             )
-        return accounts
+        return tuple(accounts)
 
     def get_account_by_name(self, name: str) -> Account | None:
         """Get an account by name."""
@@ -396,7 +396,7 @@ class SqliteRepository(RepositoryInterface):
 
     # Budget methods
 
-    def get_all_budgets(self) -> list[Budget]:
+    def get_all_budgets(self) -> tuple[Budget, ...]:
         """Get all budgets."""
         conn = self._get_connection()
         cursor = conn.execute(
@@ -404,7 +404,7 @@ class SqliteRepository(RepositoryInterface):
                duration_value, duration_unit, period_value, period_unit, end_date
                FROM budgets ORDER BY start_date"""
         )
-        return [self._row_to_budget(row) for row in cursor.fetchall()]
+        return tuple(self._row_to_budget(row) for row in cursor.fetchall())
 
     def get_budget_by_id(self, budget_id: int) -> Budget | None:
         """Get a budget by id."""
@@ -500,7 +500,7 @@ class SqliteRepository(RepositoryInterface):
 
     # Planned Operation methods
 
-    def get_all_planned_operations(self) -> list[PlannedOperation]:
+    def get_all_planned_operations(self) -> tuple[PlannedOperation, ...]:
         """Get all planned operations."""
         conn = self._get_connection()
         cursor = conn.execute(
@@ -509,7 +509,7 @@ class SqliteRepository(RepositoryInterface):
                approximation_date_days, approximation_amount_ratio
                FROM planned_operations ORDER BY start_date"""
         )
-        return [self._row_to_planned_operation(row) for row in cursor.fetchall()]
+        return tuple(self._row_to_planned_operation(row) for row in cursor.fetchall())
 
     def get_planned_operation_by_id(self, op_id: int) -> PlannedOperation | None:
         """Get a planned operation by id."""

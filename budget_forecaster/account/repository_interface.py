@@ -20,7 +20,7 @@ class BudgetRepositoryInterface(ABC):
     """Interface for Budget persistence operations."""
 
     @abstractmethod
-    def get_all_budgets(self) -> list[Budget]:
+    def get_all_budgets(self) -> tuple[Budget, ...]:
         """Get all budgets.
 
         Returns:
@@ -62,7 +62,7 @@ class PlannedOperationRepositoryInterface(ABC):
     """Interface for PlannedOperation persistence operations."""
 
     @abstractmethod
-    def get_all_planned_operations(self) -> list[PlannedOperation]:
+    def get_all_planned_operations(self) -> tuple[PlannedOperation, ...]:
         """Get all planned operations.
 
         Returns:
@@ -120,7 +120,7 @@ class AccountRepositoryInterface(ABC):
         """
 
     @abstractmethod
-    def get_all_accounts(self) -> list[Account]:
+    def get_all_accounts(self) -> tuple[Account, ...]:
         """Get all accounts with their operations.
 
         Returns:
