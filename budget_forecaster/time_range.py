@@ -277,21 +277,20 @@ class PeriodicTimeRange(TimeRangeInterface):
         self, from_date: datetime | None = None
     ) -> Iterator[TimeRangeInterface]:
         """Iterate over the time ranges."""
-        # find the closest time range to start just before the from_date
-        starting_date = self.initial_date
+        start = 0
         if from_date is not None:
-            while starting_date + self._period < from_date:
-                starting_date += self._period
+            while self.initial_date + (start + 1) * self._period < from_date:
+                start += 1
 
-        current_time_range = self.__initial_time_range.replace(
-            initial_date=starting_date
-        )
-        while current_time_range.last_date <= self.last_date:
-            yield current_time_range
-            next_date = current_time_range.initial_date + self._period
-            current_time_range = self.__initial_time_range.replace(
-                initial_date=next_date
+        time_ranges = (
+            self.__initial_time_range.replace(
+                initial_date=self.initial_date + n * self._period
             )
+            for n in itertools.count(start)
+        )
+        return itertools.takewhile(
+            lambda tr: tr.last_date <= self.last_date, time_ranges
+        )
 
     def current_time_range(
         self,
