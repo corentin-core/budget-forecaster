@@ -133,7 +133,10 @@ class AccountAnalyzer:
         self, start_date: datetime, end_date: datetime
     ) -> pd.DataFrame:
         """Compute the balance of the account between two dates."""
-        assert start_date <= end_date
+        if start_date > end_date:
+            raise ValueError(
+                f"start_date must be <= end_date, got {start_date} > {end_date}"
+            )
 
         actualized_forecast = ForecastActualizer(
             self.__account, self.__operation_links

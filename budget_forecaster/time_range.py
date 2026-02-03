@@ -168,9 +168,13 @@ class TimeRange(TimeRangeInterface):
 
     def replace(self, **kwargs: Any) -> "TimeRange":
         new_initial_date = kwargs.get("initial_date", self.initial_date)
-        assert isinstance(new_initial_date, datetime)
+        if not isinstance(new_initial_date, datetime):
+            raise TypeError(
+                f"initial_date must be datetime, got {type(new_initial_date)}"
+            )
         new_duration = kwargs.get("duration", self.__duration)
-        assert isinstance(new_duration, relativedelta)
+        if not isinstance(new_duration, relativedelta):
+            raise TypeError(f"duration must be relativedelta, got {type(new_duration)}")
         return TimeRange(
             initial_date=new_initial_date,
             duration=new_duration,
@@ -204,7 +208,10 @@ class DailyTimeRange(TimeRange):
 
     def replace(self, **kwargs: Any) -> "DailyTimeRange":
         new_initial_date = kwargs.get("initial_date", self.initial_date)
-        assert isinstance(new_initial_date, datetime)
+        if not isinstance(new_initial_date, datetime):
+            raise TypeError(
+                f"initial_date must be datetime, got {type(new_initial_date)}"
+            )
         return DailyTimeRange(
             date=new_initial_date,
         )
@@ -320,9 +327,13 @@ class PeriodicTimeRange(TimeRangeInterface):
 
     def replace(self, **kwargs: Any) -> "PeriodicTimeRange":
         new_period = kwargs.get("period", self._period)
-        assert isinstance(new_period, relativedelta)
+        if not isinstance(new_period, relativedelta):
+            raise TypeError(f"period must be relativedelta, got {type(new_period)}")
         new_expiration_date = kwargs.get("expiration_date", self._expiration_date)
-        assert isinstance(new_expiration_date, datetime)
+        if not isinstance(new_expiration_date, datetime):
+            raise TypeError(
+                f"expiration_date must be datetime, got {type(new_expiration_date)}"
+            )
         return PeriodicTimeRange(
             initial_time_range=self.__initial_time_range.replace(**kwargs),
             period=new_period,
@@ -369,11 +380,18 @@ class PeriodicDailyTimeRange(PeriodicTimeRange):
 
     def replace(self, **kwargs: Any) -> "PeriodicDailyTimeRange":
         new_initial_date = kwargs.get("initial_date", self.initial_date)
-        assert isinstance(new_initial_date, datetime)
+        if not isinstance(new_initial_date, datetime):
+            raise TypeError(
+                f"initial_date must be datetime, got {type(new_initial_date)}"
+            )
         new_period = kwargs.get("period", self._period)
-        assert isinstance(new_period, relativedelta)
+        if not isinstance(new_period, relativedelta):
+            raise TypeError(f"period must be relativedelta, got {type(new_period)}")
         new_expiration_date = kwargs.get("expiration_date", self._expiration_date)
-        assert isinstance(new_expiration_date, datetime)
+        if not isinstance(new_expiration_date, datetime):
+            raise TypeError(
+                f"expiration_date must be datetime, got {type(new_expiration_date)}"
+            )
         return PeriodicDailyTimeRange(
             initial_date=new_initial_date,
             period=new_period,

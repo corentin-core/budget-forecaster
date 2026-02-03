@@ -156,3 +156,43 @@ class TestIsolatedBudget:
             assert amount == pytest.approx(
                 expected_amount
             ), f"Expected {expected_amount} but got {amount} on period {date_start} - {date_end}"
+
+
+class TestBudgetReplaceTypeErrors:
+    """Tests for TypeError when passing invalid types to Budget.replace()."""
+
+    @pytest.fixture
+    def budget(self) -> Budget:
+        """Create a budget for testing."""
+        return Budget(
+            record_id=1,
+            description="Test Budget",
+            amount=Amount(-100.0),
+            category=Category.GROCERIES,
+            time_range=TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+        )
+
+    def test_replace_invalid_record_id(self, budget: Budget) -> None:
+        """Test Budget.replace() raises TypeError for invalid record_id."""
+        with pytest.raises(TypeError, match="record_id must be int or None"):
+            budget.replace(record_id="1")
+
+    def test_replace_invalid_description(self, budget: Budget) -> None:
+        """Test Budget.replace() raises TypeError for invalid description."""
+        with pytest.raises(TypeError, match="description must be str"):
+            budget.replace(description=123)
+
+    def test_replace_invalid_amount(self, budget: Budget) -> None:
+        """Test Budget.replace() raises TypeError for invalid amount."""
+        with pytest.raises(TypeError, match="amount must be Amount"):
+            budget.replace(amount=-100.0)
+
+    def test_replace_invalid_category(self, budget: Budget) -> None:
+        """Test Budget.replace() raises TypeError for invalid category."""
+        with pytest.raises(TypeError, match="category must be Category"):
+            budget.replace(category="GROCERIES")
+
+    def test_replace_invalid_time_range(self, budget: Budget) -> None:
+        """Test Budget.replace() raises TypeError for invalid time_range."""
+        with pytest.raises(TypeError, match="time_range must be TimeRangeInterface"):
+            budget.replace(time_range="2023-01-01")

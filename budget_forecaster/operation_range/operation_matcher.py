@@ -287,7 +287,10 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         the existing links reference iterations of the old operation range.
         """
         new_operation_range = kwargs.get("operation_range", self.operation_range)
-        assert isinstance(new_operation_range, OperationRange)
+        if not isinstance(new_operation_range, OperationRange):
+            raise TypeError(
+                f"operation_range must be OperationRange, got {type(new_operation_range)}"
+            )
 
         # Clear links if operation_range changes (links are tied to specific iterations)
         preserve_links = new_operation_range is self.operation_range
