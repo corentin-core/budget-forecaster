@@ -33,6 +33,20 @@ source budget-forecaster-venv/bin/activate
 git commit -m "message"  # pylint not found!
 ```
 
+## Branch Creation
+
+**ALWAYS create new branches from `main`, not from the current working branch.**
+
+```bash
+# GOOD - create from main
+git checkout main
+git pull origin main
+git checkout -b issue/42-new-feature
+
+# BAD - creates branch from current work, embedding unrelated commits
+git checkout -b issue/42-new-feature  # while on issue/36-other-feature
+```
+
 ## Branch Naming
 
 Format: `issue/<number>-<kebab-case-description>` or `feature/<number>-<description>`
