@@ -324,7 +324,8 @@ class TestPeriodicTimeRange:  # pylint: disable=too-many-public-methods
         # Continuation starts at first iteration >= split date
         assert continuation.initial_date == datetime(2025, 4, 15)
         assert continuation.period == ptr.period
-        assert continuation.last_date.year == 9999  # No expiration
+        # Continuation keeps original expiration date
+        assert continuation.last_date == datetime(2025, 12, 31)
 
     def test_split_at_exact_iteration(self) -> None:
         """Test split_at when date matches an iteration exactly."""

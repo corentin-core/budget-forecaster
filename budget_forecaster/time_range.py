@@ -299,7 +299,8 @@ class PeriodicTimeRange(TimeRangeInterface):
 
         Finds the first iteration at or after the given date and returns
         a terminated version of this time range (ending the day before)
-        and a new time range starting at that iteration with no expiration.
+        and a new time range starting at that iteration with the original
+        expiration date.
 
         Args:
             date: The date from which to split.
@@ -330,7 +331,6 @@ class PeriodicTimeRange(TimeRangeInterface):
         )
         continuation = self.replace(
             initial_date=first_new_iteration,
-            expiration_date=None,
         )
         return terminated, continuation
 
