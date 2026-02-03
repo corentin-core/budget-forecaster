@@ -299,3 +299,42 @@ class TestOperationDetailPanelMessages:
                 m for m in app.received_messages if isinstance(m, DataRefreshRequested)
             ]
             assert len(refresh_messages) == 0
+
+
+class TestBudgetAppMessageHandlers:
+    """Tests for BudgetApp message handlers (on_data_refresh_requested, on_save_requested)."""
+
+    def test_on_data_refresh_requested_calls_action_refresh_data(self) -> None:
+        """Verify on_data_refresh_requested stops event and calls action_refresh_data."""
+        # Import here to avoid pulling in BudgetApp dependencies at module level
+        # pylint: disable-next=import-outside-toplevel
+        from budget_forecaster.tui.app import BudgetApp
+
+        app = BudgetApp.__new__(BudgetApp)
+        app.action_refresh_data = Mock()  # type: ignore[method-assign]
+
+        event = DataRefreshRequested()
+        event.stop = Mock()  # type: ignore[method-assign]
+
+        # Call handler directly
+        app.on_data_refresh_requested(event)
+
+        event.stop.assert_called_once()
+        app.action_refresh_data.assert_called_once()
+
+    def test_on_save_requested_calls_save_changes(self) -> None:
+        """Verify on_save_requested stops event and calls save_changes."""
+        # pylint: disable-next=import-outside-toplevel
+        from budget_forecaster.tui.app import BudgetApp
+
+        app = BudgetApp.__new__(BudgetApp)
+        app.save_changes = Mock()  # type: ignore[method-assign]
+
+        event = SaveRequested()
+        event.stop = Mock()  # type: ignore[method-assign]
+
+        # Call handler directly
+        app.on_save_requested(event)
+
+        event.stop.assert_called_once()
+        app.save_changes.assert_called_once()
