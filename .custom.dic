@@ -45,6 +45,7 @@ pragma
 pre
 prévu
 relativedelta
+renderable
 renderer
 renderers
 rmul
@@ -53,6 +54,7 @@ str
 swile
 textual's
 timedelta
+trimestriel
 tui
 ui
 uncategorized
@@ -62,6 +64,7 @@ unlinked
 upsert
 upserting
 whitespace
+widget's
 xdg
 xlsx
 yaml

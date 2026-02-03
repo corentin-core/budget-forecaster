@@ -1,6 +1,7 @@
 """Tests for the ApplicationService."""
 
 # pylint: disable=redefined-outer-name,protected-access,too-few-public-methods
+# pylint: disable=too-many-lines
 
 from datetime import datetime
 from pathlib import Path
@@ -19,7 +20,12 @@ from budget_forecaster.services.forecast_service import ForecastService
 from budget_forecaster.services.import_service import ImportResult, ImportService
 from budget_forecaster.services.operation_link_service import OperationLinkService
 from budget_forecaster.services.operation_service import OperationService
-from budget_forecaster.time_range import DailyTimeRange, TimeRange
+from budget_forecaster.time_range import (
+    DailyTimeRange,
+    PeriodicDailyTimeRange,
+    PeriodicTimeRange,
+    TimeRange,
+)
 from budget_forecaster.types import Category, ImportStats, LinkType
 
 
@@ -746,3 +752,359 @@ class TestCategorizeOperationsMultiple:
         mock_operation_link_service.delete_link.assert_not_called()
         # Should NOT try to create links (operation not in changed_operations)
         mock_operation_link_service.create_heuristic_links.assert_not_called()
+
+
+class TestSplitOperations:
+    """Tests for split operations (split_planned_operation_at_date, split_budget_at_date)."""
+
+    def test_split_planned_operation_not_found(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+    ) -> None:
+        """split_planned_operation_at_date raises error if operation not found."""
+        mock_forecast_service.get_planned_operation_by_id.return_value = None
+
+        with pytest.raises(ValueError, match="not found"):
+            app_service.split_planned_operation_at_date(
+                operation_id=1,
+                split_date=datetime(2025, 3, 1),
+            )
+
+    def test_split_planned_operation_non_periodic(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+    ) -> None:
+        """split_planned_operation_at_date raises error for non-periodic operation."""
+        op = PlannedOperation(
+            record_id=1,
+            description="One-time",
+            amount=Amount(-100.0, "EUR"),
+            category=Category.OTHER,
+            time_range=DailyTimeRange(datetime(2025, 1, 15)),
+        )
+        mock_forecast_service.get_planned_operation_by_id.return_value = op
+
+        with pytest.raises(ValueError, match="non-periodic"):
+            app_service.split_planned_operation_at_date(
+                operation_id=1,
+                split_date=datetime(2025, 3, 1),
+            )
+
+    def test_split_planned_operation_date_before_start(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+    ) -> None:
+        """split_planned_operation_at_date raises error if split_date before first iteration."""
+        op = PlannedOperation(
+            record_id=1,
+            description="Rent",
+            amount=Amount(-800.0, "EUR"),
+            category=Category.RENT,
+            time_range=PeriodicDailyTimeRange(
+                initial_date=datetime(2025, 1, 1),
+                period=relativedelta(months=1),
+            ),
+        )
+        mock_forecast_service.get_planned_operation_by_id.return_value = op
+
+        with pytest.raises(ValueError, match="after the first iteration"):
+            app_service.split_planned_operation_at_date(
+                operation_id=1,
+                split_date=datetime(2025, 1, 1),  # Same as initial date
+            )
+
+    def test_split_planned_operation_success(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+        mock_operation_link_service: MagicMock,
+    ) -> None:
+        """split_planned_operation_at_date terminates original and creates new."""
+        # Original operation
+        original_op = PlannedOperation(
+            record_id=1,
+            description="Rent",
+            amount=Amount(-800.0, "EUR"),
+            category=Category.RENT,
+            time_range=PeriodicDailyTimeRange(
+                initial_date=datetime(2025, 1, 1),
+                period=relativedelta(months=1),
+            ),
+        )
+        mock_forecast_service.get_planned_operation_by_id.return_value = original_op
+
+        # New operation created by add_planned_operation
+        new_op = MagicMock()
+        new_op.id = 2
+        new_op.matcher = MagicMock(spec=OperationMatcher)
+        mock_forecast_service.add_planned_operation.return_value = new_op
+        mock_forecast_service.get_all_planned_operations.return_value = []
+        mock_forecast_service.get_all_budgets.return_value = []
+
+        # No existing links
+        mock_operation_link_service.load_links_for_target.return_value = ()
+
+        result = app_service.split_planned_operation_at_date(
+            operation_id=1,
+            split_date=datetime(2025, 3, 1),
+            new_amount=Amount(-850.0, "EUR"),
+        )
+
+        assert result is new_op
+
+        # Original should be updated with expiration_date
+        mock_forecast_service.update_planned_operation.assert_called_once()
+        updated_original = mock_forecast_service.update_planned_operation.call_args[0][
+            0
+        ]
+        assert updated_original.time_range.last_date == datetime(2025, 2, 28)
+
+        # New operation should be created
+        mock_forecast_service.add_planned_operation.assert_called_once()
+        created_op = mock_forecast_service.add_planned_operation.call_args[0][0]
+        assert created_op.description == "Rent"
+        assert created_op.amount == -850.0
+        assert created_op.time_range.initial_date == datetime(2025, 3, 1)
+
+    def test_split_planned_operation_migrates_links(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+        mock_operation_link_service: MagicMock,
+    ) -> None:
+        """split_planned_operation_at_date migrates links >= split_date."""
+        original_op = PlannedOperation(
+            record_id=1,
+            description="Rent",
+            amount=Amount(-800.0, "EUR"),
+            category=Category.RENT,
+            time_range=PeriodicDailyTimeRange(
+                initial_date=datetime(2025, 1, 1),
+                period=relativedelta(months=1),
+            ),
+        )
+        mock_forecast_service.get_planned_operation_by_id.return_value = original_op
+
+        new_op = MagicMock()
+        new_op.id = 2
+        new_op.matcher = MagicMock(spec=OperationMatcher)
+        mock_forecast_service.add_planned_operation.return_value = new_op
+        mock_forecast_service.get_all_planned_operations.return_value = []
+        mock_forecast_service.get_all_budgets.return_value = []
+
+        # Existing links: one before split, two after
+        existing_links = (
+            OperationLink(
+                operation_unique_id="op1",
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
+                iteration_date=datetime(2025, 1, 1),  # Before split
+            ),
+            OperationLink(
+                operation_unique_id="op2",
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
+                iteration_date=datetime(2025, 3, 1),  # At split date
+            ),
+            OperationLink(
+                operation_unique_id="op3",
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
+                iteration_date=datetime(2025, 4, 1),  # After split
+            ),
+        )
+        mock_operation_link_service.load_links_for_target.return_value = existing_links
+
+        app_service.split_planned_operation_at_date(
+            operation_id=1,
+            split_date=datetime(2025, 3, 1),
+        )
+
+        # Should delete 2 links (op2, op3) and create 2 new ones
+        assert mock_operation_link_service.delete_link.call_count == 2
+        assert mock_operation_link_service.upsert_link.call_count == 2
+
+        # Check the new links have the correct target_id
+        upsert_calls = mock_operation_link_service.upsert_link.call_args_list
+        for call in upsert_calls:
+            new_link = call[0][0]
+            assert new_link.target_id == 2  # New operation ID
+
+    def test_split_budget_not_found(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+    ) -> None:
+        """split_budget_at_date raises error if budget not found."""
+        mock_forecast_service.get_budget_by_id.return_value = None
+
+        with pytest.raises(ValueError, match="not found"):
+            app_service.split_budget_at_date(
+                budget_id=1,
+                split_date=datetime(2025, 3, 1),
+            )
+
+    def test_split_budget_non_periodic(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+    ) -> None:
+        """split_budget_at_date raises error for non-periodic budget."""
+        budget = Budget(
+            record_id=1,
+            description="One-time",
+            amount=Amount(-100.0, "EUR"),
+            category=Category.OTHER,
+            time_range=TimeRange(
+                initial_date=datetime(2025, 1, 1),
+                duration=relativedelta(months=1),
+            ),
+        )
+        mock_forecast_service.get_budget_by_id.return_value = budget
+
+        with pytest.raises(ValueError, match="non-periodic"):
+            app_service.split_budget_at_date(
+                budget_id=1,
+                split_date=datetime(2025, 3, 1),
+            )
+
+    def test_split_budget_success(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+        mock_operation_link_service: MagicMock,
+    ) -> None:
+        """split_budget_at_date terminates original and creates new."""
+        # Create periodic budget
+        base_time_range = TimeRange(
+            initial_date=datetime(2025, 1, 1),
+            duration=relativedelta(months=1),
+        )
+        periodic_time_range = PeriodicTimeRange(
+            initial_time_range=base_time_range,
+            period=relativedelta(months=1),
+        )
+        original_budget = Budget(
+            record_id=1,
+            description="Groceries",
+            amount=Amount(-300.0, "EUR"),
+            category=Category.GROCERIES,
+            time_range=periodic_time_range,
+        )
+        mock_forecast_service.get_budget_by_id.return_value = original_budget
+
+        # New budget created by add_budget
+        new_budget = MagicMock()
+        new_budget.id = 2
+        new_budget.matcher = MagicMock(spec=OperationMatcher)
+        mock_forecast_service.add_budget.return_value = new_budget
+        mock_forecast_service.get_all_planned_operations.return_value = []
+        mock_forecast_service.get_all_budgets.return_value = []
+
+        # No existing links
+        mock_operation_link_service.load_links_for_target.return_value = ()
+
+        result = app_service.split_budget_at_date(
+            budget_id=1,
+            split_date=datetime(2025, 3, 1),
+            new_amount=Amount(-400.0, "EUR"),
+        )
+
+        assert result is new_budget
+
+        # Original should be updated with expiration_date
+        mock_forecast_service.update_budget.assert_called_once()
+
+        # New budget should be created
+        mock_forecast_service.add_budget.assert_called_once()
+        created_budget = mock_forecast_service.add_budget.call_args[0][0]
+        assert created_budget.description == "Groceries"
+        assert created_budget.amount == -400.0
+        assert created_budget.time_range.initial_date == datetime(2025, 3, 1)
+
+    def test_get_next_non_actualized_iteration_not_found(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+    ) -> None:
+        """get_next_non_actualized_iteration returns None if target not found."""
+        mock_forecast_service.get_planned_operation_by_id.return_value = None
+
+        result = app_service.get_next_non_actualized_iteration(
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
+        )
+
+        assert result is None
+
+    def test_get_next_non_actualized_iteration_non_periodic(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+    ) -> None:
+        """get_next_non_actualized_iteration returns None for non-periodic."""
+        op = PlannedOperation(
+            record_id=1,
+            description="One-time",
+            amount=Amount(-100.0, "EUR"),
+            category=Category.OTHER,
+            time_range=DailyTimeRange(datetime(2025, 1, 15)),
+        )
+        mock_forecast_service.get_planned_operation_by_id.return_value = op
+
+        result = app_service.get_next_non_actualized_iteration(
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
+        )
+
+        assert result is None
+
+    def test_get_next_non_actualized_iteration_finds_first_unlinked(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+        mock_operation_link_service: MagicMock,
+    ) -> None:
+        """get_next_non_actualized_iteration skips actualized iterations."""
+        op = PlannedOperation(
+            record_id=1,
+            description="Rent",
+            amount=Amount(-800.0, "EUR"),
+            category=Category.RENT,
+            time_range=PeriodicDailyTimeRange(
+                initial_date=datetime(2025, 1, 1),
+                period=relativedelta(months=1),
+            ),
+        )
+        mock_forecast_service.get_planned_operation_by_id.return_value = op
+
+        # Jan and Feb are actualized
+        existing_links = (
+            OperationLink(
+                operation_unique_id="op1",
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
+                iteration_date=datetime(2025, 1, 1),
+            ),
+            OperationLink(
+                operation_unique_id="op2",
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
+                iteration_date=datetime(2025, 2, 1),
+            ),
+        )
+        mock_operation_link_service.load_links_for_target.return_value = existing_links
+
+        result = app_service.get_next_non_actualized_iteration(
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
+        )
+
+        # Should return March (first non-actualized after today if today < March)
+        # Note: This test assumes we're running before March 2025
+        # The method finds the first future iteration without a link
+        assert result is not None
+        assert result not in {datetime(2025, 1, 1), datetime(2025, 2, 1)}

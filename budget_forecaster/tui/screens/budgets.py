@@ -74,6 +74,13 @@ class BudgetsWidget(Vertical):
             super().__init__()
             self.budget = budget
 
+    class BudgetSplitRequested(Message):
+        """Message sent when budget split is requested."""
+
+        def __init__(self, budget: Budget) -> None:
+            super().__init__()
+            self.budget = budget
+
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self._app_service: ApplicationService | None = None
@@ -87,6 +94,7 @@ class BudgetsWidget(Vertical):
             with Horizontal(id="budgets-buttons"):
                 yield Button("Ajouter", id="btn-add-budget", variant="primary")
                 yield Button("Modifier", id="btn-edit-budget", variant="default")
+                yield Button("Scinder", id="btn-split-budget", variant="default")
                 yield Button("Supprimer", id="btn-delete-budget", variant="error")
 
         yield DataTable(id="budgets-table")
@@ -200,6 +208,14 @@ class BudgetsWidget(Vertical):
         self.query_one("#btn-edit-budget", Button).disabled = not has_selection
         self.query_one("#btn-delete-budget", Button).disabled = not has_selection
 
+        # Split is only available for periodic budgets
+        can_split = (
+            has_selection
+            and self._selected_budget is not None
+            and isinstance(self._selected_budget.time_range, PeriodicTimeRange)
+        )
+        self.query_one("#btn-split-budget", Button).disabled = not can_split
+
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle row selection in the data table."""
         if event.row_key is None:
@@ -219,6 +235,11 @@ class BudgetsWidget(Vertical):
         elif event.button.id == "btn-edit-budget":
             if self._selected_budget:
                 self.post_message(self.BudgetEditRequested(self._selected_budget))
+        elif event.button.id == "btn-split-budget":
+            if self._selected_budget and isinstance(
+                self._selected_budget.time_range, PeriodicTimeRange
+            ):
+                self.post_message(self.BudgetSplitRequested(self._selected_budget))
         elif event.button.id == "btn-delete-budget":
             if self._selected_budget:
                 self.post_message(self.BudgetDeleteRequested(self._selected_budget))
