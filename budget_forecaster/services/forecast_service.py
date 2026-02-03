@@ -204,11 +204,7 @@ class ForecastService:
         Returns:
             The computed AccountAnalysisReport.
         """
-        if self._forecast is None:
-            self.load_forecast()
-
-        # After load_forecast(), _forecast is guaranteed to be set
-        assert self._forecast is not None
+        forecast = self._forecast or self.load_forecast()
 
         if start_date is None:
             start_date = date.today() - relativedelta(months=4)
@@ -217,7 +213,7 @@ class ForecastService:
 
         logger.info("Computing forecast report from %s to %s", start_date, end_date)
 
-        analyzer = AccountAnalyzer(self._account, self._forecast, operation_links)
+        analyzer = AccountAnalyzer(self._account, forecast, operation_links)
         self._report = analyzer.compute_report(
             datetime.combine(start_date, time()),
             datetime.combine(end_date, time()),
