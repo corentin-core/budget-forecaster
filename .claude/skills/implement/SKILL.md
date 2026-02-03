@@ -1,3 +1,10 @@
+---
+name: implement
+description:
+  Implement a designed feature from a GitHub issue while ensuring compliance with the
+  design
+---
+
 # Implement Design
 
 Implement a designed feature from a GitHub issue while ensuring compliance with the

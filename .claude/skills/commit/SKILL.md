@@ -1,3 +1,8 @@
+---
+name: commit
+description: Create a well-formatted git commit following project conventions
+---
+
 # Commit Changes
 
 Create a well-formatted git commit.
@@ -36,8 +41,7 @@ git diff --staged
 git commit -m "type: description"
 ```
 
-**Note**: Do NOT add `Co-Authored-By` lines (per project conventions in
-CLAUDE.local.md).
+**Note**: Do NOT add `Co-Authored-By` lines (per project conventions).
 
 5. Show the result with `git log -1`
 

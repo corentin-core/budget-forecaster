@@ -1,3 +1,8 @@
+---
+name: create-pr
+description: Create a well-documented GitHub pull request with proper linking to issues
+---
+
 # Create Pull Request
 
 Create a well-documented GitHub pull request with proper linking to issues.
