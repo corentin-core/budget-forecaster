@@ -52,7 +52,28 @@ gh pr diff <number>
 git diff main...HEAD
 ```
 
-### Step 3: Review the changes
+### Step 3: Check CI status and coverage
+
+**Do NOT run tests locally** - use CI results instead.
+
+```bash
+# Check CI status
+gh pr checks <number>
+
+# Get coverage report from CI artifacts or check annotations
+gh api repos/{owner}/{repo}/actions/runs --jq '.workflow_runs[0].id' | head -1
+# Then check the workflow run for coverage details
+```
+
+Verify:
+
+- All CI checks pass (tests, linting, type checking)
+- Coverage doesn't decrease (check coverage report/badge)
+- No new untested code paths flagged
+
+If CI is still running, wait for it or check the most recent results.
+
+### Step 4: Review the changes
 
 #### Code Quality
 
@@ -127,7 +148,7 @@ For features involving periodic time ranges or recursive structures, verify test
 - Multiple items linked to different iterations
 - Boundary conditions (first iteration, last iteration)
 
-### Step 4: Determine verdict
+### Step 5: Determine verdict
 
 ```
 Runtime bug or incorrect logic?
@@ -143,7 +164,7 @@ Only minor suggestions?
   -> Approve (with comments)
 ```
 
-### Step 5: Post inline comments
+### Step 6: Post inline comments
 
 **Always prefer inline comments** for specific issues. They provide better context and
 are easier to address.
@@ -169,7 +190,7 @@ gh api repos/{owner}/{repo}/pulls/<number>/comments \
 | Inline       | Specific code issues, suggestions for a particular line/block |
 | Summary      | Overall verdict, general observations, praise                 |
 
-### Step 6: Submit the review
+### Step 7: Submit the review
 
 After posting inline comments, submit the review with verdict and summary:
 
@@ -196,12 +217,14 @@ gh pr review <number> --comment --body "..."
 
 ### Verdict: Approve | Changes requested
 
-| Aspect            | Status |
-| ----------------- | ------ |
-| Logic correctness | OK/NOK |
-| Type annotations  | OK/NOK |
-| Test coverage     | OK/NOK |
-| Code quality      | OK/NOK |
+| Aspect            | Status            |
+| ----------------- | ----------------- |
+| CI checks         | OK/NOK            |
+| Coverage          | OK/NOK (X% -> Y%) |
+| Logic correctness | OK/NOK            |
+| Type annotations  | OK/NOK            |
+| Test coverage     | OK/NOK            |
+| Code quality      | OK/NOK            |
 
 ### Issues (if any)
 
