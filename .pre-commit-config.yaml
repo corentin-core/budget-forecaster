@@ -50,15 +50,21 @@ repos:
       - id: prettier
         args: ["--config", ".prettierrc"]
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.14.1
+    rev: v1.19.0
     hooks:
       - id: mypy
         name: mypy
-        entry: mypy
+        entry: mypy budget_forecaster/
         language: python
         types_or: [python, pyi]
         args: ["--install-types", "--non-interactive", "--python-version", "3.12"]
-        files: "^.*"
+        files: ^budget_forecaster/
+        pass_filenames: false
+        additional_dependencies:
+          - types-PyYAML
+          - pandas-stubs
+          - textual>=0.50.0
+          - python-dateutil
   - repo: local
     hooks:
       - id: pylint

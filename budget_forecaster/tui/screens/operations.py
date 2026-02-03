@@ -10,6 +10,7 @@ from textual.widgets import Button, Input, Select, Static
 from budget_forecaster.operation_range.operation_link import OperationLink
 from budget_forecaster.services import OperationFilter
 from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.tui.messages import DataRefreshRequested, SaveRequested
 from budget_forecaster.tui.widgets.category_select import CategorySelect
 from budget_forecaster.tui.widgets.operation_table import OperationTable
 from budget_forecaster.types import (
@@ -135,12 +136,7 @@ class OperationDetailPanel(Vertical):
         """Handle category edit result."""
         if result and self._operation_id:
             self.show_operation(self._operation_id)
-            # Refresh parent app
-            # pylint: disable=import-outside-toplevel
-            from budget_forecaster.tui.app import BudgetApp
-
-            if isinstance(self.app, BudgetApp):
-                self.app.action_refresh_data()
+            self.post_message(DataRefreshRequested())
 
 
 class CategoryEditModal(ModalScreen[bool]):
@@ -205,12 +201,7 @@ class CategoryEditModal(ModalScreen[bool]):
             self._app_service.categorize_operations(
                 (self._operation_id,), event.category
             )
-            # Save changes
-            # pylint: disable=import-outside-toplevel
-            from budget_forecaster.tui.app import BudgetApp
-
-            if isinstance(self.app, BudgetApp):
-                self.app.save_changes()
+            self.post_message(SaveRequested())
         self.dismiss(True)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
