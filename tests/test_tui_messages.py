@@ -12,6 +12,7 @@ from textual.widgets import OptionList
 from budget_forecaster.amount import Amount
 from budget_forecaster.operation_range.historic_operation import HistoricOperation
 from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.tui.app import BudgetApp
 from budget_forecaster.tui.messages import DataRefreshRequested, SaveRequested
 from budget_forecaster.tui.screens.operations import (
     CategoryEditModal,
@@ -244,7 +245,12 @@ class TestCategorySelectMessages:
 
 
 class TestOperationDetailPanelMessages:
-    """Tests for OperationDetailPanel message emission."""
+    """Tests for OperationDetailPanel callback behavior.
+
+    These tests call _on_category_edited directly to isolate the callback logic
+    from Textual's modal mechanics. Testing the full flow (open modal → select
+    category → callback triggered) is covered in TestCategoryEditModalMessages.
+    """
 
     @pytest.mark.asyncio
     async def test_emits_data_refresh_on_category_edit_success(self) -> None:
@@ -253,7 +259,7 @@ class TestOperationDetailPanelMessages:
         async with app.run_test() as pilot:
             panel = app.query_one(OperationDetailPanel)
 
-            # Simulate the callback being called with True (successful edit)
+            # Call callback directly to test its logic in isolation
             # pylint: disable=protected-access
             panel._on_category_edited(True)
             await pilot.pause()
@@ -271,7 +277,6 @@ class TestOperationDetailPanelMessages:
         async with app.run_test() as pilot:
             panel = app.query_one(OperationDetailPanel)
 
-            # Simulate the callback being called with False (cancelled)
             # pylint: disable=protected-access
             panel._on_category_edited(False)
             await pilot.pause()
@@ -289,7 +294,6 @@ class TestOperationDetailPanelMessages:
         async with app.run_test() as pilot:
             panel = app.query_one(OperationDetailPanel)
 
-            # Simulate the callback being called with None
             # pylint: disable=protected-access
             panel._on_category_edited(None)
             await pilot.pause()
@@ -302,21 +306,22 @@ class TestOperationDetailPanelMessages:
 
 
 class TestBudgetAppMessageHandlers:
-    """Tests for BudgetApp message handlers (on_data_refresh_requested, on_save_requested)."""
+    """Tests for BudgetApp message handlers.
+
+    These tests use __new__ to create an uninitialized BudgetApp instance,
+    allowing us to test handler methods in isolation without setting up
+    the complex dependencies (PersistentAccount, ApplicationService, etc.)
+    that __init__ requires.
+    """
 
     def test_on_data_refresh_requested_calls_action_refresh_data(self) -> None:
         """Verify on_data_refresh_requested stops event and calls action_refresh_data."""
-        # Import here to avoid pulling in BudgetApp dependencies at module level
-        # pylint: disable-next=import-outside-toplevel
-        from budget_forecaster.tui.app import BudgetApp
-
         app = BudgetApp.__new__(BudgetApp)
         app.action_refresh_data = Mock()  # type: ignore[method-assign]
 
         event = DataRefreshRequested()
         event.stop = Mock()  # type: ignore[method-assign]
 
-        # Call handler directly
         app.on_data_refresh_requested(event)
 
         event.stop.assert_called_once()
@@ -324,16 +329,12 @@ class TestBudgetAppMessageHandlers:
 
     def test_on_save_requested_calls_save_changes(self) -> None:
         """Verify on_save_requested stops event and calls save_changes."""
-        # pylint: disable-next=import-outside-toplevel
-        from budget_forecaster.tui.app import BudgetApp
-
         app = BudgetApp.__new__(BudgetApp)
         app.save_changes = Mock()  # type: ignore[method-assign]
 
         event = SaveRequested()
         event.stop = Mock()  # type: ignore[method-assign]
 
-        # Call handler directly
         app.on_save_requested(event)
 
         event.stop.assert_called_once()
