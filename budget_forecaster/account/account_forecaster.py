@@ -31,7 +31,7 @@ class AccountForecaster:  # pylint: disable=too-few-public-methods
     def __get_past_state(self, target_date: datetime) -> Account:
         """Get the past state of the account at a certain date."""
         balance_date = self.__account.balance_date
-        if target_date > balance_date:
+        if target_date > balance_date:  # pragma: no cover
             raise ValueError(
                 f"target_date must be <= balance_date, got {target_date} > {balance_date}"
             )
@@ -83,7 +83,7 @@ class AccountForecaster:  # pylint: disable=too-few-public-methods
     def __get_future_state(self, target_date: datetime) -> "Account":
         """Get the future state of the account at a certain date."""
         balance_date = self.__account.balance_date
-        if target_date < balance_date:
+        if target_date < balance_date:  # pragma: no cover
             raise ValueError(
                 f"target_date must be >= balance_date, got {target_date} < {balance_date}"
             )

@@ -39,6 +39,7 @@ mypy
 orchestrator
 params
 paribas
+pragma
 pre
 prévu
 relativedelta

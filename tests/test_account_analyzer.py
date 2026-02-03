@@ -118,6 +118,16 @@ def budgets() -> tuple[Budget, ...]:
 class TestAccountAnalyzer:
     """Test the AccountAnalyzer class."""
 
+    def test_balance_evolution_start_date_after_end_date_raises(
+        self, account: Account
+    ) -> None:
+        """Test that start_date > end_date raises ValueError."""
+        account_analyzer = AccountAnalyzer(account, Forecast((), ()))
+        with pytest.raises(ValueError, match="start_date must be <= end_date"):
+            account_analyzer.compute_balance_evolution_per_day(
+                datetime(2023, 3, 1), datetime(2023, 1, 1)
+            )
+
     def test_balance_evolution_no_forecast(self, account: Account) -> None:
         """Test the balance evolution without forecast."""
         account_analyzer = AccountAnalyzer(account, Forecast((), ()))
