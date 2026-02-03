@@ -1,11 +1,7 @@
 """Modal for splitting a PlannedOperation or Budget at a date."""
 
-# pylint: disable=too-many-locals,too-many-branches,too-many-statements
-# pylint: disable=raise-missing-from,consider-using-assignment-expr
-
-from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, NamedTuple
 
 from dateutil.relativedelta import relativedelta
 from textual.app import ComposeResult
@@ -17,11 +13,10 @@ from budget_forecaster.amount import Amount
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.time_range import PeriodicTimeRange
-from budget_forecaster.types import LinkType
+from budget_forecaster.types import LinkType, TargetId
 
 
-@dataclass
-class SplitResult:
+class SplitResult(NamedTuple):
     """Result of a split operation modal."""
 
     split_date: datetime
@@ -280,8 +275,8 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
             date_str = self.query_one("#input-split-date", Input).value.strip()
             try:
                 split_date = datetime.strptime(date_str, "%Y-%m-%d")
-            except ValueError:
-                raise ValueError("La date doit être au format YYYY-MM-DD")
+            except ValueError as exc:
+                raise ValueError("La date doit être au format YYYY-MM-DD") from exc
 
             # Validate split date is after initial date
             if split_date <= self._target.time_range.initial_date:
@@ -291,8 +286,8 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
             amount_str = self.query_one("#input-amount", Input).value.strip()
             try:
                 amount_val = float(amount_str)
-            except ValueError:
-                raise ValueError("Le montant doit être un nombre")
+            except ValueError as exc:
+                raise ValueError("Le montant doit être un nombre") from exc
 
             # Get period
             period_select = self.query_one("#select-period", Select)
@@ -306,12 +301,13 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
             if self._is_budget:
                 duration_str = self.query_one("#input-duration", Input).value.strip()
                 try:
-                    duration_months = int(duration_str)
-                    if duration_months <= 0:
-                        raise ValueError()
+                    if (duration_months := int(duration_str)) <= 0:
+                        raise ValueError("must be positive")
                     new_duration = relativedelta(months=duration_months)
-                except ValueError:
-                    raise ValueError("La durée doit être un nombre entier positif")
+                except ValueError as exc:
+                    raise ValueError(
+                        "La durée doit être un nombre entier positif"
+                    ) from exc
 
             result = SplitResult(
                 split_date=split_date,
@@ -330,12 +326,18 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
 
     @property
     def target_type(self) -> LinkType:
-        """Return the target type for service calls."""
+        """Return the target type for service calls.
+
+        Note: Exposed for testing - the app callback already knows the target type.
+        """
         if self._is_budget:
             return LinkType.BUDGET
         return LinkType.PLANNED_OPERATION
 
     @property
-    def target_id(self) -> int | None:
-        """Return the target ID."""
+    def target_id(self) -> TargetId | None:
+        """Return the target ID.
+
+        Note: Exposed for testing - the app callback already knows the target.
+        """
         return self._target.id

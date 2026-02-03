@@ -1025,6 +1025,76 @@ class TestSplitOperations:
         assert created_budget.amount == -400.0
         assert created_budget.time_range.initial_date == datetime(2025, 3, 1)
 
+    def test_split_budget_migrates_links(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+        mock_operation_link_service: MagicMock,
+    ) -> None:
+        """split_budget_at_date migrates links >= split_date."""
+        # Create periodic budget
+        base_time_range = TimeRange(
+            initial_date=datetime(2025, 1, 1),
+            duration=relativedelta(months=1),
+        )
+        periodic_time_range = PeriodicTimeRange(
+            initial_time_range=base_time_range,
+            period=relativedelta(months=1),
+        )
+        original_budget = Budget(
+            record_id=1,
+            description="Groceries",
+            amount=Amount(-300.0, "EUR"),
+            category=Category.GROCERIES,
+            time_range=periodic_time_range,
+        )
+        mock_forecast_service.get_budget_by_id.return_value = original_budget
+
+        new_budget = MagicMock()
+        new_budget.id = 2
+        new_budget.matcher = MagicMock(spec=OperationMatcher)
+        mock_forecast_service.add_budget.return_value = new_budget
+        mock_forecast_service.get_all_planned_operations.return_value = []
+        mock_forecast_service.get_all_budgets.return_value = []
+
+        # Existing links: one before split, two after
+        existing_links = (
+            OperationLink(
+                operation_unique_id="op1",
+                target_type=LinkType.BUDGET,
+                target_id=1,
+                iteration_date=datetime(2025, 1, 1),  # Before split
+            ),
+            OperationLink(
+                operation_unique_id="op2",
+                target_type=LinkType.BUDGET,
+                target_id=1,
+                iteration_date=datetime(2025, 3, 1),  # At split date
+            ),
+            OperationLink(
+                operation_unique_id="op3",
+                target_type=LinkType.BUDGET,
+                target_id=1,
+                iteration_date=datetime(2025, 4, 1),  # After split
+            ),
+        )
+        mock_operation_link_service.load_links_for_target.return_value = existing_links
+
+        app_service.split_budget_at_date(
+            budget_id=1,
+            split_date=datetime(2025, 3, 1),
+        )
+
+        # Should delete 2 links (op2, op3) and create 2 new ones
+        assert mock_operation_link_service.delete_link.call_count == 2
+        assert mock_operation_link_service.upsert_link.call_count == 2
+
+        # Check the new links have the correct target_id
+        upsert_calls = mock_operation_link_service.upsert_link.call_args_list
+        for call in upsert_calls:
+            new_link = call[0][0]
+            assert new_link.target_id == 2  # New budget ID
+
     def test_get_next_non_actualized_iteration_not_found(
         self,
         app_service: ApplicationService,

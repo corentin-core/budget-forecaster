@@ -40,9 +40,12 @@ from budget_forecaster.types import (
     BudgetId,
     Category,
     ImportProgressCallback,
+    IterationDate,
     LinkType,
     MatcherKey,
+    OperationId,
     PlannedOperationId,
+    TargetId,
 )
 
 logger = logging.getLogger(__name__)
@@ -653,8 +656,8 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
     def get_next_non_actualized_iteration(
         self,
         target_type: LinkType,
-        target_id: int,
-    ) -> datetime | None:
+        target_id: TargetId,
+    ) -> IterationDate | None:
         """Find the next iteration that has no linked operation.
 
         Args:
@@ -665,12 +668,13 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
             The date of the next non-actualized iteration, or None if not found.
         """
         # Get the target
-        if target_type == LinkType.PLANNED_OPERATION:
-            target: PlannedOperation | Budget | None = (
-                self._forecast_service.get_planned_operation_by_id(target_id)
-            )
-        else:
-            target = self._forecast_service.get_budget_by_id(target_id)
+        match target_type:
+            case LinkType.PLANNED_OPERATION:
+                target: PlannedOperation | Budget | None = (
+                    self._forecast_service.get_planned_operation_by_id(target_id)
+                )
+            case LinkType.BUDGET:
+                target = self._forecast_service.get_budget_by_id(target_id)
 
         if target is None or target.id is None:
             return None
@@ -693,7 +697,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
 
     def split_planned_operation_at_date(
         self,
-        operation_id: int,
+        operation_id: OperationId,
         split_date: datetime,
         new_amount: Amount | None = None,
         new_period: relativedelta | None = None,
@@ -746,7 +750,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
 
     def split_budget_at_date(
         self,
-        budget_id: int,
+        budget_id: BudgetId,
         split_date: datetime,
         new_amount: Amount | None = None,
         new_period: relativedelta | None = None,
@@ -802,8 +806,8 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
     def _migrate_links_after_split(
         self,
         target_type: LinkType,
-        old_target_id: int,
-        new_target_id: int,
+        old_target_id: TargetId,
+        new_target_id: TargetId,
         split_date: datetime,
     ) -> None:
         """Migrate links from old target to new target for iterations >= split_date.
@@ -815,12 +819,13 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
             split_date: Date from which links should be migrated.
         """
         # Get links for the old target
-        if target_type == LinkType.PLANNED_OPERATION:
-            old_target: PlannedOperation | Budget | None = (
-                self._forecast_service.get_planned_operation_by_id(old_target_id)
-            )
-        else:
-            old_target = self._forecast_service.get_budget_by_id(old_target_id)
+        match target_type:
+            case LinkType.PLANNED_OPERATION:
+                old_target: PlannedOperation | Budget | None = (
+                    self._forecast_service.get_planned_operation_by_id(old_target_id)
+                )
+            case LinkType.BUDGET:
+                old_target = self._forecast_service.get_budget_by_id(old_target_id)
 
         if old_target is None:
             return
