@@ -94,7 +94,7 @@ class ForecastService:
 
     # Budget CRUD methods
 
-    def get_all_budgets(self) -> list[Budget]:
+    def get_all_budgets(self) -> tuple[Budget, ...]:
         """Get all budgets from the database."""
         return self._repository.get_all_budgets()
 
@@ -141,7 +141,7 @@ class ForecastService:
 
     # Planned Operation CRUD methods
 
-    def get_all_planned_operations(self) -> list[PlannedOperation]:
+    def get_all_planned_operations(self) -> tuple[PlannedOperation, ...]:
         """Get all planned operations from the database."""
         return self._repository.get_all_planned_operations()
 
