@@ -4,7 +4,12 @@ from datetime import datetime, timedelta
 import pytest
 from dateutil.relativedelta import relativedelta
 
-from budget_forecaster.time_range import DailyTimeRange, PeriodicTimeRange, TimeRange
+from budget_forecaster.time_range import (
+    DailyTimeRange,
+    PeriodicDailyTimeRange,
+    PeriodicTimeRange,
+    TimeRange,
+)
 
 
 @pytest.fixture
@@ -353,3 +358,67 @@ class TestPeriodicTimeRange:  # pylint: disable=too-many-public-methods
         assert new_time_range.initial_date == datetime(2023, 1, 2)
         assert new_time_range.last_date == datetime(2023, 12, 31)
         assert new_time_range.total_duration == timedelta(days=364)
+
+
+class TestTimeRangeReplaceTypeErrors:
+    """Tests for TypeError when passing invalid types to replace() methods."""
+
+    def test_time_range_replace_invalid_initial_date(self) -> None:
+        """Test TimeRange.replace() raises TypeError for invalid initial_date."""
+        t_range = TimeRange(datetime(2023, 1, 1), relativedelta(days=10))
+        with pytest.raises(TypeError, match="initial_date must be datetime"):
+            t_range.replace(initial_date="2023-01-01")
+
+    def test_time_range_replace_invalid_duration(self) -> None:
+        """Test TimeRange.replace() raises TypeError for invalid duration."""
+        t_range = TimeRange(datetime(2023, 1, 1), relativedelta(days=10))
+        with pytest.raises(TypeError, match="duration must be relativedelta"):
+            t_range.replace(duration=10)
+
+    def test_daily_time_range_replace_invalid_initial_date(self) -> None:
+        """Test DailyTimeRange.replace() raises TypeError for invalid initial_date."""
+        t_range = DailyTimeRange(datetime(2023, 1, 1))
+        with pytest.raises(TypeError, match="initial_date must be datetime"):
+            t_range.replace(initial_date="2023-01-01")
+
+    def test_periodic_time_range_replace_invalid_period(self) -> None:
+        """Test PeriodicTimeRange.replace() raises TypeError for invalid period."""
+        initial_time_range = TimeRange(datetime(2023, 1, 1), relativedelta(days=10))
+        t_range = PeriodicTimeRange(
+            initial_time_range, relativedelta(months=1), datetime(2023, 12, 31)
+        )
+        with pytest.raises(TypeError, match="period must be relativedelta"):
+            t_range.replace(period=30)
+
+    def test_periodic_time_range_replace_invalid_expiration_date(self) -> None:
+        """Test PeriodicTimeRange.replace() raises TypeError for invalid expiration_date."""
+        initial_time_range = TimeRange(datetime(2023, 1, 1), relativedelta(days=10))
+        t_range = PeriodicTimeRange(
+            initial_time_range, relativedelta(months=1), datetime(2023, 12, 31)
+        )
+        with pytest.raises(TypeError, match="expiration_date must be datetime"):
+            t_range.replace(expiration_date="2023-12-31")
+
+    def test_periodic_daily_time_range_replace_invalid_initial_date(self) -> None:
+        """Test PeriodicDailyTimeRange.replace() raises TypeError for invalid initial_date."""
+        t_range = PeriodicDailyTimeRange(
+            datetime(2023, 1, 1), relativedelta(months=1), datetime(2023, 12, 31)
+        )
+        with pytest.raises(TypeError, match="initial_date must be datetime"):
+            t_range.replace(initial_date="2023-01-01")
+
+    def test_periodic_daily_time_range_replace_invalid_period(self) -> None:
+        """Test PeriodicDailyTimeRange.replace() raises TypeError for invalid period."""
+        t_range = PeriodicDailyTimeRange(
+            datetime(2023, 1, 1), relativedelta(months=1), datetime(2023, 12, 31)
+        )
+        with pytest.raises(TypeError, match="period must be relativedelta"):
+            t_range.replace(period=30)
+
+    def test_periodic_daily_time_range_replace_invalid_expiration_date(self) -> None:
+        """Test PeriodicDailyTimeRange.replace() raises TypeError for invalid expiration_date."""
+        t_range = PeriodicDailyTimeRange(
+            datetime(2023, 1, 1), relativedelta(months=1), datetime(2023, 12, 31)
+        )
+        with pytest.raises(TypeError, match="expiration_date must be datetime"):
+            t_range.replace(expiration_date="2023-12-31")

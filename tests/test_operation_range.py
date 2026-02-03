@@ -195,3 +195,46 @@ class TestPeriodicOperationRange:
         assert new_operation_range.amount == 200.0
         assert new_operation_range.category == Category.GROCERIES
         assert new_operation_range.time_range == periodic_operation_range.time_range
+
+
+class TestOperationRangeErrors:
+    """Tests for errors in OperationRange methods."""
+
+    @pytest.fixture
+    def operation_range(self) -> OperationRange:
+        """Create an OperationRange for testing."""
+        return OperationRange(
+            "Test Operation",
+            Amount(100, "EUR"),
+            Category.GROCERIES,
+            TimeRange(datetime(2023, 1, 1), relativedelta(days=30)),
+        )
+
+    def test_amount_on_period_invalid_date_order(
+        self, operation_range: OperationRange
+    ) -> None:
+        """Test amount_on_period raises ValueError when start_date > end_date."""
+        with pytest.raises(ValueError, match="start_date must be <= end_date"):
+            operation_range.amount_on_period(
+                datetime(2023, 1, 31), datetime(2023, 1, 1)
+            )
+
+    def test_replace_invalid_description(self, operation_range: OperationRange) -> None:
+        """Test replace() raises TypeError for invalid description."""
+        with pytest.raises(TypeError, match="description must be str"):
+            operation_range.replace(description=123)
+
+    def test_replace_invalid_amount(self, operation_range: OperationRange) -> None:
+        """Test replace() raises TypeError for invalid amount."""
+        with pytest.raises(TypeError, match="amount must be Amount"):
+            operation_range.replace(amount=100.0)
+
+    def test_replace_invalid_category(self, operation_range: OperationRange) -> None:
+        """Test replace() raises TypeError for invalid category."""
+        with pytest.raises(TypeError, match="category must be Category"):
+            operation_range.replace(category="GROCERIES")
+
+    def test_replace_invalid_time_range(self, operation_range: OperationRange) -> None:
+        """Test replace() raises TypeError for invalid time_range."""
+        with pytest.raises(TypeError, match="time_range must be TimeRangeInterface"):
+            operation_range.replace(time_range="2023-01-01")
