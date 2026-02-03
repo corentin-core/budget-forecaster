@@ -52,7 +52,54 @@ gh pr diff <number>
 git diff main...HEAD
 ```
 
-### Step 3: Review the changes
+### Step 3: Check CI status and coverage
+
+**Do NOT run tests locally** - use CI results instead.
+
+```bash
+# Check CI status
+gh pr checks <number>
+
+# Get coverage comment from PR (posted by python-coverage-comment-action)
+gh api repos/{owner}/{repo}/issues/<number>/comments \
+  --jq '.[] | select(.body | contains("Coverage report")) | .body'
+```
+
+#### CI Checks
+
+- All checks must pass (tests, linting, type checking)
+- If CI is still running, wait for results
+
+#### Coverage Analysis (CRITICAL)
+
+**Don't just look at percentages** - analyze the "Lines missing" column in the coverage
+report.
+
+For each file modified by the PR, check:
+
+1. **New statements coverage** - What percentage of NEW code is covered?
+2. **Lines missing** - Which specific lines are NOT tested?
+3. **Are missing lines acceptable?** Examples:
+   - Error handlers that are hard to trigger → often acceptable
+   - Core business logic → NOT acceptable, request tests
+   - TUI event handlers → depends on existing patterns
+
+**Red flags to catch:**
+
+- New feature code with 0% coverage
+- Critical paths (data mutation, external calls) without tests
+- Complex conditionals where only one branch is tested
+
+**Example analysis:**
+
+```
+app.py: 15% (7/44 new statements covered)
+  Lines missing: 639-640, 646-656, 665-684...
+  → These are the split event handlers - NO tests for the TUI integration!
+  → Flag this: "The split button handlers in app.py have no test coverage"
+```
+
+### Step 4: Review the changes
 
 #### Code Quality
 
@@ -127,14 +174,17 @@ For features involving periodic time ranges or recursive structures, verify test
 - Multiple items linked to different iterations
 - Boundary conditions (first iteration, last iteration)
 
-### Step 4: Determine verdict
+### Step 5: Determine verdict
 
 ```
 Runtime bug or incorrect logic?
   -> Changes requested
 
-Missing tests for new feature?
-  -> Changes requested
+Missing tests for new feature code?
+  -> Changes requested (check "Lines missing" in coverage report!)
+
+New code paths with 0% coverage?
+  -> Changes requested (unless justified pattern like existing TUI code)
 
 Implementation doesn't match requirements?
   -> Changes requested
@@ -143,7 +193,14 @@ Only minor suggestions?
   -> Approve (with comments)
 ```
 
-### Step 5: Post inline comments
+**Coverage verdict rules:**
+
+- Domain/business logic not covered → **Changes requested**
+- Service layer not covered → **Changes requested**
+- TUI glue code not covered → Check existing pattern. If similar code is already
+  untested, note it but don't block. If it's a regression, request changes.
+
+### Step 6: Post inline comments
 
 **Always prefer inline comments** for specific issues. They provide better context and
 are easier to address.
@@ -169,7 +226,7 @@ gh api repos/{owner}/{repo}/pulls/<number>/comments \
 | Inline       | Specific code issues, suggestions for a particular line/block |
 | Summary      | Overall verdict, general observations, praise                 |
 
-### Step 6: Submit the review
+### Step 7: Submit the review
 
 After posting inline comments, submit the review with verdict and summary:
 
@@ -196,12 +253,14 @@ gh pr review <number> --comment --body "..."
 
 ### Verdict: Approve | Changes requested
 
-| Aspect            | Status |
-| ----------------- | ------ |
-| Logic correctness | OK/NOK |
-| Type annotations  | OK/NOK |
-| Test coverage     | OK/NOK |
-| Code quality      | OK/NOK |
+| Aspect            | Status            |
+| ----------------- | ----------------- |
+| CI checks         | OK/NOK            |
+| Coverage          | OK/NOK (X% -> Y%) |
+| Logic correctness | OK/NOK            |
+| Type annotations  | OK/NOK            |
+| Test coverage     | OK/NOK            |
+| Code quality      | OK/NOK            |
 
 ### Issues (if any)
 
@@ -220,6 +279,10 @@ gh pr review <number> --comment --body "..."
 - "Consider using a dataclass here for clarity"
 - "These tests are useless - they test Python's StrEnum/NamedTuple behavior, not your
   code"
+- "Lines 639-684 in app.py (split event handlers) have 0% test coverage. Please add
+  integration tests for the button→modal→service flow."
+- "application_service.py:647 - this error path is not covered. Add a test for the 'not
+  found' case."
 
 ## Avoid
 
