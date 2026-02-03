@@ -2,6 +2,7 @@
 
 import logging
 from datetime import date
+from pathlib import Path
 from typing import Any
 
 from dateutil.relativedelta import relativedelta
@@ -10,6 +11,9 @@ from textual.containers import Horizontal, Vertical
 from textual.message import Message
 from textual.widgets import Button, DataTable, Input, Static
 
+from budget_forecaster.account.account_analysis_renderer import (
+    AccountAnalysisRendererExcel,
+)
 from budget_forecaster.services.application_service import ApplicationService
 
 logger = logging.getLogger(__name__)
@@ -414,16 +418,6 @@ class ForecastWidget(Vertical):
         if self._app_service is None or self._app_service.report is None:
             self.app.notify("Aucun rapport à exporter", severity="warning")
             return
-
-        # Import here to avoid circular imports
-        # pylint: disable=import-outside-toplevel
-        from pathlib import Path
-
-        from budget_forecaster.account.account_analysis_renderer import (
-            AccountAnalysisRendererExcel,
-        )
-
-        # pylint: enable=import-outside-toplevel
 
         report = self._app_service.report
         output_path = Path(f"forecast-{date.today().isoformat()}.xlsx")

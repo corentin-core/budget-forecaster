@@ -27,6 +27,7 @@ from budget_forecaster.services import (
     OperationLinkService,
     OperationService,
 )
+from budget_forecaster.tui.messages import DataRefreshRequested, SaveRequested
 from budget_forecaster.tui.modals import (
     BudgetEditModal,
     CategoryModal,
@@ -327,6 +328,16 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         if self._persistent_account:
             self._persistent_account.save()
             self.notify("Modifications enregistrées")
+
+    def on_data_refresh_requested(self, event: DataRefreshRequested) -> None:
+        """Handle data refresh request from child components."""
+        event.stop()
+        self.action_refresh_data()
+
+    def on_save_requested(self, event: SaveRequested) -> None:
+        """Handle save request from child components."""
+        event.stop()
+        self.save_changes()
 
     def on_import_widget_browse_requested(
         self, event: ImportWidget.BrowseRequested
