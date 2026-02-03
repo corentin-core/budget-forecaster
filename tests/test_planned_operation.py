@@ -269,3 +269,101 @@ class TestPlannedOperationTypeErrors:
             planned_operation.replace(
                 time_range=TimeRange(datetime(2023, 1, 1), relativedelta(months=1))
             )
+
+
+class TestPlannedOperationSplitAt:
+    """Tests for PlannedOperation.split_at() method."""
+
+    def test_split_at_returns_terminated_and_continuation(self) -> None:
+        """Test split_at returns two PlannedOperations."""
+        op = PlannedOperation(
+            record_id=1,
+            description="Salary",
+            amount=Amount(2500.0),
+            category=Category.SALARY,
+            time_range=PeriodicDailyTimeRange(
+                datetime(2025, 1, 1), relativedelta(months=1), datetime(2025, 12, 31)
+            ),
+        )
+
+        terminated, continuation = op.split_at(datetime(2025, 6, 1))
+
+        # Terminated ends day before first new iteration (June 1)
+        assert terminated.time_range.last_date == datetime(2025, 5, 31)
+        assert terminated.id == 1  # Keeps original ID
+
+        # Continuation starts at first iteration >= split date
+        assert continuation.time_range.initial_date == datetime(2025, 6, 1)
+        assert continuation.id is None  # New record
+        assert continuation.description == "Salary"
+        assert continuation.amount == 2500.0
+        assert continuation.category == Category.SALARY
+
+    def test_split_at_with_new_amount(self) -> None:
+        """Test split_at with new amount for continuation."""
+        op = PlannedOperation(
+            record_id=1,
+            description="Salary",
+            amount=Amount(2500.0),
+            category=Category.SALARY,
+            time_range=PeriodicDailyTimeRange(
+                datetime(2025, 1, 1), relativedelta(months=1)
+            ),
+        )
+
+        _, continuation = op.split_at(datetime(2025, 6, 1), new_amount=Amount(3000.0))
+
+        assert continuation.amount == 3000.0
+
+    def test_split_at_with_new_period(self) -> None:
+        """Test split_at with new period for continuation."""
+        op = PlannedOperation(
+            record_id=1,
+            description="Salary",
+            amount=Amount(2500.0),
+            category=Category.SALARY,
+            time_range=PeriodicDailyTimeRange(
+                datetime(2025, 1, 1), relativedelta(months=1)
+            ),
+        )
+
+        _, continuation = op.split_at(
+            datetime(2025, 6, 1), new_period=relativedelta(months=3)
+        )
+
+        assert continuation.time_range.period == relativedelta(months=3)
+
+    def test_split_at_copies_matcher_params(self) -> None:
+        """Test split_at copies matcher parameters to continuation."""
+        op = PlannedOperation(
+            record_id=1,
+            description="Salary",
+            amount=Amount(2500.0),
+            category=Category.SALARY,
+            time_range=PeriodicDailyTimeRange(
+                datetime(2025, 1, 1), relativedelta(months=1)
+            ),
+        ).set_matcher_params(
+            description_hints={"SALARY", "EMPLOYER"},
+            approximation_date_range=timedelta(days=10),
+            approximation_amount_ratio=0.1,
+        )
+
+        _, continuation = op.split_at(datetime(2025, 6, 1))
+
+        assert continuation.matcher.description_hints == {"SALARY", "EMPLOYER"}
+        assert continuation.matcher.approximation_date_range == timedelta(days=10)
+        assert continuation.matcher.approximation_amount_ratio == 0.1
+
+    def test_split_at_non_periodic_raises_error(self) -> None:
+        """Test split_at raises ValueError for non-periodic operation."""
+        op = PlannedOperation(
+            record_id=1,
+            description="One-time",
+            amount=Amount(100.0),
+            category=Category.OTHER,
+            time_range=DailyTimeRange(datetime(2025, 1, 1)),
+        )
+
+        with pytest.raises(ValueError, match="Cannot split a non-periodic"):
+            op.split_at(datetime(2025, 6, 1))

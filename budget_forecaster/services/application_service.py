@@ -721,40 +721,12 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
         ) is None:
             raise ValueError(f"Planned operation {operation_id} not found")
 
-        if not isinstance(original.time_range, PeriodicTimeRange):
-            raise ValueError("Cannot split a non-periodic planned operation")
+        terminated, continuation = original.split_at(split_date, new_amount, new_period)
 
-        # 1. Split the time range
-        terminated_range, continuation_range = original.time_range.split_at(split_date)
-        updated_original = original.replace(time_range=terminated_range)
-        self._forecast_service.update_planned_operation(updated_original)
-
-        # 2. Create new planned operation with continuation range
-        amount = (
-            new_amount
-            if new_amount is not None
-            else Amount(original.amount, original.currency)
-        )
-        new_time_range = (
-            continuation_range.replace(period=new_period)
-            if new_period
-            else continuation_range
-        )
-        new_op = PlannedOperation(
-            record_id=None,
-            description=original.description,
-            amount=amount,
-            category=original.category,
-            time_range=new_time_range,
-        ).set_matcher_params(
-            description_hints=original.matcher.description_hints,
-            approximation_date_range=original.matcher.approximation_date_range,
-            approximation_amount_ratio=original.matcher.approximation_amount_ratio,
-        )
-        new_op = self._forecast_service.add_planned_operation(new_op)
+        self._forecast_service.update_planned_operation(terminated)
+        new_op = self._forecast_service.add_planned_operation(continuation)
         self._add_matcher(new_op)
 
-        # 3. Migrate links for iterations >= split_date
         if new_op.id is not None:
             self._migrate_links_after_split(
                 LinkType.PLANNED_OPERATION,
@@ -772,7 +744,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
 
         return new_op
 
-    def split_budget_at_date(  # pylint: disable=too-many-locals
+    def split_budget_at_date(
         self,
         budget_id: int,
         split_date: datetime,
@@ -802,40 +774,14 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
         if (original := self._forecast_service.get_budget_by_id(budget_id)) is None:
             raise ValueError(f"Budget {budget_id} not found")
 
-        if not isinstance(original.time_range, PeriodicTimeRange):
-            raise ValueError("Cannot split a non-periodic budget")
-
-        # 1. Split the time range
-        terminated_range, continuation_range = original.time_range.split_at(split_date)
-        updated_original = original.replace(time_range=terminated_range)
-        self._forecast_service.update_budget(updated_original)
-
-        # 2. Create new budget with continuation range
-        amount = (
-            new_amount
-            if new_amount is not None
-            else Amount(original.amount, original.currency)
+        terminated, continuation = original.split_at(
+            split_date, new_amount, new_period, new_duration
         )
-        new_time_range = continuation_range
-        if new_period:
-            new_time_range = new_time_range.replace(period=new_period)
-        if new_duration:
-            new_time_range = new_time_range.replace(duration=new_duration)
-        new_budget = Budget(
-            record_id=None,
-            description=original.description,
-            amount=amount,
-            category=original.category,
-            time_range=new_time_range,
-        ).set_matcher_params(
-            description_hints=original.matcher.description_hints,
-            approximation_date_range=original.matcher.approximation_date_range,
-            approximation_amount_ratio=original.matcher.approximation_amount_ratio,
-        )
-        new_budget = self._forecast_service.add_budget(new_budget)
+
+        self._forecast_service.update_budget(terminated)
+        new_budget = self._forecast_service.add_budget(continuation)
         self._add_matcher(new_budget)
 
-        # 3. Migrate links for iterations >= split_date
         if new_budget.id is not None:
             self._migrate_links_after_split(
                 LinkType.BUDGET,
