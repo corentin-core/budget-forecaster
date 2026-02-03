@@ -283,6 +283,33 @@ class TestPeriodicTimeRange:  # pylint: disable=too-many-public-methods
                 datetime(2023, month, 1), relativedelta(days=10)
             )
 
+    def test_iterate_over_time_ranges_no_date_drift(self) -> None:
+        """Test that monthly iterations don't drift when starting from day 31.
+
+        Regression test: when adding months iteratively (date + period),
+        dates can drift (Oct 31 -> Nov 30 -> Dec 30 -> Jan 30...).
+        The correct behavior is to compute from initial_date + n*period
+        to preserve the original day-of-month where possible.
+        """
+        # Start on Oct 31 with monthly period
+        initial = DailyTimeRange(datetime(2025, 10, 31))
+        ptr = PeriodicTimeRange(initial, relativedelta(months=1), datetime(2026, 6, 1))
+
+        iterations = [tr.initial_date for tr in ptr.iterate_over_time_ranges()]
+
+        # Expected: stay on 31st when month has 31 days, otherwise end of month
+        expected = [
+            datetime(2025, 10, 31),  # Oct has 31 days
+            datetime(2025, 11, 30),  # Nov has 30 days
+            datetime(2025, 12, 31),  # Dec has 31 days (NOT 30!)
+            datetime(2026, 1, 31),  # Jan has 31 days (NOT 30!)
+            datetime(2026, 2, 28),  # Feb has 28 days
+            datetime(2026, 3, 31),  # Mar has 31 days (NOT 28!)
+            datetime(2026, 4, 30),  # Apr has 30 days
+            datetime(2026, 5, 31),  # May has 31 days
+        ]
+        assert iterations == expected
+
     def test_current_time_range(self, periodic_time_range: PeriodicTimeRange) -> None:
         """Test the current_time_range method."""
         for month in range(1, 13):

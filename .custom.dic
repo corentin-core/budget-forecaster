@@ -25,6 +25,7 @@ dir
 enum
 historicoperation
 iterable
+iteratively
 json
 kwargs
 lifecycle
