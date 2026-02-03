@@ -95,6 +95,7 @@ gh pr merge 123 --squash
 - **NEVER commit directly to main** - always create a feature branch
 - **NEVER use `git add -A` or `git add .`** - stage files explicitly
 - **NEVER merge PRs without explicit user approval**
+- **NEVER add `Co-Authored-By: Claude` to commit messages**
 - Use imperative mood: "add feature" not "added feature"
 - Keep first line under 50 characters
 - Reference issue numbers in the body if relevant

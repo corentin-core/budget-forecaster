@@ -1,3 +1,9 @@
+---
+name: design
+description:
+  Fetch a GitHub issue, analyze it in the project context, and iterate on the design
+---
+
 # Design Issue
 
 Fetch a GitHub issue, analyze it in the project context, and iterate on the design in a
