@@ -11,20 +11,33 @@ from textual.containers import Horizontal
 from textual.css.query import NoMatches
 from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
-from budget_forecaster.account.persistent_account import PersistentAccount
-from budget_forecaster.account.sqlite_repository import SqliteRepository
-from budget_forecaster.backup import BackupService
-from budget_forecaster.config import Config
-from budget_forecaster.operation_range.budget import Budget
-from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.operation_range.operation_link import OperationLink
-from budget_forecaster.operation_range.planned_operation import PlannedOperation
-from budget_forecaster.services import (
-    ApplicationService,
-    ForecastService,
-    ImportService,
-    OperationFilter,
+from budget_forecaster.core.types import (
+    Category,
+    LinkType,
+    MatcherKey,
+    OperationId,
+    TargetName,
+)
+from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.domain.operation.operation_link import OperationLink
+from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.infrastructure.backup import BackupService
+from budget_forecaster.infrastructure.config import Config
+from budget_forecaster.infrastructure.persistence.persistent_account import (
+    PersistentAccount,
+)
+from budget_forecaster.infrastructure.persistence.sqlite_repository import (
+    SqliteRepository,
+)
+from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.services.forecast.forecast_service import ForecastService
+from budget_forecaster.services.import_service import ImportService
+from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
+)
+from budget_forecaster.services.operation.operation_service import (
+    OperationFilter,
     OperationService,
 )
 from budget_forecaster.tui.messages import DataRefreshRequested, SaveRequested
@@ -43,13 +56,6 @@ from budget_forecaster.tui.screens.forecast import ForecastWidget
 from budget_forecaster.tui.screens.imports import ImportWidget
 from budget_forecaster.tui.screens.planned_operations import PlannedOperationsWidget
 from budget_forecaster.tui.widgets import OperationTable
-from budget_forecaster.types import (
-    Category,
-    LinkType,
-    MatcherKey,
-    OperationId,
-    TargetName,
-)
 
 # Logger instance (configured via Config.setup_logging)
 logger = logging.getLogger("budget_forecaster")

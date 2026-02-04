@@ -8,8 +8,8 @@ from textual.screen import ModalScreen
 from textual.widgets import OptionList, Static
 from textual.widgets.option_list import Option
 
-from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.types import Category
+from budget_forecaster.core.types import Category
+from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 
 
 class CategoryModal(ModalScreen[Category | None]):

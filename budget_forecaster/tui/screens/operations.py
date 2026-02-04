@@ -7,19 +7,19 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Select, Static
 
-from budget_forecaster.operation_range.operation_link import OperationLink
-from budget_forecaster.services import OperationFilter
-from budget_forecaster.services.application_service import ApplicationService
-from budget_forecaster.tui.messages import DataRefreshRequested, SaveRequested
-from budget_forecaster.tui.widgets.category_select import CategorySelect
-from budget_forecaster.tui.widgets.operation_table import OperationTable
-from budget_forecaster.types import (
+from budget_forecaster.core.types import (
     Category,
     LinkType,
     MatcherKey,
     OperationId,
     TargetName,
 )
+from budget_forecaster.domain.operation.operation_link import OperationLink
+from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.services.operation.operation_service import OperationFilter
+from budget_forecaster.tui.messages import DataRefreshRequested, SaveRequested
+from budget_forecaster.tui.widgets.category_select import CategorySelect
+from budget_forecaster.tui.widgets.operation_table import OperationTable
 
 
 class OperationDetailPanel(Vertical):

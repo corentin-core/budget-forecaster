@@ -10,11 +10,13 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, OptionList, Static
 from textual.widgets.option_list import Option
 
-from budget_forecaster.operation_range.budget import Budget
-from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.operation_range.planned_operation import PlannedOperation
-from budget_forecaster.services.operation_link_service import compute_match_score
-from budget_forecaster.time_range import TimeRangeInterface
+from budget_forecaster.core.time_range import TimeRangeInterface
+from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.services.operation.operation_link_service import (
+    compute_match_score,
+)
 
 
 class LinkIterationModal(ModalScreen[datetime | None]):

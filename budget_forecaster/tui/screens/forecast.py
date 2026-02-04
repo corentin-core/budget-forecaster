@@ -10,7 +10,7 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, DataTable, Input, Static
 
-from budget_forecaster.account.account_analysis_renderer import (
+from budget_forecaster.services.account.account_analysis_renderer import (
     AccountAnalysisRendererExcel,
 )
 from budget_forecaster.services.application_service import ApplicationService

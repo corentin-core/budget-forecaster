@@ -8,7 +8,7 @@ from textual.message import Message
 from textual.widgets import Input, OptionList, Static
 from textual.widgets.option_list import Option
 
-from budget_forecaster.types import Category
+from budget_forecaster.core.types import Category
 
 
 class CategorySelect(Vertical):

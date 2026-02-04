@@ -10,9 +10,9 @@ from textual.containers import Horizontal, Vertical
 from textual.message import Message
 from textual.widgets import Button, DataTable, Static
 
-from budget_forecaster.operation_range.budget import Budget
+from budget_forecaster.core.time_range import PeriodicTimeRange
+from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.services.application_service import ApplicationService
-from budget_forecaster.time_range import PeriodicTimeRange
 
 logger = logging.getLogger(__name__)
 
