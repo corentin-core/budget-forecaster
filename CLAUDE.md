@@ -7,12 +7,24 @@ Swile), categorizes operations, and generates forecasts.
 
 ```
 budget_forecaster/
-  account/           # Account management and SQLite persistence
-  bank_adapter/      # Bank import adapters (BNP, Swile)
-  forecast/          # Forecasting logic and actualization
-  operation_range/   # Operations, budgets, categorization
-  main.py            # CLI entry point
-tests/               # pytest unit tests
+  core/                  # Primitives (Amount, TimeRange, types)
+  domain/                # Business entities
+    account/             # Account, AggregatedAccount
+    operation/           # HistoricOperation, PlannedOperation, Budget, OperationLink
+    forecast/            # Forecast
+  services/              # Business logic
+    account/             # AccountForecaster, AccountAnalyzer, reports
+    operation/           # OperationService, OperationMatcher, Categorizer
+    forecast/            # ForecastService, ForecastActualizer
+    application_service.py
+    import_service.py
+  infrastructure/        # External interfaces
+    persistence/         # SQLite repository
+    bank_adapters/       # BNP, Swile adapters
+    config.py, backup.py
+  tui/                   # Terminal UI (Textual)
+  main.py                # CLI entry point
+tests/                   # Mirrors source structure
 ```
 
 ## Common commands
@@ -25,7 +37,7 @@ source budget-forecaster-venv/bin/activate
 pytest tests/
 
 # Run a specific test
-pytest tests/test_budget.py -v
+pytest tests/domain/operation/test_budget.py -v
 
 # Load a bank statement
 python -m budget_forecaster.main -c config.yaml load BNP-2025-01-29.xlsx
@@ -81,8 +93,8 @@ See `.claude/rules/python-quality.md` for detailed patterns and examples.
 
 ## Important notes
 
-- Categories are defined in `budget_forecaster/types.py`
-- Persistence uses SQLite (`account/sqlite_repository.py`)
+- Categories are defined in `budget_forecaster/core/types.py`
+- Persistence uses SQLite (`infrastructure/persistence/sqlite_repository.py`)
 - Amounts are in EUR by default
 - Always ask for review before committing
 
