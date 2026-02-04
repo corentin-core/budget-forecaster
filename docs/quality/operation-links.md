@@ -1,45 +1,43 @@
 # Operation Links - Test Scenarios
 
-## Link Priority Over Heuristics
+## Manual Link Takes Priority Over Matching Criteria
 
-> **Given** an operation linked to a planned operation
+> **Given** an operation manually linked to a planned operation
 >
-> **When** the matcher checks if the operation matches
+> **When** the forecast is computed
 >
-> **Then** it returns true even if heuristic criteria (amount, date, category) don't
-> match
+> **Then** the link is used even if the operation doesn't match the criteria (amount,
+> date, category)
 
-## Heuristic Link Creation
+## Automatic Link Creation After Import
 
-> **Given** a new operation imported without any link, and a planned operation with
-> matching criteria (amount ±5%, date ±5 days, same category)
+> **Given** a new bank operation imported, and a planned operation with matching
+> criteria (amount ±5%, date ±5 days, same category)
 >
-> **When** `create_heuristic_links()` is called
+> **When** the import completes
 >
-> **Then** an automatic link is created with `is_manual=false`
+> **Then** an automatic link is created between the operation and the planned operation
 
-## Manual Link Preservation
+## Manual Links Preserved When Editing
 
 > **Given** a manual link between an operation and a planned operation
 >
-> **When** the planned operation is edited and `recalculate_links_for_target()` is
-> called
+> **When** the user edits the planned operation (changes amount, date, or category)
 >
-> **Then** the manual link is preserved (not deleted)
+> **Then** the manual link is preserved
 
-## Automatic Link Recalculation
+## Automatic Links Recalculated When Editing
 
 > **Given** an automatic link between an operation and a planned operation
 >
-> **When** the planned operation criteria change so the operation no longer matches, and
-> `recalculate_links_for_target()` is called
+> **When** the user edits the planned operation so the criteria no longer match
 >
-> **Then** the automatic link is deleted
+> **Then** the automatic link is removed
 
-## Upsert Replaces Existing Link
+## Linking to Different Target Replaces Existing Link
 
-> **Given** an operation already linked to planned operation A
+> **Given** an operation linked to planned operation A
 >
-> **When** `upsert_link()` is called with a link to planned operation B
+> **When** the user links it to planned operation B
 >
-> **Then** the link to A is replaced by the link to B
+> **Then** the link to A is replaced by the link to B (operation can only have one link)
