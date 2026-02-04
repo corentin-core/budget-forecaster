@@ -13,7 +13,6 @@ from budget_forecaster.amount import Amount
 from budget_forecaster.operation_range.budget import Budget
 from budget_forecaster.operation_range.planned_operation import PlannedOperation
 from budget_forecaster.time_range import PeriodicTimeRange
-from budget_forecaster.types import LinkType, TargetId
 
 
 class SplitResult(NamedTuple):
@@ -323,21 +322,3 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
     def action_cancel(self) -> None:
         """Cancel the operation."""
         self.dismiss(None)
-
-    @property
-    def target_type(self) -> LinkType:
-        """Return the target type for service calls.
-
-        Note: Exposed for testing - the app callback already knows the target type.
-        """
-        if self._is_budget:
-            return LinkType.BUDGET
-        return LinkType.PLANNED_OPERATION
-
-    @property
-    def target_id(self) -> TargetId | None:
-        """Return the target ID.
-
-        Note: Exposed for testing - the app callback already knows the target.
-        """
-        return self._target.id

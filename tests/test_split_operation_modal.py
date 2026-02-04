@@ -21,7 +21,7 @@ from budget_forecaster.tui.modals.split_operation import (
     SplitOperationModal,
     SplitResult,
 )
-from budget_forecaster.types import Category, LinkType
+from budget_forecaster.types import Category
 
 
 def make_periodic_planned_operation(
@@ -429,46 +429,3 @@ class TestSplitOperationModalSubmission:
             assert app.modal_dismissed
             assert app.modal_result is not None
             assert app.modal_result.new_period == relativedelta(months=3)
-
-
-class TestSplitModalTargetProperties:
-    """Tests for modal target_type and target_id properties."""
-
-    @pytest.mark.asyncio
-    async def test_target_type_planned_operation(self) -> None:
-        """Verify target_type returns PLANNED_OPERATION for PlannedOperation."""
-        operation = make_periodic_planned_operation()
-        app = SplitModalTestApp(operation)
-        async with app.run_test(size=TEST_SIZE) as pilot:
-            app.open_modal()
-            await pilot.pause()
-
-            modal = app.screen
-            assert isinstance(modal, SplitOperationModal)
-            assert modal.target_type == LinkType.PLANNED_OPERATION
-
-    @pytest.mark.asyncio
-    async def test_target_type_budget(self) -> None:
-        """Verify target_type returns BUDGET for Budget."""
-        budget = make_periodic_budget()
-        app = SplitModalTestApp(budget)
-        async with app.run_test(size=TEST_SIZE) as pilot:
-            app.open_modal()
-            await pilot.pause()
-
-            modal = app.screen
-            assert isinstance(modal, SplitOperationModal)
-            assert modal.target_type == LinkType.BUDGET
-
-    @pytest.mark.asyncio
-    async def test_target_id(self) -> None:
-        """Verify target_id returns the correct ID."""
-        operation = make_periodic_planned_operation(record_id=42)
-        app = SplitModalTestApp(operation)
-        async with app.run_test(size=TEST_SIZE) as pilot:
-            app.open_modal()
-            await pilot.pause()
-
-            modal = app.screen
-            assert isinstance(modal, SplitOperationModal)
-            assert modal.target_id == 42
