@@ -2,6 +2,19 @@
 
 This document describes the high-level architecture of Budget Forecaster.
 
+## Layer Criteria
+
+| Layer              | Purpose             | Contains                                                                          |
+| ------------------ | ------------------- | --------------------------------------------------------------------------------- |
+| **Core**           | Foundational types  | Primitives with no dependencies: `Amount`, `TimeRange`, `Category`                |
+| **Domain**         | Business entities   | Pure data objects and business rules. No orchestration, no external dependencies  |
+| **Services**       | Orchestration       | Coordination between domain objects, use case implementation, computed aggregates |
+| **Infrastructure** | External interfaces | Persistence, file parsing, configuration, rendering                               |
+| **Presentation**   | User interfaces     | CLI, TUI. Delegates to Services                                                   |
+
+**Key distinction**: Domain objects represent _what_ exists in the business model.
+Services implement _how_ to coordinate those objects for specific use cases.
+
 ## Layer Diagram
 
 ```mermaid
@@ -13,44 +26,54 @@ graph TB
 
     subgraph Services
         AS[ApplicationService]
-        FS[ForecastService]
-        IS[ImportService]
-        OS[OperationService]
-        OLS[OperationLinkService]
-    end
-
-    subgraph Domain
-        subgraph Account
-            PA[PersistentAccount]
-            AA[AggregatedAccount]
+        subgraph services/forecast
+            FS[ForecastService]
+            FA[ForecastActualizer]
+        end
+        subgraph services/account
             AF[AccountForecaster]
             AN[AccountAnalyzer]
         end
+        subgraph services/operation
+            OS[OperationService]
+            OLS[OperationLinkService]
+            OM[OperationMatcher]
+            OC[OperationsCategorizer]
+        end
+        IS[ImportService]
+    end
 
-        subgraph Operations
+    subgraph Domain
+        subgraph domain/account
+            AC[Account]
+            AA[AggregatedAccount]
+        end
+
+        subgraph domain/operation
             HO[HistoricOperation]
             PO[PlannedOperation]
             BU[Budget]
             OL[OperationLink]
-            OM[OperationMatcher]
-            OC[OperationsCategorizer]
         end
 
-        subgraph Forecast
+        subgraph domain/forecast
             FC[Forecast]
-            FA[ForecastActualizer]
-        end
-
-        subgraph Primitives
-            AM[Amount]
-            TR[TimeRange]
-            CAT[Category]
         end
     end
 
+    subgraph Core
+        AM[Amount]
+        TR[TimeRange]
+        CAT[Category]
+    end
+
     subgraph Infrastructure
-        BA[BankAdapters]
-        SR[SqliteRepository]
+        subgraph infrastructure/bank_adapters
+            BA[BnpAdapter / SwileAdapter]
+        end
+        subgraph infrastructure/persistence
+            SR[SqliteRepository]
+        end
         CFG[Config]
         BK[BackupService]
         RND[AccountAnalysisRenderer]
@@ -65,10 +88,8 @@ graph TB
     FS --> FA
     FS --> AN
     IS --> BA
-    AS --> PA
-    PA --> SR
+    AS --> SR
     AN --> AF
-    CFG --> BK
 ```
 
 Budget Forecaster is a personal finance application that imports bank statements,
@@ -76,15 +97,24 @@ categorizes transactions, and generates balance forecasts.
 
 The **Presentation** layer provides user interfaces: a Terminal UI for interactive use
 and a CLI for scripted operations. Both delegate to **Services**, which orchestrate
-business logic without containing domain knowledge.
+business logic.
 
-The **Domain** layer holds the core model: accounts with their operations, planned
-operations and budgets for forecasting, and the linking system that connects actual
-transactions to their planned counterparts. Primitives (Amount, TimeRange, Category)
-provide the foundational types.
+The **Services** layer coordinates domain objects and implements use cases:
+
+- `ForecastService`: CRUD for planned operations/budgets, report computation
+- `AccountForecaster`/`AccountAnalyzer`: Compute account projections and aggregates
+- `OperationMatcher`/`OperationsCategorizer`: Match and categorize operations
+- `ForecastActualizer`: Adjust forecasts based on linked operations
+
+The **Domain** layer holds pure business entities: accounts, operations, planned
+operations, budgets, forecasts, and operation links. These are data objects with
+business rules but no orchestration logic.
+
+The **Core** layer provides foundational types (Amount, TimeRange, Category) with no
+external dependencies.
 
 The **Infrastructure** layer handles external concerns: SQLite persistence, bank file
-parsing (BNP, Swile), configuration, and exports.
+parsing (BNP, Swile), configuration, and rendering.
 
 ## Documentation Index
 
