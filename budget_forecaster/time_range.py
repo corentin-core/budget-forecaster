@@ -104,16 +104,16 @@ class TimeRange(TimeRangeInterface):
         initial_date: datetime,
         duration: relativedelta,
     ) -> None:
-        self.__initial_date = initial_date
-        self.__duration = duration
+        self._initial_date = initial_date
+        self._duration = duration
 
     @property
     def initial_date(self) -> datetime:
-        return self.__initial_date
+        return self._initial_date
 
     @property
     def last_date(self) -> datetime:
-        return self.__initial_date + self.__duration - timedelta(days=1)
+        return self._initial_date + self._duration - timedelta(days=1)
 
     @property
     def total_duration(self) -> timedelta:
@@ -123,7 +123,7 @@ class TimeRange(TimeRangeInterface):
     @property
     def duration(self) -> relativedelta:
         """Return the duration as a relativedelta."""
-        return self.__duration
+        return self._duration
 
     def is_expired(self, date: datetime) -> bool:
         return self.last_date < date
@@ -172,7 +172,7 @@ class TimeRange(TimeRangeInterface):
             raise TypeError(
                 f"initial_date must be datetime, got {type(new_initial_date)}"
             )
-        new_duration = kwargs.get("duration", self.__duration)
+        new_duration = kwargs.get("duration", self._duration)
         if not isinstance(new_duration, relativedelta):
             raise TypeError(f"duration must be relativedelta, got {type(new_duration)}")
         return TimeRange(
@@ -226,13 +226,13 @@ class PeriodicTimeRange(TimeRangeInterface):
         period: relativedelta,
         expiration_date: datetime | None = None,
     ) -> None:
-        self.__initial_time_range = initial_time_range
+        self._initial_time_range = initial_time_range
         self._period = period
         self._expiration_date = expiration_date or datetime.max
 
     @property
     def initial_date(self) -> datetime:
-        return self.__initial_time_range.initial_date
+        return self._initial_time_range.initial_date
 
     @property
     def last_date(self) -> datetime:
@@ -241,7 +241,7 @@ class PeriodicTimeRange(TimeRangeInterface):
     @property
     def base_time_range(self) -> TimeRangeInterface:
         """Return the base time range that repeats."""
-        return self.__initial_time_range
+        return self._initial_time_range
 
     @property
     def total_duration(self) -> timedelta:
@@ -251,7 +251,7 @@ class PeriodicTimeRange(TimeRangeInterface):
     @property
     def duration(self) -> relativedelta:
         """Return the duration of each period as a relativedelta."""
-        return self.__initial_time_range.duration
+        return self._initial_time_range.duration
 
     @property
     def period(self) -> relativedelta:
@@ -262,7 +262,7 @@ class PeriodicTimeRange(TimeRangeInterface):
         return self._expiration_date < date
 
     def is_future(self, date: datetime) -> bool:
-        return self.__initial_time_range.is_future(date)
+        return self._initial_time_range.is_future(date)
 
     def is_within(
         self,
@@ -283,7 +283,7 @@ class PeriodicTimeRange(TimeRangeInterface):
                 start += 1
 
         time_ranges = (
-            self.__initial_time_range.replace(
+            self._initial_time_range.replace(
                 initial_date=self.initial_date + n * self._period
             )
             for n in itertools.count(start)
@@ -378,14 +378,14 @@ class PeriodicTimeRange(TimeRangeInterface):
                 f"expiration_date must be datetime or None, got {type(new_expiration_date)}"
             )
         return PeriodicTimeRange(
-            initial_time_range=self.__initial_time_range.replace(**kwargs),
+            initial_time_range=self._initial_time_range.replace(**kwargs),
             period=new_period,
             expiration_date=new_expiration_date,
         )
 
     def __repr__(self) -> str:
         return (
-            f"{self.__initial_time_range} every {self._period} until "
+            f"{self._initial_time_range} every {self._period} until "
             f"{self._expiration_date if self._expiration_date != datetime.max else 'forever'}"
         )
 

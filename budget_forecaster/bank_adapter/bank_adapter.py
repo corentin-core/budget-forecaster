@@ -53,14 +53,14 @@ class BankAdapterBase(BankAdapterInterface, abc.ABC):
     """Base class for bank adapters."""
 
     def __init__(self, name: str) -> None:
-        self.__name: Final[str] = name
+        self._name: Final[str] = name
         self._operations: list[HistoricOperation] = []
         self._balance: float | None = None
         self._export_date: datetime | None = None
 
     @property
     def name(self) -> str:
-        return self.__name
+        return self._name
 
     @property
     def operations(self) -> tuple[HistoricOperation, ...]:

@@ -54,7 +54,7 @@ class Config:  # pylint: disable=too-few-public-methods
         # Logging config (native Python logging dictConfig format)
         self.logging_config: dict[str, Any] | None = None
 
-    def __parse_yaml(self, yaml_path: Path) -> None:
+    def _parse_yaml(self, yaml_path: Path) -> None:
         """Parse a YAML configuration file."""
         with open(yaml_path, encoding="utf-8") as file:
             config = yaml.safe_load(file)
@@ -106,6 +106,6 @@ class Config:  # pylint: disable=too-few-public-methods
     def parse(self, config_path: Path) -> None:
         """Parse a configuration file."""
         if config_path.suffix == ".yaml":
-            self.__parse_yaml(config_path)
+            self._parse_yaml(config_path)
         else:
             raise ValueError(f"Unsupported file format: '{config_path.suffix}'")

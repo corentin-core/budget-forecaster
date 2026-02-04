@@ -31,72 +31,70 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         account: Account,
         operation_links: tuple[OperationLink, ...] = (),
     ) -> None:
-        self.__account: Final = account
-        self.__operation_links: Final = operation_links
+        self._account: Final = account
+        self._operation_links: Final = operation_links
         # Internal indexes built from operation_links
-        self.__linked_iterations: dict[PlannedOperationId, set[IterationDate]] = {}
-        self.__linked_op_ids: dict[
-            tuple[BudgetId, IterationDate], set[OperationId]
-        ] = {}
+        self._linked_iterations: dict[PlannedOperationId, set[IterationDate]] = {}
+        self._linked_op_ids: dict[tuple[BudgetId, IterationDate], set[OperationId]] = {}
         # Map operation_id -> operation date for date lookups
-        self.__operation_dates: dict[OperationId, datetime] = {
+        self._operation_dates: dict[OperationId, datetime] = {
             op.unique_id: op.date for op in account.operations
         }
         # Map (planned_op_id, iteration_date) -> set of linked operation IDs
-        self.__planned_op_linked_ops: dict[
+        self._planned_op_linked_ops: dict[
             tuple[PlannedOperationId, IterationDate], set[OperationId]
         ] = {}
-        self.__build_indexes()
+        self._build_indexes()
 
-    def __build_indexes(self) -> None:
+    def _build_indexes(self) -> None:
         """Build internal indexes from operation links for efficient lookups."""
-        for link in self.__operation_links:
+        for link in self._operation_links:
             match link.target_type:
                 case LinkType.PLANNED_OPERATION:
-                    self.__linked_iterations.setdefault(link.target_id, set()).add(
+                    self._linked_iterations.setdefault(link.target_id, set()).add(
                         link.iteration_date
                     )
                     # Also track which operations are linked to each iteration
                     key = (link.target_id, link.iteration_date)
-                    self.__planned_op_linked_ops.setdefault(key, set()).add(
+                    self._planned_op_linked_ops.setdefault(key, set()).add(
                         link.operation_unique_id
                     )
                 case LinkType.BUDGET:
                     key = (link.target_id, link.iteration_date)
-                    self.__linked_op_ids.setdefault(key, set()).add(
+                    self._linked_op_ids.setdefault(key, set()).add(
                         link.operation_unique_id
                     )
         logger.debug(
             "Built indexes from %d links: %d planned op entries, %d budget entries",
-            len(self.__operation_links),
-            len(self.__linked_iterations),
-            len(self.__linked_op_ids),
+            len(self._operation_links),
+            len(self._linked_iterations),
+            len(self._linked_op_ids),
         )
 
     def __call__(self, forecast: Forecast) -> Forecast:
-        actualized_planned_operations = self.__actualize_planned_operations(
+        actualized_planned_operations = self._actualize_planned_operations(
             forecast.operations
         )
-        actualized_budgets = self.__actualize_budgets(forecast.budgets)
+        actualized_budgets = self._actualize_budgets(forecast.budgets)
         return Forecast(actualized_planned_operations, actualized_budgets)
 
-    def __get_linked_iterations(
+    def _get_linked_iterations(
         self, planned_operation: PlannedOperation
     ) -> set[datetime]:
         """Get iteration dates linked to a planned operation."""
         if planned_operation.id is None:
             return set()
-        return self.__linked_iterations.get(planned_operation.id, set())
+        return self._linked_iterations.get(planned_operation.id, set())
 
-    def __get_linked_operation_ids(
+    def _get_linked_operation_ids(
         self, budget: Budget, iteration_date: IterationDate
     ) -> set[OperationId]:
         """Get operation IDs linked to a budget for a specific iteration."""
         if budget.id is None:
             return set()
-        return self.__linked_op_ids.get((budget.id, iteration_date), set())
+        return self._linked_op_ids.get((budget.id, iteration_date), set())
 
-    def __get_late_iterations(
+    def _get_late_iterations(
         self,
         planned_operation: PlannedOperation,
         linked_iterations: set[datetime],
@@ -113,7 +111,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         if planned_operation.id is None:
             return ()
 
-        balance_date = self.__account.balance_date
+        balance_date = self._account.balance_date
         late_iterations: list[datetime] = []
         approximation = planned_operation.matcher.approximation_date_range
 
@@ -135,7 +133,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
 
         return tuple(late_iterations)
 
-    def __handle_late_iterations(
+    def _handle_late_iterations(
         self,
         planned_operation: PlannedOperation,
         late_iterations: tuple[datetime, ...],
@@ -149,7 +147,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         if not late_iterations:
             return ()
 
-        balance_date = self.__account.balance_date
+        balance_date = self._account.balance_date
         postponed_date = balance_date + timedelta(days=1)
 
         result: list[PlannedOperation] = []
@@ -180,7 +178,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
 
         return tuple(result)
 
-    def __is_iteration_actualized(
+    def _is_iteration_actualized(
         self, planned_op_id: PlannedOperationId, iteration_date: IterationDate
     ) -> bool:
         """Check if an iteration is actualized (has been executed).
@@ -190,7 +188,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         2. A linked operation exists with date <= balance_date
            (operation happened early, before the planned iteration date)
         """
-        balance_date = self.__account.balance_date
+        balance_date = self._account.balance_date
 
         # Case 1: Iteration date has passed
         if iteration_date <= balance_date:
@@ -198,19 +196,19 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
 
         # Case 2: Linked operation has already occurred (even if iteration is future)
         key = (planned_op_id, iteration_date)
-        linked_op_ids = self.__planned_op_linked_ops.get(key, set())
+        linked_op_ids = self._planned_op_linked_ops.get(key, set())
         for op_id in linked_op_ids:
-            op_date = self.__operation_dates.get(op_id)
+            op_date = self._operation_dates.get(op_id)
             if op_date is not None and op_date <= balance_date:
                 return True
 
         return False
 
-    def __actualize_planned_operation_with_links(
+    def _actualize_planned_operation_with_links(
         self, planned_operation: PlannedOperation, linked_iterations: set[datetime]
     ) -> PlannedOperation | None:
         """Actualize a planned operation using linked iterations as source of truth."""
-        balance_date = self.__account.balance_date
+        balance_date = self._account.balance_date
 
         if planned_operation.id is None:
             return planned_operation
@@ -219,7 +217,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         actualized_iterations = tuple(
             d
             for d in linked_iterations
-            if self.__is_iteration_actualized(planned_operation.id, d)
+            if self._is_iteration_actualized(planned_operation.id, d)
         )
 
         if not actualized_iterations:
@@ -251,7 +249,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             )
         )
 
-    def __actualize_planned_operations(
+    def _actualize_planned_operations(
         self, planned_operations: Iterable[PlannedOperation]
     ) -> tuple[PlannedOperation, ...]:
         actualized_planned_operations: list[PlannedOperation] = []
@@ -259,20 +257,20 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         for planned_operation in sorted(
             planned_operations, key=lambda op: op.time_range.initial_date
         ):
-            linked_iterations = self.__get_linked_iterations(planned_operation)
+            linked_iterations = self._get_linked_iterations(planned_operation)
             # Check for late iterations (past iterations without links)
-            late_iterations = self.__get_late_iterations(
+            late_iterations = self._get_late_iterations(
                 planned_operation, linked_iterations
             )
             if late_iterations:
                 # Some iterations are late, postpone them to tomorrow
-                postponed = self.__handle_late_iterations(
+                postponed = self._handle_late_iterations(
                     planned_operation, late_iterations
                 )
                 actualized_planned_operations.extend(postponed)
             else:
                 # No late iterations, use link-based actualization
-                updated = self.__actualize_planned_operation_with_links(
+                updated = self._actualize_planned_operation_with_links(
                     planned_operation, linked_iterations
                 )
                 if updated is not None:
@@ -280,7 +278,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
 
         return tuple(actualized_planned_operations)
 
-    def __compute_consumed_budget_amount(
+    def _compute_consumed_budget_amount(
         self, operation_amount: float, budget_amount: float
     ) -> float:
         return (
@@ -289,7 +287,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             else max(operation_amount, budget_amount)
         )
 
-    def __actualize_budget_with_links(
+    def _actualize_budget_with_links(
         self, budget: Budget, linked_op_ids: set[OperationId]
     ) -> Budget | None:
         """Actualize a budget using linked operations as source of truth."""
@@ -300,7 +298,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             len(linked_op_ids),
         )
         updated_amount = budget.amount
-        operations_by_id = {op.unique_id: op for op in self.__account.operations}
+        operations_by_id = {op.unique_id: op for op in self._account.operations}
 
         for op_id in linked_op_ids:
             if op_id not in operations_by_id:
@@ -311,7 +309,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             if operation.amount * updated_amount < 0.0:
                 continue
 
-            consumed_amount = self.__compute_consumed_budget_amount(
+            consumed_amount = self._compute_consumed_budget_amount(
                 operation.amount, updated_amount
             )
             updated_amount -= consumed_amount
@@ -327,7 +325,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             consumed_total,
             updated_amount,
         )
-        new_budget_start = self.__account.balance_date + timedelta(days=1)
+        new_budget_start = self._account.balance_date + timedelta(days=1)
         if new_budget_start > budget.time_range.last_date:
             return None
 
@@ -341,13 +339,13 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             amount=Amount(updated_amount, budget.currency),
         )
 
-    def __actualize_budgets(self, budgets: Iterable[Budget]) -> tuple[Budget, ...]:
+    def _actualize_budgets(self, budgets: Iterable[Budget]) -> tuple[Budget, ...]:
         updated_budgets: list[Budget] = []
 
         for budget in sorted(
             budgets, key=lambda b: (b.time_range.initial_date, b.time_range.last_date)
         ):
-            balance_date = self.__account.balance_date
+            balance_date = self._account.balance_date
             if budget.time_range.is_expired(balance_date):
                 # the budget is obsolete, discard it
                 continue
@@ -358,10 +356,10 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
                 current_budget = budget.replace(time_range=current_time_range)
                 iteration_date = current_time_range.initial_date
 
-                linked_op_ids = self.__get_linked_operation_ids(
+                linked_op_ids = self._get_linked_operation_ids(
                     current_budget, iteration_date
                 )
-                new_budget = self.__actualize_budget_with_links(
+                new_budget = self._actualize_budget_with_links(
                     current_budget, linked_op_ids
                 )
 

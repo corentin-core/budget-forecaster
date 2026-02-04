@@ -87,30 +87,30 @@ class OperationRange(OperationRangeInterface):
         category: Category,
         time_range: TimeRangeInterface,
     ) -> None:
-        self.__description = description
-        self.__amount = amount
-        self.__category = category
-        self.__time_range = time_range
+        self._description = description
+        self._amount = amount
+        self._category = category
+        self._time_range = time_range
 
     @property
     def description(self) -> str:
-        return self.__description
+        return self._description
 
     @property
     def amount(self) -> float:
-        return self.__amount.value
+        return self._amount.value
 
     @property
     def currency(self) -> str:
-        return self.__amount.currency
+        return self._amount.currency
 
     @property
     def category(self) -> Category:
-        return self.__category
+        return self._category
 
     @property
     def time_range(self) -> TimeRangeInterface:
-        return self.__time_range
+        return self._time_range
 
     def amount_on_period(self, start_date: datetime, end_date: datetime) -> float:
         if start_date > end_date:
@@ -153,16 +153,16 @@ class OperationRange(OperationRangeInterface):
         return amount
 
     def replace(self, **kwargs: Any) -> "OperationRange":
-        new_description = kwargs.get("description", self.__description)
+        new_description = kwargs.get("description", self._description)
         if not isinstance(new_description, str):
             raise TypeError(f"description must be str, got {type(new_description)}")
-        new_amount = kwargs.get("amount", self.__amount)
+        new_amount = kwargs.get("amount", self._amount)
         if not isinstance(new_amount, Amount):
             raise TypeError(f"amount must be Amount, got {type(new_amount)}")
-        new_category = kwargs.get("category", self.__category)
+        new_category = kwargs.get("category", self._category)
         if not isinstance(new_category, Category):
             raise TypeError(f"category must be Category, got {type(new_category)}")
-        new_time_range = kwargs.get("time_range", self.__time_range)
+        new_time_range = kwargs.get("time_range", self._time_range)
         if not isinstance(new_time_range, TimeRangeInterface):
             raise TypeError(
                 f"time_range must be TimeRangeInterface, got {type(new_time_range)}"

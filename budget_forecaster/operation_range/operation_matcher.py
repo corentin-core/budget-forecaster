@@ -30,42 +30,42 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
             operation_links: Tuple of OperationLinks for this target.
                 Links take priority over heuristic matching.
         """
-        self.__operation_range = operation_range
-        self.__description_hints = description_hints or set()
-        self.__approximation_date_range = approximation_date_range
-        self.__approximation_amount_ratio = approximation_amount_ratio
-        self.__operation_links = operation_links
+        self._operation_range = operation_range
+        self._description_hints = description_hints or set()
+        self._approximation_date_range = approximation_date_range
+        self._approximation_amount_ratio = approximation_amount_ratio
+        self._operation_links = operation_links
 
         # Validate operation links
         for link in operation_links:
-            self.__validate_iteration_date(link.iteration_date)
+            self._validate_iteration_date(link.iteration_date)
 
     @property
     def operation_range(self) -> OperationRange:
         """The operation range to match."""
-        return self.__operation_range
+        return self._operation_range
 
     @property
     def description_hints(self) -> set[str]:
         """The description hints to match."""
-        return self.__description_hints
+        return self._description_hints
 
     @property
     def approximation_date_range(self) -> timedelta:
         """The approximation date range to match."""
-        return self.__approximation_date_range
+        return self._approximation_date_range
 
     @property
     def approximation_amount_ratio(self) -> float:
         """The approximation amount ratio to match."""
-        return self.__approximation_amount_ratio
+        return self._approximation_amount_ratio
 
     @property
     def operation_links(self) -> tuple[OperationLink, ...]:
         """Tuple of OperationLinks for this target."""
-        return self.__operation_links
+        return self._operation_links
 
-    def __validate_iteration_date(self, iteration_date: IterationDate) -> None:
+    def _validate_iteration_date(self, iteration_date: IterationDate) -> None:
         """Validate that iteration_date is a valid iteration of the operation range.
 
         Args:
@@ -74,13 +74,11 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         Raises:
             ValueError: If the date is not a valid iteration.
         """
-        time_range = self.__operation_range.time_range.current_time_range(
-            iteration_date
-        )
+        time_range = self._operation_range.time_range.current_time_range(iteration_date)
         if time_range is None or time_range.initial_date != iteration_date:
             raise ValueError(
                 f"Invalid iteration date {iteration_date} for operation range "
-                f"'{self.__operation_range.description}'"
+                f"'{self._operation_range.description}'"
             )
 
     def is_linked(self, operation: HistoricOperation) -> bool:
@@ -94,7 +92,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         """
         return any(
             link.operation_unique_id == operation.unique_id
-            for link in self.__operation_links
+            for link in self._operation_links
         )
 
     def get_iteration_for_operation(
@@ -111,7 +109,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         Returns:
             The iteration date if linked, None otherwise.
         """
-        for link in self.__operation_links:
+        for link in self._operation_links:
             if link.operation_unique_id == operation.unique_id:
                 return link.iteration_date
         return None
@@ -123,12 +121,12 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         approximation_amount_ratio: float = 0.05,
     ) -> "OperationMatcher":
         """Update the params of the matcher."""
-        self.__description_hints = description_hints or self.description_hints
-        self.__approximation_date_range = approximation_date_range
-        self.__approximation_amount_ratio = approximation_amount_ratio
+        self._description_hints = description_hints or self.description_hints
+        self._approximation_date_range = approximation_date_range
+        self._approximation_amount_ratio = approximation_amount_ratio
         return self
 
-    def __out_of_range(self, operation: HistoricOperation) -> bool:
+    def _out_of_range(self, operation: HistoricOperation) -> bool:
         initial_date = self.operation_range.time_range.initial_date
         last_date = self.operation_range.time_range.last_date
         return (
@@ -167,7 +165,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
             approx_after=self.approximation_date_range,
         )
 
-    def __match_heuristic(self, operation: HistoricOperation) -> bool:
+    def _match_heuristic(self, operation: HistoricOperation) -> bool:
         """Check if the operation matches using heuristic rules only.
 
         This method applies the original matching logic without considering
@@ -180,7 +178,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
             True if the operation matches heuristically, False otherwise.
         """
         return (
-            not self.__out_of_range(operation)
+            not self._out_of_range(operation)
             and (not self.description_hints or self.match_description(operation))
             and self.match_amount(operation)
             and self.match_category(operation)
@@ -205,7 +203,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
             return True
 
         # Fall back to heuristic matching
-        return self.__match_heuristic(operation)
+        return self._match_heuristic(operation)
 
     def matches(
         self, operations: Iterable[HistoricOperation]
@@ -300,5 +298,5 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
             description_hints=self.description_hints,
             approximation_date_range=self.approximation_date_range,
             approximation_amount_ratio=self.approximation_amount_ratio,
-            operation_links=self.__operation_links if preserve_links else (),
+            operation_links=self._operation_links if preserve_links else (),
         )

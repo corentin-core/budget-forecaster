@@ -9,7 +9,7 @@ class OperationsCategorizer:  # pylint: disable=too-few-public-methods
     """Categorizes operations from a given forecast."""
 
     def __init__(self, forecast: Forecast) -> None:
-        self.__forecast = forecast
+        self._forecast = forecast
 
     def __call__(
         self, operations: Iterable[HistoricOperation]
@@ -18,7 +18,7 @@ class OperationsCategorizer:  # pylint: disable=too-few-public-methods
             op.unique_id: op for op in operations
         }
         for operation in categorized_operations.values():
-            for planned_operation in self.__forecast.operations:
+            for planned_operation in self._forecast.operations:
                 matcher = planned_operation.matcher
                 if (
                     matcher.match_description(operation)

@@ -27,11 +27,11 @@ class AccountAnalyzer:
         forecast: Forecast,
         operation_links: tuple[OperationLink, ...] = (),
     ) -> None:
-        self.__account = account._replace(
+        self._account = account._replace(
             operations=OperationsCategorizer(forecast)(account.operations)
         )
-        self.__forecast = forecast
-        self.__operation_links = operation_links
+        self._forecast = forecast
+        self._operation_links = operation_links
 
     def compute_report(
         self, start_date: datetime, end_date: datetime
@@ -40,7 +40,7 @@ class AccountAnalyzer:
         Compute an account analysis report between two dates.
         """
         return AccountAnalysisReport(
-            balance_date=self.__account.balance_date,
+            balance_date=self._account.balance_date,
             start_date=start_date,
             end_date=end_date,
             operations=self.compute_operations(start_date, end_date),
@@ -62,7 +62,7 @@ class AccountAnalyzer:
             "Description": [],
             "Montant": [],
         }
-        for operation in self.__account.operations:
+        for operation in self._account.operations:
             if start_date <= operation.date <= end_date:
                 operations["Date"].append(operation.date)
                 operations["Catégorie"].append(operation.category)
@@ -74,7 +74,7 @@ class AccountAnalyzer:
         return df
 
     @staticmethod
-    def __relative_delta_to_str(delta: relativedelta | None) -> str:
+    def _relative_delta_to_str(delta: relativedelta | None) -> str:
         """Convert a relativedelta to a string."""
         if delta is None:
             return ""
@@ -103,7 +103,7 @@ class AccountAnalyzer:
             "Périodicité": [],
         }
         for operation_range in itertools.chain(
-            self.__forecast.operations, self.__forecast.budgets
+            self._forecast.operations, self._forecast.budgets
         ):
             time_range = operation_range.time_range
             if time_range.is_future(end_date):
@@ -122,7 +122,7 @@ class AccountAnalyzer:
             period = (
                 time_range.period if isinstance(time_range, PeriodicTimeRange) else None
             )
-            budget_forecast["Périodicité"].append(self.__relative_delta_to_str(period))
+            budget_forecast["Périodicité"].append(self._relative_delta_to_str(period))
 
         df = pd.DataFrame(budget_forecast)
         df.set_index("Catégorie", inplace=True)
@@ -138,10 +138,10 @@ class AccountAnalyzer:
                 f"start_date must be <= end_date, got {start_date} > {end_date}"
             )
 
-        actualized_forecast = ForecastActualizer(
-            self.__account, self.__operation_links
-        )(self.__forecast)
-        account_forecaster = AccountForecaster(self.__account, actualized_forecast)
+        actualized_forecast = ForecastActualizer(self._account, self._operation_links)(
+            self._forecast
+        )
+        account_forecaster = AccountForecaster(self._account, actualized_forecast)
 
         initial_state = account_forecaster(start_date)
         final_state = account_forecaster(end_date)
@@ -179,13 +179,13 @@ class AccountAnalyzer:
             ).setdefault(amount_type, 0.0)
             expenses_per_month_and_category[category][month][amount_type] += amount
 
-        actualized_forecast = ForecastActualizer(
-            self.__account, self.__operation_links
-        )(self.__forecast)
-        account_forecaster = AccountForecaster(self.__account, actualized_forecast)
+        actualized_forecast = ForecastActualizer(self._account, self._operation_links)(
+            self._forecast
+        )
+        account_forecaster = AccountForecaster(self._account, actualized_forecast)
 
         # Actualized expenses are only computed for the current period
-        current_month = self.__account.balance_date.replace(day=1)
+        current_month = self._account.balance_date.replace(day=1)
         next_month_state = account_forecaster(
             current_month + relativedelta(months=1) - timedelta(days=1)
         )
@@ -202,7 +202,7 @@ class AccountAnalyzer:
                     operation.amount,
                 )
 
-        for operation in self.__account.operations:
+        for operation in self._account.operations:
             if start_date <= operation.date <= end_date:
                 increment_expense(
                     operation.category,
@@ -215,7 +215,7 @@ class AccountAnalyzer:
             start_date.replace(day=1), end_date.replace(day=1), freq="MS"
         ):
             for operation_range in itertools.chain(
-                self.__forecast.operations, self.__forecast.budgets
+                self._forecast.operations, self._forecast.budgets
             ):
                 increment_expense(
                     operation_range.category,
@@ -281,10 +281,10 @@ class AccountAnalyzer:
         """Compute the expenses statistics per category."""
         expenses_per_category_dict: dict[Category, list[tuple[datetime, float]]] = {}
         analysis_start = max(
-            min(operation.date for operation in self.__account.operations), start_date
+            min(operation.date for operation in self._account.operations), start_date
         )
         analysis_end = min(
-            max(operation.date for operation in self.__account.operations), end_date
+            max(operation.date for operation in self._account.operations), end_date
         )
 
         # start period is the first day of the first complete month
@@ -300,7 +300,7 @@ class AccountAnalyzer:
             else analysis_end
         )
 
-        for operation in self.__account.operations:
+        for operation in self._account.operations:
             if analysis_start <= operation.date <= analysis_end:
                 expenses_per_category_dict.setdefault(operation.category, []).append(
                     (operation.date, operation.amount)

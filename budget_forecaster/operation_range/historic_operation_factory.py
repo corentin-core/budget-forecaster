@@ -10,7 +10,7 @@ class HistoricOperationFactory:  # pylint: disable=too-few-public-methods
     """Factory to create historic operations"""
 
     def __init__(self, last_operation_id: int) -> None:
-        self.__operation_id = last_operation_id
+        self._operation_id = last_operation_id
 
     def create_operation(
         self,
@@ -20,9 +20,9 @@ class HistoricOperationFactory:  # pylint: disable=too-few-public-methods
         date: datetime,
     ) -> HistoricOperation:
         """Create a historic operation"""
-        self.__operation_id += 1
+        self._operation_id += 1
         return HistoricOperation(
-            unique_id=self.__operation_id,
+            unique_id=self._operation_id,
             description=description,
             amount=amount,
             category=category,
