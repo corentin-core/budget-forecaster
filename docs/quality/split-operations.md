@@ -1,119 +1,72 @@
 # Split Operations - Test Scenarios
 
-## Split PlannedOperation
+## Split Preserves History
 
-### Not Found Error
+> **Given** a monthly planned operation (e.g., rent on the 1st) with past iterations
+> already linked to bank operations
+>
+> **When** the user splits it from a future date with a new amount
+>
+> **Then** past iterations remain linked to the original operation, and future
+> iterations use the new amount
 
-> **Given** a non-existent planned operation ID
->
-> **When** `split_planned_operation_at_date()` is called
->
-> **Then** a ValueError is raised with "not found"
+## Split Date Defaults to Next Unlinked Iteration
 
-### Non-Periodic Error
+> **Given** a monthly planned operation where January 1st and February 1st are already
+> linked
+>
+> **When** the user opens the split modal
+>
+> **Then** the default split date is March 1st (first iteration without a linked
+> operation)
 
-> **Given** a planned operation with a non-periodic time range (e.g., DailyTimeRange)
->
-> **When** `split_planned_operation_at_date()` is called
->
-> **Then** a ValueError is raised with "non-periodic"
+## Split Modal Pre-fills Current Values
 
-### Split Date Before Start Error
+> **Given** a monthly budget of 300€ with 1-month duration
+>
+> **When** the user opens the split modal
+>
+> **Then** the amount, period, and duration fields show the current values (300€,
+> monthly, 1 month)
 
-> **Given** a planned operation starting on 2025-01-01
->
-> **When** `split_planned_operation_at_date()` is called with split_date = 2025-01-01
->
-> **Then** a ValueError is raised (split date must be strictly after initial date)
+## Split Allows Modifying Amount, Period, and Duration
 
-### Successful Split
+> **Given** a monthly budget of 300€ with 1-month duration
+>
+> **When** the user splits it from a future date, changing the amount to 400€, the
+> period to quarterly, and the duration to 3 months
+>
+> **Then** the new budget uses the updated amount, period, and duration
 
-> **Given** a periodic planned operation (ID=1) starting 2025-01-01
->
-> **When** `split_planned_operation_at_date()` is called with split_date = 2025-03-01
-> and new_amount = -850
->
-> **Then**:
->
-> - Original operation is terminated on 2025-02-28
-> - New operation is created starting 2025-03-01 with the new amount
-> - New operation inherits description and category
+## Split Creates Continuation
 
-### Link Migration
+> **Given** a monthly salary of 2500€ on the 28th, starting January 28th
+>
+> **When** the user splits it from June 28th with a new amount of 2700€
+>
+> **Then** the original salary ends on June 27th, a new salary starts on June 28th at
+> 2700€, and both share the same description and category
 
-> **Given** a planned operation with links on 2025-01-01, 2025-03-01, and 2025-04-01
->
-> **When** `split_planned_operation_at_date()` is called with split_date = 2025-03-01
->
-> **Then**:
->
-> - Link on 2025-01-01 stays with original operation
-> - Links on 2025-03-01 and 2025-04-01 are migrated to new operation
+## Split Date Must Be After Initial Date
 
-## Split Budget
+> **Given** a planned operation starting on January 15th
+>
+> **When** the user tries to split it with a date on or before January 15th
+>
+> **Then** an error message is displayed and the split is not performed
 
-### Not Found Error
+## Split Requires Periodic Element
 
-> **Given** a non-existent budget ID
+> **Given** a one-time planned operation (non-recurring)
 >
-> **When** `split_budget_at_date()` is called
+> **When** the user tries to split it
 >
-> **Then** a ValueError is raised with "not found"
+> **Then** the split action is not available (only periodic elements can be split)
 
-### Non-Periodic Error
+## Links Follow Their Iterations After Split
 
-> **Given** a budget with a non-periodic time range
+> **Given** a planned operation with a link on a future iteration (e.g., March 1st)
 >
-> **When** `split_budget_at_date()` is called
+> **When** the user splits it before that iteration (e.g., from March 1st)
 >
-> **Then** a ValueError is raised with "non-periodic"
-
-### Successful Split
-
-> **Given** a periodic budget (ID=1) starting 2025-01-01
->
-> **When** `split_budget_at_date()` is called with split_date = 2025-03-01 and
-> new_amount = -400
->
-> **Then**:
->
-> - Original budget is terminated
-> - New budget is created starting 2025-03-01 with the new amount
-> - New budget inherits description and category
-
-### Link Migration
-
-> **Given** a budget with links on 2025-01-01, 2025-03-01, and 2025-04-01
->
-> **When** `split_budget_at_date()` is called with split_date = 2025-03-01
->
-> **Then**:
->
-> - Link on 2025-01-01 stays with original budget
-> - Links on 2025-03-01 and 2025-04-01 are migrated to new budget
-
-## Get Next Non-Actualized Iteration
-
-### Target Not Found
-
-> **Given** a non-existent target ID
->
-> **When** `get_next_non_actualized_iteration()` is called
->
-> **Then** None is returned
-
-### Non-Periodic Target
-
-> **Given** a target with a non-periodic time range
->
-> **When** `get_next_non_actualized_iteration()` is called
->
-> **Then** None is returned
-
-### Skips Actualized Iterations
-
-> **Given** a periodic operation with links on 2025-01-01 and 2025-02-01
->
-> **When** `get_next_non_actualized_iteration()` is called
->
-> **Then** returns 2025-03-01 (first iteration without a link)
+> **Then** the link is automatically transferred to the new operation
