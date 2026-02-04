@@ -350,6 +350,28 @@ class TestPeriodicTimeRange:  # pylint: disable=too-many-public-methods
         assert iterations[1].initial_date == datetime(2025, 6, 30)
         assert iterations[2].initial_date == datetime(2025, 8, 15)
 
+    def test_iterate_over_time_ranges_conservative_estimate(self) -> None:
+        """Test that conservative period estimation doesn't skip iterations.
+
+        Regression test: when estimating period length, we must use maximum
+        values (31 days/month) to avoid skipping iterations. With 30 days/month,
+        over 10 years of monthly periods we'd overshoot by ~3 iterations.
+        """
+        # Monthly period starting Jan 31 (maximizes actual period length)
+        initial = DailyTimeRange(datetime(2020, 1, 31))
+        ptr = PeriodicTimeRange(initial, relativedelta(months=1), None)
+
+        # 10 years later: with 30-day estimate, we'd calculate ~122 periods
+        # but actual is ~120, so we'd skip iterations
+        from_date = datetime(2030, 3, 15)
+        iterations = list(itertools.islice(ptr.iterate_over_time_ranges(from_date), 3))
+
+        # First iteration should be Feb 28/29 2030 (last iteration before Mar 15)
+        # NOT skipped due to overestimation
+        assert iterations[0].initial_date == datetime(2030, 2, 28)
+        assert iterations[1].initial_date == datetime(2030, 3, 31)
+        assert iterations[2].initial_date == datetime(2030, 4, 30)
+
     def test_split_at(self) -> None:
         """Test split_at returns terminated range and continuation range."""
         initial = DailyTimeRange(datetime(2025, 1, 15))
