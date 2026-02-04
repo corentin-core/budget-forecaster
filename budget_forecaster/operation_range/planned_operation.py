@@ -6,18 +6,17 @@ from typing import Any
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.amount import Amount
-from budget_forecaster.operation_range.forecast_operation_range import (
-    ForecastOperationRange,
-)
+from budget_forecaster.operation_range.operation_matcher import OperationMatcher
+from budget_forecaster.operation_range.operation_range import OperationRange
 from budget_forecaster.time_range import (
     DailyTimeRange,
     PeriodicDailyTimeRange,
     TimeRangeInterface,
 )
-from budget_forecaster.types import Category
+from budget_forecaster.types import Category, PlannedOperationId
 
 
-class PlannedOperation(ForecastOperationRange):
+class PlannedOperation(OperationRange):
     """
     A planned operation is a financial operation that is expected to happen.
     It can be a recurring or a one-time operation.
@@ -26,7 +25,7 @@ class PlannedOperation(ForecastOperationRange):
 
     def __init__(
         self,
-        record_id: int | None,
+        record_id: PlannedOperationId | None,
         description: str,
         amount: Amount,
         category: Category,
@@ -38,12 +37,23 @@ class PlannedOperation(ForecastOperationRange):
                 f"got {type(time_range)}"
             )
         super().__init__(
-            record_id=record_id,
             description=description,
             amount=amount,
             category=category,
             time_range=time_range,
         )
+        self._id = record_id
+        self._operation_matcher = OperationMatcher(operation_range=self)
+
+    @property
+    def id(self) -> PlannedOperationId | None:
+        """The database ID of the planned operation. None if not persisted yet."""
+        return self._id
+
+    @property
+    def matcher(self) -> OperationMatcher:
+        """The operation matcher of the planned operation."""
+        return self._operation_matcher
 
     def set_matcher_params(
         self,

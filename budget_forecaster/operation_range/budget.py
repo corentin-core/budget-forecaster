@@ -7,14 +7,13 @@ from typing import Any
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.amount import Amount
-from budget_forecaster.operation_range.forecast_operation_range import (
-    ForecastOperationRange,
-)
+from budget_forecaster.operation_range.operation_matcher import OperationMatcher
+from budget_forecaster.operation_range.operation_range import OperationRange
 from budget_forecaster.time_range import PeriodicTimeRange, TimeRangeInterface
-from budget_forecaster.types import Category
+from budget_forecaster.types import BudgetId, Category
 
 
-class Budget(ForecastOperationRange):
+class Budget(OperationRange):
     """
     A budget is an amount of money allocated to a category over a period of time.
     It can be periodic or not.
@@ -22,18 +21,30 @@ class Budget(ForecastOperationRange):
 
     def __init__(
         self,
-        record_id: int | None,
+        record_id: BudgetId | None,
         description: str,
         amount: Amount,
         category: Category,
         time_range: TimeRangeInterface,
     ):
-        super().__init__(record_id, description, amount, category, time_range)
+        super().__init__(description, amount, category, time_range)
+        self._id = record_id
+        self._operation_matcher = OperationMatcher(operation_range=self)
         # Only operations strictly in the budget time range will be considered
         # However they can have any amount
         self.set_matcher_params(
             approximation_date_range=timedelta(), approximation_amount_ratio=math.inf
         )
+
+    @property
+    def id(self) -> BudgetId | None:
+        """The database ID of the budget. None if not persisted yet."""
+        return self._id
+
+    @property
+    def matcher(self) -> OperationMatcher:
+        """The operation matcher of the budget."""
+        return self._operation_matcher
 
     def set_matcher_params(
         self,
