@@ -25,27 +25,25 @@ classDiagram
         #time_range
     }
 
-    class ForecastOperationRange {
+    class PlannedOperation {
         +id
         +matcher
     }
 
-    class PlannedOperation
-    class Budget
+    class Budget {
+        +id
+        +matcher
+    }
 
     class HistoricOperation {
         +unique_id
         +date
-        +description
-        +amount
-        +category
     }
 
     OperationRangeInterface <|.. OperationRange
-    OperationRange <|-- ForecastOperationRange
-    ForecastOperationRange <|-- PlannedOperation
-    ForecastOperationRange <|-- Budget
-    OperationRangeInterface <|.. HistoricOperation
+    OperationRange <|-- PlannedOperation
+    OperationRange <|-- Budget
+    OperationRange <|-- HistoricOperation
 ```
 
 HistoricOperation represents actual bank transactions (imported). PlannedOperation and
