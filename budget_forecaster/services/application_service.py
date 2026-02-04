@@ -11,32 +11,9 @@ from pathlib import Path
 
 from dateutil.relativedelta import relativedelta
 
-from budget_forecaster.account.account_analysis_report import AccountAnalysisReport
-from budget_forecaster.account.persistent_account import PersistentAccount
-from budget_forecaster.amount import Amount
-from budget_forecaster.forecast.forecast import Forecast
-from budget_forecaster.operation_range.budget import Budget
-from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.operation_range.operation_link import OperationLink
-from budget_forecaster.operation_range.operation_matcher import OperationMatcher
-from budget_forecaster.operation_range.planned_operation import PlannedOperation
-from budget_forecaster.services.forecast_service import (
-    ForecastService,
-    MonthlySummary,
-)
-from budget_forecaster.services.import_service import (
-    ImportResult,
-    ImportService,
-    ImportSummary,
-)
-from budget_forecaster.services.operation_link_service import OperationLinkService
-from budget_forecaster.services.operation_service import (
-    OperationCategoryUpdate,
-    OperationFilter,
-    OperationService,
-)
-from budget_forecaster.time_range import PeriodicTimeRange
-from budget_forecaster.types import (
+from budget_forecaster.core.amount import Amount
+from budget_forecaster.core.time_range import PeriodicTimeRange
+from budget_forecaster.core.types import (
     BudgetId,
     Category,
     ImportProgressCallback,
@@ -46,6 +23,35 @@ from budget_forecaster.types import (
     OperationId,
     PlannedOperationId,
     TargetId,
+)
+from budget_forecaster.domain.forecast.forecast import Forecast
+from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.domain.operation.operation_link import OperationLink
+from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.infrastructure.persistence.persistent_account import (
+    PersistentAccount,
+)
+from budget_forecaster.services.account.account_analysis_report import (
+    AccountAnalysisReport,
+)
+from budget_forecaster.services.forecast.forecast_service import (
+    ForecastService,
+    MonthlySummary,
+)
+from budget_forecaster.services.import_service import (
+    ImportResult,
+    ImportService,
+    ImportSummary,
+)
+from budget_forecaster.services.operation.operation_link_service import (
+    OperationLinkService,
+)
+from budget_forecaster.services.operation.operation_matcher import OperationMatcher
+from budget_forecaster.services.operation.operation_service import (
+    OperationCategoryUpdate,
+    OperationFilter,
+    OperationService,
 )
 
 logger = logging.getLogger(__name__)

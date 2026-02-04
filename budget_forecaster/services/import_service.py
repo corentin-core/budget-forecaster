@@ -10,13 +10,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import NamedTuple
 
-from budget_forecaster.account.account import AccountParameters
-from budget_forecaster.account.persistent_account import PersistentAccount
-from budget_forecaster.bank_adapter.bank_adapter_factory import BankAdapterFactory
-from budget_forecaster.operation_range.historic_operation_factory import (
+from budget_forecaster.core.types import ImportProgressCallback, ImportStats
+from budget_forecaster.domain.account.account import AccountParameters
+from budget_forecaster.infrastructure.bank_adapters.bank_adapter_factory import (
+    BankAdapterFactory,
+)
+from budget_forecaster.infrastructure.persistence.persistent_account import (
+    PersistentAccount,
+)
+from budget_forecaster.services.operation.historic_operation_factory import (
     HistoricOperationFactory,
 )
-from budget_forecaster.types import ImportProgressCallback, ImportStats
 
 logger = logging.getLogger(__name__)
 

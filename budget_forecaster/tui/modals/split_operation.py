@@ -9,10 +9,10 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Select, Static
 
-from budget_forecaster.amount import Amount
-from budget_forecaster.operation_range.budget import Budget
-from budget_forecaster.operation_range.planned_operation import PlannedOperation
-from budget_forecaster.time_range import PeriodicTimeRange
+from budget_forecaster.core.amount import Amount
+from budget_forecaster.core.time_range import PeriodicTimeRange
+from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 
 
 class SplitResult(NamedTuple):

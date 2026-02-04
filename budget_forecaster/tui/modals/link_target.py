@@ -10,12 +10,14 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, OptionList, Select, Static
 from textual.widgets.option_list import Option
 
-from budget_forecaster.operation_range.budget import Budget
-from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.operation_range.operation_link import OperationLink
-from budget_forecaster.operation_range.planned_operation import PlannedOperation
-from budget_forecaster.services.operation_link_service import compute_match_score
-from budget_forecaster.types import LinkType
+from budget_forecaster.core.types import LinkType
+from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.domain.operation.operation_link import OperationLink
+from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.services.operation.operation_link_service import (
+    compute_match_score,
+)
 
 # Column widths for alignment
 COL_SCORE = 6

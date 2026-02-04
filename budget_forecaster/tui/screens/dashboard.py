@@ -7,9 +7,9 @@ from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Static
 
-from budget_forecaster.services import OperationFilter
+from budget_forecaster.core.types import Category
 from budget_forecaster.services.application_service import ApplicationService
-from budget_forecaster.types import Category
+from budget_forecaster.services.operation.operation_service import OperationFilter
 
 
 class StatCard(Static):

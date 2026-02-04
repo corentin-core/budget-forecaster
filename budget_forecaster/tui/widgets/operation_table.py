@@ -9,9 +9,9 @@ from textual.message import Message
 from textual.widgets import DataTable
 from textual.widgets.data_table import ColumnKey, RowKey
 
-from budget_forecaster.operation_range.historic_operation import HistoricOperation
-from budget_forecaster.operation_range.operation_link import OperationLink
-from budget_forecaster.types import MatcherKey, OperationId, TargetName
+from budget_forecaster.core.types import MatcherKey, OperationId, TargetName
+from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.domain.operation.operation_link import OperationLink
 
 
 def get_row_key_at_cursor(table: DataTable) -> RowKey | None:  # type: ignore[type-arg]

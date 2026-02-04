@@ -12,10 +12,10 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Select, Static
 
-from budget_forecaster.amount import Amount
-from budget_forecaster.operation_range.budget import Budget
-from budget_forecaster.time_range import PeriodicTimeRange, TimeRange
-from budget_forecaster.types import Category
+from budget_forecaster.core.amount import Amount
+from budget_forecaster.core.time_range import PeriodicTimeRange, TimeRange
+from budget_forecaster.core.types import Category
+from budget_forecaster.domain.operation.budget import Budget
 
 
 class BudgetEditModal(ModalScreen[Budget | None]):
