@@ -8,7 +8,6 @@ from typing import Any
 from dateutil.relativedelta import relativedelta
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.message import Message
 from textual.widgets import Button, DataTable, Input, Static
 
 from budget_forecaster.account.account_analysis_renderer import (
@@ -102,13 +101,6 @@ class ForecastWidget(Vertical):
         color: $warning;
     }
     """
-
-    class ForecastComputed(Message):
-        """Message sent when forecast is computed."""
-
-        def __init__(self, success: bool) -> None:
-            self.success = success
-            super().__init__()
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -261,7 +253,6 @@ class ForecastWidget(Vertical):
                 self._app_service.compute_report(start_date, end_date)
             self._refresh_display()
             self.app.notify("Prévisions calculées")
-            self.post_message(self.ForecastComputed(success=True))
         except FileNotFoundError as e:
             logger.error("Forecast file not found: %s", e)
             self.app.notify(f"Fichier non trouvé: {e}", severity="error")
