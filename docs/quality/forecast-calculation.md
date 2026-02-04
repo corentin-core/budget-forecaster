@@ -54,3 +54,28 @@
 > **When** the forecast is actualized
 >
 > **Then** the February iteration is marked as actualized and skipped in the forecast
+
+## Expired Operation Stops Generating Iterations
+
+> **Given** a monthly planned operation with an expiration date of February 28th
+>
+> **When** the forecast is computed for March
+>
+> **Then** no iteration is generated for March or beyond
+
+## Budget Overspending Shows Negative Remaining
+
+> **Given** a monthly budget of 200€ for entertainment, and operations linked totaling
+> -250€
+>
+> **When** the budget forecast is computed
+>
+> **Then** remaining budget is -50€ (overspent by 50€)
+
+## Budget With Partial Consumption
+
+> **Given** a monthly budget of 400€ for groceries, and only one operation linked: -150€
+>
+> **When** the budget forecast is computed
+>
+> **Then** remaining budget is 250€, and the budget iteration is not fully actualized

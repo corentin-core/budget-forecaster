@@ -41,3 +41,29 @@
 > **When** the user links it to planned operation B
 >
 > **Then** the link to A is replaced by the link to B (operation can only have one link)
+
+## Unlinking an Operation
+
+> **Given** an operation linked to a planned operation
+>
+> **When** the user removes the link
+>
+> **Then** the operation is no longer associated with the planned operation and won't
+> count toward its actualization
+
+## Deleting Target Removes Associated Links
+
+> **Given** a planned operation with several linked bank operations
+>
+> **When** the user deletes the planned operation
+>
+> **Then** all links to that planned operation are removed
+
+## Budgets and Planned Operations Share Link Behavior
+
+> **Given** an operation that can be linked to either a planned operation or a budget
+>
+> **When** the user creates, edits, or removes links
+>
+> **Then** the behavior is identical for both target types (manual/auto priority,
+> preservation rules, replacement)
