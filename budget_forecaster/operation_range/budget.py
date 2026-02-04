@@ -1,14 +1,16 @@
 """Module for the budget class."""
 
 import math
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
+
+from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.amount import Amount
 from budget_forecaster.operation_range.forecast_operation_range import (
     ForecastOperationRange,
 )
-from budget_forecaster.time_range import TimeRangeInterface
+from budget_forecaster.time_range import PeriodicTimeRange, TimeRangeInterface
 from budget_forecaster.types import Category
 
 
@@ -44,6 +46,62 @@ class Budget(ForecastOperationRange):
             description_hints, approximation_date_range, approximation_amount_ratio
         )
         return self
+
+    def split_at(
+        self,
+        date: datetime,
+        new_amount: Amount | None = None,
+        new_period: relativedelta | None = None,
+        new_duration: relativedelta | None = None,
+    ) -> tuple["Budget", "Budget"]:
+        """Split this budget at the given date.
+
+        Args:
+            date: Date from which the new values apply.
+            new_amount: New amount for continuation (if None, keeps original).
+            new_period: New period for continuation (if None, keeps original).
+            new_duration: New duration for continuation (if None, keeps original).
+
+        Returns:
+            Tuple of (terminated, continuation) Budgets.
+
+        Raises:
+            ValueError: If this budget is not periodic.
+        """
+        if not isinstance(self.time_range, PeriodicTimeRange):
+            raise ValueError("Cannot split a non-periodic budget")
+
+        terminated_range, continuation_range = self.time_range.split_at(date)
+
+        terminated = self.replace(time_range=terminated_range)
+
+        amount = new_amount or Amount(self.amount, self.currency)
+        time_range = continuation_range
+        if new_period:
+            time_range = time_range.replace(period=new_period)
+        if new_duration:
+            base_tr = time_range.base_time_range.replace(duration=new_duration)
+            time_range = time_range.replace(initial_date=base_tr.initial_date)
+            # Rebuild with new base time range
+            time_range = PeriodicTimeRange(
+                base_tr,
+                time_range.period,
+                time_range.last_date if time_range.last_date < datetime.max else None,
+            )
+
+        continuation = Budget(
+            record_id=None,
+            description=self.description,
+            amount=amount,
+            category=self.category,
+            time_range=time_range,
+        ).set_matcher_params(
+            description_hints=self.matcher.description_hints,
+            approximation_date_range=self.matcher.approximation_date_range,
+            approximation_amount_ratio=self.matcher.approximation_amount_ratio,
+        )
+
+        return terminated, continuation
 
     def replace(self, **kwargs: Any) -> "Budget":
         """Return a new instance of the planned operation with the given parameters replaced."""

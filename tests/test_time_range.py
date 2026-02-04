@@ -310,6 +310,57 @@ class TestPeriodicTimeRange:  # pylint: disable=too-many-public-methods
         ]
         assert iterations == expected
 
+    def test_split_at(self) -> None:
+        """Test split_at returns terminated range and continuation range."""
+        initial = DailyTimeRange(datetime(2025, 1, 15))
+        ptr = PeriodicTimeRange(
+            initial, relativedelta(months=1), datetime(2025, 12, 31)
+        )
+
+        terminated, continuation = ptr.split_at(datetime(2025, 4, 1))
+
+        # Terminated range ends day before first new iteration (April 15)
+        assert terminated.last_date == datetime(2025, 4, 14)
+        # Continuation starts at first iteration >= split date
+        assert continuation.initial_date == datetime(2025, 4, 15)
+        assert continuation.period == ptr.period
+        # Continuation keeps original expiration date
+        assert continuation.last_date == datetime(2025, 12, 31)
+
+    def test_split_at_exact_iteration(self) -> None:
+        """Test split_at when date matches an iteration exactly."""
+        initial = DailyTimeRange(datetime(2025, 1, 15))
+        ptr = PeriodicTimeRange(
+            initial, relativedelta(months=1), datetime(2025, 12, 31)
+        )
+
+        terminated, continuation = ptr.split_at(datetime(2025, 4, 15))
+
+        assert terminated.last_date == datetime(2025, 4, 14)
+        assert continuation.initial_date == datetime(2025, 4, 15)
+        assert continuation.period == ptr.period
+
+    def test_split_at_raises_if_before_initial(self) -> None:
+        """Test split_at raises ValueError if date is before or at initial date."""
+        initial = DailyTimeRange(datetime(2025, 1, 15))
+        ptr = PeriodicTimeRange(
+            initial, relativedelta(months=1), datetime(2025, 12, 31)
+        )
+
+        with pytest.raises(ValueError, match="after the first iteration"):
+            ptr.split_at(datetime(2025, 1, 15))
+
+        with pytest.raises(ValueError, match="after the first iteration"):
+            ptr.split_at(datetime(2025, 1, 1))
+
+    def test_split_at_raises_if_no_iteration_after(self) -> None:
+        """Test split_at raises ValueError if no iteration exists at or after date."""
+        initial = DailyTimeRange(datetime(2025, 1, 15))
+        ptr = PeriodicTimeRange(initial, relativedelta(months=1), datetime(2025, 3, 31))
+
+        with pytest.raises(ValueError, match="No iteration found"):
+            ptr.split_at(datetime(2025, 6, 1))
+
     def test_current_time_range(self, periodic_time_range: PeriodicTimeRange) -> None:
         """Test the current_time_range method."""
         for month in range(1, 13):

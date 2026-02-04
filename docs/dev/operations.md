@@ -214,3 +214,8 @@ stateDiagram-v2
     note right of AutoLinked: is_manual = false
     note right of ManualLinked: is_manual = true
 ```
+
+## Related Documentation
+
+- [Planned Operations & Budgets](planned-operations-budgets.md) - Split functionality
+  and management operations

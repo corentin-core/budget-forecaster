@@ -74,6 +74,13 @@ class PlannedOperationsWidget(Vertical):
             super().__init__()
             self.operation = operation
 
+    class OperationSplitRequested(Message):
+        """Message sent when operation split is requested."""
+
+        def __init__(self, operation: PlannedOperation) -> None:
+            super().__init__()
+            self.operation = operation
+
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self._app_service: ApplicationService | None = None
@@ -87,6 +94,7 @@ class PlannedOperationsWidget(Vertical):
             with Horizontal(id="planned-ops-buttons"):
                 yield Button("Ajouter", id="btn-add-op", variant="primary")
                 yield Button("Modifier", id="btn-edit-op", variant="default")
+                yield Button("Scinder", id="btn-split-op", variant="default")
                 yield Button("Supprimer", id="btn-delete-op", variant="error")
 
         yield DataTable(id="planned-ops-table")
@@ -190,6 +198,14 @@ class PlannedOperationsWidget(Vertical):
         self.query_one("#btn-edit-op", Button).disabled = not has_selection
         self.query_one("#btn-delete-op", Button).disabled = not has_selection
 
+        # Split is only available for periodic operations
+        can_split = (
+            has_selection
+            and self._selected_operation is not None
+            and isinstance(self._selected_operation.time_range, PeriodicDailyTimeRange)
+        )
+        self.query_one("#btn-split-op", Button).disabled = not can_split
+
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle row selection in the data table."""
         if event.row_key is None:
@@ -209,6 +225,13 @@ class PlannedOperationsWidget(Vertical):
         elif event.button.id == "btn-edit-op":
             if self._selected_operation:
                 self.post_message(self.OperationEditRequested(self._selected_operation))
+        elif event.button.id == "btn-split-op":
+            if self._selected_operation and isinstance(
+                self._selected_operation.time_range, PeriodicDailyTimeRange
+            ):
+                self.post_message(
+                    self.OperationSplitRequested(self._selected_operation)
+                )
         elif event.button.id == "btn-delete-op":
             if self._selected_operation:
                 self.post_message(

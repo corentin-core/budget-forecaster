@@ -35,6 +35,8 @@ from budget_forecaster.tui.modals import (
     LinkIterationModal,
     LinkTargetModal,
     PlannedOperationEditModal,
+    SplitOperationModal,
+    SplitResult,
 )
 from budget_forecaster.tui.screens.budgets import BudgetsWidget
 from budget_forecaster.tui.screens.forecast import ForecastWidget
@@ -635,6 +637,92 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             self._refresh_planned_operations()
         except Exception as e:  # pylint: disable=broad-exception-caught
             logger.exception("Error deleting planned operation")
+            self.notify(f"Erreur: {e}", severity="error")
+
+    def on_planned_operations_widget_operation_split_requested(
+        self, event: PlannedOperationsWidget.OperationSplitRequested
+    ) -> None:
+        """Handle planned operation split request."""
+        event.stop()
+        if event.operation.id is None:
+            self.notify("Cannot split unsaved operation", severity="error")
+            return
+
+        # Get default date (next non-actualized iteration)
+        default_date = self.app_service.get_next_non_actualized_iteration(
+            LinkType.PLANNED_OPERATION, event.operation.id
+        )
+
+        self.push_screen(
+            SplitOperationModal(event.operation, default_date),
+            lambda result: self._on_planned_operation_split(event.operation, result),
+        )
+
+    def _on_planned_operation_split(
+        self, operation: PlannedOperation, result: SplitResult | None
+    ) -> None:
+        """Handle planned operation split completion."""
+        if result is None or operation.id is None:
+            return
+
+        try:
+            new_op = self.app_service.split_planned_operation_at_date(
+                operation_id=operation.id,
+                split_date=result.split_date,
+                new_amount=result.new_amount,
+                new_period=result.new_period,
+            )
+            self.notify(
+                f"Opération '{operation.description}' scindée "
+                f"(nouvelle: #{new_op.id})"
+            )
+            self._refresh_planned_operations()
+        except ValueError as e:
+            self.notify(f"Erreur: {e}", severity="error")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception("Error splitting planned operation")
+            self.notify(f"Erreur: {e}", severity="error")
+
+    def on_budgets_widget_budget_split_requested(
+        self, event: BudgetsWidget.BudgetSplitRequested
+    ) -> None:
+        """Handle budget split request."""
+        event.stop()
+        if event.budget.id is None:
+            self.notify("Cannot split unsaved budget", severity="error")
+            return
+
+        # Get default date (next non-actualized iteration)
+        default_date = self.app_service.get_next_non_actualized_iteration(
+            LinkType.BUDGET, event.budget.id
+        )
+
+        self.push_screen(
+            SplitOperationModal(event.budget, default_date),
+            lambda result: self._on_budget_split(event.budget, result),
+        )
+
+    def _on_budget_split(self, budget: Budget, result: SplitResult | None) -> None:
+        """Handle budget split completion."""
+        if result is None or budget.id is None:
+            return
+
+        try:
+            new_budget = self.app_service.split_budget_at_date(
+                budget_id=budget.id,
+                split_date=result.split_date,
+                new_amount=result.new_amount,
+                new_period=result.new_period,
+                new_duration=result.new_duration,
+            )
+            self.notify(
+                f"Budget '{budget.description}' scindé " f"(nouveau: #{new_budget.id})"
+            )
+            self._refresh_budgets()
+        except ValueError as e:
+            self.notify(f"Erreur: {e}", severity="error")
+        except Exception as e:  # pylint: disable=broad-exception-caught
+            logger.exception("Error splitting budget")
             self.notify(f"Erreur: {e}", severity="error")
 
     def _on_planned_operation_edited(self, operation: PlannedOperation | None) -> None:

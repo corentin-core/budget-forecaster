@@ -292,6 +292,48 @@ class PeriodicTimeRange(TimeRangeInterface):
             lambda tr: tr.last_date <= self.last_date, time_ranges
         )
 
+    def split_at(
+        self, date: datetime
+    ) -> tuple["PeriodicTimeRange", "PeriodicTimeRange"]:
+        """Split this time range at the given date.
+
+        Finds the first iteration at or after the given date and returns
+        a terminated version of this time range (ending the day before)
+        and a new time range starting at that iteration with the original
+        expiration date.
+
+        Args:
+            date: The date from which to split.
+
+        Returns:
+            Tuple of (terminated_time_range, new_time_range).
+
+        Raises:
+            ValueError: If no iteration exists at or after the given date,
+                or if the date is not after the initial date.
+        """
+        if date <= self.initial_date:
+            raise ValueError("Split date must be after the first iteration")
+
+        first_new_iteration = next(
+            (
+                tr.initial_date
+                for tr in self.iterate_over_time_ranges()
+                if tr.initial_date >= date
+            ),
+            None,
+        )
+        if first_new_iteration is None:
+            raise ValueError("No iteration found at or after split date")
+
+        terminated = self.replace(
+            expiration_date=first_new_iteration - timedelta(days=1)
+        )
+        continuation = self.replace(
+            initial_date=first_new_iteration,
+        )
+        return terminated, continuation
+
     def current_time_range(
         self,
         date: datetime,
@@ -329,9 +371,11 @@ class PeriodicTimeRange(TimeRangeInterface):
         if not isinstance(new_period, relativedelta):
             raise TypeError(f"period must be relativedelta, got {type(new_period)}")
         new_expiration_date = kwargs.get("expiration_date", self._expiration_date)
-        if not isinstance(new_expiration_date, datetime):
+        if new_expiration_date is not None and not isinstance(
+            new_expiration_date, datetime
+        ):
             raise TypeError(
-                f"expiration_date must be datetime, got {type(new_expiration_date)}"
+                f"expiration_date must be datetime or None, got {type(new_expiration_date)}"
             )
         return PeriodicTimeRange(
             initial_time_range=self.__initial_time_range.replace(**kwargs),
@@ -387,9 +431,11 @@ class PeriodicDailyTimeRange(PeriodicTimeRange):
         if not isinstance(new_period, relativedelta):
             raise TypeError(f"period must be relativedelta, got {type(new_period)}")
         new_expiration_date = kwargs.get("expiration_date", self._expiration_date)
-        if not isinstance(new_expiration_date, datetime):
+        if new_expiration_date is not None and not isinstance(
+            new_expiration_date, datetime
+        ):
             raise TypeError(
-                f"expiration_date must be datetime, got {type(new_expiration_date)}"
+                f"expiration_date must be datetime or None, got {type(new_expiration_date)}"
             )
         return PeriodicDailyTimeRange(
             initial_date=new_initial_date,

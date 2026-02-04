@@ -8,6 +8,10 @@ from budget_forecaster.tui.modals.link_target import LinkTargetModal
 from budget_forecaster.tui.modals.planned_operation_edit import (
     PlannedOperationEditModal,
 )
+from budget_forecaster.tui.modals.split_operation import (
+    SplitOperationModal,
+    SplitResult,
+)
 
 __all__ = [
     "BudgetEditModal",
@@ -16,4 +20,6 @@ __all__ = [
     "LinkIterationModal",
     "LinkTargetModal",
     "PlannedOperationEditModal",
+    "SplitOperationModal",
+    "SplitResult",
 ]
