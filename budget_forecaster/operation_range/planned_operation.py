@@ -13,7 +13,7 @@ from budget_forecaster.time_range import (
     PeriodicDailyTimeRange,
     TimeRangeInterface,
 )
-from budget_forecaster.types import Category
+from budget_forecaster.types import Category, PlannedOperationId
 
 
 class PlannedOperation(OperationRange):
@@ -25,7 +25,7 @@ class PlannedOperation(OperationRange):
 
     def __init__(
         self,
-        record_id: int | None,
+        record_id: PlannedOperationId | None,
         description: str,
         amount: Amount,
         category: Category,
@@ -46,7 +46,7 @@ class PlannedOperation(OperationRange):
         self._operation_matcher = OperationMatcher(operation_range=self)
 
     @property
-    def id(self) -> int | None:
+    def id(self) -> PlannedOperationId | None:
         """The database ID of the planned operation. None if not persisted yet."""
         return self._id
 
