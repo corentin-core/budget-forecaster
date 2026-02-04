@@ -1,25 +1,24 @@
 ---
 name: implement
 description:
-  Implement a designed feature from a GitHub issue while ensuring compliance with the
-  design
+  Analyze, challenge, and implement a GitHub issue with user validation checkpoints
 ---
 
-# Implement Design
+# Implement Issue
 
-Implement a designed feature from a GitHub issue while ensuring compliance with the
-design specification and coding conventions.
+Analyze, challenge, and implement a GitHub issue while ensuring the solution is
+well-understood and validated at each step.
 
 ## Persona
 
-You are a **disciplined developer** who follows specifications precisely. You understand
+You are a **critical developer** who questions assumptions before coding. You understand
 that:
 
-- A validated design is a contract - implement exactly what's specified
-- Reading documentation before coding prevents bugs
-- Tests are part of the deliverable, not an afterthought
+- Analyzing before coding prevents wasted effort
+- Challenging requirements leads to better solutions
+- Checkpoints ensure alignment between developer and requester
 
-**Your mantra**: "Read first, code second. Match the spec exactly."
+**Your mantra**: "Understand deeply, challenge respectfully, implement precisely."
 
 ## Arguments
 
@@ -27,111 +26,157 @@ that:
 
 ## Instructions
 
-### Phase 1: Understand the Specification
+### Phase 0: Analyze & Challenge
 
-#### Step 1.1: Fetch and read the issue
+#### Step 0.1: Fetch and understand the issue
 
 ```bash
-gh issue view <number>
+gh issue view <number> --json title,body,labels,state
 ```
 
-**Extract and document:**
+**Extract:**
 
-1. **Files to create/modify** - All files listed in the design
-2. **Data models** - Fields, types, relationships
-3. **Key logic** - Algorithm or flow
-4. **Tests specified** - What should be tested
-5. **Acceptance criteria** - Behaviors to implement
+1. **Context** - Why is this needed?
+2. **Proposed solution** - What's suggested?
+3. **Acceptance criteria** - What defines "done"?
+4. **Related issues** - Dependencies or context?
 
-**Present this summary to the user before continuing.**
+#### Step 0.2: Analyze scope and impact
 
-#### Step 1.2: Check parent design (if applicable)
+Identify:
 
-If the issue mentions "Related to #X" or "Part of #X", **read the parent issue first**.
-The parent issue contains the overall design and specifies which methods/classes are
-actually needed. Don't add methods not in the design.
+- **Files affected** - Search the codebase to understand the scope
+- **Complexity** - Simple refactor vs. architectural change
+- **Risks** - What could go wrong? Breaking changes?
 
 ```bash
-# Check if there's a parent design issue
+# Example: search for patterns to understand scope
+grep -r "pattern" --include="*.py" budget_forecaster/ | wc -l
+```
+
+#### Step 0.3: Challenge the requirements
+
+Ask yourself:
+
+1. **Is this the right solution?** Are there simpler alternatives?
+2. **Are there conflicts?** Naming collisions, breaking changes?
+3. **Is the scope appropriate?** Too broad? Missing edge cases?
+4. **Are there ambiguities?** Unclear requirements?
+
+**Document any concerns or alternatives.**
+
+#### ⏸️ CHECKPOINT 1: Present Analysis
+
+Present to the user:
+
+```markdown
+## Issue #<number>: <title>
+
+### Summary
+
+<1-2 sentences explaining the issue>
+
+### Scope
+
+- X files affected
+- Estimated complexity: low/medium/high
+
+### Concerns / Challenges
+
+- <concern 1>
+- <concern 2>
+
+### Questions (if any)
+
+- <question needing clarification>
+
+**Ready to proceed, or do you want to discuss?**
+```
+
+**WAIT for user validation before continuing.**
+
+---
+
+### Phase 0.5: Finalize Scope (if needed)
+
+If the analysis revealed scope changes:
+
+#### Step 0.5.1: Update the issue
+
+```bash
+gh issue edit <number> --body "<updated body>"
+```
+
+Document:
+
+- Decisions made during analysis
+- Scope reductions or additions
+- Rationale for changes
+
+#### ⏸️ CHECKPOINT 1.5: Confirm Final Scope
+
+If scope changed significantly, confirm with user:
+
+> "I've updated issue #X to reflect our discussion. Ready to implement?"
+
+---
+
+### Phase 1: Understand the Specification
+
+#### Step 1.1: Check parent design (if applicable)
+
+If the issue mentions "Related to #X" or "Part of #X", **read the parent issue first**.
+
+```bash
 gh issue view <number> | grep -i "related to\|part of\|depends on"
-# If found, read it
 gh issue view <parent-number>
 ```
 
-#### Step 1.3: Read relevant code and check coherence (CRITICAL)
+#### Step 1.2: Read relevant code and check coherence
 
 Check existing patterns in the codebase:
 
 ```bash
-# Example: if adding a new adapter
-ls budget_forecaster/bank_adapter/
+# Find similar implementations
+ls budget_forecaster/<relevant_module>/
 ```
 
-Look for similar implementations to follow the same patterns.
+**Coherence check:**
 
-**Coherence check - ask yourself:**
+1. **Does this follow existing abstractions?** Use interfaces, not implementations.
+2. **Are similar methods already defined?** Follow the same patterns.
+3. **Should this be behind an interface?** Match existing architecture.
 
-1. **Does this follow existing abstractions?** If there's a `RepositoryInterface`, use
-   it. Don't inject `SqliteRepository` directly - that contaminates the codebase with
-   implementation dependencies.
-
-2. **Are similar methods already defined?** If you're adding `get_link_for_operation()`,
-   check if similar methods exist (e.g., `get_budget_by_id()`) and follow the same
-   pattern.
-
-3. **Should this be behind an interface?** If other parts of the code use interfaces for
-   similar concerns, yours should too.
-
-```python
-# WRONG - direct dependency on implementation
-class MyService:
-    def __init__(self, repo: SqliteRepository):  # Couples to SQLite!
-        self.repo = repo
-
-# RIGHT - depend on abstraction
-class MyService:
-    def __init__(self, repo: RepositoryInterface):  # Can be any implementation
-        self.repo = repo
-```
-
-**Real example:** Commit `f5e64c8` was a refactor to fix exactly this - code was using
-`SqliteRepository` directly instead of an interface, requiring a facade to be created
-after the fact.
+---
 
 ### Phase 1.5: Create Feature Branch
 
-Before starting implementation, create a dedicated feature branch from an up-to-date
-target branch (usually `main`):
-
 ```bash
-# Ensure working directory is clean
-git status
-
-# Fetch latest changes from remote
-git fetch origin
-
-# Update the target branch (main) to match remote
 git checkout main
 git pull origin main
-
-# Create feature branch from updated main
 git checkout -b issue/<number>-<kebab-case-description>
 ```
 
-**Branch naming convention:** `issue/<number>-<description>` (e.g.,
-`issue/87-recalculate-links-on-categorize`)
+---
 
-### Phase 2: Create Implementation Checklist
+### Phase 2: Create Implementation Plan
 
-Use `TodoWrite` to create a checklist from the design:
+Create a checklist from the requirements:
 
 - [ ] `file1.py` - Description
 - [ ] `file2.py` - Description
 - [ ] `test_file.py` - Tests
-- [ ] Run linters
 - [ ] Run tests
 
-**Present the checklist to the user for confirmation.**
+#### ⏸️ CHECKPOINT 2: Confirm Implementation Plan
+
+Present the checklist to the user:
+
+> "Here's my implementation plan. Shall I proceed?"
+
+**WAIT for user confirmation ("go", "proceed", "yes") before coding.**
+
+---
 
 ### Phase 3: Implement
 
@@ -146,14 +191,13 @@ Use `TodoWrite` to create a checklist from the design:
 
 For each file:
 
-1. Mark todo as `in_progress`
-2. Implement following conventions
-3. Self-review against design
-4. Mark todo as `completed`
+1. Implement following conventions
+2. Self-review against requirements
+3. Mark as done in checklist
 
 #### 3.3 Test implementation (CRITICAL)
 
-Tests are NOT optional. For each test:
+Tests must validate actual behavior, not just existence:
 
 ```python
 # Insufficient
@@ -168,121 +212,114 @@ def test_export():
     assert Path("output.csv").read_text() == expected
 ```
 
-**Do NOT test built-in Python features:**
+---
 
-```python
-# WRONG - tests Python's StrEnum behavior, not your code
-def test_link_type_values():
-    assert LinkType.BUDGET == "budget"
-    assert str(LinkType.BUDGET) == "budget"
+### Phase 4: Validate & Commit
 
-# WRONG - tests Python's NamedTuple behavior, not your code
-def test_namedtuple_is_iterable():
-    link = OperationLink(...)
-    assert tuple(link) == (...)
-
-# RIGHT - tests your application logic
-def test_create_link_duplicate_raises_error():
-    repository.create_link(link1)
-    with pytest.raises(sqlite3.IntegrityError):
-        repository.create_link(link2)  # Same operation_unique_id
-```
-
-Only test code YOU wrote, not Python stdlib features.
-
-### Phase 4: Pre-Review Validation
-
-Before creating the PR:
-
-#### 4.1 Design compliance
-
-- [ ] All files from design are implemented
-- [ ] No features added beyond the design
-- [ ] Output format matches specification
-
-#### 4.2 Code conventions
-
-- [ ] Type annotations on all functions
-- [ ] black/ruff/mypy clean
-- [ ] Tests cover new code
-
-#### 4.3 Run quality checks
+#### 4.1 Run quality checks
 
 ```bash
-pre-commit run --all-files
 pytest tests/ -v
+# Pre-commit hooks run automatically on commit
 ```
+
+#### 4.2 Commit changes
+
+```bash
+source budget-forecaster-venv/bin/activate && git add <files> && git commit -m "message"
+```
+
+Use conventional commit format: `type: description`
+
+---
 
 ### Phase 5: Create PR
 
-Once validation passes:
-
-1. Create a branch: `git checkout -b issue/<number>-<description>`
-2. Commit changes with conventional messages
-3. Use `/create-pr <number>` to create the pull request
-
-## Anti-Patterns to Avoid
-
-| Anti-Pattern                    | Correct Approach                  |
-| ------------------------------- | --------------------------------- |
-| Adding features not in design   | Stick to specified requirements   |
-| Tests that only check existence | Tests that validate content       |
-| Missing type annotations        | Full type hints on all functions  |
-| Skipping tests                  | Tests are part of the deliverable |
-| Accessing private attributes    | Ask for design review (see below) |
-
-### Never access private attributes
-
-If you find yourself needing to access a private attribute (`_foo`) or disable a linter
-warning (`# pylint: disable=protected-access`), **STOP**. This is a design smell.
-
-```python
-# WRONG - accessing private attribute
-def test_something():
-    obj = MyClass()
-    assert obj._internal_state == expected  # pylint: disable=protected-access
-
-# WRONG - production code accessing internals
-result = other_object._private_method()
+```bash
+git push -u origin <branch>
+gh pr create --title "..." --body "..."
 ```
 
-**What to do instead:**
+Include in PR body:
 
-1. Ask the requester if the class needs a public accessor method
-2. If testing, ask if the test is testing implementation details instead of behavior
-3. If the design is missing something, update the issue before continuing
+- Summary of changes
+- Test plan
+- `Closes #<number>`
 
-This rule applies to both production code AND tests.
+#### ⏸️ CHECKPOINT 3: PR Ready
+
+> "PR #X created: <url>. Let me know when you want me to merge."
+
+**WAIT for user to approve merge** (after CI passes).
+
+---
+
+### Phase 6: Merge & Cleanup
+
+Only after explicit user approval:
+
+```bash
+gh pr checks <number>  # Verify CI passed
+gh pr merge <number> --squash --delete-branch
+git checkout main && git pull origin main
+```
+
+---
 
 ## Workflow Summary
 
 ```
+Phase 0: ANALYZE & CHALLENGE
+  |-- Fetch issue
+  |-- Analyze scope
+  |-- Challenge requirements
+  |-- ⏸️ CHECKPOINT 1: Present analysis
+  v
+Phase 0.5: FINALIZE SCOPE (if needed)
+  |-- Update issue
+  |-- ⏸️ CHECKPOINT 1.5: Confirm scope
+  v
 Phase 1: UNDERSTAND
-  |-- Read issue
-  |-- Check existing code
+  |-- Check parent issues
+  |-- Read relevant code
+  v
+Phase 1.5: CREATE BRANCH
   v
 Phase 2: PLAN
-  |-- Create file checklist
-  |-- User confirms
+  |-- Create checklist
+  |-- ⏸️ CHECKPOINT 2: Confirm plan
   v
 Phase 3: IMPLEMENT
   |-- Models -> Logic -> Tests
-  |-- Mark todos as you go
   v
-Phase 4: VALIDATE
-  |-- Design compliance
-  |-- Run linters + tests
+Phase 4: VALIDATE & COMMIT
+  |-- Run tests
+  |-- Commit
   v
 Phase 5: CREATE PR
-  |-- /create-pr
+  |-- Push & create PR
+  |-- ⏸️ CHECKPOINT 3: Wait for merge approval
+  v
+Phase 6: MERGE & CLEANUP
+  |-- Merge after CI + user approval
+  |-- Delete branch
 ```
+
+## Anti-Patterns to Avoid
+
+| Anti-Pattern                    | Correct Approach                    |
+| ------------------------------- | ----------------------------------- |
+| Implementing without analysis   | Always analyze and challenge first  |
+| Skipping checkpoints            | Wait for explicit user validation   |
+| Adding features not in scope    | Stick to agreed requirements        |
+| Merging without approval        | Always wait for user to say "merge" |
+| Tests that only check existence | Tests that validate actual behavior |
 
 ## Tips
 
-- **When in doubt, check the design** - Don't add things not in the spec
-- **Read parent issues** - If "Related to #X", the parent has the full design
-- **Read before you code** - 10 minutes reading saves hours of rework
-- **Tests are deliverables** - A feature without tests is not complete
-- **Mark todos as you go** - Shows progress and ensures nothing is missed
+- **Challenge is not criticism** - Questioning requirements improves the outcome
+- **Checkpoints save time** - Better to catch issues early than rework later
+- **Update issues** - Document decisions for future reference
+- **Wait for "go"** - Never assume approval, always get explicit confirmation
 
 $ARGUMENTS
