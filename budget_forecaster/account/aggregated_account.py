@@ -22,11 +22,11 @@ class AggregatedAccount:
         aggregated_name: str,
         accounts: Iterable[Account],
     ) -> None:
-        self.__accounts = tuple(accounts)
-        self.__aggregated_account = self.__aggregate_accounts(aggregated_name, accounts)
+        self._accounts = tuple(accounts)
+        self._aggregated_account = self._aggregate_accounts(aggregated_name, accounts)
 
     @staticmethod
-    def __aggregate_accounts(
+    def _aggregate_accounts(
         aggregated_name: str, accounts: Iterable[Account]
     ) -> Account:
         balance = 0.0
@@ -51,12 +51,12 @@ class AggregatedAccount:
     @property
     def account(self) -> Account:
         """Return the aggregated account."""
-        return self.__aggregated_account
+        return self._aggregated_account
 
     @property
     def accounts(self) -> tuple[Account, ...]:
         """Return the accounts."""
-        return self.__accounts
+        return self._accounts
 
     @staticmethod
     def update_account(
@@ -134,7 +134,7 @@ class AggregatedAccount:
         updated_accounts: list[Account] = []
         stats: ImportStats | None = None
 
-        for current_account in self.__accounts:
+        for current_account in self._accounts:
             if current_account.name == account.name:
                 result = self.update_account(current_account, account)
                 updated_accounts.append(result.account)
@@ -142,7 +142,7 @@ class AggregatedAccount:
             else:
                 updated_accounts.append(current_account)
 
-        self.__accounts = tuple(updated_accounts)
+        self._accounts = tuple(updated_accounts)
 
         # If no matching account was found, return stats for all operations as new
         if stats is None:
@@ -157,14 +157,14 @@ class AggregatedAccount:
 
     def replace_account(self, new_account: Account) -> None:
         """Replace an account in the aggregated account."""
-        self.__accounts = tuple(
+        self._accounts = tuple(
             new_account if account.name == new_account.name else account
-            for account in self.__accounts
+            for account in self._accounts
         )
 
     def replace_operation(self, new_operation: HistoricOperation) -> None:
         """Replace an operation in the account."""
-        for account in self.__accounts:
+        for account in self._accounts:
             if any(
                 operation.unique_id == new_operation.unique_id
                 for operation in account.operations

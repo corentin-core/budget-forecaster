@@ -24,13 +24,13 @@ class HistoricOperation(OperationRange):
         category: Category,
         date: datetime,
     ):
-        self.__unique_id = unique_id
+        self._unique_id = unique_id
         super().__init__(description, amount, category, DailyTimeRange(date))
 
     @property
     def unique_id(self) -> OperationId:
         """The unique identifier of the operation."""
-        return self.__unique_id
+        return self._unique_id
 
     @property
     def date(self) -> datetime:
@@ -40,7 +40,7 @@ class HistoricOperation(OperationRange):
     def replace(self, **kwargs: Any) -> "HistoricOperation":
         """Return a new instance of the historic operation with the given parameters replaced."""
         return HistoricOperation(
-            unique_id=kwargs.get("unique_id", self.__unique_id),
+            unique_id=kwargs.get("unique_id", self._unique_id),
             description=kwargs.get("description", self.description),
             amount=kwargs.get("amount", Amount(self.amount, self.currency)),
             category=kwargs.get("category", self.category),
@@ -48,12 +48,12 @@ class HistoricOperation(OperationRange):
         )
 
     def __repr__(self) -> str:
-        return f"{self.__unique_id} - {super().__repr__()}"
+        return f"{self._unique_id} - {super().__repr__()}"
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, HistoricOperation):
             return NotImplemented
-        return self.__unique_id == other.unique_id and super().__eq__(other)
+        return self._unique_id == other.unique_id and super().__eq__(other)
 
     def __lt__(self, other: object) -> bool:
         if not isinstance(other, HistoricOperation):
@@ -61,4 +61,4 @@ class HistoricOperation(OperationRange):
         return super().__lt__(other)
 
     def __hash__(self) -> int:
-        return hash((self.__unique_id, super().__hash__()))
+        return hash((self._unique_id, super().__hash__()))

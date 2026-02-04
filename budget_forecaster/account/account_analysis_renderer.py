@@ -92,15 +92,15 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
             self._temp_dir_impl.cleanup()
 
     def __call__(self, report: AccountAnalysisReport) -> None:
-        self.__add_balance_evolution(
+        self._add_balance_evolution(
             report.balance_date, report.balance_evolution_per_day
         )
-        self.__add_expenses_forecast(report.budget_forecast)
-        self.__add_expenses_statistics(report.budget_statistics)
-        self.__add_operations(report.operations)
-        self.__add_forecast(report.forecast)
+        self._add_expenses_forecast(report.budget_forecast)
+        self._add_expenses_statistics(report.budget_statistics)
+        self._add_operations(report.operations)
+        self._add_forecast(report.forecast)
 
-    def __add_operations(self, operations: pd.DataFrame) -> None:
+    def _add_operations(self, operations: pd.DataFrame) -> None:
         sheet_name = "Opérations"
 
         # hack: we can't set multiple date formats in the same workbook
@@ -120,7 +120,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         worksheet.autofilter("A1:D1")
         worksheet.freeze_panes(1, 0)
 
-    def __add_forecast(self, forecast: pd.DataFrame) -> None:
+    def _add_forecast(self, forecast: pd.DataFrame) -> None:
         sheet_name = "Source prévisions"
         forecast_reformatted = forecast.copy()
         # convert datetime to date to avoid the datetime format only on non-empty cells
@@ -140,7 +140,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         worksheet.freeze_panes(1, 0)
 
     @staticmethod
-    def __add_safe_margin(
+    def _add_safe_margin(
         balance_date: datetime, balance_evolution: pd.DataFrame
     ) -> pd.DataFrame:
         balance_evolution_with_margin = balance_evolution.copy()
@@ -157,7 +157,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         return balance_evolution_with_margin
 
     @staticmethod
-    def __get_balance_evolution_per_month(
+    def _get_balance_evolution_per_month(
         balance_date: datetime,
         balance_evolution: pd.DataFrame,
     ) -> pd.DataFrame:
@@ -165,7 +165,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         Compute the balance of the account per month,
         the minimum balance per month and the safe margin.
         """
-        balance_evolution_per_month = AccountAnalysisRendererExcel.__add_safe_margin(
+        balance_evolution_per_month = AccountAnalysisRendererExcel._add_safe_margin(
             balance_date, balance_evolution
         )
         balance_evolution_per_month = balance_evolution_per_month.resample("MS").first()
@@ -184,7 +184,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         Return the path of the saved plot.
         """
 
-        balance_evolution_with_stats = self.__add_safe_margin(
+        balance_evolution_with_stats = self._add_safe_margin(
             balance_date, balance_evolution
         )
         ax = balance_evolution_with_stats.plot(figsize=(15, 10))
@@ -199,12 +199,12 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         plt.savefig(saved_path)
         return saved_path
 
-    def __add_balance_evolution(
+    def _add_balance_evolution(
         self, balance_date: datetime, balance_evolution: pd.DataFrame
     ) -> None:
         sheet_name = "Evolution du solde"
 
-        balance_evolution_per_month = self.__get_balance_evolution_per_month(
+        balance_evolution_per_month = self._get_balance_evolution_per_month(
             balance_date, balance_evolution
         )
         balance_evolution_per_month.to_excel(
@@ -231,7 +231,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         plot_path = self.plot_balance_evolution(balance_date, balance_evolution)
         worksheet.insert_image("F1", plot_path)
 
-    def __add_expenses_forecast(self, expenses_forecast: pd.DataFrame) -> None:
+    def _add_expenses_forecast(self, expenses_forecast: pd.DataFrame) -> None:
         sheet_name = "Prévisions des dépenses"
 
         expenses_forecast = expenses_forecast.mask(expenses_forecast.eq(0))
@@ -266,7 +266,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
 
         worksheet.freeze_panes(0, 1)
 
-    def __add_expenses_statistics(self, expenses_statistics: pd.DataFrame) -> None:
+    def _add_expenses_statistics(self, expenses_statistics: pd.DataFrame) -> None:
         sheet_name = "Statistiques des dépenses"
 
         expenses_statistics = expenses_statistics.sort_index()
