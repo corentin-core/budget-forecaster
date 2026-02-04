@@ -278,7 +278,22 @@ class PeriodicTimeRange(TimeRangeInterface):
     ) -> Iterator[TimeRangeInterface]:
         """Iterate over the time ranges."""
         start = 0
-        if from_date is not None:
+        if from_date is not None and from_date > self.initial_date:
+            days_diff = (from_date - self.initial_date).days
+
+            # Estimate period length in days (approximate for months)
+            approx_period_days = (
+                self._period.years * 365
+                + self._period.months * 30
+                + self._period.weeks * 7
+                + self._period.days
+            )
+
+            if approx_period_days > 0:
+                # -1 to never skip too far
+                start = max(0, days_diff // approx_period_days - 1)
+
+            # Fine-tune: advance to the correct position (0-3 iterations max)
             while self.initial_date + (start + 1) * self._period < from_date:
                 start += 1
 

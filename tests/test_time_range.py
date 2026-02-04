@@ -1,4 +1,5 @@
 """Module with test cases for the TimeRange class."""
+import itertools
 from datetime import datetime, timedelta
 
 import pytest
@@ -309,6 +310,45 @@ class TestPeriodicTimeRange:  # pylint: disable=too-many-public-methods
             datetime(2026, 5, 31),  # May has 31 days
         ]
         assert iterations == expected
+
+    def test_iterate_over_time_ranges_from_distant_date(self) -> None:
+        """Test that iteration from a distant date is efficient (O(1) start).
+
+        Regression test: the old implementation used a while loop to find the
+        start position, which was O(n) where n = number of periods to skip.
+        The optimized version calculates the start position arithmetically.
+        """
+        # Monthly period starting in 2020, no expiration
+        initial = DailyTimeRange(datetime(2020, 1, 15))
+        ptr = PeriodicTimeRange(initial, relativedelta(months=1), None)
+
+        # Iterate starting from 10 years later (would be 120 iterations with old impl)
+        from_date = datetime(2030, 6, 20)
+        iterations = list(itertools.islice(ptr.iterate_over_time_ranges(from_date), 3))
+
+        # Should start from June 2030 (first iteration >= from_date is July 15)
+        assert len(iterations) == 3
+        assert iterations[0].initial_date == datetime(2030, 6, 15)
+        assert iterations[1].initial_date == datetime(2030, 7, 15)
+        assert iterations[2].initial_date == datetime(2030, 8, 15)
+
+    def test_iterate_over_time_ranges_mixed_period(self) -> None:
+        """Test iteration with a mixed period (months + days)."""
+        # Period of 1 month and 15 days
+        initial = DailyTimeRange(datetime(2025, 1, 1))
+        ptr = PeriodicTimeRange(
+            initial, relativedelta(months=1, days=15), datetime(2026, 12, 31)
+        )
+
+        # Iterate from a date several periods ahead
+        # Iterations: Jan 1, Feb 16, Mar 31, May 16, Jun 30, Aug 15, ...
+        from_date = datetime(2025, 6, 1)
+        iterations = list(itertools.islice(ptr.iterate_over_time_ranges(from_date), 3))
+
+        # from_date is Jun 1, so first returned should be May 16 (last before Jun 1)
+        assert iterations[0].initial_date == datetime(2025, 5, 16)
+        assert iterations[1].initial_date == datetime(2025, 6, 30)
+        assert iterations[2].initial_date == datetime(2025, 8, 15)
 
     def test_split_at(self) -> None:
         """Test split_at returns terminated range and continuation range."""
