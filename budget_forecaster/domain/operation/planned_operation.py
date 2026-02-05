@@ -6,10 +6,10 @@ from typing import Any
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import (
-    DailyTimeRange,
-    PeriodicDailyTimeRange,
-    TimeRangeInterface,
+from budget_forecaster.core.date_range import (
+    DateRangeInterface,
+    RecurringDay,
+    SingleDay,
 )
 from budget_forecaster.core.types import Category, PlannedOperationId
 from budget_forecaster.domain.operation.operation_range import OperationRange
@@ -29,18 +29,18 @@ class PlannedOperation(OperationRange):
         description: str,
         amount: Amount,
         category: Category,
-        time_range: TimeRangeInterface,
+        date_range: DateRangeInterface,
     ):
-        if not isinstance(time_range, (DailyTimeRange, PeriodicDailyTimeRange)):
+        if not isinstance(date_range, (SingleDay, RecurringDay)):
             raise TypeError(
-                f"time_range must be DailyTimeRange or PeriodicDailyTimeRange, "
-                f"got {type(time_range)}"
+                f"date_range must be SingleDay or RecurringDay, "
+                f"got {type(date_range)}"
             )
         super().__init__(
             description=description,
             amount=amount,
             category=category,
-            time_range=time_range,
+            date_range=date_range,
         )
         self._id = record_id
         self._operation_matcher = OperationMatcher(operation_range=self)
@@ -86,15 +86,15 @@ class PlannedOperation(OperationRange):
         Raises:
             ValueError: If this operation is not periodic.
         """
-        if not isinstance(self.time_range, PeriodicDailyTimeRange):
+        if not isinstance(self.date_range, RecurringDay):
             raise ValueError("Cannot split a non-periodic planned operation")
 
-        terminated_range, continuation_range = self.time_range.split_at(split_date)
+        terminated_range, continuation_range = self.date_range.split_at(split_date)
 
-        terminated = self.replace(time_range=terminated_range)
+        terminated = self.replace(date_range=terminated_range)
 
         amount = new_amount or Amount(self.amount, self.currency)
-        time_range = (
+        dr = (
             continuation_range.replace(period=new_period)
             if new_period
             else continuation_range
@@ -104,7 +104,7 @@ class PlannedOperation(OperationRange):
             description=self.description,
             amount=amount,
             category=self.category,
-            time_range=time_range,
+            date_range=dr,
         ).set_matcher_params(
             description_hints=self.matcher.description_hints,
             approximation_date_range=self.matcher.approximation_date_range,
@@ -127,18 +127,18 @@ class PlannedOperation(OperationRange):
         new_category = kwargs.get("category", self.category)
         if not isinstance(new_category, Category):
             raise TypeError(f"category must be Category, got {type(new_category)}")
-        new_time_range = kwargs.get("time_range", self.time_range)
-        if not isinstance(new_time_range, (DailyTimeRange, PeriodicDailyTimeRange)):
+        new_date_range = kwargs.get("date_range", self.date_range)
+        if not isinstance(new_date_range, (SingleDay, RecurringDay)):
             raise TypeError(
-                f"time_range must be DailyTimeRange or PeriodicDailyTimeRange, "
-                f"got {type(new_time_range)}"
+                f"date_range must be SingleDay or RecurringDay, "
+                f"got {type(new_date_range)}"
             )
         return PlannedOperation(
             record_id=new_id,
             description=new_description,
             amount=new_amount,
             category=new_category,
-            time_range=new_time_range,
+            date_range=new_date_range,
         ).set_matcher_params(
             description_hints=self.matcher.description_hints,
             approximation_date_range=self.matcher.approximation_date_range,

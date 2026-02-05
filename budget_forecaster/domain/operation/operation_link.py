@@ -24,7 +24,7 @@ class OperationLink(NamedTuple):
         operation_unique_id: The unique ID of the historic operation.
         target_type: The type of target (planned operation or budget).
         target_id: The ID of the target planned operation or budget.
-        iteration_date: The date of the specific iteration (initial_date of the TimeRange).
+        iteration_date: The date of the specific iteration (start_date of the DateRange).
         is_manual: True if user-created, False if heuristic-created.
         notes: Optional comment (only for manual links).
         link_id: Database id (only set when read from DB, None when creating).

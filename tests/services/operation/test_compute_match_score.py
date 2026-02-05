@@ -5,7 +5,7 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import TimeRange
+from budget_forecaster.core.date_range import DateRange
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.operation_range import OperationRange
@@ -23,7 +23,7 @@ class TestComputeMatchScore:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
         operation = HistoricOperation(
@@ -45,7 +45,7 @@ class TestComputeMatchScore:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
         operation = HistoricOperation(
@@ -71,7 +71,7 @@ class TestComputeMatchScore:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
         operation = HistoricOperation(
@@ -92,7 +92,7 @@ class TestComputeMatchScore:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
         # 5% tolerance means 95-105 should get full amount score
@@ -113,7 +113,7 @@ class TestComputeMatchScore:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
         # 20% difference is 15% beyond 5% tolerance
@@ -137,7 +137,7 @@ class TestComputeMatchScore:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
         # 20 days from iteration is 15 days beyond 5 day tolerance
@@ -161,7 +161,7 @@ class TestComputeMatchScore:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
         operation = HistoricOperation(
@@ -184,7 +184,7 @@ class TestComputeMatchScore:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
         operation = HistoricOperation(

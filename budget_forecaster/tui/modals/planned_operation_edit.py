@@ -14,7 +14,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Select, Static
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import DailyTimeRange, PeriodicDailyTimeRange
+from budget_forecaster.core.date_range import RecurringDay, SingleDay
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 
@@ -140,7 +140,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
                 with Horizontal(classes="form-row"):
                     yield Label("Date:", classes="form-label")
                     start = (
-                        self._operation.time_range.initial_date
+                        self._operation.date_range.start_date
                         if self._operation
                         else date.today()
                     )
@@ -155,7 +155,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
                 with Horizontal(classes="form-row"):
                     yield Label("Récurrent:", classes="form-label")
                     is_periodic = self._operation and isinstance(
-                        self._operation.time_range, PeriodicDailyTimeRange
+                        self._operation.date_range, RecurringDay
                     )
                     yield Select(
                         [("Non", "no"), ("Oui", "yes")],
@@ -229,8 +229,8 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
         """Get the period in months from the current operation."""
         if not self._operation:
             return None
-        tr = self._operation.time_range
-        if isinstance(tr, PeriodicDailyTimeRange):
+        tr = self._operation.date_range
+        if isinstance(tr, RecurringDay):
             p = tr.period
             if p.months:
                 return p.months
@@ -242,8 +242,8 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
         """Get the end date from the current operation."""
         if not self._operation:
             return None
-        tr = self._operation.time_range
-        if isinstance(tr, PeriodicDailyTimeRange):
+        tr = self._operation.date_range
+        if isinstance(tr, RecurringDay):
             if tr.last_date != date.max:
                 return tr.last_date
         return None
@@ -352,16 +352,16 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
             except ValueError:
                 raise ValueError("La tolérance montant doit être un nombre positif")
 
-            # Build time range
-            time_range: DailyTimeRange | PeriodicDailyTimeRange
+            # Build date range
+            dr: SingleDay | RecurringDay
             if is_periodic and period_months:
-                time_range = PeriodicDailyTimeRange(
+                dr = RecurringDay(
                     op_date,
                     relativedelta(months=period_months),
                     end_date,
                 )
             else:
-                time_range = DailyTimeRange(op_date)
+                dr = SingleDay(op_date)
 
             # Create operation
             op_id = self._operation.id if self._operation else None
@@ -370,7 +370,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
                 description=description,
                 amount=Amount(amount_val, "EUR"),
                 category=category,
-                time_range=time_range,
+                date_range=dr,
             )
 
             # Set matcher params

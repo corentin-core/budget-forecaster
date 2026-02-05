@@ -10,7 +10,7 @@ from textual.containers import Horizontal, Vertical
 from textual.message import Message
 from textual.widgets import Button, DataTable, Static
 
-from budget_forecaster.core.time_range import PeriodicTimeRange
+from budget_forecaster.core.date_range import RecurringDateRange
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.services.application_service import ApplicationService
 
@@ -138,12 +138,12 @@ class BudgetsWidget(Vertical):
         table.clear()
 
         for budget in self._budgets:
-            time_range = budget.time_range
-            start_date = time_range.initial_date.strftime("%Y-%m-%d")
+            time_range = budget.date_range
+            start_date = time_range.start_date.strftime("%Y-%m-%d")
 
             # Determine duration and periodicity
-            if isinstance(time_range, PeriodicTimeRange):
-                duration = self._format_duration(time_range.base_time_range)
+            if isinstance(time_range, RecurringDateRange):
+                duration = self._format_duration(time_range.base_date_range)
                 period = self._format_period(time_range.period)
                 end_date = (
                     time_range.last_date.strftime("%Y-%m-%d")
@@ -167,9 +167,9 @@ class BudgetsWidget(Vertical):
                 key=str(budget.id),
             )
 
-    def _format_duration(self, time_range) -> str:
-        """Format the duration of a time range."""
-        days = (time_range.last_date - time_range.initial_date).days + 1
+    def _format_duration(self, date_range) -> str:
+        """Format the duration of a date range."""
+        days = (date_range.last_date - date_range.start_date).days + 1
         if days == 1:
             return "1 jour"
         elif days < 7:
@@ -212,7 +212,7 @@ class BudgetsWidget(Vertical):
         can_split = (
             has_selection
             and self._selected_budget is not None
-            and isinstance(self._selected_budget.time_range, PeriodicTimeRange)
+            and isinstance(self._selected_budget.date_range, RecurringDateRange)
         )
         self.query_one("#btn-split-budget", Button).disabled = not can_split
 
@@ -237,7 +237,7 @@ class BudgetsWidget(Vertical):
                 self.post_message(self.BudgetEditRequested(self._selected_budget))
         elif event.button.id == "btn-split-budget":
             if self._selected_budget and isinstance(
-                self._selected_budget.time_range, PeriodicTimeRange
+                self._selected_budget.date_range, RecurringDateRange
             ):
                 self.post_message(self.BudgetSplitRequested(self._selected_budget))
         elif event.button.id == "btn-delete-budget":

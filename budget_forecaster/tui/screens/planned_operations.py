@@ -10,7 +10,7 @@ from textual.containers import Horizontal, Vertical
 from textual.message import Message
 from textual.widgets import Button, DataTable, Static
 
-from budget_forecaster.core.time_range import PeriodicDailyTimeRange
+from budget_forecaster.core.date_range import RecurringDay
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.services.application_service import ApplicationService
 
@@ -138,11 +138,11 @@ class PlannedOperationsWidget(Vertical):
         table.clear()
 
         for op in self._operations:
-            time_range = op.time_range
-            start_date = time_range.initial_date.strftime("%Y-%m-%d")
+            time_range = op.date_range
+            start_date = time_range.start_date.strftime("%Y-%m-%d")
 
             # Determine periodicity and end date
-            if isinstance(time_range, PeriodicDailyTimeRange):
+            if isinstance(time_range, RecurringDay):
                 period = self._format_period(time_range.period)
                 end_date = (
                     time_range.last_date.strftime("%Y-%m-%d")
@@ -202,7 +202,7 @@ class PlannedOperationsWidget(Vertical):
         can_split = (
             has_selection
             and self._selected_operation is not None
-            and isinstance(self._selected_operation.time_range, PeriodicDailyTimeRange)
+            and isinstance(self._selected_operation.date_range, RecurringDay)
         )
         self.query_one("#btn-split-op", Button).disabled = not can_split
 
@@ -227,7 +227,7 @@ class PlannedOperationsWidget(Vertical):
                 self.post_message(self.OperationEditRequested(self._selected_operation))
         elif event.button.id == "btn-split-op":
             if self._selected_operation and isinstance(
-                self._selected_operation.time_range, PeriodicDailyTimeRange
+                self._selected_operation.date_range, RecurringDay
             ):
                 self.post_message(
                     self.OperationSplitRequested(self._selected_operation)

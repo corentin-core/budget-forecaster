@@ -4,7 +4,7 @@ from functools import total_ordering
 from typing import Any
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import DailyTimeRange
+from budget_forecaster.core.date_range import SingleDay
 from budget_forecaster.core.types import Category, OperationId
 from budget_forecaster.domain.operation.operation_range import OperationRange
 
@@ -25,7 +25,7 @@ class HistoricOperation(OperationRange):
         operation_date: date,
     ):
         self._unique_id = unique_id
-        super().__init__(description, amount, category, DailyTimeRange(operation_date))
+        super().__init__(description, amount, category, SingleDay(operation_date))
 
     @property
     def unique_id(self) -> OperationId:
@@ -35,7 +35,7 @@ class HistoricOperation(OperationRange):
     @property
     def operation_date(self) -> date:
         """The date of the operation."""
-        return self.time_range.initial_date
+        return self.date_range.start_date
 
     def replace(self, **kwargs: Any) -> "HistoricOperation":
         """Return a new instance of the historic operation with the given parameters replaced."""

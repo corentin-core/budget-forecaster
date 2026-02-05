@@ -14,12 +14,12 @@ from typing import Callable, Iterable, Self
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import (
-    DailyTimeRange,
-    PeriodicDailyTimeRange,
-    PeriodicTimeRange,
-    TimeRange,
-    TimeRangeInterface,
+from budget_forecaster.core.date_range import (
+    DateRange,
+    DateRangeInterface,
+    RecurringDateRange,
+    RecurringDay,
+    SingleDay,
 )
 from budget_forecaster.core.types import Category, LinkType, OperationId, TargetId
 from budget_forecaster.domain.account.account import Account
@@ -424,7 +424,7 @@ class SqliteRepository(RepositoryInterface):
     def upsert_budget(self, budget: Budget) -> int:
         """Insert or update a budget. Returns the budget id."""
         conn = self._get_connection()
-        time_range_data = self._serialize_budget_time_range(budget.time_range)
+        date_range_data = self._serialize_budget_date_range(budget.date_range)
 
         if budget.id is not None:
             # Update existing
@@ -438,12 +438,12 @@ class SqliteRepository(RepositoryInterface):
                     budget.amount,
                     budget.currency,
                     budget.category.value,
-                    time_range_data["start_date"],
-                    time_range_data["duration_value"],
-                    time_range_data["duration_unit"],
-                    time_range_data["period_value"],
-                    time_range_data["period_unit"],
-                    time_range_data["end_date"],
+                    date_range_data["start_date"],
+                    date_range_data["duration_value"],
+                    date_range_data["duration_unit"],
+                    date_range_data["period_value"],
+                    date_range_data["period_unit"],
+                    date_range_data["end_date"],
                     budget.id,
                 ),
             )
@@ -461,12 +461,12 @@ class SqliteRepository(RepositoryInterface):
                     budget.amount,
                     budget.currency,
                     budget.category.value,
-                    time_range_data["start_date"],
-                    time_range_data["duration_value"],
-                    time_range_data["duration_unit"],
-                    time_range_data["period_value"],
-                    time_range_data["period_unit"],
-                    time_range_data["end_date"],
+                    date_range_data["start_date"],
+                    date_range_data["duration_value"],
+                    date_range_data["duration_unit"],
+                    date_range_data["period_value"],
+                    date_range_data["period_unit"],
+                    date_range_data["end_date"],
                 ),
             )
             conn.commit()
@@ -482,7 +482,7 @@ class SqliteRepository(RepositoryInterface):
 
     def _row_to_budget(self, row: sqlite3.Row) -> Budget:
         """Convert a database row to a Budget object."""
-        time_range = self._deserialize_budget_time_range(
+        dr = self._deserialize_budget_date_range(
             start_date=date.fromisoformat(row["start_date"]),
             duration_value=row["duration_value"],
             duration_unit=row["duration_unit"],
@@ -495,7 +495,7 @@ class SqliteRepository(RepositoryInterface):
             description=row["description"],
             amount=Amount(row["amount"], row["currency"]),
             category=Category(row["category"]),
-            time_range=time_range,
+            date_range=dr,
         )
 
     # Planned Operation methods
@@ -528,7 +528,7 @@ class SqliteRepository(RepositoryInterface):
     def upsert_planned_operation(self, op: PlannedOperation) -> int:
         """Insert or update a planned operation. Returns the operation id."""
         conn = self._get_connection()
-        time_range_data = self._serialize_planned_op_time_range(op.time_range)
+        date_range_data = self._serialize_planned_op_date_range(op.date_range)
         hints = (
             json.dumps(list(op.matcher.description_hints))
             if op.matcher.description_hints
@@ -549,10 +549,10 @@ class SqliteRepository(RepositoryInterface):
                     op.amount,
                     op.currency,
                     op.category.value,
-                    time_range_data["start_date"],
-                    time_range_data["period_value"],
-                    time_range_data["period_unit"],
-                    time_range_data["end_date"],
+                    date_range_data["start_date"],
+                    date_range_data["period_value"],
+                    date_range_data["period_unit"],
+                    date_range_data["end_date"],
                     hints,
                     approx_days,
                     op.matcher.approximation_amount_ratio,
@@ -573,10 +573,10 @@ class SqliteRepository(RepositoryInterface):
                     op.amount,
                     op.currency,
                     op.category.value,
-                    time_range_data["start_date"],
-                    time_range_data["period_value"],
-                    time_range_data["period_unit"],
-                    time_range_data["end_date"],
+                    date_range_data["start_date"],
+                    date_range_data["period_value"],
+                    date_range_data["period_unit"],
+                    date_range_data["end_date"],
                     hints,
                     approx_days,
                     op.matcher.approximation_amount_ratio,
@@ -595,7 +595,7 @@ class SqliteRepository(RepositoryInterface):
 
     def _row_to_planned_operation(self, row: sqlite3.Row) -> PlannedOperation:
         """Convert a database row to a PlannedOperation object."""
-        time_range = self._deserialize_planned_op_time_range(
+        dr = self._deserialize_planned_op_date_range(
             start_date=date.fromisoformat(row["start_date"]),
             period_value=row["period_value"],
             period_unit=row["period_unit"],
@@ -615,7 +615,7 @@ class SqliteRepository(RepositoryInterface):
             description=row["description"],
             amount=Amount(row["amount"], row["currency"]),
             category=Category(row["category"]),
-            time_range=time_range,
+            date_range=dr,
         )
         op.set_matcher_params(
             description_hints=hints,
@@ -624,7 +624,7 @@ class SqliteRepository(RepositoryInterface):
         )
         return op
 
-    # TimeRange serialization helpers
+    # DateRange serialization helpers
 
     def _relativedelta_to_db(self, rd: relativedelta) -> tuple[int, str]:
         """Convert relativedelta to (value, unit) for database storage.
@@ -661,10 +661,10 @@ class SqliteRepository(RepositoryInterface):
         else:
             return relativedelta(days=value)
 
-    def _serialize_budget_time_range(self, time_range: TimeRangeInterface) -> dict:
-        """Serialize a budget time range to database fields."""
+    def _serialize_budget_date_range(self, date_range: DateRangeInterface) -> dict:
+        """Serialize a budget date range to database fields."""
         result: dict = {
-            "start_date": time_range.initial_date.isoformat(),
+            "start_date": date_range.start_date.isoformat(),
             "duration_value": None,
             "duration_unit": None,
             "period_value": None,
@@ -672,27 +672,27 @@ class SqliteRepository(RepositoryInterface):
             "end_date": None,
         }
 
-        if isinstance(time_range, PeriodicTimeRange):
-            # Get duration from base time range
-            dur_val, dur_unit = self._relativedelta_to_db(time_range.duration)
+        if isinstance(date_range, RecurringDateRange):
+            # Get duration from base date range
+            dur_val, dur_unit = self._relativedelta_to_db(date_range.duration)
             result["duration_value"] = dur_val
             result["duration_unit"] = dur_unit
             # Get period
-            per_val, per_unit = self._relativedelta_to_db(time_range.period)
+            per_val, per_unit = self._relativedelta_to_db(date_range.period)
             result["period_value"] = per_val
             result["period_unit"] = per_unit
             # Get end date
-            if time_range.last_date != date.max:
-                result["end_date"] = time_range.last_date.isoformat()
-        elif isinstance(time_range, TimeRange):
+            if date_range.last_date != date.max:
+                result["end_date"] = date_range.last_date.isoformat()
+        elif isinstance(date_range, DateRange):
             # Get the relativedelta duration
-            dur_val, dur_unit = self._relativedelta_to_db(time_range.duration)
+            dur_val, dur_unit = self._relativedelta_to_db(date_range.duration)
             result["duration_value"] = dur_val
             result["duration_unit"] = dur_unit
 
         return result
 
-    def _deserialize_budget_time_range(
+    def _deserialize_budget_date_range(
         self,
         start_date: date,
         duration_value: int | None,
@@ -700,51 +700,51 @@ class SqliteRepository(RepositoryInterface):
         period_value: int | None,
         period_unit: str | None,
         end_date: date | None,
-    ) -> TimeRangeInterface:
-        """Deserialize budget time range from database fields."""
+    ) -> DateRangeInterface:
+        """Deserialize budget date range from database fields."""
         duration = self._db_to_relativedelta(duration_value, duration_unit)
-        inner_range = TimeRange(start_date, duration)
+        inner_range = DateRange(start_date, duration)
 
         if period_value is not None and period_unit is not None:
             period = self._db_to_relativedelta(period_value, period_unit)
             expiration = end_date if end_date else date.max
-            return PeriodicTimeRange(inner_range, period, expiration)
+            return RecurringDateRange(inner_range, period, expiration)
 
         return inner_range
 
-    def _serialize_planned_op_time_range(self, time_range: TimeRangeInterface) -> dict:
-        """Serialize a planned operation time range to database fields."""
+    def _serialize_planned_op_date_range(self, date_range: DateRangeInterface) -> dict:
+        """Serialize a planned operation date range to database fields."""
         result: dict = {
-            "start_date": time_range.initial_date.isoformat(),
+            "start_date": date_range.start_date.isoformat(),
             "period_value": None,
             "period_unit": None,
             "end_date": None,
         }
 
-        if isinstance(time_range, PeriodicDailyTimeRange):
-            # period is inherited from PeriodicTimeRange
-            per_val, per_unit = self._relativedelta_to_db(time_range.period)
+        if isinstance(date_range, RecurringDay):
+            # period is inherited from RecurringDateRange
+            per_val, per_unit = self._relativedelta_to_db(date_range.period)
             result["period_value"] = per_val
             result["period_unit"] = per_unit
-            if time_range.last_date != date.max:
-                result["end_date"] = time_range.last_date.isoformat()
+            if date_range.last_date != date.max:
+                result["end_date"] = date_range.last_date.isoformat()
 
         return result
 
-    def _deserialize_planned_op_time_range(
+    def _deserialize_planned_op_date_range(
         self,
         start_date: date,
         period_value: int | None,
         period_unit: str | None,
         end_date: date | None,
-    ) -> DailyTimeRange | PeriodicDailyTimeRange:
-        """Deserialize planned operation time range from database fields."""
+    ) -> SingleDay | RecurringDay:
+        """Deserialize planned operation date range from database fields."""
         if period_value is not None and period_unit is not None:
             period = self._db_to_relativedelta(period_value, period_unit)
             expiration = end_date if end_date else date.max
-            return PeriodicDailyTimeRange(start_date, period, expiration)
+            return RecurringDay(start_date, period, expiration)
 
-        return DailyTimeRange(start_date)
+        return SingleDay(start_date)
 
     # Operation Link methods
 

@@ -1,4 +1,4 @@
-"""Time range module."""
+"""Date range module."""
 import abc
 import itertools
 from datetime import date, timedelta
@@ -9,21 +9,21 @@ from dateutil.relativedelta import relativedelta
 
 
 @total_ordering
-class TimeRangeInterface(abc.ABC):
+class DateRangeInterface(abc.ABC):
     """
-    A time range is a period of time defined by a start date and a duration.
+    A date range is a period defined by a start date and a duration.
     It can be repeated at a given period.
     """
 
     @property
     @abc.abstractmethod
-    def initial_date(self) -> date:
-        """Return the initial date of the time range."""
+    def start_date(self) -> date:
+        """Return the start date of the date range."""
 
     @property
     @abc.abstractmethod
     def last_date(self) -> date:
-        """Return the last date of the time range."""
+        """Return the last date of the date range."""
 
     @property
     @abc.abstractmethod
@@ -37,11 +37,11 @@ class TimeRangeInterface(abc.ABC):
 
     @abc.abstractmethod
     def is_expired(self, target_date: date) -> bool:
-        """Check if the time range is expired at the given date."""
+        """Check if the date range is expired at the given date."""
 
     @abc.abstractmethod
     def is_future(self, target_date: date) -> bool:
-        """Check if the time range is in the future at the given date."""
+        """Check if the date range is in the future at the given date."""
 
     @abc.abstractmethod
     def is_within(
@@ -50,75 +50,75 @@ class TimeRangeInterface(abc.ABC):
         approx_before: timedelta = timedelta(),
         approx_after: timedelta = timedelta(),
     ) -> bool:
-        """Check if the date is within the time range."""
+        """Check if the date is within the date range."""
 
     @abc.abstractmethod
-    def iterate_over_time_ranges(
+    def iterate_over_date_ranges(
         self, from_date: date | None = None
-    ) -> Iterator["TimeRangeInterface"]:
-        """Iterate over the time ranges."""
+    ) -> Iterator["DateRangeInterface"]:
+        """Iterate over the date ranges."""
 
     @abc.abstractmethod
-    def current_time_range(
+    def current_date_range(
         self,
         target_date: date,
         approx_before: timedelta = timedelta(),
         approx_after: timedelta = timedelta(),
-    ) -> Optional["TimeRangeInterface"]:
-        """Get the time range that is active at the given date."""
+    ) -> Optional["DateRangeInterface"]:
+        """Get the date range that is active at the given date."""
 
     @abc.abstractmethod
-    def next_time_range(self, target_date: date) -> Optional["TimeRangeInterface"]:
-        """Get the next time range after the given date."""
+    def next_date_range(self, target_date: date) -> Optional["DateRangeInterface"]:
+        """Get the next date range after the given date."""
 
     @abc.abstractmethod
-    def last_time_range(self, target_date: date) -> Optional["TimeRangeInterface"]:
-        """Get the previous time range before the given date."""
+    def last_date_range(self, target_date: date) -> Optional["DateRangeInterface"]:
+        """Get the previous date range before the given date."""
 
     @abc.abstractmethod
-    def replace(self, **kwargs: Any) -> "TimeRangeInterface":
-        """Return a new instance of the time range with the given parameters replaced."""
+    def replace(self, **kwargs: Any) -> "DateRangeInterface":
+        """Return a new instance of the date range with the given parameters replaced."""
 
     @abc.abstractmethod
     def __eq__(self, other: object) -> bool:
-        """Check if two time ranges are equal."""
+        """Check if two date ranges are equal."""
 
     def __lt__(self, other: object) -> bool:
-        if not isinstance(other, TimeRangeInterface):
+        if not isinstance(other, DateRangeInterface):
             return NotImplemented
-        return (self.initial_date, self.last_date) < (
-            other.initial_date,
+        return (self.start_date, self.last_date) < (
+            other.start_date,
             other.last_date,
         )
 
     @abc.abstractmethod
     def __hash__(self) -> int:
-        """Return the hash of the time range."""
+        """Return the hash of the date range."""
 
 
-class TimeRange(TimeRangeInterface):
-    """A non recurring time range."""
+class DateRange(DateRangeInterface):
+    """A non-recurring date range."""
 
     def __init__(
         self,
-        initial_date: date,
+        start_date: date,
         duration: relativedelta,
     ) -> None:
-        self._initial_date = initial_date
+        self._start_date = start_date
         self._duration = duration
 
     @property
-    def initial_date(self) -> date:
-        return self._initial_date
+    def start_date(self) -> date:
+        return self._start_date
 
     @property
     def last_date(self) -> date:
-        return self._initial_date + self._duration - timedelta(days=1)
+        return self._start_date + self._duration - timedelta(days=1)
 
     @property
     def total_duration(self) -> timedelta:
         """Return the total duration as a timedelta."""
-        return self.last_date - self.initial_date + timedelta(days=1)
+        return self.last_date - self.start_date + timedelta(days=1)
 
     @property
     def duration(self) -> relativedelta:
@@ -129,7 +129,7 @@ class TimeRange(TimeRangeInterface):
         return self.last_date < target_date
 
     def is_future(self, target_date: date) -> bool:
-        return self.initial_date > target_date
+        return self.start_date > target_date
 
     def is_within(
         self,
@@ -138,124 +138,124 @@ class TimeRange(TimeRangeInterface):
         approx_after: timedelta = timedelta(),
     ) -> bool:
         return (
-            self.initial_date - approx_before
+            self.start_date - approx_before
             <= target_date
             <= self.last_date + approx_after
         )
 
-    def iterate_over_time_ranges(
+    def iterate_over_date_ranges(
         self, from_date: date | None = None
-    ) -> Iterator[TimeRangeInterface]:
+    ) -> Iterator[DateRangeInterface]:
         yield self
 
-    def current_time_range(
+    def current_date_range(
         self,
         target_date: date,
         approx_before: timedelta = timedelta(),
         approx_after: timedelta = timedelta(),
-    ) -> TimeRangeInterface | None:
+    ) -> DateRangeInterface | None:
         if self.is_within(target_date, approx_before, approx_after):
             return self
         return None
 
-    def next_time_range(self, target_date: date) -> TimeRangeInterface | None:
+    def next_date_range(self, target_date: date) -> DateRangeInterface | None:
         if self.is_future(target_date):
             return self
         return None
 
-    def last_time_range(self, target_date: date) -> TimeRangeInterface | None:
+    def last_date_range(self, target_date: date) -> DateRangeInterface | None:
         if self.is_future(target_date):
             return None
         return self
 
-    def replace(self, **kwargs: Any) -> "TimeRange":
-        new_initial_date = kwargs.get("initial_date", self.initial_date)
-        if not isinstance(new_initial_date, date):
-            raise TypeError(f"initial_date must be date, got {type(new_initial_date)}")
+    def replace(self, **kwargs: Any) -> "DateRange":
+        new_start_date = kwargs.get("start_date", self.start_date)
+        if not isinstance(new_start_date, date):
+            raise TypeError(f"start_date must be date, got {type(new_start_date)}")
         new_duration = kwargs.get("duration", self._duration)
         if not isinstance(new_duration, relativedelta):
             raise TypeError(f"duration must be relativedelta, got {type(new_duration)}")
-        return TimeRange(
-            initial_date=new_initial_date,
+        return DateRange(
+            start_date=new_start_date,
             duration=new_duration,
         )
 
     def __repr__(self) -> str:
-        return f"{self.initial_date} - {self.last_date}"
+        return f"{self.start_date} - {self.last_date}"
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, TimeRange):
+        if not isinstance(other, DateRange):
             return NotImplemented
         return (
-            self.initial_date == other.initial_date
+            self.start_date == other.start_date
             and self.total_duration == other.total_duration
         )
 
     def __hash__(self) -> int:
-        return hash((self.initial_date, self.total_duration))
+        return hash((self.start_date, self.total_duration))
 
 
-class DailyTimeRange(TimeRange):
-    """A time range that lasts one day."""
+class SingleDay(DateRange):
+    """A date range that lasts one day."""
 
-    def __init__(self, initial_date: date) -> None:
-        super().__init__(initial_date, relativedelta(days=1))
+    def __init__(self, start_date: date) -> None:
+        super().__init__(start_date, relativedelta(days=1))
 
-    def replace(self, **kwargs: Any) -> "DailyTimeRange":
-        new_initial_date = kwargs.get("initial_date", self.initial_date)
-        if not isinstance(new_initial_date, date):
-            raise TypeError(f"initial_date must be date, got {type(new_initial_date)}")
-        return DailyTimeRange(
-            initial_date=new_initial_date,
+    def replace(self, **kwargs: Any) -> "SingleDay":
+        new_start_date = kwargs.get("start_date", self.start_date)
+        if not isinstance(new_start_date, date):
+            raise TypeError(f"start_date must be date, got {type(new_start_date)}")
+        return SingleDay(
+            start_date=new_start_date,
         )
 
 
-class PeriodicTimeRange(TimeRangeInterface):
-    """A time range that repeats at a given period."""
+class RecurringDateRange(DateRangeInterface):
+    """A date range that repeats at a given period."""
 
     def __init__(
         self,
-        initial_time_range: TimeRangeInterface,
+        initial_date_range: DateRangeInterface,
         period: relativedelta,
         expiration_date: date | None = None,
     ) -> None:
-        self._initial_time_range = initial_time_range
+        self._initial_date_range = initial_date_range
         self._period = period
         self._expiration_date = expiration_date or date.max
 
     @property
-    def initial_date(self) -> date:
-        return self._initial_time_range.initial_date
+    def start_date(self) -> date:
+        return self._initial_date_range.start_date
 
     @property
     def last_date(self) -> date:
         return self._expiration_date
 
     @property
-    def base_time_range(self) -> TimeRangeInterface:
-        """Return the base time range that repeats."""
-        return self._initial_time_range
+    def base_date_range(self) -> DateRangeInterface:
+        """Return the base date range that repeats."""
+        return self._initial_date_range
 
     @property
     def total_duration(self) -> timedelta:
         """Return the total duration as a timedelta."""
-        return self.last_date - self.initial_date + timedelta(days=1)
+        return self.last_date - self.start_date + timedelta(days=1)
 
     @property
     def duration(self) -> relativedelta:
         """Return the duration of each period as a relativedelta."""
-        return self._initial_time_range.duration
+        return self._initial_date_range.duration
 
     @property
     def period(self) -> relativedelta:
-        """Return the period of the time range."""
+        """Return the period of the date range."""
         return self._period
 
     def is_expired(self, target_date: date) -> bool:
         return self._expiration_date < target_date
 
     def is_future(self, target_date: date) -> bool:
-        return self._initial_time_range.is_future(target_date)
+        return self._initial_date_range.is_future(target_date)
 
     def is_within(
         self,
@@ -263,19 +263,19 @@ class PeriodicTimeRange(TimeRangeInterface):
         approx_before: timedelta = timedelta(),
         approx_after: timedelta = timedelta(),
     ) -> bool:
-        """Check if the date is within the time range."""
+        """Check if the date is within the date range."""
         return (
-            self.current_time_range(target_date, approx_before, approx_after)
+            self.current_date_range(target_date, approx_before, approx_after)
             is not None
         )
 
-    def iterate_over_time_ranges(
+    def iterate_over_date_ranges(
         self, from_date: date | None = None
-    ) -> Iterator[TimeRangeInterface]:
-        """Iterate over the time ranges."""
+    ) -> Iterator[DateRangeInterface]:
+        """Iterate over the date ranges."""
         start = 0
-        if from_date is not None and from_date > self.initial_date:
-            days_diff = (from_date - self.initial_date).days
+        if from_date is not None and from_date > self.start_date:
+            days_diff = (from_date - self.start_date).days
 
             # Estimate period length in days using MAXIMUM values (31 days/month,
             # 366 days/year) to be conservative. Overestimating the period length
@@ -293,47 +293,47 @@ class PeriodicTimeRange(TimeRangeInterface):
                 start = max(0, days_diff // approx_period_days - 1)
 
             # Fine-tune: advance to the correct position
-            while self.initial_date + (start + 1) * self._period < from_date:
+            while self.start_date + (start + 1) * self._period < from_date:
                 start += 1
 
-        time_ranges = (
-            self._initial_time_range.replace(
-                initial_date=self.initial_date + n * self._period
+        date_ranges = (
+            self._initial_date_range.replace(
+                start_date=self.start_date + n * self._period
             )
             for n in itertools.count(start)
         )
         return itertools.takewhile(
-            lambda tr: tr.last_date <= self.last_date, time_ranges
+            lambda dr: dr.last_date <= self.last_date, date_ranges
         )
 
     def split_at(
         self, split_date: date
-    ) -> tuple["PeriodicTimeRange", "PeriodicTimeRange"]:
-        """Split this time range at the given date.
+    ) -> tuple["RecurringDateRange", "RecurringDateRange"]:
+        """Split this date range at the given date.
 
         Finds the first iteration at or after the given date and returns
-        a terminated version of this time range (ending the day before)
-        and a new time range starting at that iteration with the original
+        a terminated version of this date range (ending the day before)
+        and a new date range starting at that iteration with the original
         expiration date.
 
         Args:
             split_date: The date from which to split.
 
         Returns:
-            Tuple of (terminated_time_range, new_time_range).
+            Tuple of (terminated_date_range, new_date_range).
 
         Raises:
             ValueError: If no iteration exists at or after the given date,
-                or if the date is not after the initial date.
+                or if the date is not after the start date.
         """
-        if split_date <= self.initial_date:
+        if split_date <= self.start_date:
             raise ValueError("Split date must be after the first iteration")
 
         first_new_iteration = next(
             (
-                tr.initial_date
-                for tr in self.iterate_over_time_ranges()
-                if tr.initial_date >= split_date
+                dr.start_date
+                for dr in self.iterate_over_date_ranges()
+                if dr.start_date >= split_date
             ),
             None,
         )
@@ -344,35 +344,35 @@ class PeriodicTimeRange(TimeRangeInterface):
             expiration_date=first_new_iteration - timedelta(days=1)
         )
         continuation = self.replace(
-            initial_date=first_new_iteration,
+            start_date=first_new_iteration,
         )
         return terminated, continuation
 
-    def current_time_range(
+    def current_date_range(
         self,
         target_date: date,
         approx_before: timedelta = timedelta(),
         approx_after: timedelta = timedelta(),
-    ) -> TimeRangeInterface | None:
-        """Get the time range that is active at the given date."""
-        for time_range in self.iterate_over_time_ranges(target_date):
-            if time_range.is_within(target_date, approx_before, approx_after):
-                return time_range
-            if time_range.is_future(target_date):
+    ) -> DateRangeInterface | None:
+        """Get the date range that is active at the given date."""
+        for date_range in self.iterate_over_date_ranges(target_date):
+            if date_range.is_within(target_date, approx_before, approx_after):
+                return date_range
+            if date_range.is_future(target_date):
                 break
         return None
 
-    def next_time_range(self, target_date: date) -> TimeRangeInterface | None:
-        """Get the next time range after the given date."""
-        for time_range in self.iterate_over_time_ranges(target_date):
-            if time_range.is_future(target_date):
-                return time_range
+    def next_date_range(self, target_date: date) -> DateRangeInterface | None:
+        """Get the next date range after the given date."""
+        for date_range in self.iterate_over_date_ranges(target_date):
+            if date_range.is_future(target_date):
+                return date_range
         return None
 
-    def last_time_range(self, target_date: date) -> TimeRangeInterface | None:
-        """Get the last applicable time range before or at the given date."""
+    def last_date_range(self, target_date: date) -> DateRangeInterface | None:
+        """Get the last applicable date range before or at the given date."""
         for previous, current in itertools.pairwise(
-            self.iterate_over_time_ranges(target_date)
+            self.iterate_over_date_ranges(target_date)
         ):
             if current.is_within(target_date):
                 return current
@@ -380,7 +380,7 @@ class PeriodicTimeRange(TimeRangeInterface):
                 return previous
         return None
 
-    def replace(self, **kwargs: Any) -> "PeriodicTimeRange":
+    def replace(self, **kwargs: Any) -> "RecurringDateRange":
         new_period = kwargs.get("period", self._period)
         if not isinstance(new_period, relativedelta):
             raise TypeError(f"period must be relativedelta, got {type(new_period)}")
@@ -391,23 +391,23 @@ class PeriodicTimeRange(TimeRangeInterface):
             raise TypeError(
                 f"expiration_date must be date or None, got {type(new_expiration_date)}"
             )
-        return PeriodicTimeRange(
-            initial_time_range=self._initial_time_range.replace(**kwargs),
+        return RecurringDateRange(
+            initial_date_range=self._initial_date_range.replace(**kwargs),
             period=new_period,
             expiration_date=new_expiration_date,
         )
 
     def __repr__(self) -> str:
         return (
-            f"{self._initial_time_range} every {self._period} until "
+            f"{self._initial_date_range} every {self._period} until "
             f"{self._expiration_date if self._expiration_date != date.max else 'forever'}"
         )
 
     def __eq__(self, other: object) -> bool:
-        if not isinstance(other, PeriodicTimeRange):
+        if not isinstance(other, RecurringDateRange):
             return NotImplemented
         return (
-            self.initial_date == other.initial_date
+            self.start_date == other.start_date
             and self.total_duration == other.total_duration
             and self._period == other._period
             and self._expiration_date == other._expiration_date
@@ -416,7 +416,7 @@ class PeriodicTimeRange(TimeRangeInterface):
     def __hash__(self) -> int:
         return hash(
             (
-                self.initial_date,
+                self.start_date,
                 self.total_duration,
                 self._period,
                 self._expiration_date,
@@ -424,21 +424,21 @@ class PeriodicTimeRange(TimeRangeInterface):
         )
 
 
-class PeriodicDailyTimeRange(PeriodicTimeRange):
-    """A periodic time range that lasts one day."""
+class RecurringDay(RecurringDateRange):
+    """A recurring date range that lasts one day."""
 
     def __init__(
         self,
-        initial_date: date,
+        start_date: date,
         period: relativedelta,
         expiration_date: date | None = None,
     ) -> None:
-        super().__init__(DailyTimeRange(initial_date), period, expiration_date)
+        super().__init__(SingleDay(start_date), period, expiration_date)
 
-    def replace(self, **kwargs: Any) -> "PeriodicDailyTimeRange":
-        new_initial_date = kwargs.get("initial_date", self.initial_date)
-        if not isinstance(new_initial_date, date):
-            raise TypeError(f"initial_date must be date, got {type(new_initial_date)}")
+    def replace(self, **kwargs: Any) -> "RecurringDay":
+        new_start_date = kwargs.get("start_date", self.start_date)
+        if not isinstance(new_start_date, date):
+            raise TypeError(f"start_date must be date, got {type(new_start_date)}")
         new_period = kwargs.get("period", self._period)
         if not isinstance(new_period, relativedelta):
             raise TypeError(f"period must be relativedelta, got {type(new_period)}")
@@ -449,8 +449,8 @@ class PeriodicDailyTimeRange(PeriodicTimeRange):
             raise TypeError(
                 f"expiration_date must be date or None, got {type(new_expiration_date)}"
             )
-        return PeriodicDailyTimeRange(
-            initial_date=new_initial_date,
+        return RecurringDay(
+            start_date=new_start_date,
             period=new_period,
             expiration_date=new_expiration_date,
         )

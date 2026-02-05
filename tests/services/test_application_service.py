@@ -11,11 +11,11 @@ import pytest
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import (
-    DailyTimeRange,
-    PeriodicDailyTimeRange,
-    PeriodicTimeRange,
-    TimeRange,
+from budget_forecaster.core.date_range import (
+    DateRange,
+    RecurringDateRange,
+    RecurringDay,
+    SingleDay,
 )
 from budget_forecaster.core.types import Category, ImportStats, LinkType
 from budget_forecaster.domain.operation.budget import Budget
@@ -395,7 +395,7 @@ class TestPlannedOperationCrud:
             description="Test",
             amount=Amount(100.0, "EUR"),
             category=Category.SALARY,
-            time_range=DailyTimeRange(date(2025, 1, 15)),
+            date_range=SingleDay(date(2025, 1, 15)),
         )
 
         # Setup return value with ID
@@ -422,7 +422,7 @@ class TestPlannedOperationCrud:
             description="Test",
             amount=Amount(100.0, "EUR"),
             category=Category.SALARY,
-            time_range=DailyTimeRange(date(2025, 1, 15)),
+            date_range=SingleDay(date(2025, 1, 15)),
         )
 
         with pytest.raises(ValueError, match="valid ID"):
@@ -441,7 +441,7 @@ class TestPlannedOperationCrud:
             description="Test",
             amount=Amount(100.0, "EUR"),
             category=Category.SALARY,
-            time_range=DailyTimeRange(date(2025, 1, 15)),
+            date_range=SingleDay(date(2025, 1, 15)),
         )
 
         returned_op = MagicMock()
@@ -492,7 +492,7 @@ class TestBudgetCrud:
             description="Test",
             amount=Amount(-100.0, "EUR"),
             category=Category.GROCERIES,
-            time_range=TimeRange(date(2025, 1, 1), relativedelta(months=1)),
+            date_range=DateRange(date(2025, 1, 1), relativedelta(months=1)),
         )
 
         returned_budget = MagicMock()
@@ -518,7 +518,7 @@ class TestBudgetCrud:
             description="Test",
             amount=Amount(-100.0, "EUR"),
             category=Category.GROCERIES,
-            time_range=TimeRange(date(2025, 1, 1), relativedelta(months=1)),
+            date_range=DateRange(date(2025, 1, 1), relativedelta(months=1)),
         )
 
         with pytest.raises(ValueError, match="valid ID"):
@@ -537,7 +537,7 @@ class TestBudgetCrud:
             description="Test",
             amount=Amount(-100.0, "EUR"),
             category=Category.GROCERIES,
-            time_range=TimeRange(date(2025, 1, 1), relativedelta(months=1)),
+            date_range=DateRange(date(2025, 1, 1), relativedelta(months=1)),
         )
 
         returned_budget = MagicMock()
@@ -784,7 +784,7 @@ class TestSplitOperations:
             description="One-time",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
-            time_range=DailyTimeRange(date(2025, 1, 15)),
+            date_range=SingleDay(date(2025, 1, 15)),
         )
         mock_forecast_service.get_planned_operation_by_id.return_value = op
 
@@ -805,8 +805,8 @@ class TestSplitOperations:
             description="Rent",
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
-            time_range=PeriodicDailyTimeRange(
-                initial_date=date(2025, 1, 1),
+            date_range=RecurringDay(
+                start_date=date(2025, 1, 1),
                 period=relativedelta(months=1),
             ),
         )
@@ -831,8 +831,8 @@ class TestSplitOperations:
             description="Rent",
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
-            time_range=PeriodicDailyTimeRange(
-                initial_date=date(2025, 1, 1),
+            date_range=RecurringDay(
+                start_date=date(2025, 1, 1),
                 period=relativedelta(months=1),
             ),
         )
@@ -862,14 +862,14 @@ class TestSplitOperations:
         updated_original = mock_forecast_service.update_planned_operation.call_args[0][
             0
         ]
-        assert updated_original.time_range.last_date == date(2025, 2, 28)
+        assert updated_original.date_range.last_date == date(2025, 2, 28)
 
         # New operation should be created
         mock_forecast_service.add_planned_operation.assert_called_once()
         created_op = mock_forecast_service.add_planned_operation.call_args[0][0]
         assert created_op.description == "Rent"
         assert created_op.amount == -850.0
-        assert created_op.time_range.initial_date == date(2025, 3, 1)
+        assert created_op.date_range.start_date == date(2025, 3, 1)
 
     def test_split_planned_operation_migrates_links(
         self,
@@ -883,8 +883,8 @@ class TestSplitOperations:
             description="Rent",
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
-            time_range=PeriodicDailyTimeRange(
-                initial_date=date(2025, 1, 1),
+            date_range=RecurringDay(
+                start_date=date(2025, 1, 1),
                 period=relativedelta(months=1),
             ),
         )
@@ -960,8 +960,8 @@ class TestSplitOperations:
             description="One-time",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
-            time_range=TimeRange(
-                initial_date=date(2025, 1, 1),
+            date_range=DateRange(
+                start_date=date(2025, 1, 1),
                 duration=relativedelta(months=1),
             ),
         )
@@ -981,12 +981,12 @@ class TestSplitOperations:
     ) -> None:
         """split_budget_at_date terminates original and creates new."""
         # Create periodic budget
-        base_time_range = TimeRange(
-            initial_date=date(2025, 1, 1),
+        base_date_range = DateRange(
+            start_date=date(2025, 1, 1),
             duration=relativedelta(months=1),
         )
-        periodic_time_range = PeriodicTimeRange(
-            initial_time_range=base_time_range,
+        periodic_date_range = RecurringDateRange(
+            initial_date_range=base_date_range,
             period=relativedelta(months=1),
         )
         original_budget = Budget(
@@ -994,7 +994,7 @@ class TestSplitOperations:
             description="Groceries",
             amount=Amount(-300.0, "EUR"),
             category=Category.GROCERIES,
-            time_range=periodic_time_range,
+            date_range=periodic_date_range,
         )
         mock_forecast_service.get_budget_by_id.return_value = original_budget
 
@@ -1025,7 +1025,7 @@ class TestSplitOperations:
         created_budget = mock_forecast_service.add_budget.call_args[0][0]
         assert created_budget.description == "Groceries"
         assert created_budget.amount == -400.0
-        assert created_budget.time_range.initial_date == date(2025, 3, 1)
+        assert created_budget.date_range.start_date == date(2025, 3, 1)
 
     def test_split_budget_migrates_links(
         self,
@@ -1035,12 +1035,12 @@ class TestSplitOperations:
     ) -> None:
         """split_budget_at_date migrates links >= split_date."""
         # Create periodic budget
-        base_time_range = TimeRange(
-            initial_date=date(2025, 1, 1),
+        base_date_range = DateRange(
+            start_date=date(2025, 1, 1),
             duration=relativedelta(months=1),
         )
-        periodic_time_range = PeriodicTimeRange(
-            initial_time_range=base_time_range,
+        periodic_date_range = RecurringDateRange(
+            initial_date_range=base_date_range,
             period=relativedelta(months=1),
         )
         original_budget = Budget(
@@ -1048,7 +1048,7 @@ class TestSplitOperations:
             description="Groceries",
             amount=Amount(-300.0, "EUR"),
             category=Category.GROCERIES,
-            time_range=periodic_time_range,
+            date_range=periodic_date_range,
         )
         mock_forecast_service.get_budget_by_id.return_value = original_budget
 
@@ -1123,7 +1123,7 @@ class TestSplitOperations:
             description="One-time",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
-            time_range=DailyTimeRange(date(2025, 1, 15)),
+            date_range=SingleDay(date(2025, 1, 15)),
         )
         mock_forecast_service.get_planned_operation_by_id.return_value = op
 
@@ -1146,8 +1146,8 @@ class TestSplitOperations:
             description="Rent",
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
-            time_range=PeriodicDailyTimeRange(
-                initial_date=date(2025, 1, 1),
+            date_range=RecurringDay(
+                start_date=date(2025, 1, 1),
                 period=relativedelta(months=1),
             ),
         )

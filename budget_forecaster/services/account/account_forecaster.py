@@ -55,20 +55,16 @@ class AccountForecaster:  # pylint: disable=too-few-public-methods
         self, operation_range: OperationRangeInterface, target_date: date
     ) -> Iterator[HistoricOperation]:
         balance_date = self._account.balance_date
-        for time_range in operation_range.time_range.iterate_over_time_ranges(
-            balance_date
-        ):
-            if time_range.is_future(target_date):
+        for dr in operation_range.date_range.iterate_over_date_ranges(balance_date):
+            if dr.is_future(target_date):
                 break
 
-            if time_range.is_expired(balance_date):
+            if dr.is_expired(balance_date):
                 continue
 
-            amount_per_day = operation_range.amount / time_range.total_duration.days
-            budget_start_date = max(
-                time_range.initial_date, balance_date + timedelta(days=1)
-            )
-            budget_end_date = min(time_range.last_date, target_date)
+            amount_per_day = operation_range.amount / dr.total_duration.days
+            budget_start_date = max(dr.start_date, balance_date + timedelta(days=1))
+            budget_end_date = min(dr.last_date, target_date)
             budget_current_date = budget_start_date
             while budget_current_date <= budget_end_date:
                 yield HistoricOperation(

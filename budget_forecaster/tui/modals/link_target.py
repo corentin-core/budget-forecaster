@@ -216,15 +216,15 @@ class LinkTargetModal(
 
         # Get iterations within a reasonable window around the operation date
         from_date = first_op.operation_date - timedelta(days=60)
-        for iteration in target.time_range.iterate_over_time_ranges(from_date):
+        for iteration in target.date_range.iterate_over_date_ranges(from_date):
             # Stop if iteration is too far in the future
-            if iteration.initial_date > first_op.operation_date + timedelta(days=60):
+            if iteration.start_date > first_op.operation_date + timedelta(days=60):
                 break
 
             score = compute_match_score(
                 first_op,
                 target,
-                iteration.initial_date,
+                iteration.start_date,
             )
             best_score = max(best_score, score)
 

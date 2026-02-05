@@ -5,7 +5,7 @@ import pytest
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import PeriodicTimeRange, TimeRange
+from budget_forecaster.core.date_range import DateRange, RecurringDateRange
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
@@ -19,8 +19,8 @@ def recurring_budget() -> Budget:
         description="Test Budget",
         amount=Amount(-100.0),
         category=Category.GROCERIES,
-        time_range=PeriodicTimeRange(
-            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
+        date_range=RecurringDateRange(
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
             relativedelta(months=1),
             date(2023, 12, 31),
         ),
@@ -96,7 +96,7 @@ def budget_no_period() -> Budget:
         description="Test Budget",
         amount=Amount(-200.0),
         category=Category.GROCERIES,
-        time_range=TimeRange(date(2023, 1, 1), relativedelta(days=30)),
+        date_range=DateRange(date(2023, 1, 1), relativedelta(days=30)),
     )
 
 
@@ -169,7 +169,7 @@ class TestBudgetReplaceTypeErrors:
             description="Test Budget",
             amount=Amount(-100.0),
             category=Category.GROCERIES,
-            time_range=TimeRange(date(2023, 1, 1), relativedelta(months=1)),
+            date_range=DateRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
     def test_replace_invalid_record_id(self, budget: Budget) -> None:
@@ -194,8 +194,8 @@ class TestBudgetReplaceTypeErrors:
 
     def test_replace_invalid_time_range(self, budget: Budget) -> None:
         """Test Budget.replace() raises TypeError for invalid time_range."""
-        with pytest.raises(TypeError, match="time_range must be TimeRangeInterface"):
-            budget.replace(time_range="2023-01-01")
+        with pytest.raises(TypeError, match="date_range must be DateRangeInterface"):
+            budget.replace(date_range="2023-01-01")
 
 
 class TestBudgetSplitAt:
@@ -208,8 +208,8 @@ class TestBudgetSplitAt:
             description="Groceries",
             amount=Amount(-400.0),
             category=Category.GROCERIES,
-            time_range=PeriodicTimeRange(
-                TimeRange(date(2025, 1, 1), relativedelta(months=1)),
+            date_range=RecurringDateRange(
+                DateRange(date(2025, 1, 1), relativedelta(months=1)),
                 relativedelta(months=1),
                 date(2025, 12, 31),
             ),
@@ -218,11 +218,11 @@ class TestBudgetSplitAt:
         terminated, continuation = budget.split_at(date(2025, 6, 1))
 
         # Terminated ends day before first new iteration (June 1)
-        assert terminated.time_range.last_date == date(2025, 5, 31)
+        assert terminated.date_range.last_date == date(2025, 5, 31)
         assert terminated.id == 1  # Keeps original ID
 
         # Continuation starts at first iteration >= split date
-        assert continuation.time_range.initial_date == date(2025, 6, 1)
+        assert continuation.date_range.start_date == date(2025, 6, 1)
         assert continuation.id is None  # New record
         assert continuation.description == "Groceries"
         assert continuation.amount == -400.0
@@ -235,8 +235,8 @@ class TestBudgetSplitAt:
             description="Groceries",
             amount=Amount(-400.0),
             category=Category.GROCERIES,
-            time_range=PeriodicTimeRange(
-                TimeRange(date(2025, 1, 1), relativedelta(months=1)),
+            date_range=RecurringDateRange(
+                DateRange(date(2025, 1, 1), relativedelta(months=1)),
                 relativedelta(months=1),
             ),
         )
@@ -252,8 +252,8 @@ class TestBudgetSplitAt:
             description="Groceries",
             amount=Amount(-400.0),
             category=Category.GROCERIES,
-            time_range=PeriodicTimeRange(
-                TimeRange(date(2025, 1, 1), relativedelta(months=1)),
+            date_range=RecurringDateRange(
+                DateRange(date(2025, 1, 1), relativedelta(months=1)),
                 relativedelta(months=1),
             ),
         )
@@ -262,7 +262,7 @@ class TestBudgetSplitAt:
             date(2025, 6, 1), new_period=relativedelta(months=3)
         )
 
-        assert continuation.time_range.period == relativedelta(months=3)
+        assert continuation.date_range.period == relativedelta(months=3)
 
     def test_split_at_with_new_duration(self) -> None:
         """Test split_at with new duration for continuation."""
@@ -271,8 +271,8 @@ class TestBudgetSplitAt:
             description="Groceries",
             amount=Amount(-400.0),
             category=Category.GROCERIES,
-            time_range=PeriodicTimeRange(
-                TimeRange(date(2025, 1, 1), relativedelta(months=1)),
+            date_range=RecurringDateRange(
+                DateRange(date(2025, 1, 1), relativedelta(months=1)),
                 relativedelta(months=1),
             ),
         )
@@ -281,7 +281,7 @@ class TestBudgetSplitAt:
             date(2025, 6, 1), new_duration=relativedelta(months=2)
         )
 
-        assert continuation.time_range.duration == relativedelta(months=2)
+        assert continuation.date_range.duration == relativedelta(months=2)
 
     def test_split_at_non_periodic_raises_error(self) -> None:
         """Test split_at raises ValueError for non-periodic budget."""
@@ -290,7 +290,7 @@ class TestBudgetSplitAt:
             description="One-time",
             amount=Amount(-100.0),
             category=Category.OTHER,
-            time_range=TimeRange(date(2025, 1, 1), relativedelta(months=1)),
+            date_range=DateRange(date(2025, 1, 1), relativedelta(months=1)),
         )
 
         with pytest.raises(ValueError, match="Cannot split a non-periodic"):

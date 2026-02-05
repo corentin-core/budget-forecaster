@@ -6,10 +6,10 @@ import pytest
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import (
-    DailyTimeRange,
-    PeriodicTimeRange,
-    TimeRange,
+from budget_forecaster.core.date_range import (
+    DateRange,
+    RecurringDateRange,
+    SingleDay,
 )
 from budget_forecaster.core.types import Category, LinkType
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
@@ -95,7 +95,7 @@ def daily_operation_range() -> OperationRange:
         "Test Daily Operation",
         Amount(100, "EUR"),
         Category.GROCERIES,
-        DailyTimeRange(date(2023, 1, 1)),
+        SingleDay(date(2023, 1, 1)),
     )
 
 
@@ -192,24 +192,24 @@ class TestOperationMatcherDailyTimeRange:
         )
         # time range is not late
         assert (
-            set(matcher.late_time_ranges(date(2023, 12, 31), historic_operations))
+            set(matcher.late_date_ranges(date(2023, 12, 31), historic_operations))
             == set()
         )
         # time range is too late
         assert (
-            set(matcher.late_time_ranges(date(2023, 1, 7), historic_operations))
+            set(matcher.late_date_ranges(date(2023, 1, 7), historic_operations))
             == set()
         )
         # operation is not executed and time range is late
-        assert set(matcher.late_time_ranges(date(2023, 1, 2), ())) == {
-            DailyTimeRange(date(2023, 1, 1))
+        assert set(matcher.late_date_ranges(date(2023, 1, 2), ())) == {
+            SingleDay(date(2023, 1, 1))
         }
-        assert set(matcher.late_time_ranges(date(2023, 1, 6), ())) == {
-            DailyTimeRange(date(2023, 1, 1))
+        assert set(matcher.late_date_ranges(date(2023, 1, 6), ())) == {
+            SingleDay(date(2023, 1, 1))
         }
         # operation is already executed
         assert (
-            set(matcher.late_time_ranges(date(2023, 1, 6), historic_operations))
+            set(matcher.late_date_ranges(date(2023, 1, 6), historic_operations))
             == set()
         )
         late_operation_executed = HistoricOperation(
@@ -221,7 +221,7 @@ class TestOperationMatcherDailyTimeRange:
         )
         # operation was late but executed at current date
         assert (
-            set(matcher.late_time_ranges(date(2023, 1, 6), (late_operation_executed,)))
+            set(matcher.late_date_ranges(date(2023, 1, 6), (late_operation_executed,)))
             == set()
         )
         anticipated_operation_executed = HistoricOperation(
@@ -234,7 +234,7 @@ class TestOperationMatcherDailyTimeRange:
         # operation was already executed at current date
         assert (
             set(
-                matcher.late_time_ranges(
+                matcher.late_date_ranges(
                     date(2023, 1, 6), (anticipated_operation_executed,)
                 )
             )
@@ -260,20 +260,20 @@ class TestOperationMatcherDailyTimeRange:
         historic_operations.append(anticipated_operation)
         # the expected operation is a future operation and is already executed
         assert set(
-            matcher.anticipated_time_ranges(date(2022, 12, 27), historic_operations)
-        ) == {(DailyTimeRange(date(2023, 1, 1)), anticipated_operation)}
+            matcher.anticipated_date_ranges(date(2022, 12, 27), historic_operations)
+        ) == {(SingleDay(date(2023, 1, 1)), anticipated_operation)}
         assert set(
-            matcher.anticipated_time_ranges(date(2022, 12, 31), historic_operations)
-        ) == {(DailyTimeRange(date(2023, 1, 1)), anticipated_operation)}
+            matcher.anticipated_date_ranges(date(2022, 12, 31), historic_operations)
+        ) == {(SingleDay(date(2023, 1, 1)), anticipated_operation)}
         # the expected operation is not a future operation
         assert (
-            set(matcher.anticipated_time_ranges(date(2023, 1, 1), historic_operations))
+            set(matcher.anticipated_date_ranges(date(2023, 1, 1), historic_operations))
             == set()
         )
         # this operation has not happened yet
         assert (
             set(
-                matcher.anticipated_time_ranges(date(2022, 12, 23), historic_operations)
+                matcher.anticipated_date_ranges(date(2022, 12, 23), historic_operations)
             )
             == set()
         )
@@ -286,7 +286,7 @@ def operation_range() -> OperationRange:
         "Test Operation",
         Amount(100, "EUR"),
         Category.GROCERIES,
-        TimeRange(date(2023, 1, 1), relativedelta(months=1)),
+        DateRange(date(2023, 1, 1), relativedelta(months=1)),
     )
 
 
@@ -359,24 +359,24 @@ class TestOperationMatcherTimeRange:
         )
         # time range is not late
         assert (
-            set(matcher.late_time_ranges(date(2023, 12, 31), historic_operations))
+            set(matcher.late_date_ranges(date(2023, 12, 31), historic_operations))
             == set()
         )
         # time range is too late
         assert (
-            set(matcher.late_time_ranges(date(2023, 2, 7), historic_operations))
+            set(matcher.late_date_ranges(date(2023, 2, 7), historic_operations))
             == set()
         )
         # operation is not executed and time range is late
-        assert set(matcher.late_time_ranges(date(2023, 1, 2), ())) == {
-            TimeRange(date(2023, 1, 1), relativedelta(months=1))
+        assert set(matcher.late_date_ranges(date(2023, 1, 2), ())) == {
+            DateRange(date(2023, 1, 1), relativedelta(months=1))
         }
-        assert set(matcher.late_time_ranges(date(2023, 1, 6), ())) == {
-            TimeRange(date(2023, 1, 1), relativedelta(months=1))
+        assert set(matcher.late_date_ranges(date(2023, 1, 6), ())) == {
+            DateRange(date(2023, 1, 1), relativedelta(months=1))
         }
         # operation is already executed
         assert (
-            set(matcher.late_time_ranges(date(2023, 1, 6), historic_operations))
+            set(matcher.late_date_ranges(date(2023, 1, 6), historic_operations))
             == set()
         )
 
@@ -401,16 +401,16 @@ class TestOperationMatcherTimeRange:
         )
         # operation 12 was executed close enough from next time range
         assert set(
-            matcher.anticipated_time_ranges(date(2022, 12, 27), historic_operations)
+            matcher.anticipated_date_ranges(date(2022, 12, 27), historic_operations)
         ) == {
             (
-                TimeRange(date(2023, 1, 1), relativedelta(months=1)),
+                DateRange(date(2023, 1, 1), relativedelta(months=1)),
                 historic_operations[-1],
             )
         }
         # no future time range at this date
         assert (
-            set(matcher.anticipated_time_ranges(date(2023, 1, 1), historic_operations))
+            set(matcher.anticipated_date_ranges(date(2023, 1, 1), historic_operations))
             == set()
         )
 
@@ -424,8 +424,8 @@ def periodic_daily_operation_range(
         "Test Periodic Daily Operation",
         Amount(100, "EUR"),
         Category.GROCERIES,
-        PeriodicTimeRange(
-            daily_operation_range.time_range,
+        RecurringDateRange(
+            daily_operation_range.date_range,
             relativedelta(months=1),
             date(2023, 12, 31),
         ),
@@ -483,24 +483,24 @@ class TestOperationMatcherPeriodicDailyTimeRange:
         )
         # time range is not late
         assert (
-            set(matcher.late_time_ranges(date(2023, 12, 31), historic_operations))
+            set(matcher.late_date_ranges(date(2023, 12, 31), historic_operations))
             == set()
         )
         # time range is too late
         assert (
-            set(matcher.late_time_ranges(date(2023, 2, 7), historic_operations))
+            set(matcher.late_date_ranges(date(2023, 2, 7), historic_operations))
             == set()
         )
         # operation is not executed and time range is late
-        assert set(matcher.late_time_ranges(date(2023, 1, 2), ())) == {
-            DailyTimeRange(date(2023, 1, 1))
+        assert set(matcher.late_date_ranges(date(2023, 1, 2), ())) == {
+            SingleDay(date(2023, 1, 1))
         }
-        assert set(matcher.late_time_ranges(date(2023, 1, 6), ())) == {
-            DailyTimeRange(date(2023, 1, 1))
+        assert set(matcher.late_date_ranges(date(2023, 1, 6), ())) == {
+            SingleDay(date(2023, 1, 1))
         }
         # operation is already executed
         assert (
-            set(matcher.late_time_ranges(date(2023, 1, 6), historic_operations))
+            set(matcher.late_date_ranges(date(2023, 1, 6), historic_operations))
             == set()
         )
 
@@ -521,10 +521,10 @@ class TestOperationMatcherPeriodicDailyTimeRange:
         )
         matcher = OperationMatcher(periodic_daily_operation_range)
         assert set(
-            matcher.anticipated_time_ranges(date(2023, 1, 27), historic_operations)
-        ) == {(DailyTimeRange(date(2023, 2, 1)), historic_operations[-1])}
+            matcher.anticipated_date_ranges(date(2023, 1, 27), historic_operations)
+        ) == {(SingleDay(date(2023, 2, 1)), historic_operations[-1])}
         assert (
-            set(matcher.anticipated_time_ranges(date(2023, 1, 26), historic_operations))
+            set(matcher.anticipated_date_ranges(date(2023, 1, 26), historic_operations))
             == set()
         )
 
@@ -538,8 +538,8 @@ def periodic_operation_range(
         "Test Periodic Operation",
         Amount(100, "EUR"),
         Category.GROCERIES,
-        PeriodicTimeRange(
-            operation_range.time_range, relativedelta(months=1), date(2023, 12, 31)
+        RecurringDateRange(
+            operation_range.date_range, relativedelta(months=1), date(2023, 12, 31)
         ),
     )
 
@@ -590,24 +590,24 @@ class TestOperationMatcherPeriodicTimeRange:
         )
         # time range is not late
         assert (
-            set(matcher.late_time_ranges(date(2023, 1, 1), historic_operations))
+            set(matcher.late_date_ranges(date(2023, 1, 1), historic_operations))
             == set()
         )
         # time range is too late
         assert (
-            set(matcher.late_time_ranges(date(2023, 2, 7), historic_operations))
+            set(matcher.late_date_ranges(date(2023, 2, 7), historic_operations))
             == set()
         )
         # operation is not executed and time range is late
-        assert set(matcher.late_time_ranges(date(2023, 1, 2), ())) == {
-            TimeRange(date(2023, 1, 1), relativedelta(months=1))
+        assert set(matcher.late_date_ranges(date(2023, 1, 2), ())) == {
+            DateRange(date(2023, 1, 1), relativedelta(months=1))
         }
-        assert set(matcher.late_time_ranges(date(2023, 1, 6), ())) == {
-            TimeRange(date(2023, 1, 1), relativedelta(months=1))
+        assert set(matcher.late_date_ranges(date(2023, 1, 6), ())) == {
+            DateRange(date(2023, 1, 1), relativedelta(months=1))
         }
         # operation is already executed
         assert (
-            set(matcher.late_time_ranges(date(2023, 1, 6), historic_operations))
+            set(matcher.late_date_ranges(date(2023, 1, 6), historic_operations))
             == set()
         )
 
@@ -629,15 +629,15 @@ class TestOperationMatcherPeriodicTimeRange:
         )
 
         assert set(
-            matcher.anticipated_time_ranges(date(2023, 1, 27), historic_operations)
+            matcher.anticipated_date_ranges(date(2023, 1, 27), historic_operations)
         ) == {
             (
-                TimeRange(date(2023, 2, 1), relativedelta(months=1)),
+                DateRange(date(2023, 2, 1), relativedelta(months=1)),
                 historic_operations[-1],
             )
         }
         assert (
-            set(matcher.anticipated_time_ranges(date(2023, 1, 26), historic_operations))
+            set(matcher.anticipated_date_ranges(date(2023, 1, 26), historic_operations))
             == set()
         )
 
@@ -760,7 +760,7 @@ class TestOperationMatcherOperationLinks:
             "New Test Operation",
             Amount(200, "EUR"),
             Category.GROCERIES,
-            TimeRange(date(2023, 2, 1), relativedelta(months=1)),
+            DateRange(date(2023, 2, 1), relativedelta(months=1)),
         )
         new_matcher = matcher.replace(operation_range=new_operation_range)
 
@@ -809,8 +809,8 @@ class TestOperationMatcherOperationLinks:
             "Monthly Rent",
             Amount(800, "EUR"),
             Category.RENT,
-            PeriodicTimeRange(
-                DailyTimeRange(date(2023, 1, 1)),
+            RecurringDateRange(
+                SingleDay(date(2023, 1, 1)),
                 relativedelta(months=1),
                 date(2023, 12, 31),
             ),
@@ -858,8 +858,8 @@ class TestOperationMatcherOperationLinks:
             "Monthly Subscription",
             Amount(50, "EUR"),
             Category.ENTERTAINMENT,
-            PeriodicTimeRange(
-                DailyTimeRange(date(2023, 1, 15)),
+            RecurringDateRange(
+                SingleDay(date(2023, 1, 15)),
                 relativedelta(months=1),
                 date(2023, 12, 31),
             ),
@@ -897,8 +897,8 @@ class TestOperationMatcherOperationLinks:
             "Weekly Groceries",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            PeriodicTimeRange(
-                DailyTimeRange(date(2023, 1, 1)),
+            RecurringDateRange(
+                SingleDay(date(2023, 1, 1)),
                 relativedelta(weeks=1),
                 date(2023, 12, 31),
             ),
@@ -983,7 +983,7 @@ class TestOperationMatcherReplaceErrors:
             "New Operation",
             Amount(200, "EUR"),
             Category.OTHER,
-            TimeRange(date(2023, 2, 1), relativedelta(months=1)),
+            DateRange(date(2023, 2, 1), relativedelta(months=1)),
         )
         new_matcher = matcher.replace(operation_range=new_range)
         assert new_matcher.operation_range == new_range

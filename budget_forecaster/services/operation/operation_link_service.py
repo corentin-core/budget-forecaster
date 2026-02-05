@@ -236,7 +236,7 @@ class OperationLinkService:
 
                 # Find the iteration using the matcher's date tolerance
                 current_iteration = (
-                    matcher.operation_range.time_range.current_time_range(
+                    matcher.operation_range.date_range.current_date_range(
                         operation.operation_date,
                         approx_before=matcher.approximation_date_range,
                         approx_after=matcher.approximation_date_range,
@@ -244,7 +244,7 @@ class OperationLinkService:
                 )
                 if current_iteration is None:
                     continue
-                iteration_date = current_iteration.initial_date
+                iteration_date = current_iteration.start_date
 
                 # Compute match score for tie-breaking
                 score = compute_match_score(

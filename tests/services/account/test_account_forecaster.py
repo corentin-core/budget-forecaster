@@ -6,11 +6,11 @@ import pytest
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import (
-    DailyTimeRange,
-    PeriodicDailyTimeRange,
-    PeriodicTimeRange,
-    TimeRange,
+from budget_forecaster.core.date_range import (
+    DateRange,
+    RecurringDateRange,
+    RecurringDay,
+    SingleDay,
 )
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.account.account import Account
@@ -91,14 +91,14 @@ def planned_operations() -> tuple[PlannedOperation, ...]:
             description="Isolated Planned Operation",
             amount=Amount(-50.0),
             category=Category.OTHER,
-            time_range=DailyTimeRange(date(2023, 3, 15)),
+            date_range=SingleDay(date(2023, 3, 15)),
         ),
         PlannedOperation(
             record_id=2,
             description="Recurring Planned Operation",
             amount=Amount(-20.0),
             category=Category.GROCERIES,
-            time_range=PeriodicDailyTimeRange(
+            date_range=RecurringDay(
                 date(2023, 3, 1),
                 expiration_date=date(2023, 6, 1),
                 period=relativedelta(months=1),
@@ -177,15 +177,15 @@ def budgets() -> tuple[Budget, ...]:
             description="Obsolete budget",
             amount=Amount(-230),
             category=Category.CAR_FUEL,
-            time_range=TimeRange(date(2023, 1, 1), relativedelta(months=1)),
+            date_range=DateRange(date(2023, 1, 1), relativedelta(months=1)),
         ),
         Budget(
             record_id=2,
             description="Recurring budget 1",
             amount=Amount(-300),
             category=Category.GROCERIES,
-            time_range=PeriodicTimeRange(
-                TimeRange(date(2023, 3, 1), relativedelta(months=1)),
+            date_range=RecurringDateRange(
+                DateRange(date(2023, 3, 1), relativedelta(months=1)),
                 period=relativedelta(months=1),
             ),
         ),
@@ -194,8 +194,8 @@ def budgets() -> tuple[Budget, ...]:
             description="Recurring budget 2",
             amount=Amount(-100),
             category=Category.OTHER,
-            time_range=PeriodicTimeRange(
-                TimeRange(date(2023, 4, 1), relativedelta(months=1)),
+            date_range=RecurringDateRange(
+                DateRange(date(2023, 4, 1), relativedelta(months=1)),
                 period=relativedelta(months=1),
                 expiration_date=date(2023, 5, 31),
             ),
@@ -205,7 +205,7 @@ def budgets() -> tuple[Budget, ...]:
             description="Isolated budget",
             amount=Amount(-150),
             category=Category.OTHER,
-            time_range=TimeRange(date(2023, 4, 15), relativedelta(days=16)),
+            date_range=DateRange(date(2023, 4, 15), relativedelta(days=16)),
         ),
     )
 
