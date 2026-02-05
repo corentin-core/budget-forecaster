@@ -33,7 +33,7 @@ class HistoricOperation(OperationRange):
         return self._unique_id
 
     @property
-    def operation_date(self) -> "date":
+    def operation_date(self) -> date:
         """The date of the operation."""
         return cast(DailyTimeRange, self.time_range).day
 

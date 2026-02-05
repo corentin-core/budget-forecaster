@@ -202,7 +202,7 @@ class DailyTimeRange(TimeRange):
         super().__init__(initial_date, relativedelta(days=1))
 
     @property
-    def day(self) -> "date":
+    def day(self) -> date:
         """Return the date of the time range."""
         return self.initial_date
 
