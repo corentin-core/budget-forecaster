@@ -50,7 +50,7 @@ class SwileBankAdapter(BankAdapterBase):
 
                 amount = transaction["amount"]["value"] / 100.0
                 # date has format "2025-01-24T13:50:50.073+01:00"
-                date = datetime.strptime(transaction["date"][:10], "%Y-%m-%d")
+                op_date = datetime.strptime(transaction["date"][:10], "%Y-%m-%d").date()
                 self._operations.append(
                     operation_factory.create_operation(
                         description=operation["name"],
@@ -58,7 +58,7 @@ class SwileBankAdapter(BankAdapterBase):
                             amount, transaction["amount"]["currency"]["iso_3"]
                         ),
                         category=Category.UNCATEGORIZED,
-                        date=date,
+                        operation_date=op_date,
                     )
                 )
 
@@ -67,7 +67,7 @@ class SwileBankAdapter(BankAdapterBase):
                 "No meal voucher transactions found in the operations.json file"
             )
 
-        self._export_date = max(op.date for op in self._operations)
+        self._export_date = max(op.operation_date for op in self._operations)
 
     @classmethod
     def match(cls, bank_export: Path) -> bool:

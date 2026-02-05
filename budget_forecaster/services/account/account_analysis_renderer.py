@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import abc
 import tempfile
-from datetime import datetime
+from datetime import date
 from pathlib import Path
 from types import TracebackType
 
@@ -125,14 +125,6 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
     def _add_forecast(self, forecast: pd.DataFrame) -> None:
         sheet_name = "Source prévisions"
         forecast_reformatted = forecast.copy()
-        # convert datetime to date to avoid the datetime format only on non-empty cells
-        forecast_reformatted["Date de début"] = forecast_reformatted[
-            "Date de début"
-        ].apply(lambda x: x.date() if not pd.isnull(x) else x)
-        forecast_reformatted["Date de fin"] = forecast_reformatted["Date de fin"].apply(
-            lambda x: x.date() if not pd.isnull(x) else x
-        )
-
         forecast_reformatted.to_excel(self._writer, sheet_name=sheet_name, index=True)
         worksheet = self._writer.sheets[sheet_name]
         worksheet.autofit()
@@ -143,7 +135,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
 
     @staticmethod
     def _add_safe_margin(
-        balance_date: datetime, balance_evolution: pd.DataFrame
+        balance_date: date, balance_evolution: pd.DataFrame
     ) -> pd.DataFrame:
         balance_evolution_with_margin = balance_evolution.copy()
         # add the minimum balance of the subsequent months
@@ -160,7 +152,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
 
     @staticmethod
     def _get_balance_evolution_per_month(
-        balance_date: datetime,
+        balance_date: date,
         balance_evolution: pd.DataFrame,
     ) -> pd.DataFrame:
         """
@@ -179,7 +171,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         return balance_evolution_per_month
 
     def plot_balance_evolution(
-        self, balance_date: datetime, balance_evolution: pd.DataFrame
+        self, balance_date: date, balance_evolution: pd.DataFrame
     ) -> Path:
         """
         Plot the balance evolution with a safe margin.
@@ -202,7 +194,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         return saved_path
 
     def _add_balance_evolution(
-        self, balance_date: datetime, balance_evolution: pd.DataFrame
+        self, balance_date: date, balance_evolution: pd.DataFrame
     ) -> None:
         sheet_name = "Evolution du solde"
 
@@ -246,10 +238,10 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         # and highlight the cells where the "Réel" value is lower than the "Prévu" value
         date_to_header_column: dict[str, dict[str, int]] = {}
         for i, col_tuple in enumerate(expenses_forecast.columns):
-            date, header = col_tuple[0], col_tuple[1]
-            date_to_header_column.setdefault(date, {}).setdefault(header, i)
+            col_date, header = col_tuple[0], col_tuple[1]
+            date_to_header_column.setdefault(col_date, {}).setdefault(header, i)
 
-        for date, header_to_column in date_to_header_column.items():  # noqa: B020
+        for _, header_to_column in date_to_header_column.items():
             if "Prévu" not in header_to_column or "Réel" not in header_to_column:
                 continue
 

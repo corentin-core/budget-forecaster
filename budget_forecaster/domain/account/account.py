@@ -1,5 +1,5 @@
 """This module contains the Account class."""
-from datetime import datetime
+from datetime import date
 from typing import NamedTuple
 
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
@@ -11,7 +11,7 @@ class AccountParameters(NamedTuple):
     name: str
     balance: float | None
     currency: str
-    balance_date: datetime | None
+    balance_date: date | None
     operations: tuple[HistoricOperation, ...]
 
 
@@ -21,5 +21,5 @@ class Account(NamedTuple):
     name: str
     balance: float
     currency: str
-    balance_date: datetime
+    balance_date: date
     operations: tuple[HistoricOperation, ...]

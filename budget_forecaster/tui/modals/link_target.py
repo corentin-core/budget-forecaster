@@ -215,10 +215,10 @@ class LinkTargetModal(
         first_op = self._operations[0]
 
         # Get iterations within a reasonable window around the operation date
-        from_date = first_op.date - timedelta(days=60)
+        from_date = first_op.operation_date - timedelta(days=60)
         for iteration in target.time_range.iterate_over_time_ranges(from_date):
             # Stop if iteration is too far in the future
-            if iteration.initial_date > first_op.date + timedelta(days=60):
+            if iteration.initial_date > first_op.operation_date + timedelta(days=60):
                 break
 
             score = compute_match_score(
@@ -292,7 +292,7 @@ class LinkTargetModal(
                     )
                     with Horizontal(classes="op-row"):
                         yield Static(
-                            op.date.strftime("%d/%m/%Y"),
+                            op.operation_date.strftime("%d/%m/%Y"),
                             classes="op-date",
                         )
                         yield Static(

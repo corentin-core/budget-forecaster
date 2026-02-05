@@ -6,7 +6,7 @@ management while maintaining cached matchers for efficient link creation.
 """
 
 import logging
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 
 from dateutil.relativedelta import relativedelta
@@ -528,7 +528,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
         self,
         operation: HistoricOperation,
         target: PlannedOperation | Budget,
-        iteration_date: datetime,
+        iteration_date: date,
     ) -> OperationLink:
         """Create a manual link between an operation and a target.
 
@@ -694,7 +694,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
         actualized_dates = {link.iteration_date for link in links}
 
         # Find the first future iteration that is not actualized
-        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today = date.today()
         for time_range in target.time_range.iterate_over_time_ranges(today):
             if time_range.initial_date not in actualized_dates:
                 return time_range.initial_date
@@ -704,7 +704,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
     def split_planned_operation_at_date(
         self,
         operation_id: OperationId,
-        split_date: datetime,
+        split_date: date,
         new_amount: Amount | None = None,
         new_period: relativedelta | None = None,
     ) -> PlannedOperation:
@@ -748,7 +748,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
         logger.info(
             "Split planned operation %d at %s, created new operation %d",
             operation_id,
-            split_date.date(),
+            split_date,
             new_op.id,
         )
 
@@ -757,7 +757,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
     def split_budget_at_date(
         self,
         budget_id: BudgetId,
-        split_date: datetime,
+        split_date: date,
         new_amount: Amount | None = None,
         new_period: relativedelta | None = None,
         new_duration: relativedelta | None = None,
@@ -803,7 +803,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
         logger.info(
             "Split budget %d at %s, created new budget %d",
             budget_id,
-            split_date.date(),
+            split_date,
             new_budget.id,
         )
 
@@ -814,7 +814,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
         target_type: LinkType,
         old_target_id: TargetId,
         new_target_id: TargetId,
-        split_date: datetime,
+        split_date: date,
     ) -> None:
         """Migrate links from old target to new target for iterations >= split_date.
 

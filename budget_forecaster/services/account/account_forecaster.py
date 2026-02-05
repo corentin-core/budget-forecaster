@@ -3,7 +3,7 @@ Module forecasting the future state of an account and
 reconstructing the past state of an account.
 """
 import itertools
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from typing import Final, Iterator
 
 from budget_forecaster.core.amount import Amount
@@ -28,7 +28,7 @@ class AccountForecaster:  # pylint: disable=too-few-public-methods
         self._last_historic_identifier += 1
         return self._last_historic_identifier
 
-    def _get_past_state(self, target_date: datetime) -> Account:
+    def _get_past_state(self, target_date: date) -> Account:
         """Get the past state of the account at a certain date."""
         balance_date = self._account.balance_date
         if target_date > balance_date:  # pragma: no cover
@@ -39,7 +39,7 @@ class AccountForecaster:  # pylint: disable=too-few-public-methods
         past_balance = self._account.balance
         past_operations: list[HistoricOperation] = []
         for operation in self._account.operations:
-            if target_date < operation.date <= balance_date:
+            if target_date < operation.operation_date <= balance_date:
                 past_balance -= operation.amount
                 continue
 
@@ -52,7 +52,7 @@ class AccountForecaster:  # pylint: disable=too-few-public-methods
         )
 
     def _compute_operations(
-        self, operation_range: OperationRangeInterface, target_date: datetime
+        self, operation_range: OperationRangeInterface, target_date: date
     ) -> Iterator[HistoricOperation]:
         balance_date = self._account.balance_date
         for time_range in operation_range.time_range.iterate_over_time_ranges(
@@ -76,11 +76,11 @@ class AccountForecaster:  # pylint: disable=too-few-public-methods
                     description=operation_range.description,
                     amount=Amount(amount_per_day, operation_range.currency),
                     category=operation_range.category,
-                    date=budget_current_date,
+                    operation_date=budget_current_date,
                 )
                 budget_current_date += timedelta(days=1)
 
-    def _get_future_state(self, target_date: datetime) -> "Account":
+    def _get_future_state(self, target_date: date) -> "Account":
         """Get the future state of the account at a certain date."""
         balance_date = self._account.balance_date
         if target_date < balance_date:  # pragma: no cover
@@ -108,7 +108,7 @@ class AccountForecaster:  # pylint: disable=too-few-public-methods
             operations=tuple(future_historic_operations),
         )
 
-    def __call__(self, target_date: datetime) -> Account:
+    def __call__(self, target_date: date) -> Account:
         """Get the state of the account at a certain date."""
         balance_date = self._account.balance_date
         if target_date == balance_date:

@@ -1,6 +1,6 @@
 """Tests for the OperationService."""
 
-from datetime import datetime
+from datetime import date
 from unittest.mock import MagicMock
 
 import pytest
@@ -24,35 +24,35 @@ def sample_operations() -> tuple[HistoricOperation, ...]:
             description="CARTE CARREFOUR",
             amount=Amount(-50.0),
             category=Category.GROCERIES,
-            date=datetime(2025, 1, 15),
+            operation_date=date(2025, 1, 15),
         ),
         HistoricOperation(
             unique_id=2,
             description="VIREMENT SALAIRE",
             amount=Amount(2500.0),
             category=Category.SALARY,
-            date=datetime(2025, 1, 10),
+            operation_date=date(2025, 1, 10),
         ),
         HistoricOperation(
             unique_id=3,
             description="CARTE AMAZON",
             amount=Amount(-99.99),
             category=Category.UNCATEGORIZED,
-            date=datetime(2025, 1, 20),
+            operation_date=date(2025, 1, 20),
         ),
         HistoricOperation(
             unique_id=4,
             description="CARTE CARREFOUR MARKET",
             amount=Amount(-35.50),
             category=Category.GROCERIES,
-            date=datetime(2025, 1, 18),
+            operation_date=date(2025, 1, 18),
         ),
         HistoricOperation(
             unique_id=5,
             description="PRLV EDF",
             amount=Amount(-80.0),
             category=Category.ELECTRICITY,
-            date=datetime(2025, 1, 5),
+            operation_date=date(2025, 1, 5),
         ),
     )
 
@@ -67,7 +67,7 @@ def mock_account_manager(
         name="Test Account",
         balance=1000.0,
         currency="EUR",
-        balance_date=datetime(2025, 1, 20),
+        balance_date=date(2025, 1, 20),
         operations=sample_operations,
     )
     return mock
@@ -112,8 +112,8 @@ class TestOperationFilter:
     ) -> None:
         """Filter by date range."""
         filter_ = OperationFilter(
-            date_from=datetime(2025, 1, 10),
-            date_to=datetime(2025, 1, 18),
+            date_from=date(2025, 1, 10),
+            date_to=date(2025, 1, 18),
         )
         matches = [op for op in sample_operations if filter_.matches(op)]
         assert len(matches) == 3  # ops on 10, 15, 18
@@ -149,7 +149,7 @@ class TestOperationService:
     ) -> None:
         """Operations are sorted by date descending by default."""
         operations = service.get_operations()
-        dates = [op.date for op in operations]
+        dates = [op.operation_date for op in operations]
         assert dates == sorted(dates, reverse=True)
 
     def test_get_operations_with_filter(self, service: OperationService) -> None:

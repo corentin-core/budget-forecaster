@@ -1,5 +1,5 @@
 """Module to test the AccountForecaster class."""
-from datetime import datetime
+from datetime import date
 
 import pandas as pd
 import pytest
@@ -31,21 +31,21 @@ def account() -> Account:
             description="Operation 1",
             amount=Amount(-50.0),
             category=category,
-            date=datetime(2023, 1, 15),
+            operation_date=date(2023, 1, 15),
         ),
         HistoricOperation(
             unique_id=2,
             description="Operation 2",
             amount=Amount(-30.0),
             category=category,
-            date=datetime(2023, 2, 15),
+            operation_date=date(2023, 2, 15),
         ),
     )
     return Account(
         name="Test Account",
         balance=1000.0,
         currency="EUR",
-        balance_date=datetime(2023, 2, 28),
+        balance_date=date(2023, 2, 28),
         operations=operations,
     )
 
@@ -63,18 +63,18 @@ class TestAccountForecaster:
     def test_get_past_state(self, account: Account) -> None:
         """Test the past state of the account."""
         account_forecaster = AccountForecaster(account, Forecast((), ()))
-        past_state = account_forecaster(datetime(2023, 1, 31))
+        past_state = account_forecaster(date(2023, 1, 31))
         assert past_state.balance == 1030.0
         assert set(past_state.operations) == {account.operations[0]}
 
-        past_state = account_forecaster(datetime(2023, 1, 1))
+        past_state = account_forecaster(date(2023, 1, 1))
         assert past_state.balance == 1080.0
         assert not past_state.operations
 
     def test_get_future_state(self, account: Account) -> None:
         """Test the future state of the account."""
         account_forecaster = AccountForecaster(account, Forecast((), ()))
-        future_state = account_forecaster(datetime(2023, 4, 1))
+        future_state = account_forecaster(date(2023, 4, 1))
         assert future_state.balance == 1000.0
         assert set(future_state.operations) == {
             account.operations[0],
@@ -91,7 +91,7 @@ def planned_operations() -> tuple[PlannedOperation, ...]:
             description="Isolated Planned Operation",
             amount=Amount(-50.0),
             category=Category.OTHER,
-            time_range=DailyTimeRange(datetime(2023, 3, 15)),
+            time_range=DailyTimeRange(date(2023, 3, 15)),
         ),
         PlannedOperation(
             record_id=2,
@@ -99,8 +99,8 @@ def planned_operations() -> tuple[PlannedOperation, ...]:
             amount=Amount(-20.0),
             category=Category.GROCERIES,
             time_range=PeriodicDailyTimeRange(
-                datetime(2023, 3, 1),
-                expiration_date=datetime(2023, 6, 1),
+                date(2023, 3, 1),
+                expiration_date=date(2023, 6, 1),
                 period=relativedelta(months=1),
             ),
         ),
@@ -126,11 +126,11 @@ class TestPlannedOperations:
         """Test the past state of the account."""
         forecast = Forecast(operations=planned_operations, budgets=())
         account_forecaster = AccountForecaster(account, forecast)
-        past_state = account_forecaster(datetime(2023, 1, 31))
+        past_state = account_forecaster(date(2023, 1, 31))
         assert past_state.balance == 1030.0
         assert set(past_state.operations) == {account.operations[0]}
 
-        past_state = account_forecaster(datetime(2023, 1, 1))
+        past_state = account_forecaster(date(2023, 1, 1))
         assert past_state.balance == 1080.0
         assert not past_state.operations
 
@@ -140,7 +140,7 @@ class TestPlannedOperations:
         """Test the future state of the account."""
         forecast = Forecast(operations=planned_operations, budgets=())
         account_forecaster = AccountForecaster(account, forecast)
-        future_state = account_forecaster(datetime(2023, 4, 1))
+        future_state = account_forecaster(date(2023, 4, 1))
         assert future_state.balance == 910.0
         assert set(future_state.operations) == {
             *account.operations,
@@ -149,21 +149,21 @@ class TestPlannedOperations:
                 description="Isolated Planned Operation",
                 amount=Amount(-50.0),
                 category=Category.OTHER,
-                date=datetime(2023, 3, 15),
+                operation_date=date(2023, 3, 15),
             ),
             HistoricOperation(
                 unique_id=4,
                 description="Recurring Planned Operation",
                 amount=Amount(-20.0),
                 category=Category.GROCERIES,
-                date=datetime(2023, 3, 1),
+                operation_date=date(2023, 3, 1),
             ),
             HistoricOperation(
                 unique_id=5,
                 description="Recurring Planned Operation",
                 amount=Amount(-20.0),
                 category=Category.GROCERIES,
-                date=datetime(2023, 4, 1),
+                operation_date=date(2023, 4, 1),
             ),
         }
 
@@ -177,7 +177,7 @@ def budgets() -> tuple[Budget, ...]:
             description="Obsolete budget",
             amount=Amount(-230),
             category=Category.CAR_FUEL,
-            time_range=TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+            time_range=TimeRange(date(2023, 1, 1), relativedelta(months=1)),
         ),
         Budget(
             record_id=2,
@@ -185,7 +185,7 @@ def budgets() -> tuple[Budget, ...]:
             amount=Amount(-300),
             category=Category.GROCERIES,
             time_range=PeriodicTimeRange(
-                TimeRange(datetime(2023, 3, 1), relativedelta(months=1)),
+                TimeRange(date(2023, 3, 1), relativedelta(months=1)),
                 period=relativedelta(months=1),
             ),
         ),
@@ -195,9 +195,9 @@ def budgets() -> tuple[Budget, ...]:
             amount=Amount(-100),
             category=Category.OTHER,
             time_range=PeriodicTimeRange(
-                TimeRange(datetime(2023, 4, 1), relativedelta(months=1)),
+                TimeRange(date(2023, 4, 1), relativedelta(months=1)),
                 period=relativedelta(months=1),
-                expiration_date=datetime(2023, 5, 31),
+                expiration_date=date(2023, 5, 31),
             ),
         ),
         Budget(
@@ -205,7 +205,7 @@ def budgets() -> tuple[Budget, ...]:
             description="Isolated budget",
             amount=Amount(-150),
             category=Category.OTHER,
-            time_range=TimeRange(datetime(2023, 4, 15), relativedelta(days=16)),
+            time_range=TimeRange(date(2023, 4, 15), relativedelta(days=16)),
         ),
     )
 
@@ -227,11 +227,11 @@ class TestBudget:
         """Test the past state of the account."""
         forecast = Forecast(operations=(), budgets=budgets)
         account_forecaster = AccountForecaster(account, forecast)
-        past_state = account_forecaster(datetime(2023, 1, 31))
+        past_state = account_forecaster(date(2023, 1, 31))
         assert past_state.balance == 1030.0
         assert set(past_state.operations) == {account.operations[0]}
 
-        past_state = account_forecaster(datetime(2023, 1, 1))
+        past_state = account_forecaster(date(2023, 1, 1))
         assert past_state.balance == 1080.0
         assert not past_state.operations
 
@@ -241,13 +241,13 @@ class TestBudget:
         """Test the future state of the account."""
         forecast = Forecast(operations=(), budgets=budgets)
         account_forecaster = AccountForecaster(account, forecast)
-        future_state = account_forecaster(datetime(2023, 3, 31))
+        future_state = account_forecaster(date(2023, 3, 31))
         # recurring budget 1 is applied : -300
         assert future_state.balance == pytest.approx(700.0)
-        future_state = account_forecaster(datetime(2023, 4, 30))
+        future_state = account_forecaster(date(2023, 4, 30))
         # recurring budget 1 + recurring budget 2 + isolated budget are applied : -300 - 100 - 150
         assert future_state.balance == pytest.approx(150.0)
-        future_state = account_forecaster(datetime(2023, 5, 31))
+        future_state = account_forecaster(date(2023, 5, 31))
         # recurring budget 1 + recurring budget 2 are applied : -300 - 100
         assert future_state.balance == pytest.approx(-250.0)
 
@@ -263,15 +263,15 @@ class TestBudget:
         forecast = Forecast(operations=planned_operations, budgets=budgets)
         account_forecaster = AccountForecaster(account, forecast)
         from_previous_account_state_forecaster = AccountForecaster(account, forecast)
-        start_date = datetime(2023, 3, 1)
-        end_date = datetime(2023, 7, 1)
+        start_date = date(2023, 3, 1)
+        end_date = date(2023, 7, 1)
         dates = pd.date_range(start_date, end_date, freq="D")
 
         for current_date in dates:
             from_previous_account_state = from_previous_account_state_forecaster(
-                current_date
+                current_date.date()
             )
-            from_original_account_state = account_forecaster(current_date)
+            from_original_account_state = account_forecaster(current_date.date())
             assert from_previous_account_state.balance == pytest.approx(
                 from_original_account_state.balance
             ), current_date

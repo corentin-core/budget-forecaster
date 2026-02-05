@@ -124,7 +124,7 @@ class OperationTable(DataTable[str]):  # pylint: disable=too-many-instance-attri
     def _add_operation_row(self, op: HistoricOperation, row_key: str) -> None:
         """Add a single operation row to the table."""
         # Format date with selection marker
-        date_str = op.date.strftime("%d/%m/%Y")
+        date_str = op.operation_date.strftime("%d/%m/%Y")
         if op.unique_id in self._selected_ids:
             date_str = f"► {date_str}"
 
@@ -163,7 +163,7 @@ class OperationTable(DataTable[str]):  # pylint: disable=too-many-instance-attri
             return
 
         op = self._operations[row_key]
-        date_str = op.date.strftime("%d/%m/%Y")
+        date_str = op.operation_date.strftime("%d/%m/%Y")
         if op_id in self._selected_ids:
             date_str = f"► {date_str}"
 

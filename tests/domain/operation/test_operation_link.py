@@ -4,7 +4,7 @@
 
 import sqlite3
 import tempfile
-from datetime import datetime
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -40,7 +40,7 @@ class TestOperationLinkRepository:
                 operation_unique_id=100,
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2024, 1, 15),
+                iteration_date=date(2024, 1, 15),
                 is_manual=False,
                 notes=None,
             )
@@ -51,7 +51,7 @@ class TestOperationLinkRepository:
             assert retrieved.operation_unique_id == 100
             assert retrieved.target_type == LinkType.PLANNED_OPERATION
             assert retrieved.target_id == 1
-            assert retrieved.iteration_date == datetime(2024, 1, 15)
+            assert retrieved.iteration_date == date(2024, 1, 15)
             assert retrieved.is_manual is False
             assert retrieved.notes is None
 
@@ -62,7 +62,7 @@ class TestOperationLinkRepository:
                 operation_unique_id=200,
                 target_type=LinkType.BUDGET,
                 target_id=5,
-                iteration_date=datetime(2024, 3, 1),
+                iteration_date=date(2024, 3, 1),
                 is_manual=True,
                 notes="Linked manually due to different description",
             )
@@ -82,7 +82,7 @@ class TestOperationLinkRepository:
                 operation_unique_id=300,
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2024, 1, 1),
+                iteration_date=date(2024, 1, 1),
             )
             repository.upsert_link(link1)
 
@@ -96,7 +96,7 @@ class TestOperationLinkRepository:
                 operation_unique_id=300,
                 target_type=LinkType.BUDGET,
                 target_id=2,
-                iteration_date=datetime(2024, 2, 1),
+                iteration_date=date(2024, 2, 1),
             )
             repository.upsert_link(link2)
 
@@ -106,7 +106,7 @@ class TestOperationLinkRepository:
             assert result.link_id == original_link_id  # link_id preserved
             assert result.target_type == LinkType.BUDGET
             assert result.target_id == 2
-            assert result.iteration_date == datetime(2024, 2, 1)
+            assert result.iteration_date == date(2024, 2, 1)
 
     def test_delete_link(self, temp_db_path: Path) -> None:
         """Test deleting a link."""
@@ -115,7 +115,7 @@ class TestOperationLinkRepository:
                 operation_unique_id=400,
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2024, 1, 1),
+                iteration_date=date(2024, 1, 1),
             )
             repository.upsert_link(link)
 
@@ -141,25 +141,25 @@ class TestOperationLinkRepository:
                     operation_unique_id=501,
                     target_type=LinkType.PLANNED_OPERATION,
                     target_id=10,
-                    iteration_date=datetime(2024, 1, 15),
+                    iteration_date=date(2024, 1, 15),
                 ),
                 OperationLink(
                     operation_unique_id=502,
                     target_type=LinkType.PLANNED_OPERATION,
                     target_id=10,
-                    iteration_date=datetime(2024, 2, 15),
+                    iteration_date=date(2024, 2, 15),
                 ),
                 OperationLink(
                     operation_unique_id=503,
                     target_type=LinkType.PLANNED_OPERATION,
                     target_id=20,  # Different planned op
-                    iteration_date=datetime(2024, 1, 20),
+                    iteration_date=date(2024, 1, 20),
                 ),
                 OperationLink(
                     operation_unique_id=504,
                     target_type=LinkType.BUDGET,  # Budget, not planned op
                     target_id=10,
-                    iteration_date=datetime(2024, 1, 1),
+                    iteration_date=date(2024, 1, 1),
                 ),
             ]
             for link in links:
@@ -188,19 +188,19 @@ class TestOperationLinkRepository:
                     operation_unique_id=601,
                     target_type=LinkType.BUDGET,
                     target_id=5,
-                    iteration_date=datetime(2024, 1, 1),
+                    iteration_date=date(2024, 1, 1),
                 ),
                 OperationLink(
                     operation_unique_id=602,
                     target_type=LinkType.BUDGET,
                     target_id=5,
-                    iteration_date=datetime(2024, 2, 1),
+                    iteration_date=date(2024, 2, 1),
                 ),
                 OperationLink(
                     operation_unique_id=603,
                     target_type=LinkType.PLANNED_OPERATION,  # Not a budget
                     target_id=5,
-                    iteration_date=datetime(2024, 1, 15),
+                    iteration_date=date(2024, 1, 15),
                 ),
             ]
             for link in links:
@@ -220,28 +220,28 @@ class TestOperationLinkRepository:
                     operation_unique_id=701,
                     target_type=LinkType.PLANNED_OPERATION,
                     target_id=15,
-                    iteration_date=datetime(2024, 1, 1),
+                    iteration_date=date(2024, 1, 1),
                     is_manual=False,  # Automatic
                 ),
                 OperationLink(
                     operation_unique_id=702,
                     target_type=LinkType.PLANNED_OPERATION,
                     target_id=15,
-                    iteration_date=datetime(2024, 2, 1),
+                    iteration_date=date(2024, 2, 1),
                     is_manual=True,  # Manual - should be preserved
                 ),
                 OperationLink(
                     operation_unique_id=703,
                     target_type=LinkType.PLANNED_OPERATION,
                     target_id=15,
-                    iteration_date=datetime(2024, 3, 1),
+                    iteration_date=date(2024, 3, 1),
                     is_manual=False,  # Automatic
                 ),
                 OperationLink(
                     operation_unique_id=704,
                     target_type=LinkType.PLANNED_OPERATION,
                     target_id=16,  # Different target
-                    iteration_date=datetime(2024, 1, 1),
+                    iteration_date=date(2024, 1, 1),
                     is_manual=False,
                 ),
             ]
@@ -269,14 +269,14 @@ class TestOperationLinkRepository:
                     operation_unique_id=801,
                     target_type=LinkType.BUDGET,
                     target_id=25,
-                    iteration_date=datetime(2024, 1, 1),
+                    iteration_date=date(2024, 1, 1),
                     is_manual=False,
                 ),
                 OperationLink(
                     operation_unique_id=802,
                     target_type=LinkType.BUDGET,
                     target_id=25,
-                    iteration_date=datetime(2024, 2, 1),
+                    iteration_date=date(2024, 2, 1),
                     is_manual=True,
                 ),
             ]

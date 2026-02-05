@@ -1,7 +1,7 @@
 """Service for forecast operations."""
 
 import logging
-from datetime import date, datetime, time
+from datetime import date
 from typing import Any, TypedDict
 
 from dateutil.relativedelta import relativedelta
@@ -218,10 +218,7 @@ class ForecastService:
         logger.info("Computing forecast report from %s to %s", start_date, end_date)
 
         analyzer = AccountAnalyzer(self._account, forecast, operation_links)
-        self._report = analyzer.compute_report(
-            datetime.combine(start_date, time()),
-            datetime.combine(end_date, time()),
-        )
+        self._report = analyzer.compute_report(start_date, end_date)
 
         return self._report
 

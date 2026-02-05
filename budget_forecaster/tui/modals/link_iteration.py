@@ -1,6 +1,6 @@
 """Modal for selecting an iteration to link an operation to."""
 
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from typing import Any
 
 from dateutil.relativedelta import relativedelta
@@ -19,7 +19,7 @@ from budget_forecaster.services.operation.operation_link_service import (
 )
 
 
-class LinkIterationModal(ModalScreen[datetime | None]):
+class LinkIterationModal(ModalScreen[date | None]):
     """Modal for selecting an iteration date to link."""
 
     DEFAULT_CSS = """
@@ -125,20 +125,22 @@ class LinkIterationModal(ModalScreen[datetime | None]):
         self._operation = operation
         self._target = target
         self._offset_months = 0  # Offset from operation date
-        self._selected_date: datetime | None = None
+        self._selected_date: date | None = None
 
     @property
-    def _window_center(self) -> datetime:
+    def _window_center(self) -> date:
         """Get the center of the iteration window."""
-        return self._operation.date + relativedelta(months=self._offset_months)
+        return self._operation.operation_date + relativedelta(
+            months=self._offset_months
+        )
 
     @property
-    def _window_start(self) -> datetime:
+    def _window_start(self) -> date:
         """Get the start of the iteration window (center - 2 months)."""
         return self._window_center - relativedelta(months=2)
 
     @property
-    def _window_end(self) -> datetime:
+    def _window_end(self) -> date:
         """Get the end of the iteration window (center + 2 months)."""
         return self._window_center + relativedelta(months=2)
 
@@ -154,7 +156,7 @@ class LinkIterationModal(ModalScreen[datetime | None]):
             with Vertical(id="info-section"):
                 yield Static(op.description, id="op-description")
                 yield Static(
-                    f"{op.date.strftime('%d/%m/%Y')} | {op.amount:+.2f} €",
+                    f"{op.operation_date.strftime('%d/%m/%Y')} | {op.amount:+.2f} €",
                     id="op-details",
                     classes=amount_class,
                 )
@@ -259,7 +261,7 @@ class LinkIterationModal(ModalScreen[datetime | None]):
             return
 
         try:
-            self._selected_date = datetime.strptime(str(event.option.id), "%Y-%m-%d")
+            self._selected_date = date.fromisoformat(str(event.option.id))
         except ValueError:
             pass
 
@@ -275,7 +277,7 @@ class LinkIterationModal(ModalScreen[datetime | None]):
             return
 
         try:
-            self._selected_date = datetime.strptime(str(event.option.id), "%Y-%m-%d")
+            self._selected_date = date.fromisoformat(str(event.option.id))
         except ValueError:
             pass
 

@@ -7,7 +7,7 @@
 import json
 import logging
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Callable, Iterable, Self
 
@@ -250,7 +250,7 @@ class SqliteRepository(RepositoryInterface):
                     name=row["name"],
                     balance=row["balance"],
                     currency=row["currency"],
-                    balance_date=datetime.fromisoformat(row["balance_date"]),
+                    balance_date=date.fromisoformat(row["balance_date"]),
                     operations=tuple(operations),
                 )
             )
@@ -270,7 +270,7 @@ class SqliteRepository(RepositoryInterface):
             name=row["name"],
             balance=row["balance"],
             currency=row["currency"],
-            balance_date=datetime.fromisoformat(row["balance_date"]),
+            balance_date=date.fromisoformat(row["balance_date"]),
             operations=tuple(operations),
         )
 
@@ -340,7 +340,7 @@ class SqliteRepository(RepositoryInterface):
                     account_id,
                     op.description,
                     op.category.value,
-                    op.date.isoformat(),
+                    op.operation_date.isoformat(),
                     op.amount,
                     op.currency,
                 )
@@ -362,7 +362,7 @@ class SqliteRepository(RepositoryInterface):
                 unique_id=row["unique_id"],
                 description=row["description"],
                 category=Category(row["category"]),
-                date=datetime.fromisoformat(row["date"]),
+                operation_date=date.fromisoformat(row["date"]),
                 amount=Amount(row["amount"], row["currency"]),
             )
             for row in cursor.fetchall()
@@ -380,7 +380,7 @@ class SqliteRepository(RepositoryInterface):
             (
                 operation.description,
                 operation.category.value,
-                operation.date.isoformat(),
+                operation.operation_date.isoformat(),
                 operation.amount,
                 operation.currency,
                 operation.unique_id,
@@ -483,14 +483,12 @@ class SqliteRepository(RepositoryInterface):
     def _row_to_budget(self, row: sqlite3.Row) -> Budget:
         """Convert a database row to a Budget object."""
         time_range = self._deserialize_budget_time_range(
-            start_date=datetime.fromisoformat(row["start_date"]),
+            start_date=date.fromisoformat(row["start_date"]),
             duration_value=row["duration_value"],
             duration_unit=row["duration_unit"],
             period_value=row["period_value"],
             period_unit=row["period_unit"],
-            end_date=(
-                datetime.fromisoformat(row["end_date"]) if row["end_date"] else None
-            ),
+            end_date=(date.fromisoformat(row["end_date"]) if row["end_date"] else None),
         )
         return Budget(
             record_id=row["id"],
@@ -598,12 +596,10 @@ class SqliteRepository(RepositoryInterface):
     def _row_to_planned_operation(self, row: sqlite3.Row) -> PlannedOperation:
         """Convert a database row to a PlannedOperation object."""
         time_range = self._deserialize_planned_op_time_range(
-            start_date=datetime.fromisoformat(row["start_date"]),
+            start_date=date.fromisoformat(row["start_date"]),
             period_value=row["period_value"],
             period_unit=row["period_unit"],
-            end_date=(
-                datetime.fromisoformat(row["end_date"]) if row["end_date"] else None
-            ),
+            end_date=(date.fromisoformat(row["end_date"]) if row["end_date"] else None),
         )
         if hints_str := row["description_hints"]:
             # Support both JSON (new) and semicolon-delimited (legacy) formats
@@ -686,7 +682,7 @@ class SqliteRepository(RepositoryInterface):
             result["period_value"] = per_val
             result["period_unit"] = per_unit
             # Get end date
-            if time_range.last_date != datetime.max:
+            if time_range.last_date != date.max:
                 result["end_date"] = time_range.last_date.isoformat()
         elif isinstance(time_range, TimeRange):
             # Get the relativedelta duration
@@ -698,12 +694,12 @@ class SqliteRepository(RepositoryInterface):
 
     def _deserialize_budget_time_range(
         self,
-        start_date: datetime,
+        start_date: date,
         duration_value: int | None,
         duration_unit: str | None,
         period_value: int | None,
         period_unit: str | None,
-        end_date: datetime | None,
+        end_date: date | None,
     ) -> TimeRangeInterface:
         """Deserialize budget time range from database fields."""
         duration = self._db_to_relativedelta(duration_value, duration_unit)
@@ -711,7 +707,7 @@ class SqliteRepository(RepositoryInterface):
 
         if period_value is not None and period_unit is not None:
             period = self._db_to_relativedelta(period_value, period_unit)
-            expiration = end_date if end_date else datetime.max
+            expiration = end_date if end_date else date.max
             return PeriodicTimeRange(inner_range, period, expiration)
 
         return inner_range
@@ -730,22 +726,22 @@ class SqliteRepository(RepositoryInterface):
             per_val, per_unit = self._relativedelta_to_db(time_range.period)
             result["period_value"] = per_val
             result["period_unit"] = per_unit
-            if time_range.last_date != datetime.max:
+            if time_range.last_date != date.max:
                 result["end_date"] = time_range.last_date.isoformat()
 
         return result
 
     def _deserialize_planned_op_time_range(
         self,
-        start_date: datetime,
+        start_date: date,
         period_value: int | None,
         period_unit: str | None,
-        end_date: datetime | None,
+        end_date: date | None,
     ) -> DailyTimeRange | PeriodicDailyTimeRange:
         """Deserialize planned operation time range from database fields."""
         if period_value is not None and period_unit is not None:
             period = self._db_to_relativedelta(period_value, period_unit)
-            expiration = end_date if end_date else datetime.max
+            expiration = end_date if end_date else date.max
             return PeriodicDailyTimeRange(start_date, period, expiration)
 
         return DailyTimeRange(start_date)
@@ -869,7 +865,7 @@ class SqliteRepository(RepositoryInterface):
             operation_unique_id=row["operation_unique_id"],
             target_type=LinkType(row["target_type"]),
             target_id=row["target_id"],
-            iteration_date=datetime.fromisoformat(row["iteration_date"]),
+            iteration_date=date.fromisoformat(row["iteration_date"]),
             is_manual=bool(row["is_manual"]),
             notes=row["notes"],
             link_id=row["id"],

@@ -1,6 +1,6 @@
 """Module for the BankAdapter interface class."""
 import abc
-from datetime import datetime
+from datetime import date
 from pathlib import Path
 from typing import Final
 
@@ -45,7 +45,7 @@ class BankAdapterInterface(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def export_date(self) -> datetime | None:
+    def export_date(self) -> date | None:
         """Return the export date."""
 
 
@@ -56,7 +56,7 @@ class BankAdapterBase(BankAdapterInterface, abc.ABC):
         self._name: Final[str] = name
         self._operations: list[HistoricOperation] = []
         self._balance: float | None = None
-        self._export_date: datetime | None = None
+        self._export_date: date | None = None
 
     @property
     def name(self) -> str:
@@ -71,5 +71,5 @@ class BankAdapterBase(BankAdapterInterface, abc.ABC):
         return self._balance
 
     @property
-    def export_date(self) -> datetime | None:
+    def export_date(self) -> date | None:
         return self._export_date

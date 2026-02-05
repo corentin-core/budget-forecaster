@@ -1,6 +1,6 @@
 """Tests for SplitOperationModal TUI component."""
 
-from datetime import datetime
+from datetime import date
 
 import pytest
 from dateutil.relativedelta import relativedelta
@@ -28,11 +28,11 @@ def make_periodic_planned_operation(
     record_id: int = 1,
     description: str = "Salary",
     amount: float = 2500.0,
-    initial_date: datetime | None = None,
+    initial_date: date | None = None,
 ) -> PlannedOperation:
     """Create a test periodic PlannedOperation."""
     if initial_date is None:
-        initial_date = datetime(2025, 1, 1)
+        initial_date = date(2025, 1, 1)
     return PlannedOperation(
         record_id=record_id,
         description=description,
@@ -52,7 +52,7 @@ def make_non_periodic_planned_operation() -> PlannedOperation:
         description="One-time payment",
         amount=Amount(-500.0, "EUR"),
         category=Category.OTHER,
-        time_range=DailyTimeRange(datetime(2025, 3, 15)),
+        time_range=DailyTimeRange(date(2025, 3, 15)),
     )
 
 
@@ -60,11 +60,11 @@ def make_periodic_budget(
     record_id: int = 1,
     description: str = "Monthly groceries",
     amount: float = -400.0,
-    initial_date: datetime | None = None,
+    initial_date: date | None = None,
 ) -> Budget:
     """Create a test periodic Budget."""
     if initial_date is None:
-        initial_date = datetime(2025, 1, 1)
+        initial_date = date(2025, 1, 1)
     return Budget(
         record_id=record_id,
         description=description,
@@ -87,7 +87,7 @@ class SplitModalTestApp(App[None]):
     def __init__(
         self,
         target: PlannedOperation | Budget,
-        default_date: datetime | None = None,
+        default_date: date | None = None,
     ) -> None:
         super().__init__()
         self._target = target
@@ -179,7 +179,7 @@ class TestSplitOperationModalDisplay:
     async def test_default_date_populated(self) -> None:
         """Verify default date is populated in the input."""
         operation = make_periodic_planned_operation()
-        default_date = datetime(2025, 6, 1)
+        default_date = date(2025, 6, 1)
         app = SplitModalTestApp(operation, default_date)
         async with app.run_test(size=TEST_SIZE) as pilot:
             app.open_modal()
@@ -221,7 +221,7 @@ class TestSplitOperationModalValidation:
     @pytest.mark.asyncio
     async def test_date_before_start_shows_error(self) -> None:
         """Verify error is shown when split date is before operation start."""
-        operation = make_periodic_planned_operation(initial_date=datetime(2025, 1, 1))
+        operation = make_periodic_planned_operation(initial_date=date(2025, 1, 1))
         app = SplitModalTestApp(operation)
         async with app.run_test(size=TEST_SIZE) as pilot:
             app.open_modal()
@@ -332,7 +332,7 @@ class TestSplitOperationModalSubmission:
     async def test_successful_planned_operation_split(self) -> None:
         """Verify successful split returns correct SplitResult for PlannedOperation."""
         operation = make_periodic_planned_operation(
-            initial_date=datetime(2025, 1, 1),
+            initial_date=date(2025, 1, 1),
             amount=2500.0,
         )
         app = SplitModalTestApp(operation)
@@ -359,7 +359,7 @@ class TestSplitOperationModalSubmission:
 
             assert app.modal_dismissed
             assert app.modal_result is not None
-            assert app.modal_result.split_date == datetime(2025, 6, 1)
+            assert app.modal_result.split_date == date(2025, 6, 1)
             assert app.modal_result.new_amount.value == 3000.0
             assert app.modal_result.new_amount.currency == "EUR"
             assert app.modal_result.new_period == relativedelta(months=1)
@@ -369,7 +369,7 @@ class TestSplitOperationModalSubmission:
     async def test_successful_budget_split_with_duration(self) -> None:
         """Verify successful split returns correct SplitResult for Budget."""
         budget = make_periodic_budget(
-            initial_date=datetime(2025, 1, 1),
+            initial_date=date(2025, 1, 1),
             amount=-400.0,
         )
         app = SplitModalTestApp(budget)
@@ -398,7 +398,7 @@ class TestSplitOperationModalSubmission:
 
             assert app.modal_dismissed
             assert app.modal_result is not None
-            assert app.modal_result.split_date == datetime(2025, 6, 1)
+            assert app.modal_result.split_date == date(2025, 6, 1)
             assert app.modal_result.new_amount.value == -500.0
             assert app.modal_result.new_duration == relativedelta(months=2)
 

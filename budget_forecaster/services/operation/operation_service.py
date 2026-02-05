@@ -5,7 +5,7 @@ It can be used by TUI, GUI, or Web interfaces.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date
 from typing import Any, Callable, NamedTuple
 
 from budget_forecaster.core.types import Category
@@ -34,8 +34,8 @@ class OperationFilter:
 
     search_text: str | None = None
     category: Category | None = None
-    date_from: datetime | None = None
-    date_to: datetime | None = None
+    date_from: date | None = None
+    date_to: date | None = None
     min_amount: float | None = None
     max_amount: float | None = None
     uncategorized_only: bool = False
@@ -51,10 +51,10 @@ class OperationFilter:
         if self.category is not None and operation.category != self.category:
             return False
 
-        if self.date_from is not None and operation.date < self.date_from:
+        if self.date_from is not None and operation.operation_date < self.date_from:
             return False
 
-        if self.date_to is not None and operation.date > self.date_to:
+        if self.date_to is not None and operation.operation_date > self.date_to:
             return False
 
         if self.min_amount is not None and operation.amount < self.min_amount:
@@ -113,8 +113,8 @@ class OperationService:
         if filter_criteria:
             operations = [op for op in operations if filter_criteria.matches(op)]
 
-        def default_sort_key(op: HistoricOperation) -> datetime:
-            return op.date
+        def default_sort_key(op: HistoricOperation) -> date:
+            return op.operation_date
 
         return sorted(
             operations,
@@ -305,7 +305,7 @@ class OperationService:
         totals: dict[str, float] = {}
 
         for op in operations:
-            if (month_key := op.date.strftime("%Y-%m")) not in totals:
+            if (month_key := op.operation_date.strftime("%Y-%m")) not in totals:
                 totals[month_key] = 0.0
             totals[month_key] += op.amount
 
@@ -322,6 +322,6 @@ class OperationService:
         return self._account_manager.account.currency
 
     @property
-    def balance_date(self) -> datetime:
+    def balance_date(self) -> date:
         """Get the date of the last balance update."""
         return self._account_manager.account.balance_date

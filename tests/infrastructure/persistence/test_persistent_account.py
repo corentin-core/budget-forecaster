@@ -3,7 +3,7 @@
 # pylint: disable=protected-access,redefined-outer-name
 
 import tempfile
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
@@ -47,21 +47,21 @@ def sample_operations() -> tuple[HistoricOperation, ...]:
             description="Salaire",
             amount=Amount(2500.0, "EUR"),
             category=Category.SALARY,
-            date=datetime(2024, 1, 15),
+            operation_date=date(2024, 1, 15),
         ),
         HistoricOperation(
             unique_id=2,
             description="Courses Carrefour",
             amount=Amount(-150.0, "EUR"),
             category=Category.GROCERIES,
-            date=datetime(2024, 1, 20),
+            operation_date=date(2024, 1, 20),
         ),
         HistoricOperation(
             unique_id=3,
             description="Loyer",
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
-            date=datetime(2024, 1, 5),
+            operation_date=date(2024, 1, 5),
         ),
     )
 
@@ -73,7 +73,7 @@ def sample_account(sample_operations: tuple[HistoricOperation, ...]) -> Account:
         name="Compte courant",
         balance=1550.0,
         currency="EUR",
-        balance_date=datetime(2024, 1, 31),
+        balance_date=date(2024, 1, 31),
         operations=sample_operations,
     )
 
@@ -173,14 +173,14 @@ class TestSqliteRepository:  # pylint: disable=protected-access
                 name="Compte 1",
                 balance=1000.0,
                 currency="EUR",
-                balance_date=datetime(2024, 1, 31),
+                balance_date=date(2024, 1, 31),
                 operations=sample_operations[:2],
             )
             account2 = Account(
                 name="Compte 2",
                 balance=500.0,
                 currency="EUR",
-                balance_date=datetime(2024, 1, 31),
+                balance_date=date(2024, 1, 31),
                 operations=(sample_operations[2],),
             )
 
@@ -275,13 +275,13 @@ class TestPersistentAccount:  # pylint: disable=protected-access
                 description="Nouvelle opération",
                 amount=Amount(-50.0, "EUR"),
                 category=Category.OTHER,
-                date=datetime(2024, 2, 1),
+                operation_date=date(2024, 2, 1),
             )
             new_account_params = AccountParameters(
                 name="Compte courant",
                 balance=1500.0,
                 currency="EUR",
-                balance_date=datetime(2024, 2, 1),
+                balance_date=date(2024, 2, 1),
                 operations=(new_operation,),
             )
             persistent.upsert_account(new_account_params)
@@ -314,9 +314,9 @@ class TestBudgetRepository:
                 amount=Amount(-500.0, "EUR"),
                 category=Category.GROCERIES,
                 time_range=PeriodicTimeRange(
-                    TimeRange(datetime(2024, 1, 1), relativedelta(months=1)),
+                    TimeRange(date(2024, 1, 1), relativedelta(months=1)),
                     relativedelta(months=1),
-                    datetime(2024, 12, 31),
+                    date(2024, 12, 31),
                 ),
             )
             budget_id = repository.upsert_budget(budget)
@@ -336,7 +336,7 @@ class TestBudgetRepository:
                 description="Courses mensuelles",
                 amount=Amount(-500.0, "EUR"),
                 category=Category.GROCERIES,
-                time_range=TimeRange(datetime(2024, 1, 1), relativedelta(months=1)),
+                time_range=TimeRange(date(2024, 1, 1), relativedelta(months=1)),
             )
             budget_id = repository.upsert_budget(budget)
 
@@ -358,7 +358,7 @@ class TestBudgetRepository:
                 description="Test budget",
                 amount=Amount(-100.0, "EUR"),
                 category=Category.OTHER,
-                time_range=TimeRange(datetime(2024, 1, 1), relativedelta(days=30)),
+                time_range=TimeRange(date(2024, 1, 1), relativedelta(days=30)),
             )
             budget_id = repository.upsert_budget(budget)
 
@@ -376,17 +376,17 @@ class TestBudgetRepository:
                 description="Simple budget",
                 amount=Amount(-100.0, "EUR"),
                 category=Category.OTHER,
-                time_range=TimeRange(datetime(2024, 3, 15), relativedelta(days=10)),
+                time_range=TimeRange(date(2024, 3, 15), relativedelta(days=10)),
             )
             budget_id = repository.upsert_budget(budget)
 
             retrieved = repository.get_budget_by_id(budget_id)
             assert retrieved is not None
             assert isinstance(retrieved.time_range, TimeRange)
-            assert retrieved.time_range.initial_date == datetime(2024, 3, 15)
+            assert retrieved.time_range.initial_date == date(2024, 3, 15)
             # TimeRange.last_date = initial_date + duration - 1 day
             # for 10 days: 2024-03-15 + 10 - 1 = 2024-03-24
-            assert retrieved.time_range.last_date == datetime(2024, 3, 24)
+            assert retrieved.time_range.last_date == date(2024, 3, 24)
 
     def test_budget_periodic_time_range_serialization(self, temp_db_path: Path) -> None:
         """Test PeriodicTimeRange serialization/deserialization."""
@@ -397,9 +397,9 @@ class TestBudgetRepository:
                 amount=Amount(-200.0, "EUR"),
                 category=Category.GROCERIES,
                 time_range=PeriodicTimeRange(
-                    TimeRange(datetime(2024, 1, 1), relativedelta(months=1)),
+                    TimeRange(date(2024, 1, 1), relativedelta(months=1)),
                     relativedelta(months=1),
-                    datetime(2024, 6, 30),
+                    date(2024, 6, 30),
                 ),
             )
             budget_id = repository.upsert_budget(budget)
@@ -407,10 +407,10 @@ class TestBudgetRepository:
             retrieved = repository.get_budget_by_id(budget_id)
             assert retrieved is not None
             assert isinstance(retrieved.time_range, PeriodicTimeRange)
-            assert retrieved.time_range.initial_date == datetime(2024, 1, 1)
+            assert retrieved.time_range.initial_date == date(2024, 1, 1)
             assert retrieved.time_range.period == relativedelta(months=1)
             # PeriodicTimeRange.last_date returns _expiration_date
-            assert retrieved.time_range.last_date == datetime(2024, 6, 30)
+            assert retrieved.time_range.last_date == date(2024, 6, 30)
 
 
 class TestPlannedOperationRepository:
@@ -431,9 +431,9 @@ class TestPlannedOperationRepository:
                 amount=Amount(3000.0, "EUR"),
                 category=Category.SALARY,
                 time_range=PeriodicDailyTimeRange(
-                    datetime(2024, 1, 28),
+                    date(2024, 1, 28),
                     relativedelta(months=1),
-                    datetime(2024, 12, 31),
+                    date(2024, 12, 31),
                 ),
             )
             op.set_matcher_params(
@@ -458,7 +458,7 @@ class TestPlannedOperationRepository:
                 description="Loyer",
                 amount=Amount(-800.0, "EUR"),
                 category=Category.RENT,
-                time_range=DailyTimeRange(datetime(2024, 1, 5)),
+                time_range=DailyTimeRange(date(2024, 1, 5)),
             )
             op_id = repository.upsert_planned_operation(op)
 
@@ -478,7 +478,7 @@ class TestPlannedOperationRepository:
                 description="Test op",
                 amount=Amount(-50.0, "EUR"),
                 category=Category.OTHER,
-                time_range=DailyTimeRange(datetime(2024, 2, 15)),
+                time_range=DailyTimeRange(date(2024, 2, 15)),
             )
             op_id = repository.upsert_planned_operation(op)
 
@@ -496,7 +496,7 @@ class TestPlannedOperationRepository:
                 description="Test with matcher",
                 amount=Amount(-100.0, "EUR"),
                 category=Category.OTHER,
-                time_range=DailyTimeRange(datetime(2024, 1, 1)),
+                time_range=DailyTimeRange(date(2024, 1, 1)),
             )
             op.set_matcher_params(
                 description_hints={"KEYWORD1", "KEYWORD2"},
@@ -521,7 +521,7 @@ class TestPlannedOperationRepository:
                 description="Test hints",
                 amount=Amount(-50.0, "EUR"),
                 category=Category.OTHER,
-                time_range=DailyTimeRange(datetime(2024, 1, 1)),
+                time_range=DailyTimeRange(date(2024, 1, 1)),
             )
             # Test with empty hints
             op.set_matcher_params(description_hints=set())

@@ -1,5 +1,5 @@
 """Module with tests for the OperationsCategorizer class."""
-from datetime import datetime
+from datetime import date
 
 import pytest
 from dateutil.relativedelta import relativedelta
@@ -25,7 +25,7 @@ def forecast() -> Forecast:
                 description="Planned Operation 1",
                 amount=Amount(100.0, "EUR"),
                 category=Category.GROCERIES,
-                time_range=DailyTimeRange(datetime(2023, 1, 15)),
+                time_range=DailyTimeRange(date(2023, 1, 15)),
             ).set_matcher_params(description_hints={"Operation 1"}),
             PlannedOperation(
                 record_id=2,
@@ -33,7 +33,7 @@ def forecast() -> Forecast:
                 amount=Amount(200.0, "EUR"),
                 category=Category.OTHER,
                 time_range=PeriodicDailyTimeRange(
-                    datetime(2023, 2, 15), relativedelta(months=1)
+                    date(2023, 2, 15), relativedelta(months=1)
                 ),
             ).set_matcher_params(description_hints={"Operation 2"}),
             PlannedOperation(
@@ -42,7 +42,7 @@ def forecast() -> Forecast:
                 amount=Amount(200.0, "EUR"),
                 category=Category.SALARY,
                 time_range=PeriodicDailyTimeRange(
-                    datetime(2023, 2, 15), relativedelta(months=1)
+                    date(2023, 2, 15), relativedelta(months=1)
                 ),
             ),
         ),
@@ -59,35 +59,35 @@ def operations() -> list[HistoricOperation]:
             description="Operation 1",
             amount=Amount(100.0, "EUR"),
             category=Category.OTHER,
-            date=datetime(2023, 1, 15),
+            operation_date=date(2023, 1, 15),
         ),
         HistoricOperation(
             unique_id=2,
             description="Operation 2",
             amount=Amount(200.0, "EUR"),
             category=Category.GROCERIES,
-            date=datetime(2023, 2, 15),
+            operation_date=date(2023, 2, 15),
         ),
         HistoricOperation(
             unique_id=3,
             description="Operation 3",
             amount=Amount(100.0, "EUR"),
             category=Category.OTHER,
-            date=datetime(2023, 1, 15),
+            operation_date=date(2023, 1, 15),
         ),
         HistoricOperation(
             unique_id=4,
             description="Operation 4",
             amount=Amount(200.0, "EUR"),
             category=Category.GROCERIES,
-            date=datetime(2023, 2, 15),
+            operation_date=date(2023, 2, 15),
         ),
         HistoricOperation(
             unique_id=5,
             description="Operation 5",
             amount=Amount(200.0, "EUR"),
             category=Category.SALARY,
-            date=datetime(2023, 2, 15),
+            operation_date=date(2023, 2, 15),
         ),
     ]
 

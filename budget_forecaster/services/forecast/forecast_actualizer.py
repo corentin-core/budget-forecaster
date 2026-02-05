@@ -1,6 +1,6 @@
 """Module to actualize a forecast with actual data."""
 import logging
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from typing import Final, Iterable
 
 from dateutil.relativedelta import relativedelta
@@ -37,8 +37,8 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         self._linked_iterations: dict[PlannedOperationId, set[IterationDate]] = {}
         self._linked_op_ids: dict[tuple[BudgetId, IterationDate], set[OperationId]] = {}
         # Map operation_id -> operation date for date lookups
-        self._operation_dates: dict[OperationId, datetime] = {
-            op.unique_id: op.date for op in account.operations
+        self._operation_dates: dict[OperationId, date] = {
+            op.unique_id: op.operation_date for op in account.operations
         }
         # Map (planned_op_id, iteration_date) -> set of linked operation IDs
         self._planned_op_linked_ops: dict[
@@ -78,9 +78,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         actualized_budgets = self._actualize_budgets(forecast.budgets)
         return Forecast(actualized_planned_operations, actualized_budgets)
 
-    def _get_linked_iterations(
-        self, planned_operation: PlannedOperation
-    ) -> set[datetime]:
+    def _get_linked_iterations(self, planned_operation: PlannedOperation) -> set[date]:
         """Get iteration dates linked to a planned operation."""
         if planned_operation.id is None:
             return set()
@@ -97,8 +95,8 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
     def _get_late_iterations(
         self,
         planned_operation: PlannedOperation,
-        linked_iterations: set[datetime],
-    ) -> tuple[datetime, ...]:
+        linked_iterations: set[date],
+    ) -> tuple[date, ...]:
         """Find iterations that are late (past due and no link).
 
         An iteration is considered late if:
@@ -112,7 +110,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             return ()
 
         balance_date = self._account.balance_date
-        late_iterations: list[datetime] = []
+        late_iterations: list[date] = []
         approximation = planned_operation.matcher.approximation_date_range
 
         # Iterate over time ranges starting before the approximation window
@@ -136,7 +134,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
     def _handle_late_iterations(
         self,
         planned_operation: PlannedOperation,
-        late_iterations: tuple[datetime, ...],
+        late_iterations: tuple[date, ...],
     ) -> tuple[PlannedOperation, ...]:
         """Create postponed operations for late iterations.
 
@@ -205,7 +203,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         return False
 
     def _actualize_planned_operation_with_links(
-        self, planned_operation: PlannedOperation, linked_iterations: set[datetime]
+        self, planned_operation: PlannedOperation, linked_iterations: set[date]
     ) -> PlannedOperation | None:
         """Actualize a planned operation using linked iterations as source of truth."""
         balance_date = self._account.balance_date

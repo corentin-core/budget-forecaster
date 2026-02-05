@@ -3,7 +3,7 @@
 # pylint: disable=no-else-return
 
 import logging
-from datetime import datetime
+from datetime import date
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -146,7 +146,7 @@ class PlannedOperationsWidget(Vertical):
                 period = self._format_period(time_range.period)
                 end_date = (
                     time_range.last_date.strftime("%Y-%m-%d")
-                    if time_range.last_date != datetime.max
+                    if time_range.last_date != date.max
                     else "-"
                 )
             else:

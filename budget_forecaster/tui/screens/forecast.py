@@ -178,8 +178,7 @@ class ForecastWidget(Vertical):
         else:
             report = self._app_service.report
             status.update(
-                f"Rapport calculé du {report.start_date.date()} "
-                f"au {report.end_date.date()}"
+                f"Rapport calculé du {report.start_date} " f"au {report.end_date}"
             )
             status.add_class("status-ok")
             self.query_one("#btn-export", Button).disabled = False

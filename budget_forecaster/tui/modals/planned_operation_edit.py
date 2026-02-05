@@ -4,7 +4,7 @@
 # pylint: disable=raise-missing-from,no-else-return
 # pylint: disable=consider-using-assignment-expr
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from dateutil.relativedelta import relativedelta
@@ -142,7 +142,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
                     start = (
                         self._operation.time_range.initial_date
                         if self._operation
-                        else datetime.now()
+                        else date.today()
                     )
                     yield Input(
                         value=start.strftime("%Y-%m-%d"),
@@ -238,13 +238,13 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
                 return None  # Days, not months
         return None
 
-    def _get_end_date(self) -> datetime | None:
+    def _get_end_date(self) -> date | None:
         """Get the end date from the current operation."""
         if not self._operation:
             return None
         tr = self._operation.time_range
         if isinstance(tr, PeriodicDailyTimeRange):
-            if tr.last_date != datetime.max:
+            if tr.last_date != date.max:
                 return tr.last_date
         return None
 
@@ -303,7 +303,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
 
             date_str = self.query_one("#input-date", Input).value.strip()
             try:
-                op_date = datetime.strptime(date_str, "%Y-%m-%d")
+                op_date = datetime.strptime(date_str, "%Y-%m-%d").date()
             except ValueError:
                 raise ValueError("La date doit être au format YYYY-MM-DD")
 
@@ -323,7 +323,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
             end_date = None
             if end_str:
                 try:
-                    end_date = datetime.strptime(end_str, "%Y-%m-%d")
+                    end_date = datetime.strptime(end_str, "%Y-%m-%d").date()
                 except ValueError:
                     raise ValueError("La date de fin doit être au format YYYY-MM-DD")
 

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import tempfile
 from collections.abc import Iterator
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -64,7 +64,7 @@ def link_service(repository: SqliteRepository) -> OperationLinkService:
 @pytest.fixture
 def monthly_rent_range() -> OperationRange:
     """Create a periodic monthly operation range for rent."""
-    base_range = TimeRange(datetime(2024, 1, 1), relativedelta(months=1))
+    base_range = TimeRange(date(2024, 1, 1), relativedelta(months=1))
     periodic = PeriodicTimeRange(base_range, relativedelta(months=1))
     return OperationRange(
         description="Rent",
@@ -92,9 +92,7 @@ def monthly_rent_planned_op() -> PlannedOperation:
         description="Rent",
         amount=Amount(-800.0, "EUR"),
         category=Category.RENT,
-        time_range=PeriodicDailyTimeRange(
-            datetime(2024, 1, 1), relativedelta(months=1)
-        ),
+        time_range=PeriodicDailyTimeRange(date(2024, 1, 1), relativedelta(months=1)),
     )
     return planned_op.set_matcher_params(
         approximation_date_range=timedelta(days=5),
@@ -111,28 +109,28 @@ def sample_operations() -> tuple[HistoricOperation, ...]:
             description="RENT TRANSFER",
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
-            date=datetime(2024, 1, 3),  # Close to Jan 1 rent
+            operation_date=date(2024, 1, 3),  # Close to Jan 1 rent
         ),
         HistoricOperation(
             unique_id=2,
             description="RENT TRANSFER",
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
-            date=datetime(2024, 2, 2),  # Close to Feb 1 rent
+            operation_date=date(2024, 2, 2),  # Close to Feb 1 rent
         ),
         HistoricOperation(
             unique_id=3,
             description="GROCERIES CARREFOUR",
             amount=Amount(-50.0, "EUR"),
             category=Category.GROCERIES,
-            date=datetime(2024, 1, 15),
+            operation_date=date(2024, 1, 15),
         ),
         HistoricOperation(
             unique_id=4,
             description="ELECTRICITY EDF",
             amount=Amount(-90.0, "EUR"),
             category=Category.ELECTRICITY,
-            date=datetime(2024, 1, 20),
+            operation_date=date(2024, 1, 20),
         ),
     )
 
@@ -161,14 +159,14 @@ class TestLoadLinksForTarget:
             operation_unique_id=100,
             target_type=LinkType.PLANNED_OPERATION,
             target_id=1,
-            iteration_date=datetime(2024, 1, 1),
+            iteration_date=date(2024, 1, 1),
             is_manual=False,
         )
         link2 = OperationLink(
             operation_unique_id=200,
             target_type=LinkType.PLANNED_OPERATION,
             target_id=1,
-            iteration_date=datetime(2024, 2, 1),
+            iteration_date=date(2024, 2, 1),
             is_manual=True,
         )
         repository.upsert_link(link1)
@@ -190,7 +188,7 @@ class TestLoadLinksForTarget:
             amount=Amount(-1000.0, "EUR"),
             category=Category.RENT,
             time_range=PeriodicTimeRange(
-                TimeRange(datetime(2024, 1, 1), relativedelta(months=1)),
+                TimeRange(date(2024, 1, 1), relativedelta(months=1)),
                 relativedelta(months=1),
             ),
         )
@@ -198,7 +196,7 @@ class TestLoadLinksForTarget:
             operation_unique_id=300,
             target_type=LinkType.BUDGET,
             target_id=5,
-            iteration_date=datetime(2024, 1, 1),
+            iteration_date=date(2024, 1, 1),
         )
         repository.upsert_link(link)
 
@@ -241,7 +239,7 @@ class TestCreateHeuristicLinks:
             operation_unique_id=1,
             target_type=LinkType.BUDGET,
             target_id=99,
-            iteration_date=datetime(2024, 1, 1),
+            iteration_date=date(2024, 1, 1),
             is_manual=True,
         )
         repository.upsert_link(existing_link)
@@ -297,7 +295,7 @@ class TestCreateHeuristicLinks:
             description="Salary",
             amount=Amount(3000.0, "EUR"),
             category=Category.SALARY,
-            time_range=DailyTimeRange(datetime(2024, 1, 1)),
+            time_range=DailyTimeRange(date(2024, 1, 1)),
         )
         different_matcher = OperationMatcher(operation_range=different_range)
         matchers = {MatcherKey(LinkType.PLANNED_OPERATION, 99): different_matcher}
@@ -321,7 +319,7 @@ class TestDeleteLinksForTarget:
             operation_unique_id=1,
             target_type=LinkType.PLANNED_OPERATION,
             target_id=1,
-            iteration_date=datetime(2024, 1, 1),
+            iteration_date=date(2024, 1, 1),
             is_manual=False,
         )
         repository.upsert_link(auto_link)
@@ -344,7 +342,7 @@ class TestDeleteLinksForTarget:
             operation_unique_id=1,
             target_type=LinkType.PLANNED_OPERATION,
             target_id=1,
-            iteration_date=datetime(2024, 1, 15),
+            iteration_date=date(2024, 1, 15),
             is_manual=True,
             notes="Manually linked",
         )
@@ -357,7 +355,7 @@ class TestDeleteLinksForTarget:
         link = repository.get_link_for_operation(1)
         assert link is not None
         assert link.is_manual is True
-        assert link.iteration_date == datetime(2024, 1, 15)
+        assert link.iteration_date == date(2024, 1, 15)
         assert link.notes == "Manually linked"
 
     def test_delete_links_for_target_deletes_all(
@@ -371,14 +369,14 @@ class TestDeleteLinksForTarget:
             operation_unique_id=1,
             target_type=LinkType.PLANNED_OPERATION,
             target_id=1,
-            iteration_date=datetime(2024, 1, 15),
+            iteration_date=date(2024, 1, 15),
             is_manual=True,
         )
         auto_link = OperationLink(
             operation_unique_id=2,
             target_type=LinkType.PLANNED_OPERATION,
             target_id=1,
-            iteration_date=datetime(2024, 2, 1),
+            iteration_date=date(2024, 2, 1),
             is_manual=False,
         )
         repository.upsert_link(manual_link)
@@ -415,7 +413,7 @@ class TestApplicationServiceLinkIntegration:
             name="Test Account",
             balance=1000.0,
             currency="EUR",
-            balance_date=datetime(2024, 1, 1),
+            balance_date=date(2024, 1, 1),
             operations=sample_operations,
         )
         repository.set_aggregated_account_name("Test Account")
@@ -464,7 +462,7 @@ class TestApplicationServiceLinkIntegration:
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
             time_range=PeriodicDailyTimeRange(
-                datetime(2024, 1, 1), relativedelta(months=1)
+                date(2024, 1, 1), relativedelta(months=1)
             ),
         )
 
@@ -486,7 +484,7 @@ class TestApplicationServiceLinkIntegration:
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
             time_range=PeriodicDailyTimeRange(
-                datetime(2024, 1, 1), relativedelta(months=1)
+                date(2024, 1, 1), relativedelta(months=1)
             ),
         )
         new_op = app_service.add_planned_operation(planned_op)
@@ -500,7 +498,7 @@ class TestApplicationServiceLinkIntegration:
             amount=Amount(-1500.0, "EUR"),  # Different amount
             category=Category.RENT,
             time_range=PeriodicDailyTimeRange(
-                datetime(2024, 1, 1), relativedelta(months=1)
+                date(2024, 1, 1), relativedelta(months=1)
             ),
         )
         app_service.update_planned_operation(updated_op)
@@ -521,7 +519,7 @@ class TestApplicationServiceLinkIntegration:
             amount=Amount(-50.0, "EUR"),
             category=Category.GROCERIES,
             time_range=PeriodicTimeRange(
-                TimeRange(datetime(2024, 1, 1), relativedelta(months=1)),
+                TimeRange(date(2024, 1, 1), relativedelta(months=1)),
                 relativedelta(months=1),
             ),
         )
@@ -551,7 +549,7 @@ class TestManualLinkProtection:
             operation_unique_id=1,
             target_type=LinkType.PLANNED_OPERATION,
             target_id=1,
-            iteration_date=datetime(2024, 3, 1),  # Future date, not matching heuristic
+            iteration_date=date(2024, 3, 1),  # Future date, not matching heuristic
             is_manual=True,
             notes="User manually linked this",
         )
@@ -572,7 +570,7 @@ class TestManualLinkProtection:
         link = repository.get_link_for_operation(1)
         assert link is not None
         assert link.is_manual is True
-        assert link.iteration_date == datetime(2024, 3, 1)
+        assert link.iteration_date == date(2024, 3, 1)
         assert link.notes == "User manually linked this"
 
     def test_heuristic_link_can_be_replaced(

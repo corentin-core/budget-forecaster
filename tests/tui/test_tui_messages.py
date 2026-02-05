@@ -1,6 +1,6 @@
 """Tests for TUI message communication (DataRefreshRequested, SaveRequested)."""
 
-from datetime import datetime
+from datetime import date
 from typing import Any
 from unittest.mock import Mock
 
@@ -26,7 +26,7 @@ def make_test_operation(unique_id: int = 1) -> HistoricOperation:
     """Create a test operation."""
     return HistoricOperation(
         unique_id=unique_id,
-        date=datetime(2025, 1, 15),
+        operation_date=date(2025, 1, 15),
         description="Test operation",
         amount=Amount(-100.00, "EUR"),
         category=Category.UNCATEGORIZED,

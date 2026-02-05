@@ -133,7 +133,7 @@ class CategoryModal(ModalScreen[Category | None]):
                     )
                     with Horizontal(classes="op-row"):
                         yield Static(
-                            op.date.strftime("%d/%m/%Y"),
+                            op.operation_date.strftime("%d/%m/%Y"),
                             classes="op-date",
                         )
                         yield Static(

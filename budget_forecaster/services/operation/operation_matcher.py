@@ -1,5 +1,5 @@
 """Match operations to operation ranges."""
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from typing import Any, Iterable, Iterator
 
 from budget_forecaster.core.time_range import TimeRangeInterface
@@ -130,14 +130,10 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         initial_date = self.operation_range.time_range.initial_date
         last_date = self.operation_range.time_range.last_date
         return (
-            operation.date < initial_date - self.approximation_date_range
-            or operation.date
+            operation.operation_date < initial_date - self.approximation_date_range
+            or operation.operation_date
             > last_date
-            + (
-                self.approximation_date_range
-                if last_date < datetime.max
-                else timedelta(0)
-            )
+            + (self.approximation_date_range if last_date < date.max else timedelta(0))
         )
 
     def match_description(self, operation: HistoricOperation) -> bool:
@@ -160,7 +156,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
     def match_date_range(self, operation: HistoricOperation) -> bool:
         """Check if the date of the operation is within the time range of the operation range."""
         return self.operation_range.time_range.is_within(
-            operation.date,
+            operation.operation_date,
             approx_before=self.approximation_date_range,
             approx_after=self.approximation_date_range,
         )
@@ -214,7 +210,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
                 yield operation
 
     def latest_matching_operations(
-        self, current_date: datetime, operations: Iterable[HistoricOperation]
+        self, current_date: date, operations: Iterable[HistoricOperation]
     ) -> Iterator[HistoricOperation]:
         """Returns the operations matching the last time range and close to current date."""
         for operation in self.matches(operations):
@@ -224,7 +220,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
                 yield operation
 
     def late_time_ranges(
-        self, current_date: datetime, operations: Iterable[HistoricOperation]
+        self, current_date: date, operations: Iterable[HistoricOperation]
     ) -> Iterator[TimeRangeInterface]:
         """Returns the time ranges which are late and close to current date."""
         not_assigned_operations = {
@@ -241,7 +237,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
                 continue
             for operation in not_assigned_operations.values():
                 if time_range.is_within(
-                    operation.date,
+                    operation.operation_date,
                     approx_before=self.approximation_date_range,
                     approx_after=self.approximation_date_range,
                 ):
@@ -252,7 +248,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
                 yield time_range
 
     def anticipated_time_ranges(
-        self, current_date: datetime, operations: Iterable[HistoricOperation]
+        self, current_date: date, operations: Iterable[HistoricOperation]
     ) -> Iterator[tuple[TimeRangeInterface, HistoricOperation]]:
         """Returns the time ranges which are anticipated and close to current date."""
         not_assigned_operations = {
@@ -271,7 +267,8 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
                 return
             for operation in not_assigned_operations.values():
                 if time_range.is_within(
-                    operation.date, approx_before=self.approximation_date_range
+                    operation.operation_date,
+                    approx_before=self.approximation_date_range,
                 ):
                     # the time range was executed with anticipation
                     not_assigned_operations.pop(operation.unique_id)

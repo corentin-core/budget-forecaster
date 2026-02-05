@@ -3,7 +3,7 @@
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements
 # pylint: disable=raise-missing-from,consider-using-assignment-expr
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from dateutil.relativedelta import relativedelta
@@ -139,7 +139,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
                     start = (
                         self._budget.time_range.initial_date
                         if self._budget
-                        else datetime.now()
+                        else date.today()
                     )
                     yield Input(
                         value=start.strftime("%Y-%m-%d"),
@@ -216,13 +216,13 @@ class BudgetEditModal(ModalScreen[Budget | None]):
             return tr.period.months if tr.period.months else 1
         return None
 
-    def _get_end_date(self) -> datetime | None:
+    def _get_end_date(self) -> date | None:
         """Get the end date from the current budget."""
         if not self._budget:
             return None
         tr = self._budget.time_range
         if isinstance(tr, PeriodicTimeRange):
-            if tr.last_date != datetime.max:
+            if tr.last_date != date.max:
                 return tr.last_date
         return None
 
@@ -260,7 +260,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
 
             start_str = self.query_one("#input-start-date", Input).value.strip()
             try:
-                start_date = datetime.strptime(start_str, "%Y-%m-%d")
+                start_date = datetime.strptime(start_str, "%Y-%m-%d").date()
             except ValueError:
                 raise ValueError("La date de début doit être au format YYYY-MM-DD")
 
@@ -288,7 +288,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
             end_date = None
             if end_str:
                 try:
-                    end_date = datetime.strptime(end_str, "%Y-%m-%d")
+                    end_date = datetime.strptime(end_str, "%Y-%m-%d").date()
                 except ValueError:
                     raise ValueError("La date de fin doit être au format YYYY-MM-DD")
 

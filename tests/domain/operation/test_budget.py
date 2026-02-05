@@ -1,5 +1,5 @@
 """Module with tests for the budget class."""
-from datetime import datetime
+from datetime import date
 
 import pytest
 from dateutil.relativedelta import relativedelta
@@ -20,9 +20,9 @@ def recurring_budget() -> Budget:
         amount=Amount(-100.0),
         category=Category.GROCERIES,
         time_range=PeriodicTimeRange(
-            TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
             relativedelta(months=1),
-            datetime(2023, 12, 31),
+            date(2023, 12, 31),
         ),
     )
 
@@ -33,28 +33,28 @@ class TestRecurringBudget:
     def test_matches_operation_within_budget(self, recurring_budget: Budget) -> None:
         """Test that the budget matches operations within the budget."""
         for operation_date in (
-            datetime(2023, 1, 1),
-            datetime(2023, 12, 31),
-            datetime(2023, 6, 15),
+            date(2023, 1, 1),
+            date(2023, 12, 31),
+            date(2023, 6, 15),
         ):
             historic_operation = HistoricOperation(
                 unique_id=1,
                 description="Test Operation",
                 amount=Amount(-100.0),
                 category=Category.GROCERIES,
-                date=operation_date,
+                operation_date=operation_date,
             )
             assert recurring_budget.matcher.match(historic_operation)
 
     def test_matches_operation_outside_budget(self, recurring_budget: Budget) -> None:
         """Test that the budget does not match operations outside the budget."""
-        for operation_date in (datetime(2024, 1, 1), datetime(2022, 12, 31)):
+        for operation_date in (date(2024, 1, 1), date(2022, 12, 31)):
             historic_operation = HistoricOperation(
                 unique_id=1,
                 description="Test Operation",
                 amount=Amount(-100.0),
                 category=Category.GROCERIES,
-                date=operation_date,
+                operation_date=operation_date,
             )
             assert not recurring_budget.matcher.match(historic_operation)
 
@@ -62,25 +62,25 @@ class TestRecurringBudget:
         self, recurring_budget: Budget
     ) -> None:
         """Test that the budget does not match operations with different categories."""
-        operation_date = datetime(2023, 6, 15)
+        operation_date = date(2023, 6, 15)
         historic_operation = HistoricOperation(
             unique_id=1,
             description="Test Operation",
             amount=Amount(-100.0),
             category=Category.OTHER,
-            date=operation_date,
+            operation_date=operation_date,
         )
         assert not recurring_budget.matcher.match(historic_operation)
 
     def test_amount_on_period(self, recurring_budget: Budget) -> None:
         """Test the amount on period for a recurring budget."""
         for date_start, date_end, expected_amount in (
-            (datetime(2023, 1, 1), datetime(2023, 1, 31), -100.0),
-            (datetime(2022, 12, 1), datetime(2023, 1, 31), -100.0),
-            (datetime(2024, 2, 1), datetime(2024, 2, 15), 0.0),
-            (datetime(2023, 4, 1), datetime(2023, 4, 15), -50.0),
-            (datetime(2023, 4, 16), datetime(2023, 4, 30), -50.0),
-            (datetime(2023, 1, 1), datetime(2023, 12, 31), -1200.0),
+            (date(2023, 1, 1), date(2023, 1, 31), -100.0),
+            (date(2022, 12, 1), date(2023, 1, 31), -100.0),
+            (date(2024, 2, 1), date(2024, 2, 15), 0.0),
+            (date(2023, 4, 1), date(2023, 4, 15), -50.0),
+            (date(2023, 4, 16), date(2023, 4, 30), -50.0),
+            (date(2023, 1, 1), date(2023, 12, 31), -1200.0),
         ):
             amount = recurring_budget.amount_on_period(date_start, date_end)
             assert amount == pytest.approx(
@@ -96,7 +96,7 @@ def budget_no_period() -> Budget:
         description="Test Budget",
         amount=Amount(-200.0),
         category=Category.GROCERIES,
-        time_range=TimeRange(datetime(2023, 1, 1), relativedelta(days=30)),
+        time_range=TimeRange(date(2023, 1, 1), relativedelta(days=30)),
     )
 
 
@@ -106,51 +106,51 @@ class TestIsolatedBudget:
     def test_matches_operation_within_budget(self, budget_no_period: Budget) -> None:
         """Test that the budget matches operations within the budget."""
         for operation_date in (
-            datetime(2023, 1, 15),
-            datetime(2023, 1, 30),
-            datetime(2023, 1, 1),
+            date(2023, 1, 15),
+            date(2023, 1, 30),
+            date(2023, 1, 1),
         ):
             historic_operation = HistoricOperation(
                 unique_id=1,
                 description="Test Operation",
                 amount=Amount(-100.0),
                 category=budget_no_period.category,
-                date=operation_date,
+                operation_date=operation_date,
             )
             assert budget_no_period.matcher.match(historic_operation)
 
     def test_matches_operation_outside_budget(self, budget_no_period: Budget) -> None:
         """Test that the budget does not match operations outside the budget."""
-        for operation_date in (datetime(2023, 2, 1), datetime(2022, 12, 30)):
+        for operation_date in (date(2023, 2, 1), date(2022, 12, 30)):
             historic_operation = HistoricOperation(
                 unique_id=1,
                 description="Test Operation",
                 amount=Amount(-100.0),
                 category=budget_no_period.category,
-                date=operation_date,
+                operation_date=operation_date,
             )
             assert not budget_no_period.matcher.match(historic_operation)
 
     def test_matches_different_category(self, budget_no_period: Budget) -> None:
         """Test that the budget does not match operations with different categories."""
-        operation_date = datetime(2023, 1, 15)
+        operation_date = date(2023, 1, 15)
         historic_operation = HistoricOperation(
             unique_id=1,
             description="Test Operation",
             amount=Amount(-100.0),
             category=Category.OTHER,
-            date=operation_date,
+            operation_date=operation_date,
         )
         assert not budget_no_period.matcher.match(historic_operation)
 
     def test_amount_on_period(self, budget_no_period: Budget) -> None:
         """Test the amount on period for a budget with no renewable period."""
         for date_start, date_end, expected_amount in (
-            (datetime(2023, 1, 1), datetime(2023, 1, 31), -200.0),
-            (datetime(2022, 12, 1), datetime(2023, 2, 15), -200.0),
-            (datetime(2023, 2, 1), datetime(2023, 2, 15), 0.0),
-            (datetime(2023, 1, 1), datetime(2023, 1, 15), -100.0),
-            (datetime(2023, 1, 16), datetime(2023, 1, 30), -100.0),
+            (date(2023, 1, 1), date(2023, 1, 31), -200.0),
+            (date(2022, 12, 1), date(2023, 2, 15), -200.0),
+            (date(2023, 2, 1), date(2023, 2, 15), 0.0),
+            (date(2023, 1, 1), date(2023, 1, 15), -100.0),
+            (date(2023, 1, 16), date(2023, 1, 30), -100.0),
         ):
             amount = budget_no_period.amount_on_period(date_start, date_end)
             assert amount == pytest.approx(
@@ -169,7 +169,7 @@ class TestBudgetReplaceTypeErrors:
             description="Test Budget",
             amount=Amount(-100.0),
             category=Category.GROCERIES,
-            time_range=TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+            time_range=TimeRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
     def test_replace_invalid_record_id(self, budget: Budget) -> None:
@@ -209,20 +209,20 @@ class TestBudgetSplitAt:
             amount=Amount(-400.0),
             category=Category.GROCERIES,
             time_range=PeriodicTimeRange(
-                TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
+                TimeRange(date(2025, 1, 1), relativedelta(months=1)),
                 relativedelta(months=1),
-                datetime(2025, 12, 31),
+                date(2025, 12, 31),
             ),
         )
 
-        terminated, continuation = budget.split_at(datetime(2025, 6, 1))
+        terminated, continuation = budget.split_at(date(2025, 6, 1))
 
         # Terminated ends day before first new iteration (June 1)
-        assert terminated.time_range.last_date == datetime(2025, 5, 31)
+        assert terminated.time_range.last_date == date(2025, 5, 31)
         assert terminated.id == 1  # Keeps original ID
 
         # Continuation starts at first iteration >= split date
-        assert continuation.time_range.initial_date == datetime(2025, 6, 1)
+        assert continuation.time_range.initial_date == date(2025, 6, 1)
         assert continuation.id is None  # New record
         assert continuation.description == "Groceries"
         assert continuation.amount == -400.0
@@ -236,14 +236,12 @@ class TestBudgetSplitAt:
             amount=Amount(-400.0),
             category=Category.GROCERIES,
             time_range=PeriodicTimeRange(
-                TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
+                TimeRange(date(2025, 1, 1), relativedelta(months=1)),
                 relativedelta(months=1),
             ),
         )
 
-        _, continuation = budget.split_at(
-            datetime(2025, 6, 1), new_amount=Amount(-500.0)
-        )
+        _, continuation = budget.split_at(date(2025, 6, 1), new_amount=Amount(-500.0))
 
         assert continuation.amount == -500.0
 
@@ -255,13 +253,13 @@ class TestBudgetSplitAt:
             amount=Amount(-400.0),
             category=Category.GROCERIES,
             time_range=PeriodicTimeRange(
-                TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
+                TimeRange(date(2025, 1, 1), relativedelta(months=1)),
                 relativedelta(months=1),
             ),
         )
 
         _, continuation = budget.split_at(
-            datetime(2025, 6, 1), new_period=relativedelta(months=3)
+            date(2025, 6, 1), new_period=relativedelta(months=3)
         )
 
         assert continuation.time_range.period == relativedelta(months=3)
@@ -274,13 +272,13 @@ class TestBudgetSplitAt:
             amount=Amount(-400.0),
             category=Category.GROCERIES,
             time_range=PeriodicTimeRange(
-                TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
+                TimeRange(date(2025, 1, 1), relativedelta(months=1)),
                 relativedelta(months=1),
             ),
         )
 
         _, continuation = budget.split_at(
-            datetime(2025, 6, 1), new_duration=relativedelta(months=2)
+            date(2025, 6, 1), new_duration=relativedelta(months=2)
         )
 
         assert continuation.time_range.duration == relativedelta(months=2)
@@ -292,8 +290,8 @@ class TestBudgetSplitAt:
             description="One-time",
             amount=Amount(-100.0),
             category=Category.OTHER,
-            time_range=TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
+            time_range=TimeRange(date(2025, 1, 1), relativedelta(months=1)),
         )
 
         with pytest.raises(ValueError, match="Cannot split a non-periodic"):
-            budget.split_at(datetime(2025, 6, 1))
+            budget.split_at(date(2025, 6, 1))
