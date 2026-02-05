@@ -1,5 +1,5 @@
 """Module with tests for the OperationRange class."""
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 
 import pytest
 from dateutil.relativedelta import relativedelta
@@ -17,7 +17,7 @@ def operation_range() -> OperationRange:
         "Test Operation",
         Amount(100, "EUR"),
         Category.GROCERIES,
-        TimeRange(datetime(2023, 1, 1), relativedelta(days=30)),
+        TimeRange(date(2023, 1, 1), relativedelta(days=30)),
     )
 
 
@@ -29,9 +29,7 @@ class TestOperationRange:
     ) -> None:
         """Test the amount_on_period method for a full period."""
         assert (
-            operation_range.amount_on_period(
-                datetime(2023, 1, 1), datetime(2023, 1, 31)
-            )
+            operation_range.amount_on_period(date(2023, 1, 1), date(2023, 1, 31))
             == 100.0
         )
 
@@ -40,25 +38,18 @@ class TestOperationRange:
     ) -> None:
         """Test the amount_on_period method for a partial period."""
         assert (
-            operation_range.amount_on_period(
-                datetime(2022, 12, 15), datetime(2023, 1, 15)
-            )
+            operation_range.amount_on_period(date(2022, 12, 15), date(2023, 1, 15))
             == 50.0
         )
         assert (
-            operation_range.amount_on_period(
-                datetime(2023, 1, 16), datetime(2023, 2, 15)
-            )
+            operation_range.amount_on_period(date(2023, 1, 16), date(2023, 2, 15))
             == 50.0
         )
 
     def test_amount_on_period_no_overlap(self, operation_range: OperationRange) -> None:
         """Test the amount_on_period method for a period with no overlap."""
         assert (
-            operation_range.amount_on_period(
-                datetime(2023, 2, 1), datetime(2023, 2, 28)
-            )
-            == 0.0
+            operation_range.amount_on_period(date(2023, 2, 1), date(2023, 2, 28)) == 0.0
         )
 
     def test_amount_on_period_future_period(
@@ -66,9 +57,7 @@ class TestOperationRange:
     ) -> None:
         """Test the amount_on_period method for a future period."""
         assert (
-            operation_range.amount_on_period(
-                datetime(2023, 12, 1), datetime(2023, 12, 31)
-            )
+            operation_range.amount_on_period(date(2023, 12, 1), date(2023, 12, 31))
             == 0.0
         )
 
@@ -77,9 +66,7 @@ class TestOperationRange:
     ) -> None:
         """Test the amount_on_period method for an expired period."""
         assert (
-            operation_range.amount_on_period(
-                datetime(2022, 12, 1), datetime(2022, 12, 31)
-            )
+            operation_range.amount_on_period(date(2022, 12, 1), date(2022, 12, 31))
             == 0.0
         )
 
@@ -110,9 +97,9 @@ def periodic_operation_range() -> OperationRange:
         Amount(100, "EUR"),
         Category.GROCERIES,
         PeriodicTimeRange(
-            TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
             relativedelta(months=1),
-            datetime(2023, 12, 31),
+            date(2023, 12, 31),
         ),
     )
 
@@ -127,8 +114,8 @@ class TestPeriodicOperationRange:
         for month in range(1, 12):
             assert (
                 periodic_operation_range.amount_on_period(
-                    datetime(2023, 1, 1),
-                    datetime(2023, month + 1, 1) - timedelta(days=1),
+                    date(2023, 1, 1),
+                    date(2023, month + 1, 1) - timedelta(days=1),
                 )
                 == 100.0 * month
             )
@@ -139,13 +126,13 @@ class TestPeriodicOperationRange:
         """Test the amount_on_period method for a partial period."""
         assert (
             periodic_operation_range.amount_on_period(
-                datetime(2023, 4, 1), datetime(2023, 4, 15)
+                date(2023, 4, 1), date(2023, 4, 15)
             )
             == 50.0
         )
         assert (
             periodic_operation_range.amount_on_period(
-                datetime(2023, 4, 16), datetime(2023, 4, 30)
+                date(2023, 4, 16), date(2023, 4, 30)
             )
             == 50.0
         )
@@ -156,7 +143,7 @@ class TestPeriodicOperationRange:
         """Test the amount_on_period method for a future period."""
         assert (
             periodic_operation_range.amount_on_period(
-                datetime(2024, 1, 1), datetime(2024, 1, 31)
+                date(2024, 1, 1), date(2024, 1, 31)
             )
             == 0.0
         )
@@ -167,7 +154,7 @@ class TestPeriodicOperationRange:
         """Test the amount_on_period method for an expired period."""
         assert (
             periodic_operation_range.amount_on_period(
-                datetime(2022, 12, 1), datetime(2022, 12, 31)
+                date(2022, 12, 1), date(2022, 12, 31)
             )
             == 0.0
         )
@@ -207,7 +194,7 @@ class TestOperationRangeErrors:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(datetime(2023, 1, 1), relativedelta(days=30)),
+            TimeRange(date(2023, 1, 1), relativedelta(days=30)),
         )
 
     def test_amount_on_period_invalid_date_order(
@@ -215,9 +202,7 @@ class TestOperationRangeErrors:
     ) -> None:
         """Test amount_on_period raises ValueError when start_date > end_date."""
         with pytest.raises(ValueError, match="start_date must be <= end_date"):
-            operation_range.amount_on_period(
-                datetime(2023, 1, 31), datetime(2023, 1, 1)
-            )
+            operation_range.amount_on_period(date(2023, 1, 31), date(2023, 1, 1))
 
     def test_replace_invalid_description(self, operation_range: OperationRange) -> None:
         """Test replace() raises TypeError for invalid description."""

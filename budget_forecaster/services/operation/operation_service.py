@@ -5,7 +5,7 @@ It can be used by TUI, GUI, or Web interfaces.
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date
 from typing import Any, Callable, NamedTuple
 
 from budget_forecaster.core.types import Category
@@ -34,8 +34,8 @@ class OperationFilter:
 
     search_text: str | None = None
     category: Category | None = None
-    date_from: datetime | None = None
-    date_to: datetime | None = None
+    date_from: date | None = None
+    date_to: date | None = None
     min_amount: float | None = None
     max_amount: float | None = None
     uncategorized_only: bool = False
@@ -113,7 +113,7 @@ class OperationService:
         if filter_criteria:
             operations = [op for op in operations if filter_criteria.matches(op)]
 
-        def default_sort_key(op: HistoricOperation) -> datetime:
+        def default_sort_key(op: HistoricOperation) -> date:
             return op.date
 
         return sorted(
@@ -322,6 +322,6 @@ class OperationService:
         return self._account_manager.account.currency
 
     @property
-    def balance_date(self) -> datetime:
+    def balance_date(self) -> date:
         """Get the date of the last balance update."""
         return self._account_manager.account.balance_date

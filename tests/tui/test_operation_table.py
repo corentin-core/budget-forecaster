@@ -1,6 +1,6 @@
 """Tests for OperationTable multi-selection functionality."""
 
-from datetime import datetime
+from datetime import date
 
 import pytest
 from textual.app import App, ComposeResult
@@ -20,7 +20,7 @@ def make_operation(
     """Create a test operation."""
     return HistoricOperation(
         unique_id=unique_id,
-        date=datetime(2025, 1, 15),
+        operation_date=date(2025, 1, 15),
         description=description,
         amount=Amount(amount, "EUR"),
         category=category,

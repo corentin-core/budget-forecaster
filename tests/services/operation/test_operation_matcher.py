@@ -1,6 +1,6 @@
 """Module with tests for the OperationMatcher class."""
 # pylint: disable=too-many-lines
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 
 import pytest
 from dateutil.relativedelta import relativedelta
@@ -27,63 +27,63 @@ def historic_operations() -> list[HistoricOperation]:
             description="Operation 1",
             amount=Amount(100.0),
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 15),
+            operation_date=date(2023, 1, 15),
         ),
         HistoricOperation(
             unique_id=2,
             description="Operation 2",
             amount=Amount(105.0),
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 20),
+            operation_date=date(2023, 1, 20),
         ),
         HistoricOperation(
             unique_id=3,
             description="Operation 3",
             amount=Amount(105.1),
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 20),
+            operation_date=date(2023, 1, 20),
         ),
         HistoricOperation(
             unique_id=4,
             description="Operation 4",
             amount=Amount(95.0),
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 21),
+            operation_date=date(2023, 1, 21),
         ),
         HistoricOperation(
             unique_id=5,
             description="Operation 5",
             amount=Amount(94.9),
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 26),
+            operation_date=date(2023, 1, 26),
         ),
         HistoricOperation(
             unique_id=6,
             description="Operation 6",
             amount=Amount(100.0),
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 1),
+            operation_date=date(2023, 1, 1),
         ),
         HistoricOperation(
             unique_id=7,
             description="Operation 7",
             amount=Amount(100.0),
             category=Category.OTHER,
-            date=datetime(2023, 1, 1),
+            operation_date=date(2023, 1, 1),
         ),
         HistoricOperation(
             unique_id=8,
             description="Operation 8",
             amount=Amount(100.0),
             category=Category.GROCERIES,
-            date=datetime(2023, 2, 1),
+            operation_date=date(2023, 2, 1),
         ),
         HistoricOperation(
             unique_id=9,
             description="Operation 9",
             amount=Amount(100.0),
             category=Category.GROCERIES,
-            date=datetime(2023, 2, 6),
+            operation_date=date(2023, 2, 6),
         ),
     ]
 
@@ -95,7 +95,7 @@ def daily_operation_range() -> OperationRange:
         "Test Daily Operation",
         Amount(100, "EUR"),
         Category.GROCERIES,
-        DailyTimeRange(datetime(2023, 1, 1)),
+        DailyTimeRange(date(2023, 1, 1)),
     )
 
 
@@ -128,21 +128,21 @@ class TestOperationMatcherDailyTimeRange:
                 description="Test Operation 1",
                 amount=Amount(100.0),
                 category=Category.GROCERIES,
-                date=datetime(2023, 1, 1),
+                operation_date=date(2023, 1, 1),
             ),
             HistoricOperation(
                 unique_id=2,
                 description="Test Operation 2",
                 amount=Amount(100.0),
                 category=Category.GROCERIES,
-                date=datetime(2023, 1, 1),
+                operation_date=date(2023, 1, 1),
             ),
             HistoricOperation(
                 unique_id=3,
                 description="Other Operation",
                 amount=Amount(100.0),
                 category=Category.GROCERIES,
-                date=datetime(2023, 1, 1),
+                operation_date=date(2023, 1, 1),
             ),
         ]
         assert set(matcher.matches(operations)) == {operations[0]}
@@ -158,19 +158,15 @@ class TestOperationMatcherDailyTimeRange:
             daily_operation_range, approximation_date_range=timedelta(days=5)
         )
         assert set(
-            matcher.latest_matching_operations(
-                datetime(2023, 1, 1), historic_operations
-            )
+            matcher.latest_matching_operations(date(2023, 1, 1), historic_operations)
         ) == {historic_operations[5]}
         assert set(
-            matcher.latest_matching_operations(
-                datetime(2023, 1, 6), historic_operations
-            )
+            matcher.latest_matching_operations(date(2023, 1, 6), historic_operations)
         ) == {historic_operations[5]}
         assert (
             set(
                 matcher.latest_matching_operations(
-                    datetime(2023, 12, 31), historic_operations
+                    date(2023, 12, 31), historic_operations
                 )
             )
             == set()
@@ -178,7 +174,7 @@ class TestOperationMatcherDailyTimeRange:
         assert (
             set(
                 matcher.latest_matching_operations(
-                    datetime(2023, 1, 7), historic_operations
+                    date(2023, 1, 7), historic_operations
                 )
             )
             == set()
@@ -196,24 +192,24 @@ class TestOperationMatcherDailyTimeRange:
         )
         # time range is not late
         assert (
-            set(matcher.late_time_ranges(datetime(2023, 12, 31), historic_operations))
+            set(matcher.late_time_ranges(date(2023, 12, 31), historic_operations))
             == set()
         )
         # time range is too late
         assert (
-            set(matcher.late_time_ranges(datetime(2023, 1, 7), historic_operations))
+            set(matcher.late_time_ranges(date(2023, 1, 7), historic_operations))
             == set()
         )
         # operation is not executed and time range is late
-        assert set(matcher.late_time_ranges(datetime(2023, 1, 2), ())) == {
-            DailyTimeRange(datetime(2023, 1, 1))
+        assert set(matcher.late_time_ranges(date(2023, 1, 2), ())) == {
+            DailyTimeRange(date(2023, 1, 1))
         }
-        assert set(matcher.late_time_ranges(datetime(2023, 1, 6), ())) == {
-            DailyTimeRange(datetime(2023, 1, 1))
+        assert set(matcher.late_time_ranges(date(2023, 1, 6), ())) == {
+            DailyTimeRange(date(2023, 1, 1))
         }
         # operation is already executed
         assert (
-            set(matcher.late_time_ranges(datetime(2023, 1, 6), historic_operations))
+            set(matcher.late_time_ranges(date(2023, 1, 6), historic_operations))
             == set()
         )
         late_operation_executed = HistoricOperation(
@@ -221,15 +217,11 @@ class TestOperationMatcherDailyTimeRange:
             description="Operation 10",
             amount=Amount(100.0),
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 3),
+            operation_date=date(2023, 1, 3),
         )
         # operation was late but executed at current date
         assert (
-            set(
-                matcher.late_time_ranges(
-                    datetime(2023, 1, 6), (late_operation_executed,)
-                )
-            )
+            set(matcher.late_time_ranges(date(2023, 1, 6), (late_operation_executed,)))
             == set()
         )
         anticipated_operation_executed = HistoricOperation(
@@ -237,13 +229,13 @@ class TestOperationMatcherDailyTimeRange:
             description="Operation 11",
             amount=Amount(100.0),
             category=Category.GROCERIES,
-            date=datetime(2022, 12, 30),
+            operation_date=date(2022, 12, 30),
         )
         # operation was already executed at current date
         assert (
             set(
                 matcher.late_time_ranges(
-                    datetime(2023, 1, 6), (anticipated_operation_executed,)
+                    date(2023, 1, 6), (anticipated_operation_executed,)
                 )
             )
             == set()
@@ -263,31 +255,25 @@ class TestOperationMatcherDailyTimeRange:
             description="Operation 12",
             amount=Amount(100.0),
             category=Category.GROCERIES,
-            date=datetime(2022, 12, 27),
+            operation_date=date(2022, 12, 27),
         )
         historic_operations.append(anticipated_operation)
         # the expected operation is a future operation and is already executed
         assert set(
-            matcher.anticipated_time_ranges(datetime(2022, 12, 27), historic_operations)
-        ) == {(DailyTimeRange(datetime(2023, 1, 1)), anticipated_operation)}
+            matcher.anticipated_time_ranges(date(2022, 12, 27), historic_operations)
+        ) == {(DailyTimeRange(date(2023, 1, 1)), anticipated_operation)}
         assert set(
-            matcher.anticipated_time_ranges(datetime(2022, 12, 31), historic_operations)
-        ) == {(DailyTimeRange(datetime(2023, 1, 1)), anticipated_operation)}
+            matcher.anticipated_time_ranges(date(2022, 12, 31), historic_operations)
+        ) == {(DailyTimeRange(date(2023, 1, 1)), anticipated_operation)}
         # the expected operation is not a future operation
         assert (
-            set(
-                matcher.anticipated_time_ranges(
-                    datetime(2023, 1, 1), historic_operations
-                )
-            )
+            set(matcher.anticipated_time_ranges(date(2023, 1, 1), historic_operations))
             == set()
         )
         # this operation has not happened yet
         assert (
             set(
-                matcher.anticipated_time_ranges(
-                    datetime(2022, 12, 23), historic_operations
-                )
+                matcher.anticipated_time_ranges(date(2022, 12, 23), historic_operations)
             )
             == set()
         )
@@ -300,7 +286,7 @@ def operation_range() -> OperationRange:
         "Test Operation",
         Amount(100, "EUR"),
         Category.GROCERIES,
-        TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+        TimeRange(date(2023, 1, 1), relativedelta(months=1)),
     )
 
 
@@ -344,24 +330,18 @@ class TestOperationMatcherTimeRange:
             operation_range, approximation_date_range=timedelta(days=5)
         )
         assert set(
-            matcher.latest_matching_operations(
-                datetime(2023, 1, 6), historic_operations
-            )
+            matcher.latest_matching_operations(date(2023, 1, 6), historic_operations)
         ) == {historic_operations[5]}
         assert set(
-            matcher.latest_matching_operations(
-                datetime(2023, 1, 21), historic_operations
-            )
+            matcher.latest_matching_operations(date(2023, 1, 21), historic_operations)
         ) == {historic_operations[i] for i in (1, 3)}
         assert set(
-            matcher.latest_matching_operations(
-                datetime(2023, 2, 3), historic_operations
-            )
+            matcher.latest_matching_operations(date(2023, 2, 3), historic_operations)
         ) == {historic_operations[7]}
         assert (
             set(
                 matcher.latest_matching_operations(
-                    datetime(2023, 2, 7), historic_operations
+                    date(2023, 2, 7), historic_operations
                 )
             )
             == set()
@@ -379,24 +359,24 @@ class TestOperationMatcherTimeRange:
         )
         # time range is not late
         assert (
-            set(matcher.late_time_ranges(datetime(2023, 12, 31), historic_operations))
+            set(matcher.late_time_ranges(date(2023, 12, 31), historic_operations))
             == set()
         )
         # time range is too late
         assert (
-            set(matcher.late_time_ranges(datetime(2023, 2, 7), historic_operations))
+            set(matcher.late_time_ranges(date(2023, 2, 7), historic_operations))
             == set()
         )
         # operation is not executed and time range is late
-        assert set(matcher.late_time_ranges(datetime(2023, 1, 2), ())) == {
-            TimeRange(datetime(2023, 1, 1), relativedelta(months=1))
+        assert set(matcher.late_time_ranges(date(2023, 1, 2), ())) == {
+            TimeRange(date(2023, 1, 1), relativedelta(months=1))
         }
-        assert set(matcher.late_time_ranges(datetime(2023, 1, 6), ())) == {
-            TimeRange(datetime(2023, 1, 1), relativedelta(months=1))
+        assert set(matcher.late_time_ranges(date(2023, 1, 6), ())) == {
+            TimeRange(date(2023, 1, 1), relativedelta(months=1))
         }
         # operation is already executed
         assert (
-            set(matcher.late_time_ranges(datetime(2023, 1, 6), historic_operations))
+            set(matcher.late_time_ranges(date(2023, 1, 6), historic_operations))
             == set()
         )
 
@@ -412,7 +392,7 @@ class TestOperationMatcherTimeRange:
                 description="Operation 12",
                 amount=Amount(100.0),
                 category=Category.GROCERIES,
-                date=datetime(2022, 12, 27),
+                operation_date=date(2022, 12, 27),
             )
         )
         # add flexibility on the date range
@@ -421,20 +401,16 @@ class TestOperationMatcherTimeRange:
         )
         # operation 12 was executed close enough from next time range
         assert set(
-            matcher.anticipated_time_ranges(datetime(2022, 12, 27), historic_operations)
+            matcher.anticipated_time_ranges(date(2022, 12, 27), historic_operations)
         ) == {
             (
-                TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+                TimeRange(date(2023, 1, 1), relativedelta(months=1)),
                 historic_operations[-1],
             )
         }
         # no future time range at this date
         assert (
-            set(
-                matcher.anticipated_time_ranges(
-                    datetime(2023, 1, 1), historic_operations
-                )
-            )
+            set(matcher.anticipated_time_ranges(date(2023, 1, 1), historic_operations))
             == set()
         )
 
@@ -451,7 +427,7 @@ def periodic_daily_operation_range(
         PeriodicTimeRange(
             daily_operation_range.time_range,
             relativedelta(months=1),
-            datetime(2023, 12, 31),
+            date(2023, 12, 31),
         ),
     )
 
@@ -481,22 +457,18 @@ class TestOperationMatcherPeriodicDailyTimeRange:
         matcher = OperationMatcher(periodic_daily_operation_range)
 
         assert set(
-            matcher.latest_matching_operations(
-                datetime(2023, 1, 6), historic_operations
-            )
+            matcher.latest_matching_operations(date(2023, 1, 6), historic_operations)
         ) == {historic_operations[5]}
         assert (
             set(
                 matcher.latest_matching_operations(
-                    datetime(2023, 1, 21), historic_operations
+                    date(2023, 1, 21), historic_operations
                 )
             )
             == set()
         )
         assert set(
-            matcher.latest_matching_operations(
-                datetime(2023, 2, 3), historic_operations
-            )
+            matcher.latest_matching_operations(date(2023, 2, 3), historic_operations)
         ) == {historic_operations[7]}
 
     def test_late_time_ranges(
@@ -511,24 +483,24 @@ class TestOperationMatcherPeriodicDailyTimeRange:
         )
         # time range is not late
         assert (
-            set(matcher.late_time_ranges(datetime(2023, 12, 31), historic_operations))
+            set(matcher.late_time_ranges(date(2023, 12, 31), historic_operations))
             == set()
         )
         # time range is too late
         assert (
-            set(matcher.late_time_ranges(datetime(2023, 2, 7), historic_operations))
+            set(matcher.late_time_ranges(date(2023, 2, 7), historic_operations))
             == set()
         )
         # operation is not executed and time range is late
-        assert set(matcher.late_time_ranges(datetime(2023, 1, 2), ())) == {
-            DailyTimeRange(datetime(2023, 1, 1))
+        assert set(matcher.late_time_ranges(date(2023, 1, 2), ())) == {
+            DailyTimeRange(date(2023, 1, 1))
         }
-        assert set(matcher.late_time_ranges(datetime(2023, 1, 6), ())) == {
-            DailyTimeRange(datetime(2023, 1, 1))
+        assert set(matcher.late_time_ranges(date(2023, 1, 6), ())) == {
+            DailyTimeRange(date(2023, 1, 1))
         }
         # operation is already executed
         assert (
-            set(matcher.late_time_ranges(datetime(2023, 1, 6), historic_operations))
+            set(matcher.late_time_ranges(date(2023, 1, 6), historic_operations))
             == set()
         )
 
@@ -544,19 +516,15 @@ class TestOperationMatcherPeriodicDailyTimeRange:
                 description="Operation 12",
                 amount=Amount(100.0),
                 category=Category.GROCERIES,
-                date=datetime(2023, 1, 27),
+                operation_date=date(2023, 1, 27),
             )
         )
         matcher = OperationMatcher(periodic_daily_operation_range)
         assert set(
-            matcher.anticipated_time_ranges(datetime(2023, 1, 27), historic_operations)
-        ) == {(DailyTimeRange(datetime(2023, 2, 1)), historic_operations[-1])}
+            matcher.anticipated_time_ranges(date(2023, 1, 27), historic_operations)
+        ) == {(DailyTimeRange(date(2023, 2, 1)), historic_operations[-1])}
         assert (
-            set(
-                matcher.anticipated_time_ranges(
-                    datetime(2023, 1, 26), historic_operations
-                )
-            )
+            set(matcher.anticipated_time_ranges(date(2023, 1, 26), historic_operations))
             == set()
         )
 
@@ -571,7 +539,7 @@ def periodic_operation_range(
         Amount(100, "EUR"),
         Category.GROCERIES,
         PeriodicTimeRange(
-            operation_range.time_range, relativedelta(months=1), datetime(2023, 12, 31)
+            operation_range.time_range, relativedelta(months=1), date(2023, 12, 31)
         ),
     )
 
@@ -598,24 +566,16 @@ class TestOperationMatcherPeriodicTimeRange:
         """Test that the OperationMatcher returns the latest matching operations."""
         matcher = OperationMatcher(periodic_operation_range)
         assert set(
-            matcher.latest_matching_operations(
-                datetime(2023, 1, 6), historic_operations
-            )
+            matcher.latest_matching_operations(date(2023, 1, 6), historic_operations)
         ) == {historic_operations[5]}
         assert set(
-            matcher.latest_matching_operations(
-                datetime(2023, 1, 21), historic_operations
-            )
+            matcher.latest_matching_operations(date(2023, 1, 21), historic_operations)
         ) == {historic_operations[i] for i in (1, 3)}
         assert set(
-            matcher.latest_matching_operations(
-                datetime(2023, 2, 3), historic_operations
-            )
+            matcher.latest_matching_operations(date(2023, 2, 3), historic_operations)
         ) == {historic_operations[7]}
         assert set(
-            matcher.latest_matching_operations(
-                datetime(2023, 2, 7), historic_operations
-            )
+            matcher.latest_matching_operations(date(2023, 2, 7), historic_operations)
         ) == {historic_operations[8]}
 
     def test_late_time_ranges(
@@ -630,24 +590,24 @@ class TestOperationMatcherPeriodicTimeRange:
         )
         # time range is not late
         assert (
-            set(matcher.late_time_ranges(datetime(2023, 1, 1), historic_operations))
+            set(matcher.late_time_ranges(date(2023, 1, 1), historic_operations))
             == set()
         )
         # time range is too late
         assert (
-            set(matcher.late_time_ranges(datetime(2023, 2, 7), historic_operations))
+            set(matcher.late_time_ranges(date(2023, 2, 7), historic_operations))
             == set()
         )
         # operation is not executed and time range is late
-        assert set(matcher.late_time_ranges(datetime(2023, 1, 2), ())) == {
-            TimeRange(datetime(2023, 1, 1), relativedelta(months=1))
+        assert set(matcher.late_time_ranges(date(2023, 1, 2), ())) == {
+            TimeRange(date(2023, 1, 1), relativedelta(months=1))
         }
-        assert set(matcher.late_time_ranges(datetime(2023, 1, 6), ())) == {
-            TimeRange(datetime(2023, 1, 1), relativedelta(months=1))
+        assert set(matcher.late_time_ranges(date(2023, 1, 6), ())) == {
+            TimeRange(date(2023, 1, 1), relativedelta(months=1))
         }
         # operation is already executed
         assert (
-            set(matcher.late_time_ranges(datetime(2023, 1, 6), historic_operations))
+            set(matcher.late_time_ranges(date(2023, 1, 6), historic_operations))
             == set()
         )
 
@@ -664,24 +624,20 @@ class TestOperationMatcherPeriodicTimeRange:
                 description="Operation 12",
                 amount=Amount(100.0),
                 category=Category.GROCERIES,
-                date=datetime(2023, 1, 27),
+                operation_date=date(2023, 1, 27),
             )
         )
 
         assert set(
-            matcher.anticipated_time_ranges(datetime(2023, 1, 27), historic_operations)
+            matcher.anticipated_time_ranges(date(2023, 1, 27), historic_operations)
         ) == {
             (
-                TimeRange(datetime(2023, 2, 1), relativedelta(months=1)),
+                TimeRange(date(2023, 2, 1), relativedelta(months=1)),
                 historic_operations[-1],
             )
         }
         assert (
-            set(
-                matcher.anticipated_time_ranges(
-                    datetime(2023, 1, 26), historic_operations
-                )
-            )
+            set(matcher.anticipated_time_ranges(date(2023, 1, 26), historic_operations))
             == set()
         )
 
@@ -700,7 +656,7 @@ class TestOperationMatcherOperationLinks:
             description="Non matching operation",
             amount=Amount(500.0),  # Wrong amount (expected 100)
             category=Category.OTHER,  # Wrong category (expected GROCERIES)
-            date=datetime(2023, 6, 15),  # Wrong date
+            operation_date=date(2023, 6, 15),  # Wrong date
         )
 
         # Without link, should not match
@@ -712,7 +668,7 @@ class TestOperationMatcherOperationLinks:
             operation_unique_id=100,
             target_type=LinkType.PLANNED_OPERATION,
             target_id=1,
-            iteration_date=datetime(2023, 1, 1),
+            iteration_date=date(2023, 1, 1),
         )
         matcher_with_link = OperationMatcher(
             operation_range,
@@ -725,7 +681,7 @@ class TestOperationMatcherOperationLinks:
     ) -> None:
         """Test that invalid iteration dates raise ValueError."""
         # Date that is not a valid iteration of the operation range
-        invalid_date = datetime(2023, 1, 15)  # operation_range starts on Jan 1
+        invalid_date = date(2023, 1, 15)  # operation_range starts on Jan 1
 
         # Should raise in constructor
         invalid_link = OperationLink(
@@ -747,10 +703,10 @@ class TestOperationMatcherOperationLinks:
             description="Test operation",
             amount=Amount(100.0),
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 15),
+            operation_date=date(2023, 1, 15),
         )
 
-        iteration_date = datetime(2023, 1, 1)
+        iteration_date = date(2023, 1, 1)
         link = OperationLink(
             operation_unique_id=102,
             target_type=LinkType.PLANNED_OPERATION,
@@ -770,7 +726,7 @@ class TestOperationMatcherOperationLinks:
             description="Other operation",
             amount=Amount(100.0),
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 15),
+            operation_date=date(2023, 1, 15),
         )
         assert matcher.get_iteration_for_operation(other_operation) is None
 
@@ -787,7 +743,7 @@ class TestOperationMatcherOperationLinks:
             operation_unique_id=100,
             target_type=LinkType.PLANNED_OPERATION,
             target_id=1,
-            iteration_date=datetime(2023, 1, 1),
+            iteration_date=date(2023, 1, 1),
         )
         matcher = OperationMatcher(
             operation_range,
@@ -804,7 +760,7 @@ class TestOperationMatcherOperationLinks:
             "New Test Operation",
             Amount(200, "EUR"),
             Category.GROCERIES,
-            TimeRange(datetime(2023, 2, 1), relativedelta(months=1)),
+            TimeRange(date(2023, 2, 1), relativedelta(months=1)),
         )
         new_matcher = matcher.replace(operation_range=new_operation_range)
 
@@ -819,7 +775,7 @@ class TestOperationMatcherOperationLinks:
             operation_unique_id=100,
             target_type=LinkType.PLANNED_OPERATION,
             target_id=1,
-            iteration_date=datetime(2023, 1, 1),
+            iteration_date=date(2023, 1, 1),
         )
         matcher = OperationMatcher(operation_range, operation_links=(link,))
 
@@ -854,9 +810,9 @@ class TestOperationMatcherOperationLinks:
             Amount(800, "EUR"),
             Category.RENT,
             PeriodicTimeRange(
-                DailyTimeRange(datetime(2023, 1, 1)),
+                DailyTimeRange(date(2023, 1, 1)),
                 relativedelta(months=1),
-                datetime(2023, 12, 31),
+                date(2023, 12, 31),
             ),
         )
 
@@ -866,11 +822,11 @@ class TestOperationMatcherOperationLinks:
             description="TRANSFER LANDLORD",
             amount=Amount(800.0),
             category=Category.RENT,
-            date=datetime(2023, 2, 3),  # 2 days late
+            operation_date=date(2023, 2, 3),  # 2 days late
         )
 
         # Link to the February iteration specifically
-        february_iteration = datetime(2023, 2, 1)
+        february_iteration = date(2023, 2, 1)
         link = OperationLink(
             operation_unique_id=200,
             target_type=LinkType.PLANNED_OPERATION,
@@ -903,9 +859,9 @@ class TestOperationMatcherOperationLinks:
             Amount(50, "EUR"),
             Category.ENTERTAINMENT,
             PeriodicTimeRange(
-                DailyTimeRange(datetime(2023, 1, 15)),
+                DailyTimeRange(date(2023, 1, 15)),
                 relativedelta(months=1),
-                datetime(2023, 12, 31),
+                date(2023, 12, 31),
             ),
         )
 
@@ -915,11 +871,11 @@ class TestOperationMatcherOperationLinks:
             description="NETFLIX",
             amount=Amount(50.0),
             category=Category.ENTERTAINMENT,
-            date=datetime(2023, 2, 28),  # Closer to Mar 15 than Feb 15
+            operation_date=date(2023, 2, 28),  # Closer to Mar 15 than Feb 15
         )
 
         # User explicitly links to February iteration
-        february_iteration = datetime(2023, 2, 15)
+        february_iteration = date(2023, 2, 15)
         link = OperationLink(
             operation_unique_id=201,
             target_type=LinkType.PLANNED_OPERATION,
@@ -942,9 +898,9 @@ class TestOperationMatcherOperationLinks:
             Amount(100, "EUR"),
             Category.GROCERIES,
             PeriodicTimeRange(
-                DailyTimeRange(datetime(2023, 1, 1)),
+                DailyTimeRange(date(2023, 1, 1)),
                 relativedelta(weeks=1),
-                datetime(2023, 12, 31),
+                date(2023, 12, 31),
             ),
         )
 
@@ -954,21 +910,21 @@ class TestOperationMatcherOperationLinks:
             description="SUPERMARKET",
             amount=Amount(95.0),
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 2),
+            operation_date=date(2023, 1, 2),
         )
         op_week2 = HistoricOperation(
             unique_id=302,
             description="SUPERMARKET",
             amount=Amount(110.0),
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 10),
+            operation_date=date(2023, 1, 10),
         )
         op_week3 = HistoricOperation(
             unique_id=303,
             description="SUPERMARKET",
             amount=Amount(100.0),
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 14),
+            operation_date=date(2023, 1, 14),
         )
 
         links = (
@@ -976,19 +932,19 @@ class TestOperationMatcherOperationLinks:
                 operation_unique_id=301,
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2023, 1, 1),  # Week 1
+                iteration_date=date(2023, 1, 1),  # Week 1
             ),
             OperationLink(
                 operation_unique_id=302,
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2023, 1, 8),  # Week 2
+                iteration_date=date(2023, 1, 8),  # Week 2
             ),
             OperationLink(
                 operation_unique_id=303,
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2023, 1, 15),  # Week 3
+                iteration_date=date(2023, 1, 15),  # Week 3
             ),
         )
         matcher = OperationMatcher(
@@ -1002,9 +958,9 @@ class TestOperationMatcherOperationLinks:
         assert matcher.match(op_week3)
 
         # Each should return its specific iteration
-        assert matcher.get_iteration_for_operation(op_week1) == datetime(2023, 1, 1)
-        assert matcher.get_iteration_for_operation(op_week2) == datetime(2023, 1, 8)
-        assert matcher.get_iteration_for_operation(op_week3) == datetime(2023, 1, 15)
+        assert matcher.get_iteration_for_operation(op_week1) == date(2023, 1, 1)
+        assert matcher.get_iteration_for_operation(op_week2) == date(2023, 1, 8)
+        assert matcher.get_iteration_for_operation(op_week3) == date(2023, 1, 15)
 
 
 class TestOperationMatcherReplaceErrors:
@@ -1027,7 +983,7 @@ class TestOperationMatcherReplaceErrors:
             "New Operation",
             Amount(200, "EUR"),
             Category.OTHER,
-            TimeRange(datetime(2023, 2, 1), relativedelta(months=1)),
+            TimeRange(date(2023, 2, 1), relativedelta(months=1)),
         )
         new_matcher = matcher.replace(operation_range=new_range)
         assert new_matcher.operation_range == new_range

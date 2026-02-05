@@ -1,5 +1,5 @@
 """Historic operation module."""
-from datetime import datetime
+from datetime import date
 from functools import total_ordering
 from typing import Any, cast
 
@@ -22,10 +22,10 @@ class HistoricOperation(OperationRange):
         description: str,
         amount: Amount,
         category: Category,
-        date: datetime,
+        operation_date: date,  # pylint: disable=used-before-assignment
     ):
         self._unique_id = unique_id
-        super().__init__(description, amount, category, DailyTimeRange(date))
+        super().__init__(description, amount, category, DailyTimeRange(operation_date))
 
     @property
     def unique_id(self) -> OperationId:
@@ -33,7 +33,7 @@ class HistoricOperation(OperationRange):
         return self._unique_id
 
     @property
-    def date(self) -> datetime:
+    def date(self) -> "date":
         """The date of the operation."""
         return cast(DailyTimeRange, self.time_range).date
 
@@ -44,7 +44,7 @@ class HistoricOperation(OperationRange):
             description=kwargs.get("description", self.description),
             amount=kwargs.get("amount", Amount(self.amount, self.currency)),
             category=kwargs.get("category", self.category),
-            date=kwargs.get("date", self.date),
+            operation_date=kwargs.get("operation_date", self.date),
         )
 
     def __repr__(self) -> str:

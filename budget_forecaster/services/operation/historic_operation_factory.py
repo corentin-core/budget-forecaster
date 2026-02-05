@@ -1,5 +1,5 @@
 """Module to create historic operations"""
-from datetime import datetime
+from datetime import date
 
 from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.types import Category
@@ -17,7 +17,7 @@ class HistoricOperationFactory:  # pylint: disable=too-few-public-methods
         description: str,
         amount: Amount,
         category: Category,
-        date: datetime,
+        operation_date: date,
     ) -> HistoricOperation:
         """Create a historic operation"""
         self._operation_id += 1
@@ -26,5 +26,5 @@ class HistoricOperationFactory:  # pylint: disable=too-few-public-methods
             description=description,
             amount=amount,
             category=category,
-            date=date,
+            operation_date=operation_date,
         )

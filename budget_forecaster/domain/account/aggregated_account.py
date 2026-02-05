@@ -1,5 +1,5 @@
 """Module for aggregating multiple accounts into a single account."""
-from datetime import datetime
+from datetime import date
 from typing import Iterable, NamedTuple
 
 from budget_forecaster.core.types import ImportStats
@@ -31,7 +31,7 @@ class AggregatedAccount:
     ) -> Account:
         balance = 0.0
         currency = ""
-        balance_date = datetime.min
+        balance_date = date.min
         operations: list[HistoricOperation] = []
 
         for account in accounts:

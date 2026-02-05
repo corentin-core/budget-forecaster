@@ -1,7 +1,7 @@
 """Tests for the Swile bank adapter."""
 
 import json
-from datetime import datetime
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -91,7 +91,7 @@ class TestSwileBankAdapterLoad:
         swile_adapter.load_bank_export(FIXTURES_DIR, operation_factory)
 
         # The latest transaction is op-003 on 2025-01-16
-        assert swile_adapter.export_date == datetime(2025, 1, 16)
+        assert swile_adapter.export_date == date(2025, 1, 16)
 
     def test_load_operations_amounts(
         self,

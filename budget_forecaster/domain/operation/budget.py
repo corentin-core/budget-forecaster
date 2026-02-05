@@ -1,7 +1,7 @@
 """Module for the budget class."""
 
 import math
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from typing import Any
 
 from dateutil.relativedelta import relativedelta
@@ -60,7 +60,7 @@ class Budget(OperationRange):
 
     def split_at(
         self,
-        date: datetime,
+        split_date: date,
         new_amount: Amount | None = None,
         new_period: relativedelta | None = None,
         new_duration: relativedelta | None = None,
@@ -68,7 +68,7 @@ class Budget(OperationRange):
         """Split this budget at the given date.
 
         Args:
-            date: Date from which the new values apply.
+            split_date: Date from which the new values apply.
             new_amount: New amount for continuation (if None, keeps original).
             new_period: New period for continuation (if None, keeps original).
             new_duration: New duration for continuation (if None, keeps original).
@@ -82,7 +82,7 @@ class Budget(OperationRange):
         if not isinstance(self.time_range, PeriodicTimeRange):
             raise ValueError("Cannot split a non-periodic budget")
 
-        terminated_range, continuation_range = self.time_range.split_at(date)
+        terminated_range, continuation_range = self.time_range.split_at(split_date)
 
         terminated = self.replace(time_range=terminated_range)
 
@@ -97,7 +97,7 @@ class Budget(OperationRange):
             time_range = PeriodicTimeRange(
                 base_tr,
                 time_range.period,
-                time_range.last_date if time_range.last_date < datetime.max else None,
+                time_range.last_date if time_range.last_date < date.max else None,
             )
 
         continuation = Budget(

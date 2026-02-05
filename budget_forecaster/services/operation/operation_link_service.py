@@ -5,7 +5,7 @@ the OperationMatcher (uses links in memory) and the OperationLinkRepository
 (persists links in the database).
 """
 
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from typing import NamedTuple
 
 from budget_forecaster.core.types import (
@@ -35,7 +35,7 @@ class _MatchCandidate(NamedTuple):
 def compute_match_score(
     operation: HistoricOperation,
     operation_range: OperationRange,
-    iteration_date: datetime,
+    iteration_date: date,
     approximation_amount_ratio: float = 0.05,
     approximation_date_range: timedelta = timedelta(days=5),
     description_hints: set[str] | None = None,

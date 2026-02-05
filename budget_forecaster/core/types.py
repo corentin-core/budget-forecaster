@@ -1,6 +1,6 @@
 """Module containing custom types for the budget_forecaster package."""
 import enum
-from datetime import datetime
+from datetime import date
 from typing import Callable, NamedTuple
 
 OperationId = int
@@ -15,7 +15,7 @@ BudgetId = int
 OperationLinkId = int
 """Unique identifier for an operation link."""
 
-IterationDate = datetime
+IterationDate = date
 """Date identifying a specific iteration of a planned operation or budget."""
 
 TargetId = PlannedOperationId | BudgetId

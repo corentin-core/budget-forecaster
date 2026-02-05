@@ -6,7 +6,7 @@ This service provides a UI-agnostic API for importing bank statements.
 import fnmatch
 import logging
 import shutil
-from datetime import datetime
+from datetime import date
 from pathlib import Path
 from typing import NamedTuple
 
@@ -182,7 +182,7 @@ class ImportService:
                 name=bank_adapter.name,
                 balance=bank_adapter.balance,
                 currency="EUR",
-                balance_date=bank_adapter.export_date or datetime.now(),
+                balance_date=bank_adapter.export_date or date.today(),
                 operations=bank_adapter.operations,
             )
 

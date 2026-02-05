@@ -1,6 +1,6 @@
 """Modal for splitting a PlannedOperation or Budget at a date."""
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, NamedTuple
 
 from dateutil.relativedelta import relativedelta
@@ -18,7 +18,7 @@ from budget_forecaster.domain.operation.planned_operation import PlannedOperatio
 class SplitResult(NamedTuple):
     """Result of a split operation modal."""
 
-    split_date: datetime
+    split_date: date
     new_amount: Amount
     new_period: relativedelta
     new_duration: relativedelta | None = None  # Only for budgets
@@ -122,7 +122,7 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
     def __init__(
         self,
         target: PlannedOperation | Budget,
-        default_date: datetime | None = None,
+        default_date: date | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the modal.
@@ -154,7 +154,7 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
                 # Split date
                 with Horizontal(classes="form-row"):
                     yield Label("Première itération:", classes="form-label")
-                    default_date = self._default_date or datetime.now()
+                    default_date = self._default_date or date.today()
                     yield Input(
                         value=default_date.strftime("%Y-%m-%d"),
                         id="input-split-date",
@@ -273,7 +273,7 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
             # Validate split date
             date_str = self.query_one("#input-split-date", Input).value.strip()
             try:
-                split_date = datetime.strptime(date_str, "%Y-%m-%d")
+                split_date = datetime.strptime(date_str, "%Y-%m-%d").date()
             except ValueError as exc:
                 raise ValueError("La date doit être au format YYYY-MM-DD") from exc
 

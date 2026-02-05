@@ -1,6 +1,6 @@
 """Module to analyze account data for budget forecasting."""
 import itertools
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 
 import pandas as pd
 from dateutil.relativedelta import relativedelta
@@ -35,9 +35,7 @@ class AccountAnalyzer:
         self._forecast = forecast
         self._operation_links = operation_links
 
-    def compute_report(
-        self, start_date: datetime, end_date: datetime
-    ) -> AccountAnalysisReport:
+    def compute_report(self, start_date: date, end_date: date) -> AccountAnalysisReport:
         """
         Compute an account analysis report between two dates.
         """
@@ -54,9 +52,7 @@ class AccountAnalyzer:
             budget_statistics=self.compute_budget_statistics(start_date, end_date),
         )
 
-    def compute_operations(
-        self, start_date: datetime, end_date: datetime
-    ) -> pd.DataFrame:
+    def compute_operations(self, start_date: date, end_date: date) -> pd.DataFrame:
         """Compute the operations of the account."""
         operations: dict[str, list] = {
             "Date": [],
@@ -92,9 +88,7 @@ class AccountAnalyzer:
             days_str = f"{delta.days} Jours"
         return " ".join(filter(None, [years_str, months_str, days_str]))
 
-    def compute_forecast(
-        self, start_date: datetime, end_date: datetime
-    ) -> pd.DataFrame:
+    def compute_forecast(self, start_date: date, end_date: date) -> pd.DataFrame:
         """Compute the budget forecast of the account."""
         budget_forecast: dict[str, list] = {
             "Catégorie": [],
@@ -119,7 +113,7 @@ class AccountAnalyzer:
             budget_forecast["Montant"].append(operation_range.amount)
             budget_forecast["Date de début"].append(time_range.initial_date)
             budget_forecast["Date de fin"].append(
-                time_range.last_date if time_range.last_date < datetime.max else None
+                time_range.last_date if time_range.last_date < date.max else None
             )
             period = (
                 time_range.period if isinstance(time_range, PeriodicTimeRange) else None
@@ -132,7 +126,7 @@ class AccountAnalyzer:
         return df
 
     def compute_balance_evolution_per_day(
-        self, start_date: datetime, end_date: datetime
+        self, start_date: date, end_date: date
     ) -> pd.DataFrame:
         """Compute the balance of the account between two dates."""
         if start_date > end_date:
@@ -151,7 +145,8 @@ class AccountAnalyzer:
         current_balance = initial_state.balance
         balance_evolution: list[float] = [current_balance]
         dates = pd.date_range(start_date, end_date, freq="D")
-        for current_date in dates[1:]:
+        for ts in dates[1:]:
+            current_date = ts.date()
             for operation in final_state.operations:
                 if operation.date == current_date:
                     current_balance += operation.amount
@@ -161,20 +156,18 @@ class AccountAnalyzer:
         df.set_index("Date", inplace=True)
         return df
 
-    def compute_budget_forecast(
-        self, start_date: datetime, end_date: datetime
-    ) -> pd.DataFrame:
+    def compute_budget_forecast(self, start_date: date, end_date: date) -> pd.DataFrame:
         """
         Compute the expenses per category and
         month with actual vs forecast as secondary columns.
         """
 
         expenses_per_month_and_category: dict[
-            Category, dict[datetime, dict[str, float]]
+            Category, dict[date, dict[str, float]]
         ] = {}
 
         def increment_expense(
-            category: Category, month: datetime, amount_type: str, amount: float
+            category: Category, month: date, amount_type: str, amount: float
         ) -> None:
             expenses_per_month_and_category.setdefault(category, {}).setdefault(
                 month, {}
@@ -213,9 +206,10 @@ class AccountAnalyzer:
                     operation.amount,
                 )
 
-        for month_start_date in pd.date_range(
+        for ts in pd.date_range(
             start_date.replace(day=1), end_date.replace(day=1), freq="MS"
         ):
+            month_start_date = ts.date()
             for operation_range in itertools.chain(
                 self._forecast.operations, self._forecast.budgets
             ):
@@ -246,7 +240,7 @@ class AccountAnalyzer:
         # Filter out "Actualisé" columns for dates before the current balance date
         df = df.loc[
             :,
-            (df.columns.get_level_values(0) >= current_month.strftime("%Y-%m-%d"))
+            (df.columns.get_level_values(0) >= current_month)
             | (df.columns.get_level_values(1) == "Réel")
             | (df.columns.get_level_values(1) == "Prévu"),
         ]
@@ -254,7 +248,7 @@ class AccountAnalyzer:
         # Filter out "Réel" and "Actualisé" columns for dates after the current balance date
         df = df.loc[
             :,
-            (df.columns.get_level_values(0) <= current_month.strftime("%Y-%m-%d"))
+            (df.columns.get_level_values(0) <= current_month)
             | (df.columns.get_level_values(1) == "Prévu"),
         ]
 
@@ -278,10 +272,10 @@ class AccountAnalyzer:
         return df
 
     def compute_budget_statistics(
-        self, start_date: datetime, end_date: datetime
+        self, start_date: date, end_date: date
     ) -> pd.DataFrame:
         """Compute the expenses statistics per category."""
-        expenses_per_category_dict: dict[Category, list[tuple[datetime, float]]] = {}
+        expenses_per_category_dict: dict[Category, list[tuple[date, float]]] = {}
         analysis_start = max(
             min(operation.date for operation in self._account.operations), start_date
         )

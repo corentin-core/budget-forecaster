@@ -1,6 +1,6 @@
 """Tests for the operation link service."""
 
-from datetime import datetime
+from datetime import date
 
 from dateutil.relativedelta import relativedelta
 
@@ -23,7 +23,7 @@ class TestComputeMatchScore:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
         operation = HistoricOperation(
@@ -31,12 +31,12 @@ class TestComputeMatchScore:
             description="Test Operation",
             amount=Amount(100.0),
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 15),
+            operation_date=date(2023, 1, 15),
         )
 
         # Perfect match on amount, date, category (no description hints)
         # Should get 40 + 30 + 20 = 90 (no description points without hints)
-        score = compute_match_score(operation, op_range, datetime(2023, 1, 15))
+        score = compute_match_score(operation, op_range, date(2023, 1, 15))
         assert score == 90.0
 
     def test_perfect_match_with_description_hints(self) -> None:
@@ -45,7 +45,7 @@ class TestComputeMatchScore:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
         operation = HistoricOperation(
@@ -53,14 +53,14 @@ class TestComputeMatchScore:
             description="GROCERIES STORE ABC",
             amount=Amount(100.0),
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 15),
+            operation_date=date(2023, 1, 15),
         )
 
         # Perfect match including description
         score = compute_match_score(
             operation,
             op_range,
-            datetime(2023, 1, 15),
+            date(2023, 1, 15),
             description_hints={"GROCERIES", "ABC"},
         )
         assert score == 100.0
@@ -71,7 +71,7 @@ class TestComputeMatchScore:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
         operation = HistoricOperation(
@@ -79,10 +79,10 @@ class TestComputeMatchScore:
             description="Test",
             amount=Amount(100.0),
             category=Category.OTHER,  # Wrong category
-            date=datetime(2023, 1, 15),
+            operation_date=date(2023, 1, 15),
         )
 
-        score = compute_match_score(operation, op_range, datetime(2023, 1, 15))
+        score = compute_match_score(operation, op_range, date(2023, 1, 15))
         # Should get 40 (amount) + 30 (date) + 0 (category) = 70
         assert score == 70.0
 
@@ -92,7 +92,7 @@ class TestComputeMatchScore:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
         # 5% tolerance means 95-105 should get full amount score
@@ -101,10 +101,10 @@ class TestComputeMatchScore:
             description="Test",
             amount=Amount(105.0),  # At tolerance boundary
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 15),
+            operation_date=date(2023, 1, 15),
         )
 
-        score = compute_match_score(operation, op_range, datetime(2023, 1, 15))
+        score = compute_match_score(operation, op_range, date(2023, 1, 15))
         assert score == 90.0  # Full score (40 + 30 + 20)
 
     def test_amount_beyond_tolerance_reduces_score(self) -> None:
@@ -113,7 +113,7 @@ class TestComputeMatchScore:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
         # 20% difference is 15% beyond 5% tolerance
@@ -122,10 +122,10 @@ class TestComputeMatchScore:
             description="Test",
             amount=Amount(120.0),  # 20% off
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 15),
+            operation_date=date(2023, 1, 15),
         )
 
-        score = compute_match_score(operation, op_range, datetime(2023, 1, 15))
+        score = compute_match_score(operation, op_range, date(2023, 1, 15))
         # Amount score: 40 * (1 - 0.15) = 34
         # Date score: 30
         # Category score: 20
@@ -137,7 +137,7 @@ class TestComputeMatchScore:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
         # 20 days from iteration is 15 days beyond 5 day tolerance
@@ -146,10 +146,10 @@ class TestComputeMatchScore:
             description="Test",
             amount=Amount(100.0),
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 21),  # 20 days from iteration
+            operation_date=date(2023, 1, 21),  # 20 days from iteration
         )
 
-        score = compute_match_score(operation, op_range, datetime(2023, 1, 1))
+        score = compute_match_score(operation, op_range, date(2023, 1, 1))
         # Amount score: 40
         # Date score: 30 * (1 - 15/30) = 15
         # Category score: 20
@@ -161,7 +161,7 @@ class TestComputeMatchScore:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
         operation = HistoricOperation(
@@ -169,10 +169,10 @@ class TestComputeMatchScore:
             description="Completely different",
             amount=Amount(1000.0),  # 10x different
             category=Category.OTHER,
-            date=datetime(2023, 6, 15),  # 165+ days away
+            operation_date=date(2023, 6, 15),  # 165+ days away
         )
 
-        score = compute_match_score(operation, op_range, datetime(2023, 1, 1))
+        score = compute_match_score(operation, op_range, date(2023, 1, 1))
         # Amount: way beyond tolerance -> 0
         # Date: way beyond tolerance -> 0
         # Category: mismatch -> 0
@@ -184,7 +184,7 @@ class TestComputeMatchScore:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
         operation = HistoricOperation(
@@ -192,17 +192,17 @@ class TestComputeMatchScore:
             description="Test",
             amount=Amount(110.0),  # 10% off
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 15),
+            operation_date=date(2023, 1, 15),
         )
 
         # With default 5% tolerance, this would reduce amount score
-        score_default = compute_match_score(operation, op_range, datetime(2023, 1, 15))
+        score_default = compute_match_score(operation, op_range, date(2023, 1, 15))
 
         # With 10% tolerance, should get full amount score
         score_relaxed = compute_match_score(
             operation,
             op_range,
-            datetime(2023, 1, 15),
+            date(2023, 1, 15),
             approximation_amount_ratio=0.10,
         )
 

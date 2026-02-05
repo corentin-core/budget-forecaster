@@ -1,5 +1,5 @@
 """Module to test the AccountAnalyzer class."""
-from datetime import datetime
+from datetime import date
 
 import pytest
 from dateutil.relativedelta import relativedelta
@@ -29,21 +29,21 @@ def account() -> Account:
             description="Operation 1",
             amount=Amount(-50.0),
             category=Category.GROCERIES,
-            date=datetime(2023, 1, 15),
+            operation_date=date(2023, 1, 15),
         ),
         HistoricOperation(
             unique_id=2,
             description="Operation 2",
             amount=Amount(-30.0),
             category=Category.GROCERIES,
-            date=datetime(2023, 2, 15),
+            operation_date=date(2023, 2, 15),
         ),
     )
     return Account(
         name="Test Account",
         balance=1000.0,
         currency="EUR",
-        balance_date=datetime(2023, 3, 1),
+        balance_date=date(2023, 3, 1),
         operations=operations,
     )
 
@@ -57,7 +57,7 @@ def planned_operations() -> tuple[PlannedOperation, ...]:
             description="Isolated Planned Operation",
             amount=Amount(-50.0),
             category=Category.OTHER,
-            time_range=DailyTimeRange(datetime(2023, 3, 15)),
+            time_range=DailyTimeRange(date(2023, 3, 15)),
         ),
         PlannedOperation(
             record_id=2,
@@ -65,8 +65,8 @@ def planned_operations() -> tuple[PlannedOperation, ...]:
             amount=Amount(-20.0),
             category=Category.GROCERIES,
             time_range=PeriodicDailyTimeRange(
-                datetime(2023, 3, 1),
-                expiration_date=datetime(2023, 6, 1),
+                date(2023, 3, 1),
+                expiration_date=date(2023, 6, 1),
                 period=relativedelta(months=1),
             ),
         ),
@@ -82,7 +82,7 @@ def budgets() -> tuple[Budget, ...]:
             description="Obsolete budget",
             amount=Amount(-230),
             category=Category.CAR_FUEL,
-            time_range=TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+            time_range=TimeRange(date(2023, 1, 1), relativedelta(months=1)),
         ),
         Budget(
             record_id=2,
@@ -90,7 +90,7 @@ def budgets() -> tuple[Budget, ...]:
             amount=Amount(-300),
             category=Category.GROCERIES,
             time_range=PeriodicTimeRange(
-                TimeRange(datetime(2023, 3, 1), relativedelta(months=1)),
+                TimeRange(date(2023, 3, 1), relativedelta(months=1)),
                 period=relativedelta(months=1),
             ),
         ),
@@ -100,9 +100,9 @@ def budgets() -> tuple[Budget, ...]:
             amount=Amount(-100),
             category=Category.OTHER,
             time_range=PeriodicTimeRange(
-                TimeRange(datetime(2023, 4, 1), relativedelta(months=1)),
+                TimeRange(date(2023, 4, 1), relativedelta(months=1)),
                 period=relativedelta(months=1),
-                expiration_date=datetime(2023, 5, 31),
+                expiration_date=date(2023, 5, 31),
             ),
         ),
         Budget(
@@ -110,7 +110,7 @@ def budgets() -> tuple[Budget, ...]:
             description="Isolated budget",
             amount=Amount(-150),
             category=Category.OTHER,
-            time_range=TimeRange(datetime(2023, 4, 15), relativedelta(days=16)),
+            time_range=TimeRange(date(2023, 4, 15), relativedelta(days=16)),
         ),
     )
 
@@ -125,17 +125,17 @@ class TestAccountAnalyzer:
         account_analyzer = AccountAnalyzer(account, Forecast((), ()))
         with pytest.raises(ValueError, match="start_date must be <= end_date"):
             account_analyzer.compute_balance_evolution_per_day(
-                datetime(2023, 3, 1), datetime(2023, 1, 1)
+                date(2023, 3, 1), date(2023, 1, 1)
             )
 
     def test_balance_evolution_no_forecast(self, account: Account) -> None:
         """Test the balance evolution without forecast."""
         account_analyzer = AccountAnalyzer(account, Forecast((), ()))
         balance_evolution = account_analyzer.compute_balance_evolution_per_day(
-            datetime(2023, 1, 1), datetime(2023, 3, 1)
+            date(2023, 1, 1), date(2023, 3, 1)
         )
-        assert balance_evolution.index[0] == datetime(2023, 1, 1)
-        assert balance_evolution.index[-1] == datetime(2023, 3, 1)
+        assert balance_evolution.index[0].date() == date(2023, 1, 1)
+        assert balance_evolution.index[-1].date() == date(2023, 3, 1)
         assert balance_evolution.loc["2023-01-01"]["Solde"] == 1080.0
         assert balance_evolution.loc["2023-01-15"]["Solde"] == 1030.0
         assert balance_evolution.loc["2023-02-15"]["Solde"] == 1000.0
@@ -152,11 +152,11 @@ class TestAccountAnalyzer:
         """
         account_analyzer = AccountAnalyzer(account, Forecast(planned_operations, ()))
         balance_evolution = account_analyzer.compute_balance_evolution_per_day(
-            datetime(2023, 2, 1), datetime(2023, 8, 1)
+            date(2023, 2, 1), date(2023, 8, 1)
         )
-        assert balance_evolution.index[0] == datetime(2023, 2, 1)
-        assert balance_evolution.index[-1] == datetime(2023, 8, 1)
-        for date, expected_balance in {
+        assert balance_evolution.index[0].date() == date(2023, 2, 1)
+        assert balance_evolution.index[-1].date() == date(2023, 8, 1)
+        for date_str, expected_balance in {
             "2023-02-01": 1030.0,
             "2023-03-01": 1000.0,
             # No execution on 2023-03-02 - recurring op advanced to April
@@ -172,9 +172,9 @@ class TestAccountAnalyzer:
             "2023-07-01": 890.0,
             "2023-08-01": 890.0,
         }.items():
-            assert balance_evolution.loc[date]["Solde"] == pytest.approx(
+            assert balance_evolution.loc[date_str]["Solde"] == pytest.approx(
                 expected_balance
-            ), f"Date: {date}"
+            ), f"Date: {date_str}"
 
     def test_balance_evolution_budgets(
         self, account: Account, budgets: tuple[Budget, ...]
@@ -182,11 +182,11 @@ class TestAccountAnalyzer:
         """Test the balance evolution with budgets."""
         account_analyzer = AccountAnalyzer(account, Forecast((), budgets))
         balance_evolution = account_analyzer.compute_balance_evolution_per_day(
-            datetime(2023, 3, 1), datetime(2023, 7, 31)
+            date(2023, 3, 1), date(2023, 7, 31)
         )
-        assert balance_evolution.index[0] == datetime(2023, 3, 1)
-        assert balance_evolution.index[-1] == datetime(2023, 7, 31)
-        for date, expected_balance in {
+        assert balance_evolution.index[0].date() == date(2023, 3, 1)
+        assert balance_evolution.index[-1].date() == date(2023, 7, 31)
+        for date_str, expected_balance in {
             "2023-03-01": 1000.0,
             # Recurring budget 1: -300.0 for 30 days left, -140.0 for 14 days
             "2023-03-15": 860.0,
@@ -201,9 +201,9 @@ class TestAccountAnalyzer:
             # Recurring budget 1: -300.0
             "2023-07-31": -850.0,
         }.items():
-            assert balance_evolution.loc[date]["Solde"] == pytest.approx(
+            assert balance_evolution.loc[date_str]["Solde"] == pytest.approx(
                 expected_balance
-            ), f"Date: {date}"
+            ), f"Date: {date_str}"
 
     def test_compute_budget_forecast(
         self,
@@ -222,7 +222,7 @@ class TestAccountAnalyzer:
             account, Forecast(planned_operations, budgets)
         )
         expenses_per_category_and_month = account_analyzer.compute_budget_forecast(
-            datetime(2023, 1, 1), datetime(2023, 5, 1)
+            date(2023, 1, 1), date(2023, 5, 1)
         )
         assert (
             expenses_per_category_and_month.loc[str(Category.GROCERIES)]["2023-01-01"][

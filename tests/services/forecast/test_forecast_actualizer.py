@@ -1,5 +1,5 @@
 """Module with tests for the ForecastActualizer class."""
-from datetime import datetime
+from datetime import date
 
 import pytest
 from dateutil.relativedelta import relativedelta
@@ -28,14 +28,14 @@ def account() -> Account:
         name="Test Account",
         balance=1000.0,
         currency="EUR",
-        balance_date=datetime(2023, 1, 1),
+        balance_date=date(2023, 1, 1),
         operations=(
             HistoricOperation(
                 unique_id=1,
                 description="Executed Operation",
                 amount=Amount(50.0, "EUR"),
                 category=Category.GROCERIES,
-                date=datetime(2023, 1, 1),
+                operation_date=date(2023, 1, 1),
             ),
         ),
     )
@@ -66,7 +66,7 @@ class TestForecastActualizer:
                     description="Past Operation",
                     amount=Amount(50.0, "EUR"),
                     category=Category.GROCERIES,
-                    time_range=DailyTimeRange(datetime(2023, 1, 1)),
+                    time_range=DailyTimeRange(date(2023, 1, 1)),
                 ),
             ),
             budgets=(),
@@ -93,7 +93,7 @@ class TestForecastActualizer:
                     # Monthly operation starting Dec 20 - iteration is 12 days
                     # before balance_date (Jan 1), outside the 5-day tolerance
                     time_range=PeriodicDailyTimeRange(
-                        datetime(2022, 12, 20), relativedelta(months=1)
+                        date(2022, 12, 20), relativedelta(months=1)
                     ),
                 ),
             ),
@@ -104,7 +104,7 @@ class TestForecastActualizer:
         # Outside tolerance window: operation advances to next period
         assert len(actualized_forecast.operations) == 1
         op = actualized_forecast.operations[0]
-        assert op.time_range.initial_date == datetime(2023, 1, 20)
+        assert op.time_range.initial_date == date(2023, 1, 20)
 
     def test_periodic_past_operation_within_tolerance_is_late(
         self, account: Account
@@ -124,7 +124,7 @@ class TestForecastActualizer:
                     # Monthly operation starting Dec 28 - iteration is 4 days
                     # before balance_date (Jan 1), within the 5-day tolerance
                     time_range=PeriodicDailyTimeRange(
-                        datetime(2022, 12, 28), relativedelta(months=1)
+                        date(2022, 12, 28), relativedelta(months=1)
                     ),
                 ),
             ),
@@ -137,11 +137,11 @@ class TestForecastActualizer:
         assert len(actualized_forecast.operations) == 2
         # First: postponed late operation (one-time, tomorrow)
         postponed_op = actualized_forecast.operations[0]
-        assert postponed_op.time_range.initial_date == datetime(2023, 1, 2)
+        assert postponed_op.time_range.initial_date == date(2023, 1, 2)
         assert isinstance(postponed_op.time_range, DailyTimeRange)
         # Second: periodic operation continues from next month
         periodic_op = actualized_forecast.operations[1]
-        assert periodic_op.time_range.initial_date == datetime(2023, 1, 28)
+        assert periodic_op.time_range.initial_date == date(2023, 1, 28)
 
     def test_future_operation_without_links_is_kept(self, account: Account) -> None:
         """
@@ -154,7 +154,7 @@ class TestForecastActualizer:
                     description="Future Operation",
                     amount=Amount(100.0, "EUR"),
                     category=Category.OTHER,
-                    time_range=DailyTimeRange(datetime(2023, 1, 5)),
+                    time_range=DailyTimeRange(date(2023, 1, 5)),
                 ),
             ),
             budgets=(),
@@ -163,7 +163,7 @@ class TestForecastActualizer:
         actualized_forecast = actualizer(forecast)
         assert len(actualized_forecast.operations) == 1
         op = actualized_forecast.operations[0]
-        assert op.time_range.initial_date == datetime(2023, 1, 5)
+        assert op.time_range.initial_date == date(2023, 1, 5)
 
     def test_budget_without_links_is_not_consumed(self, account: Account) -> None:
         """
@@ -178,7 +178,7 @@ class TestForecastActualizer:
                     description="Groceries Budget",
                     amount=Amount(100.0, "EUR"),
                     category=Category.GROCERIES,
-                    time_range=TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+                    time_range=TimeRange(date(2023, 1, 1), relativedelta(months=1)),
                 ),
             ),
         )
@@ -189,7 +189,7 @@ class TestForecastActualizer:
         # Budget is NOT consumed without links
         assert budget.amount == 100.0
         # But the time range is adjusted to start from tomorrow
-        assert budget.time_range.initial_date == datetime(2023, 1, 2)
+        assert budget.time_range.initial_date == date(2023, 1, 2)
 
     def test_expired_budget_is_discarded(self, account: Account) -> None:
         """An expired budget is discarded regardless of links."""
@@ -201,7 +201,7 @@ class TestForecastActualizer:
                     description="Expired Budget",
                     amount=Amount(100.0, "EUR"),
                     category=Category.GROCERIES,
-                    time_range=TimeRange(datetime(2022, 12, 31), relativedelta(days=1)),
+                    time_range=TimeRange(date(2022, 12, 31), relativedelta(days=1)),
                 ),
             ),
         )
@@ -219,7 +219,7 @@ class TestForecastActualizer:
                     description="Future Budget",
                     amount=Amount(100.0, "EUR"),
                     category=Category.GROCERIES,
-                    time_range=TimeRange(datetime(2023, 2, 1), relativedelta(months=1)),
+                    time_range=TimeRange(date(2023, 2, 1), relativedelta(months=1)),
                 ),
             ),
         )
@@ -228,7 +228,7 @@ class TestForecastActualizer:
         assert len(actualized_forecast.budgets) == 1
         budget = actualized_forecast.budgets[0]
         assert budget.amount == 100.0
-        assert budget.time_range.initial_date == datetime(2023, 2, 1)
+        assert budget.time_range.initial_date == date(2023, 2, 1)
 
 
 class TestForecastActualizerWithLinks:
@@ -246,9 +246,7 @@ class TestForecastActualizerWithLinks:
             description="Linked Operation",
             amount=Amount(50.0, "EUR"),
             category=Category.GROCERIES,
-            time_range=PeriodicDailyTimeRange(
-                datetime(2022, 12, 1), relativedelta(days=1)
-            ),
+            time_range=PeriodicDailyTimeRange(date(2022, 12, 1), relativedelta(days=1)),
         )
 
         # Create links for all iterations in the approximation window (Dec 27-31)
@@ -258,35 +256,35 @@ class TestForecastActualizerWithLinks:
                 operation_unique_id=1,
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2022, 12, 27),
+                iteration_date=date(2022, 12, 27),
                 is_manual=False,
             ),
             OperationLink(
                 operation_unique_id=2,
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2022, 12, 28),
+                iteration_date=date(2022, 12, 28),
                 is_manual=False,
             ),
             OperationLink(
                 operation_unique_id=3,
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2022, 12, 29),
+                iteration_date=date(2022, 12, 29),
                 is_manual=False,
             ),
             OperationLink(
                 operation_unique_id=4,
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2022, 12, 30),
+                iteration_date=date(2022, 12, 30),
                 is_manual=False,
             ),
             OperationLink(
                 operation_unique_id=5,
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2022, 12, 31),
+                iteration_date=date(2022, 12, 31),
                 is_manual=False,
             ),
         )
@@ -299,7 +297,7 @@ class TestForecastActualizerWithLinks:
         # Operation advances to Jan 1 (next after last linked Dec 31)
         assert len(actualized_forecast.operations) == 1
         op = actualized_forecast.operations[0]
-        assert op.time_range.initial_date == datetime(2023, 1, 1)
+        assert op.time_range.initial_date == date(2023, 1, 1)
 
     def test_missing_links_in_window_are_late(self, account: Account) -> None:
         """
@@ -312,7 +310,7 @@ class TestForecastActualizerWithLinks:
             amount=Amount(100.0, "EUR"),
             category=Category.OTHER,
             time_range=PeriodicDailyTimeRange(
-                datetime(2022, 12, 25), relativedelta(days=1)
+                date(2022, 12, 25), relativedelta(days=1)
             ),
         )
 
@@ -323,7 +321,7 @@ class TestForecastActualizerWithLinks:
                 operation_unique_id=10,
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=2,
-                iteration_date=datetime(2022, 12, 28),
+                iteration_date=date(2022, 12, 28),
                 is_manual=True,
             ),
         )
@@ -339,11 +337,11 @@ class TestForecastActualizerWithLinks:
         # First 4 are postponed one-time operations
         for i in range(4):
             op = actualized_forecast.operations[i]
-            assert op.time_range.initial_date == datetime(2023, 1, 2)
+            assert op.time_range.initial_date == date(2023, 1, 2)
 
         # Last one is the periodic continuation
         periodic_op = actualized_forecast.operations[4]
-        assert periodic_op.time_range.initial_date == datetime(2023, 1, 3)
+        assert periodic_op.time_range.initial_date == date(2023, 1, 3)
 
     def test_budget_with_linked_operations(self, account: Account) -> None:
         """
@@ -358,14 +356,14 @@ class TestForecastActualizerWithLinks:
                     description="Linked Expense",
                     amount=Amount(30.0, "EUR"),
                     category=Category.GROCERIES,
-                    date=datetime(2023, 1, 1),
+                    operation_date=date(2023, 1, 1),
                 ),
                 HistoricOperation(
                     unique_id=2,
                     description="Unlinked Expense",
                     amount=Amount(40.0, "EUR"),
                     category=Category.GROCERIES,
-                    date=datetime(2023, 1, 1),
+                    operation_date=date(2023, 1, 1),
                 ),
             )
         )
@@ -375,7 +373,7 @@ class TestForecastActualizerWithLinks:
             description="Groceries Budget",
             amount=Amount(100.0, "EUR"),
             category=Category.GROCERIES,
-            time_range=TimeRange(datetime(2023, 1, 1), relativedelta(months=1)),
+            time_range=TimeRange(date(2023, 1, 1), relativedelta(months=1)),
         )
 
         # Only link operation 1 to the budget
@@ -384,7 +382,7 @@ class TestForecastActualizerWithLinks:
                 operation_unique_id=1,
                 target_type=LinkType.BUDGET,
                 target_id=1,
-                iteration_date=datetime(2023, 1, 1),
+                iteration_date=date(2023, 1, 1),
                 is_manual=False,
             ),
         )
@@ -410,9 +408,7 @@ class TestForecastActualizerWithLinks:
             description="Future Linked Operation",
             amount=Amount(50.0, "EUR"),
             category=Category.GROCERIES,
-            time_range=PeriodicDailyTimeRange(
-                datetime(2023, 1, 1), relativedelta(days=1)
-            ),
+            time_range=PeriodicDailyTimeRange(date(2023, 1, 1), relativedelta(days=1)),
         )
 
         # Link operation 1 (which happened Jan 1) to future iteration Jan 5
@@ -422,7 +418,7 @@ class TestForecastActualizerWithLinks:
                 operation_unique_id=1,  # Operation date is Jan 1 (from fixture)
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2023, 1, 5),
+                iteration_date=date(2023, 1, 5),
                 is_manual=True,
             ),
         )
@@ -435,7 +431,7 @@ class TestForecastActualizerWithLinks:
         assert len(actualized_forecast.operations) == 1
         op = actualized_forecast.operations[0]
         # Advances to Jan 6 (day after the actualized iteration Jan 5)
-        assert op.time_range.initial_date == datetime(2023, 1, 6)
+        assert op.time_range.initial_date == date(2023, 1, 6)
 
     def test_links_without_matching_planned_operation_id_are_ignored(
         self, account: Account
@@ -449,7 +445,7 @@ class TestForecastActualizerWithLinks:
             description="Unrelated Operation",
             amount=Amount(200.0, "EUR"),
             category=Category.OTHER,
-            time_range=DailyTimeRange(datetime(2023, 1, 2)),
+            time_range=DailyTimeRange(date(2023, 1, 2)),
         )
 
         # Links for a different planned operation ID
@@ -458,7 +454,7 @@ class TestForecastActualizerWithLinks:
                 operation_unique_id=1,
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=999,  # Different ID
-                iteration_date=datetime(2023, 1, 1),
+                iteration_date=date(2023, 1, 1),
                 is_manual=False,
             ),
         )
@@ -470,7 +466,7 @@ class TestForecastActualizerWithLinks:
         # The planned operation is future, so it's kept as-is
         assert len(actualized_forecast.operations) == 1
         assert actualized_forecast.operations[0].description == "Unrelated Operation"
-        assert actualized_forecast.operations[0].time_range.initial_date == datetime(
+        assert actualized_forecast.operations[0].time_range.initial_date == date(
             2023, 1, 2
         )
 
@@ -484,7 +480,7 @@ class TestForecastActualizerWithLinks:
         """
         # Account with balance_date in January
         account_jan = account._replace(
-            balance_date=datetime(2023, 1, 15),
+            balance_date=date(2023, 1, 15),
             operations=(
                 # Operation from December, linked to December's budget iteration
                 HistoricOperation(
@@ -492,7 +488,7 @@ class TestForecastActualizerWithLinks:
                     description="December Groceries",
                     amount=Amount(-200.0, "EUR"),
                     category=Category.GROCERIES,
-                    date=datetime(2022, 12, 15),
+                    operation_date=date(2022, 12, 15),
                 ),
                 # Operation from January, linked to January's budget iteration
                 HistoricOperation(
@@ -500,7 +496,7 @@ class TestForecastActualizerWithLinks:
                     description="January Groceries",
                     amount=Amount(-30.0, "EUR"),
                     category=Category.GROCERIES,
-                    date=datetime(2023, 1, 10),
+                    operation_date=date(2023, 1, 10),
                 ),
             ),
         )
@@ -512,7 +508,7 @@ class TestForecastActualizerWithLinks:
             amount=Amount(-100.0, "EUR"),
             category=Category.GROCERIES,
             time_range=PeriodicTimeRange(
-                TimeRange(datetime(2022, 12, 1), relativedelta(months=1)),
+                TimeRange(date(2022, 12, 1), relativedelta(months=1)),
                 relativedelta(months=1),
             ),
         )
@@ -523,14 +519,14 @@ class TestForecastActualizerWithLinks:
                 operation_unique_id=1,
                 target_type=LinkType.BUDGET,
                 target_id=1,
-                iteration_date=datetime(2022, 12, 1),  # December iteration
+                iteration_date=date(2022, 12, 1),  # December iteration
                 is_manual=False,
             ),
             OperationLink(
                 operation_unique_id=2,
                 target_type=LinkType.BUDGET,
                 target_id=1,
-                iteration_date=datetime(2023, 1, 1),  # January iteration
+                iteration_date=date(2023, 1, 1),  # January iteration
                 is_manual=False,
             ),
         )

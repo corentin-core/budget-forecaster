@@ -3,7 +3,7 @@
 # pylint: disable=redefined-outer-name,protected-access,too-few-public-methods
 # pylint: disable=too-many-lines
 
-from datetime import datetime
+from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -395,7 +395,7 @@ class TestPlannedOperationCrud:
             description="Test",
             amount=Amount(100.0, "EUR"),
             category=Category.SALARY,
-            time_range=DailyTimeRange(datetime(2025, 1, 15)),
+            time_range=DailyTimeRange(date(2025, 1, 15)),
         )
 
         # Setup return value with ID
@@ -422,7 +422,7 @@ class TestPlannedOperationCrud:
             description="Test",
             amount=Amount(100.0, "EUR"),
             category=Category.SALARY,
-            time_range=DailyTimeRange(datetime(2025, 1, 15)),
+            time_range=DailyTimeRange(date(2025, 1, 15)),
         )
 
         with pytest.raises(ValueError, match="valid ID"):
@@ -441,7 +441,7 @@ class TestPlannedOperationCrud:
             description="Test",
             amount=Amount(100.0, "EUR"),
             category=Category.SALARY,
-            time_range=DailyTimeRange(datetime(2025, 1, 15)),
+            time_range=DailyTimeRange(date(2025, 1, 15)),
         )
 
         returned_op = MagicMock()
@@ -492,7 +492,7 @@ class TestBudgetCrud:
             description="Test",
             amount=Amount(-100.0, "EUR"),
             category=Category.GROCERIES,
-            time_range=TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
+            time_range=TimeRange(date(2025, 1, 1), relativedelta(months=1)),
         )
 
         returned_budget = MagicMock()
@@ -518,7 +518,7 @@ class TestBudgetCrud:
             description="Test",
             amount=Amount(-100.0, "EUR"),
             category=Category.GROCERIES,
-            time_range=TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
+            time_range=TimeRange(date(2025, 1, 1), relativedelta(months=1)),
         )
 
         with pytest.raises(ValueError, match="valid ID"):
@@ -537,7 +537,7 @@ class TestBudgetCrud:
             description="Test",
             amount=Amount(-100.0, "EUR"),
             category=Category.GROCERIES,
-            time_range=TimeRange(datetime(2025, 1, 1), relativedelta(months=1)),
+            time_range=TimeRange(date(2025, 1, 1), relativedelta(months=1)),
         )
 
         returned_budget = MagicMock()
@@ -770,7 +770,7 @@ class TestSplitOperations:
         with pytest.raises(ValueError, match="not found"):
             app_service.split_planned_operation_at_date(
                 operation_id=1,
-                split_date=datetime(2025, 3, 1),
+                split_date=date(2025, 3, 1),
             )
 
     def test_split_planned_operation_non_periodic(
@@ -784,14 +784,14 @@ class TestSplitOperations:
             description="One-time",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
-            time_range=DailyTimeRange(datetime(2025, 1, 15)),
+            time_range=DailyTimeRange(date(2025, 1, 15)),
         )
         mock_forecast_service.get_planned_operation_by_id.return_value = op
 
         with pytest.raises(ValueError, match="non-periodic"):
             app_service.split_planned_operation_at_date(
                 operation_id=1,
-                split_date=datetime(2025, 3, 1),
+                split_date=date(2025, 3, 1),
             )
 
     def test_split_planned_operation_date_before_start(
@@ -806,7 +806,7 @@ class TestSplitOperations:
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
             time_range=PeriodicDailyTimeRange(
-                initial_date=datetime(2025, 1, 1),
+                initial_date=date(2025, 1, 1),
                 period=relativedelta(months=1),
             ),
         )
@@ -815,7 +815,7 @@ class TestSplitOperations:
         with pytest.raises(ValueError, match="after the first iteration"):
             app_service.split_planned_operation_at_date(
                 operation_id=1,
-                split_date=datetime(2025, 1, 1),  # Same as initial date
+                split_date=date(2025, 1, 1),  # Same as initial date
             )
 
     def test_split_planned_operation_success(
@@ -832,7 +832,7 @@ class TestSplitOperations:
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
             time_range=PeriodicDailyTimeRange(
-                initial_date=datetime(2025, 1, 1),
+                initial_date=date(2025, 1, 1),
                 period=relativedelta(months=1),
             ),
         )
@@ -851,7 +851,7 @@ class TestSplitOperations:
 
         result = app_service.split_planned_operation_at_date(
             operation_id=1,
-            split_date=datetime(2025, 3, 1),
+            split_date=date(2025, 3, 1),
             new_amount=Amount(-850.0, "EUR"),
         )
 
@@ -862,14 +862,14 @@ class TestSplitOperations:
         updated_original = mock_forecast_service.update_planned_operation.call_args[0][
             0
         ]
-        assert updated_original.time_range.last_date == datetime(2025, 2, 28)
+        assert updated_original.time_range.last_date == date(2025, 2, 28)
 
         # New operation should be created
         mock_forecast_service.add_planned_operation.assert_called_once()
         created_op = mock_forecast_service.add_planned_operation.call_args[0][0]
         assert created_op.description == "Rent"
         assert created_op.amount == -850.0
-        assert created_op.time_range.initial_date == datetime(2025, 3, 1)
+        assert created_op.time_range.initial_date == date(2025, 3, 1)
 
     def test_split_planned_operation_migrates_links(
         self,
@@ -884,7 +884,7 @@ class TestSplitOperations:
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
             time_range=PeriodicDailyTimeRange(
-                initial_date=datetime(2025, 1, 1),
+                initial_date=date(2025, 1, 1),
                 period=relativedelta(months=1),
             ),
         )
@@ -903,26 +903,26 @@ class TestSplitOperations:
                 operation_unique_id="op1",
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2025, 1, 1),  # Before split
+                iteration_date=date(2025, 1, 1),  # Before split
             ),
             OperationLink(
                 operation_unique_id="op2",
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2025, 3, 1),  # At split date
+                iteration_date=date(2025, 3, 1),  # At split date
             ),
             OperationLink(
                 operation_unique_id="op3",
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2025, 4, 1),  # After split
+                iteration_date=date(2025, 4, 1),  # After split
             ),
         )
         mock_operation_link_service.load_links_for_target.return_value = existing_links
 
         app_service.split_planned_operation_at_date(
             operation_id=1,
-            split_date=datetime(2025, 3, 1),
+            split_date=date(2025, 3, 1),
         )
 
         # Should delete 2 links (op2, op3) and create 2 new ones
@@ -946,7 +946,7 @@ class TestSplitOperations:
         with pytest.raises(ValueError, match="not found"):
             app_service.split_budget_at_date(
                 budget_id=1,
-                split_date=datetime(2025, 3, 1),
+                split_date=date(2025, 3, 1),
             )
 
     def test_split_budget_non_periodic(
@@ -961,7 +961,7 @@ class TestSplitOperations:
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
             time_range=TimeRange(
-                initial_date=datetime(2025, 1, 1),
+                initial_date=date(2025, 1, 1),
                 duration=relativedelta(months=1),
             ),
         )
@@ -970,7 +970,7 @@ class TestSplitOperations:
         with pytest.raises(ValueError, match="non-periodic"):
             app_service.split_budget_at_date(
                 budget_id=1,
-                split_date=datetime(2025, 3, 1),
+                split_date=date(2025, 3, 1),
             )
 
     def test_split_budget_success(
@@ -982,7 +982,7 @@ class TestSplitOperations:
         """split_budget_at_date terminates original and creates new."""
         # Create periodic budget
         base_time_range = TimeRange(
-            initial_date=datetime(2025, 1, 1),
+            initial_date=date(2025, 1, 1),
             duration=relativedelta(months=1),
         )
         periodic_time_range = PeriodicTimeRange(
@@ -1011,7 +1011,7 @@ class TestSplitOperations:
 
         result = app_service.split_budget_at_date(
             budget_id=1,
-            split_date=datetime(2025, 3, 1),
+            split_date=date(2025, 3, 1),
             new_amount=Amount(-400.0, "EUR"),
         )
 
@@ -1025,7 +1025,7 @@ class TestSplitOperations:
         created_budget = mock_forecast_service.add_budget.call_args[0][0]
         assert created_budget.description == "Groceries"
         assert created_budget.amount == -400.0
-        assert created_budget.time_range.initial_date == datetime(2025, 3, 1)
+        assert created_budget.time_range.initial_date == date(2025, 3, 1)
 
     def test_split_budget_migrates_links(
         self,
@@ -1036,7 +1036,7 @@ class TestSplitOperations:
         """split_budget_at_date migrates links >= split_date."""
         # Create periodic budget
         base_time_range = TimeRange(
-            initial_date=datetime(2025, 1, 1),
+            initial_date=date(2025, 1, 1),
             duration=relativedelta(months=1),
         )
         periodic_time_range = PeriodicTimeRange(
@@ -1065,26 +1065,26 @@ class TestSplitOperations:
                 operation_unique_id="op1",
                 target_type=LinkType.BUDGET,
                 target_id=1,
-                iteration_date=datetime(2025, 1, 1),  # Before split
+                iteration_date=date(2025, 1, 1),  # Before split
             ),
             OperationLink(
                 operation_unique_id="op2",
                 target_type=LinkType.BUDGET,
                 target_id=1,
-                iteration_date=datetime(2025, 3, 1),  # At split date
+                iteration_date=date(2025, 3, 1),  # At split date
             ),
             OperationLink(
                 operation_unique_id="op3",
                 target_type=LinkType.BUDGET,
                 target_id=1,
-                iteration_date=datetime(2025, 4, 1),  # After split
+                iteration_date=date(2025, 4, 1),  # After split
             ),
         )
         mock_operation_link_service.load_links_for_target.return_value = existing_links
 
         app_service.split_budget_at_date(
             budget_id=1,
-            split_date=datetime(2025, 3, 1),
+            split_date=date(2025, 3, 1),
         )
 
         # Should delete 2 links (op2, op3) and create 2 new ones
@@ -1123,7 +1123,7 @@ class TestSplitOperations:
             description="One-time",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
-            time_range=DailyTimeRange(datetime(2025, 1, 15)),
+            time_range=DailyTimeRange(date(2025, 1, 15)),
         )
         mock_forecast_service.get_planned_operation_by_id.return_value = op
 
@@ -1147,7 +1147,7 @@ class TestSplitOperations:
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
             time_range=PeriodicDailyTimeRange(
-                initial_date=datetime(2025, 1, 1),
+                initial_date=date(2025, 1, 1),
                 period=relativedelta(months=1),
             ),
         )
@@ -1159,13 +1159,13 @@ class TestSplitOperations:
                 operation_unique_id="op1",
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2025, 1, 1),
+                iteration_date=date(2025, 1, 1),
             ),
             OperationLink(
                 operation_unique_id="op2",
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=datetime(2025, 2, 1),
+                iteration_date=date(2025, 2, 1),
             ),
         )
         mock_operation_link_service.load_links_for_target.return_value = existing_links
@@ -1179,4 +1179,4 @@ class TestSplitOperations:
         # Note: This test assumes we're running before March 2025
         # The method finds the first future iteration without a link
         assert result is not None
-        assert result not in {datetime(2025, 1, 1), datetime(2025, 2, 1)}
+        assert result not in {date(2025, 1, 1), date(2025, 2, 1)}

@@ -1,6 +1,6 @@
 """Module for the planned operation class."""
 
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 from typing import Any
 
 from dateutil.relativedelta import relativedelta
@@ -69,14 +69,14 @@ class PlannedOperation(OperationRange):
 
     def split_at(
         self,
-        date: datetime,
+        split_date: date,
         new_amount: Amount | None = None,
         new_period: relativedelta | None = None,
     ) -> tuple["PlannedOperation", "PlannedOperation"]:
         """Split this planned operation at the given date.
 
         Args:
-            date: Date from which the new values apply.
+            split_date: Date from which the new values apply.
             new_amount: New amount for continuation (if None, keeps original).
             new_period: New period for continuation (if None, keeps original).
 
@@ -89,7 +89,7 @@ class PlannedOperation(OperationRange):
         if not isinstance(self.time_range, PeriodicDailyTimeRange):
             raise ValueError("Cannot split a non-periodic planned operation")
 
-        terminated_range, continuation_range = self.time_range.split_at(date)
+        terminated_range, continuation_range = self.time_range.split_at(split_date)
 
         terminated = self.replace(time_range=terminated_range)
 

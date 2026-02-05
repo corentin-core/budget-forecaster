@@ -1,6 +1,6 @@
 """Dashboard screen showing account summary."""
 
-from datetime import datetime
+from datetime import date
 from typing import Any
 
 from textual.app import ComposeResult
@@ -179,8 +179,8 @@ class DashboardScreen(Container):
         )
 
         # Current month operations
-        now = datetime.now()
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        now = date.today()
+        month_start = date(now.year, now.month, 1)
         month_filter = OperationFilter(date_from=month_start)
         month_ops = self._app_service.get_operations(month_filter)
 
@@ -206,8 +206,8 @@ class DashboardScreen(Container):
             return
 
         # Get current month's category totals
-        now = datetime.now()
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        now = date.today()
+        month_start = date(now.year, now.month, 1)
         month_filter = OperationFilter(date_from=month_start)
 
         totals = self._app_service.get_category_totals(month_filter)

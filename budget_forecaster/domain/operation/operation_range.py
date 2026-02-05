@@ -1,6 +1,6 @@
 """Module for operation ranges."""
 import abc
-from datetime import datetime
+from datetime import date
 from functools import total_ordering
 from typing import Any
 
@@ -42,7 +42,7 @@ class OperationRangeInterface(abc.ABC):
         """The time range of the operation."""
 
     @abc.abstractmethod
-    def amount_on_period(self, start_date: datetime, end_date: datetime) -> float:
+    def amount_on_period(self, start_date: date, end_date: date) -> float:
         """Return the amount of the operation on the period."""
 
     @abc.abstractmethod
@@ -112,7 +112,7 @@ class OperationRange(OperationRangeInterface):
     def time_range(self) -> TimeRangeInterface:
         return self._time_range
 
-    def amount_on_period(self, start_date: datetime, end_date: datetime) -> float:
+    def amount_on_period(self, start_date: date, end_date: date) -> float:
         if start_date > end_date:
             raise ValueError(
                 f"start_date must be <= end_date, got {start_date} > {end_date}"

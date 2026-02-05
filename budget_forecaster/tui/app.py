@@ -1,7 +1,7 @@
 """Main TUI application for budget forecaster."""
 
 import logging
-from datetime import datetime
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -283,11 +283,11 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         stat_balance.add_class("stat-negative" if balance < 0 else "stat-positive")
 
         # Last 3 months operations
-        now = datetime.now()
+        now = date.today()
         month, year = now.month - 3, now.year
         if month <= 0:
             month, year = month + 12, year - 1
-        recent_filter = OperationFilter(date_from=datetime(year, month, 1))
+        recent_filter = OperationFilter(date_from=date(year, month, 1))
         recent_ops = self.app_service.get_operations(recent_filter)
         self.query_one("#stat-month-ops", Static).update(
             f"3 derniers mois: {len(recent_ops)} opérations"
@@ -541,7 +541,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
 
     def _on_iteration_selected(
         self,
-        iteration_date: datetime | None,
+        iteration_date: date | None,
         target: PlannedOperation | Budget,
     ) -> None:
         """Handle iteration selection from link modal."""

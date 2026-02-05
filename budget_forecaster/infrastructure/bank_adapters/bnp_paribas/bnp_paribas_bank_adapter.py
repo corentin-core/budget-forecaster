@@ -2,7 +2,7 @@
 import re
 import unicodedata
 import warnings
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -98,9 +98,9 @@ class BnpParibasBankAdapter(BankAdapterBase):
             bank_export, index_col=None, usecols="B", header=0, nrows=0
         ).columns.values[0]
         if (re_match := re.match("Solde au (.*)", export_date_cell)) is not None:
-            self._export_date = datetime.strptime(re_match.group(1), "%d/%m/%Y")
+            self._export_date = datetime.strptime(re_match.group(1), "%d/%m/%Y").date()
         else:
-            self._export_date = datetime.now()
+            self._export_date = date.today()
         # get balance
         self._balance = float(
             pd.read_excel(
@@ -118,7 +118,9 @@ class BnpParibasBankAdapter(BankAdapterBase):
                     description=row["Libelle operation"],
                     amount=Amount(row["Montant operation"]),
                     category=category,
-                    date=datetime.strptime(row["Date operation"], "%d-%m-%Y"),
+                    operation_date=datetime.strptime(
+                        row["Date operation"], "%d-%m-%Y"
+                    ).date(),
                 )
             )
 
