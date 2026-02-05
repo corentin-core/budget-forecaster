@@ -125,8 +125,6 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
     def _add_forecast(self, forecast: pd.DataFrame) -> None:
         sheet_name = "Source prévisions"
         forecast_reformatted = forecast.copy()
-        # Dates are already date objects, no conversion needed
-
         forecast_reformatted.to_excel(self._writer, sheet_name=sheet_name, index=True)
         worksheet = self._writer.sheets[sheet_name]
         worksheet.autofit()
