@@ -198,13 +198,11 @@ class TimeRange(TimeRangeInterface):
 class DailyTimeRange(TimeRange):
     """A time range that lasts one day."""
 
-    def __init__(
-        self, initial_date: date  # pylint: disable=used-before-assignment
-    ) -> None:
+    def __init__(self, initial_date: date) -> None:
         super().__init__(initial_date, relativedelta(days=1))
 
     @property
-    def date(self) -> "date":
+    def day(self) -> "date":
         """Return the date of the time range."""
         return self.initial_date
 

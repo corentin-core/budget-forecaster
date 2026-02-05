@@ -69,14 +69,16 @@ class AggregatedAccount:
         """
         # Keep only the operations that are not already in the account
         current_operations_hash = {
-            hash((operation.description, operation.amount, operation.date))
+            hash((operation.description, operation.amount, operation.operation_date))
             for operation in current_account.operations
         }
         operations = list(current_account.operations)
         new_count = 0
         for operation in new_account.operations:
             if (
-                hash((operation.description, operation.amount, operation.date))
+                hash(
+                    (operation.description, operation.amount, operation.operation_date)
+                )
                 not in current_operations_hash
             ):
                 operations.append(operation)
@@ -91,7 +93,7 @@ class AggregatedAccount:
 
         # Get balance date
         export_date = new_account.balance_date or max(
-            operation.date for operation in new_account.operations
+            operation.operation_date for operation in new_account.operations
         )
         balance_date = (
             current_account.balance_date
@@ -106,7 +108,7 @@ class AggregatedAccount:
                 balance = current_account.balance + sum(
                     operation.amount
                     for operation in new_account.operations
-                    if operation.date > current_account.balance_date
+                    if operation.operation_date > current_account.balance_date
                 )
             else:
                 balance = current_account.balance

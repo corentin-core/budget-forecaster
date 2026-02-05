@@ -130,7 +130,9 @@ class LinkIterationModal(ModalScreen[date | None]):
     @property
     def _window_center(self) -> date:
         """Get the center of the iteration window."""
-        return self._operation.date + relativedelta(months=self._offset_months)
+        return self._operation.operation_date + relativedelta(
+            months=self._offset_months
+        )
 
     @property
     def _window_start(self) -> date:
@@ -154,7 +156,7 @@ class LinkIterationModal(ModalScreen[date | None]):
             with Vertical(id="info-section"):
                 yield Static(op.description, id="op-description")
                 yield Static(
-                    f"{op.date.strftime('%d/%m/%Y')} | {op.amount:+.2f} €",
+                    f"{op.operation_date.strftime('%d/%m/%Y')} | {op.amount:+.2f} €",
                     id="op-details",
                     classes=amount_class,
                 )

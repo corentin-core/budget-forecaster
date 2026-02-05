@@ -51,10 +51,10 @@ class OperationFilter:
         if self.category is not None and operation.category != self.category:
             return False
 
-        if self.date_from is not None and operation.date < self.date_from:
+        if self.date_from is not None and operation.operation_date < self.date_from:
             return False
 
-        if self.date_to is not None and operation.date > self.date_to:
+        if self.date_to is not None and operation.operation_date > self.date_to:
             return False
 
         if self.min_amount is not None and operation.amount < self.min_amount:
@@ -114,7 +114,7 @@ class OperationService:
             operations = [op for op in operations if filter_criteria.matches(op)]
 
         def default_sort_key(op: HistoricOperation) -> date:
-            return op.date
+            return op.operation_date
 
         return sorted(
             operations,
@@ -305,7 +305,7 @@ class OperationService:
         totals: dict[str, float] = {}
 
         for op in operations:
-            if (month_key := op.date.strftime("%Y-%m")) not in totals:
+            if (month_key := op.operation_date.strftime("%Y-%m")) not in totals:
                 totals[month_key] = 0.0
             totals[month_key] += op.amount
 

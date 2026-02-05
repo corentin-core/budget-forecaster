@@ -22,7 +22,7 @@ class HistoricOperation(OperationRange):
         description: str,
         amount: Amount,
         category: Category,
-        operation_date: date,  # pylint: disable=used-before-assignment
+        operation_date: date,
     ):
         self._unique_id = unique_id
         super().__init__(description, amount, category, DailyTimeRange(operation_date))
@@ -33,9 +33,9 @@ class HistoricOperation(OperationRange):
         return self._unique_id
 
     @property
-    def date(self) -> "date":
+    def operation_date(self) -> "date":
         """The date of the operation."""
-        return cast(DailyTimeRange, self.time_range).date
+        return cast(DailyTimeRange, self.time_range).day
 
     def replace(self, **kwargs: Any) -> "HistoricOperation":
         """Return a new instance of the historic operation with the given parameters replaced."""
@@ -44,7 +44,7 @@ class HistoricOperation(OperationRange):
             description=kwargs.get("description", self.description),
             amount=kwargs.get("amount", Amount(self.amount, self.currency)),
             category=kwargs.get("category", self.category),
-            operation_date=kwargs.get("operation_date", self.date),
+            operation_date=kwargs.get("operation_date", self.operation_date),
         )
 
     def __repr__(self) -> str:

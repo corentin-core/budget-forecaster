@@ -61,8 +61,8 @@ class AccountAnalyzer:
             "Montant": [],
         }
         for operation in self._account.operations:
-            if start_date <= operation.date <= end_date:
-                operations["Date"].append(operation.date)
+            if start_date <= operation.operation_date <= end_date:
+                operations["Date"].append(operation.operation_date)
                 operations["Catégorie"].append(operation.category)
                 operations["Description"].append(operation.description)
                 operations["Montant"].append(operation.amount)
@@ -148,7 +148,7 @@ class AccountAnalyzer:
         for ts in dates[1:]:
             current_date = ts.date()
             for operation in final_state.operations:
-                if operation.date == current_date:
+                if operation.operation_date == current_date:
                     current_balance += operation.amount
             balance_evolution.append(current_balance)
 
@@ -187,21 +187,21 @@ class AccountAnalyzer:
         for operation in next_month_state.operations:
             if (
                 current_month
-                <= operation.date
+                <= operation.operation_date
                 <= current_month + relativedelta(months=1) - timedelta(days=1)
             ):
                 increment_expense(
                     operation.category,
-                    operation.date.replace(day=1),
+                    operation.operation_date.replace(day=1),
                     "Actualisé",
                     operation.amount,
                 )
 
         for operation in self._account.operations:
-            if start_date <= operation.date <= end_date:
+            if start_date <= operation.operation_date <= end_date:
                 increment_expense(
                     operation.category,
-                    operation.date.replace(day=1),
+                    operation.operation_date.replace(day=1),
                     "Réel",
                     operation.amount,
                 )
@@ -277,10 +277,12 @@ class AccountAnalyzer:
         """Compute the expenses statistics per category."""
         expenses_per_category_dict: dict[Category, list[tuple[date, float]]] = {}
         analysis_start = max(
-            min(operation.date for operation in self._account.operations), start_date
+            min(operation.operation_date for operation in self._account.operations),
+            start_date,
         )
         analysis_end = min(
-            max(operation.date for operation in self._account.operations), end_date
+            max(operation.operation_date for operation in self._account.operations),
+            end_date,
         )
 
         # start period is the first day of the first complete month
@@ -297,9 +299,9 @@ class AccountAnalyzer:
         )
 
         for operation in self._account.operations:
-            if analysis_start <= operation.date <= analysis_end:
+            if analysis_start <= operation.operation_date <= analysis_end:
                 expenses_per_category_dict.setdefault(operation.category, []).append(
-                    (operation.date, operation.amount)
+                    (operation.operation_date, operation.amount)
                 )
         expenses_per_category = {
             category: pd.DataFrame(expenses, columns=["Date", "Montant"]).set_index(

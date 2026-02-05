@@ -67,7 +67,7 @@ class SwileBankAdapter(BankAdapterBase):
                 "No meal voucher transactions found in the operations.json file"
             )
 
-        self._export_date = max(op.date for op in self._operations)
+        self._export_date = max(op.operation_date for op in self._operations)
 
     @classmethod
     def match(cls, bank_export: Path) -> bool:

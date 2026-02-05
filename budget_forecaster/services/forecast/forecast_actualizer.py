@@ -38,7 +38,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         self._linked_op_ids: dict[tuple[BudgetId, IterationDate], set[OperationId]] = {}
         # Map operation_id -> operation date for date lookups
         self._operation_dates: dict[OperationId, date] = {
-            op.unique_id: op.date for op in account.operations
+            op.unique_id: op.operation_date for op in account.operations
         }
         # Map (planned_op_id, iteration_date) -> set of linked operation IDs
         self._planned_op_linked_ops: dict[

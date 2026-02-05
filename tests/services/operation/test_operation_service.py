@@ -149,7 +149,7 @@ class TestOperationService:
     ) -> None:
         """Operations are sorted by date descending by default."""
         operations = service.get_operations()
-        dates = [op.date for op in operations]
+        dates = [op.operation_date for op in operations]
         assert dates == sorted(dates, reverse=True)
 
     def test_get_operations_with_filter(self, service: OperationService) -> None:

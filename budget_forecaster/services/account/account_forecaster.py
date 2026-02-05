@@ -39,7 +39,7 @@ class AccountForecaster:  # pylint: disable=too-few-public-methods
         past_balance = self._account.balance
         past_operations: list[HistoricOperation] = []
         for operation in self._account.operations:
-            if target_date < operation.date <= balance_date:
+            if target_date < operation.operation_date <= balance_date:
                 past_balance -= operation.amount
                 continue
 

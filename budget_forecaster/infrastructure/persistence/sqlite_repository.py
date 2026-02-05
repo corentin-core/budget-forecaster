@@ -340,7 +340,7 @@ class SqliteRepository(RepositoryInterface):
                     account_id,
                     op.description,
                     op.category.value,
-                    op.date.isoformat(),
+                    op.operation_date.isoformat(),
                     op.amount,
                     op.currency,
                 )
@@ -380,7 +380,7 @@ class SqliteRepository(RepositoryInterface):
             (
                 operation.description,
                 operation.category.value,
-                operation.date.isoformat(),
+                operation.operation_date.isoformat(),
                 operation.amount,
                 operation.currency,
                 operation.unique_id,

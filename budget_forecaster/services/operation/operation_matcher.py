@@ -130,8 +130,8 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         initial_date = self.operation_range.time_range.initial_date
         last_date = self.operation_range.time_range.last_date
         return (
-            operation.date < initial_date - self.approximation_date_range
-            or operation.date
+            operation.operation_date < initial_date - self.approximation_date_range
+            or operation.operation_date
             > last_date
             + (self.approximation_date_range if last_date < date.max else timedelta(0))
         )
@@ -156,7 +156,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
     def match_date_range(self, operation: HistoricOperation) -> bool:
         """Check if the date of the operation is within the time range of the operation range."""
         return self.operation_range.time_range.is_within(
-            operation.date,
+            operation.operation_date,
             approx_before=self.approximation_date_range,
             approx_after=self.approximation_date_range,
         )
@@ -237,7 +237,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
                 continue
             for operation in not_assigned_operations.values():
                 if time_range.is_within(
-                    operation.date,
+                    operation.operation_date,
                     approx_before=self.approximation_date_range,
                     approx_after=self.approximation_date_range,
                 ):
@@ -267,7 +267,8 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
                 return
             for operation in not_assigned_operations.values():
                 if time_range.is_within(
-                    operation.date, approx_before=self.approximation_date_range
+                    operation.operation_date,
+                    approx_before=self.approximation_date_range,
                 ):
                     # the time range was executed with anticipation
                     not_assigned_operations.pop(operation.unique_id)

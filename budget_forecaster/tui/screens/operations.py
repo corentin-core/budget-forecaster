@@ -99,7 +99,7 @@ class OperationDetailPanel(Vertical):
 
         self.query_one("#detail-id", Static).update(str(operation.unique_id))
         self.query_one("#detail-date", Static).update(
-            operation.date.strftime("%d/%m/%Y %H:%M")
+            operation.operation_date.strftime("%d/%m/%Y %H:%M")
         )
         self.query_one("#detail-description", Static).update(operation.description)
 
