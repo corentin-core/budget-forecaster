@@ -201,11 +201,6 @@ class DailyTimeRange(TimeRange):
     def __init__(self, initial_date: date) -> None:
         super().__init__(initial_date, relativedelta(days=1))
 
-    @property
-    def day(self) -> date:
-        """Return the date of the time range."""
-        return self.initial_date
-
     def replace(self, **kwargs: Any) -> "DailyTimeRange":
         new_initial_date = kwargs.get("initial_date", self.initial_date)
         if not isinstance(new_initial_date, date):

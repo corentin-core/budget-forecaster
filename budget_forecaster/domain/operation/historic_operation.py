@@ -1,7 +1,7 @@
 """Historic operation module."""
 from datetime import date
 from functools import total_ordering
-from typing import Any, cast
+from typing import Any
 
 from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.time_range import DailyTimeRange
@@ -35,7 +35,7 @@ class HistoricOperation(OperationRange):
     @property
     def operation_date(self) -> date:
         """The date of the operation."""
-        return cast(DailyTimeRange, self.time_range).day
+        return self.time_range.initial_date
 
     def replace(self, **kwargs: Any) -> "HistoricOperation":
         """Return a new instance of the historic operation with the given parameters replaced."""
