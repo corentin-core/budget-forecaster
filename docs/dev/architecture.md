@@ -6,7 +6,7 @@ This document describes the high-level architecture of Budget Forecaster.
 
 | Layer              | Purpose             | Contains                                                                          |
 | ------------------ | ------------------- | --------------------------------------------------------------------------------- |
-| **Core**           | Foundational types  | Primitives with no dependencies: `Amount`, `TimeRange`, `Category`                |
+| **Core**           | Foundational types  | Primitives with no dependencies: `Amount`, `DateRange`, `Category`                |
 | **Domain**         | Business entities   | Pure data objects and business rules. No orchestration, no external dependencies  |
 | **Services**       | Orchestration       | Coordination between domain objects, use case implementation, computed aggregates |
 | **Infrastructure** | External interfaces | Persistence, file parsing, configuration, rendering                               |
@@ -63,7 +63,7 @@ graph TB
 
     subgraph Core
         AM[Amount]
-        TR[TimeRange]
+        TR[DateRange]
         CAT[Category]
     end
 
@@ -110,7 +110,7 @@ The **Domain** layer holds pure business entities: accounts, operations, planned
 operations, budgets, forecasts, and operation links. These are data objects with
 business rules but no orchestration logic.
 
-The **Core** layer provides foundational types (Amount, TimeRange, Category) with no
+The **Core** layer provides foundational types (Amount, DateRange, Category) with no
 external dependencies.
 
 The **Infrastructure** layer handles external concerns: SQLite persistence, bank file

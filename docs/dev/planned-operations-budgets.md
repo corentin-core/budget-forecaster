@@ -73,9 +73,8 @@ flowchart LR
 
 ### Validation Rules
 
-- Split date must be strictly after the original's `initial_date`
-- Target must have a periodic time range (`PeriodicTimeRange` or
-  `PeriodicDailyTimeRange`)
+- Split date must be strictly after the original's `start_date`
+- Target must have a periodic date range (`RecurringDateRange` or `RecurringDay`)
 - Non-periodic elements cannot be split
 
 ### ApplicationService Methods

@@ -20,13 +20,13 @@ classDiagram
 
     class PlannedOperation {
         +id
-        +time_range
+        +date_range
         +matcher
     }
 
     class Budget {
         +id
-        +time_range
+        +date_range
         +matcher
     }
 

@@ -7,7 +7,7 @@ Swile), categorizes operations, and generates forecasts.
 
 ```
 budget_forecaster/
-  core/                  # Primitives (Amount, TimeRange, types)
+  core/                  # Primitives (Amount, DateRange, types)
   domain/                # Business entities
     account/             # Account, AggregatedAccount
     operation/           # HistoricOperation, PlannedOperation, Budget, OperationLink
