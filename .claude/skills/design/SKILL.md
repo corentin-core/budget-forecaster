@@ -151,10 +151,10 @@ Names must reflect the **complete nature** of an entity, not just one use case.
 
 ```python
 # BAD: "manual_links" implies only user-created links
-manual_links: dict[int, datetime]  # But links can also be heuristic-created!
+manual_links: dict[int, date]  # But links can also be heuristic-created!
 
 # GOOD: "operation_links" covers both origins
-operation_links: dict[int, datetime]  # Links can be manual OR heuristic
+operation_links: dict[int, date]  # Links can be manual OR heuristic
 ```
 
 The `OperationLink` data model has `is_manual: bool`, meaning links can be:

@@ -59,7 +59,7 @@ Code style: black, ruff + pylint for linting, mypy for type checking.
 - dataclasses for Operation, Budget entities
 - pandas for bank statement parsing
 - Decimal for monetary amounts (precision)
-- Date handling with datetime
+- Date handling with datetime.date (not datetime)
 
 ## Testing patterns
 
