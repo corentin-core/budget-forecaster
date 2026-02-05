@@ -171,8 +171,12 @@ class LinkTargetModal(
         self._selected_target: PlannedOperation | Budget | None = None
 
         # Set initial type based on current link
-        if current_link and current_link.target_type == LinkType.BUDGET:
-            self._current_type = "budget"
+        if current_link:
+            match current_link.target_type:
+                case LinkType.BUDGET:
+                    self._current_type = "budget"
+                case LinkType.PLANNED_OPERATION:
+                    self._current_type = "planned"
         else:
             self._current_type = "planned"
 
@@ -232,14 +236,15 @@ class LinkTargetModal(
             return ""
 
         target_id = self._current_link.target_id
-        if self._current_link.target_type == LinkType.PLANNED_OPERATION:
-            for op in self._planned_operations:
-                if op.id == target_id:
-                    return op.description
-        else:
-            for budget in self._budgets:
-                if budget.id == target_id:
-                    return budget.description
+        match self._current_link.target_type:
+            case LinkType.PLANNED_OPERATION:
+                for op in self._planned_operations:
+                    if op.id == target_id:
+                        return op.description
+            case LinkType.BUDGET:
+                for budget in self._budgets:
+                    if budget.id == target_id:
+                        return budget.description
 
         # Fallback to ID if not found
         return f"#{target_id}"
