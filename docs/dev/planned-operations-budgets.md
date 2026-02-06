@@ -23,20 +23,23 @@ sequenceDiagram
     participant User
     participant TUI
     participant AppService
+    participant ManageTargetsUC
     participant Repositories
 
     User->>TUI: Click "Scinder"
     TUI->>AppService: get_next_non_actualized_iteration()
-    AppService-->>TUI: Default split date
+    AppService->>ManageTargetsUC: get_next_non_actualized_iteration()
+    ManageTargetsUC-->>TUI: Default split date
 
     User->>TUI: Configure split (date, amount, period)
     TUI->>AppService: split_planned_operation_at_date() or split_budget_at_date()
+    AppService->>ManageTargetsUC: split_planned_operation_at_date() or split_budget_at_date()
 
-    AppService->>Repositories: Load original target
-    AppService->>Repositories: Terminate original (set expiration_date)
-    AppService->>Repositories: Create new target with new values
-    AppService->>Repositories: Migrate links for iterations >= split_date
-    AppService-->>TUI: New target created
+    ManageTargetsUC->>Repositories: Load original target
+    ManageTargetsUC->>Repositories: Terminate original (set expiration_date)
+    ManageTargetsUC->>Repositories: Create new target with new values
+    ManageTargetsUC->>Repositories: Migrate links for iterations >= split_date
+    ManageTargetsUC-->>TUI: New target created
 ```
 
 ### Split Data Flow
@@ -77,7 +80,7 @@ flowchart LR
 - Target must have a periodic date range (`RecurringDateRange` or `RecurringDay`)
 - Non-periodic elements cannot be split
 
-### ApplicationService Methods
+### ManageTargetsUseCase Methods
 
 - `get_next_non_actualized_iteration(target_type, target_id)`: Finds the first iteration
   without a linked operation (used as default split date)
@@ -85,3 +88,5 @@ flowchart LR
   Splits a PlannedOperation
 - `split_budget_at_date(budget_id, split_date, new_amount, new_period, new_duration)`:
   Splits a Budget (includes duration parameter)
+
+ApplicationService delegates these calls to ManageTargetsUseCase.

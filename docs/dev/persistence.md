@@ -121,54 +121,71 @@ Services orchestrate business logic and coordinate between domain objects.
 ```mermaid
 classDiagram
     class ApplicationService {
-        -persistent_account
-        -import_service
-        -operation_service
-        -forecast_service
-        -operation_link_service
+        -import_uc: ImportUseCase
+        -categorize_uc: CategorizeUseCase
+        -targets_uc: ManageTargetsUseCase
+        -links_uc: ManageLinksUseCase
+        -forecast_uc: ComputeForecastUseCase
         +import_file()
         +categorize_operations()
         +compute_report()
     }
 
-    class ForecastService {
-        -account
-        -repository
-        +load_forecast()
-        +compute_report()
-        +get_monthly_summary()
-    }
-
-    class ImportService {
-        -persistent_account
-        -bank_adapter_factory
+    class ImportUseCase {
         +import_file()
         +import_from_inbox()
     }
 
-    class OperationService {
-        -account_manager
-        +get_operations()
-        +categorize_operation()
-        +suggest_category()
+    class CategorizeUseCase {
+        +categorize_operations()
     }
 
-    class OperationLinkService {
-        -repository
-        +get_all_links()
-        +create_heuristic_links()
-        +delete_link()
+    class ManageTargetsUseCase {
+        +add_planned_operation()
+        +split_planned_operation_at_date()
+        +add_budget()
+        +split_budget_at_date()
     }
 
-    ApplicationService "1" *-- "1" ForecastService
-    ApplicationService "1" *-- "1" ImportService
-    ApplicationService "1" *-- "1" OperationService
-    ApplicationService "1" *-- "1" OperationLinkService
-    ForecastService --> AccountAnalyzer : uses
-    ForecastService --> ForecastActualizer : uses
-    ImportService --> BankAdapterFactory : uses
+    class ManageLinksUseCase {
+        +create_manual_link()
+    }
+
+    class ComputeForecastUseCase {
+        +compute_report()
+    }
+
+    class MatcherCache {
+        +get_matchers()
+        +invalidate()
+    }
+
+    class ForecastService
+    class ImportService
+    class OperationService
+    class OperationLinkService
+
+    ApplicationService *-- ImportUseCase
+    ApplicationService *-- CategorizeUseCase
+    ApplicationService *-- ManageTargetsUseCase
+    ApplicationService *-- ManageLinksUseCase
+    ApplicationService *-- ComputeForecastUseCase
+    ImportUseCase --> ImportService
+    ImportUseCase --> OperationLinkService
+    ImportUseCase --> MatcherCache
+    CategorizeUseCase --> OperationService
+    CategorizeUseCase --> OperationLinkService
+    CategorizeUseCase --> MatcherCache
+    ManageTargetsUseCase --> ForecastService
+    ManageTargetsUseCase --> OperationLinkService
+    ManageTargetsUseCase --> MatcherCache
+    ManageLinksUseCase --> OperationLinkService
+    ComputeForecastUseCase --> ForecastService
+    ComputeForecastUseCase --> OperationLinkService
+    MatcherCache --> ForecastService
 ```
 
-ApplicationService is the central facade for the TUI, coordinating all operations and
-caching matchers for efficient link creation. The other services handle specific
-concerns: imports, forecasts, operations CRUD, and link management.
+ApplicationService is a thin facade for the TUI, delegating orchestration to focused use
+case classes. Each use case encapsulates a specific workflow and coordinates the
+lower-level services it needs. MatcherCache is a shared dependency providing lazy-loaded
+operation matchers for efficient link creation.

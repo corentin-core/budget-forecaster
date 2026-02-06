@@ -26,6 +26,14 @@ graph TB
 
     subgraph Services
         AS[ApplicationService]
+        subgraph services/use_cases
+            IUC[ImportUseCase]
+            CUC[CategorizeUseCase]
+            MTUC[ManageTargetsUseCase]
+            MLUC[ManageLinksUseCase]
+            CFUC[ComputeForecastUseCase]
+            MC[MatcherCache]
+        end
         subgraph services/forecast
             FS[ForecastService]
             FA[ForecastActualizer]
@@ -81,14 +89,27 @@ graph TB
 
     TUI --> AS
     CLI --> AS
-    AS --> FS
-    AS --> IS
-    AS --> OS
-    AS --> OLS
+    AS --> IUC
+    AS --> CUC
+    AS --> MTUC
+    AS --> MLUC
+    AS --> CFUC
+    IUC --> IS
+    IUC --> OLS
+    IUC --> MC
+    CUC --> OS
+    CUC --> OLS
+    CUC --> MC
+    MTUC --> FS
+    MTUC --> OLS
+    MTUC --> MC
+    MLUC --> OLS
+    CFUC --> FS
+    CFUC --> OLS
+    MC --> FS
     FS --> FA
     FS --> AN
     IS --> BA
-    AS --> SR
     AN --> AF
 ```
 
@@ -99,7 +120,18 @@ The **Presentation** layer provides user interfaces: a Terminal UI for interacti
 and a CLI for scripted operations. Both delegate to **Services**, which orchestrate
 business logic.
 
-The **Services** layer coordinates domain objects and implements use cases:
+The **Services** layer coordinates domain objects and implements use cases.
+`ApplicationService` is a thin facade that delegates orchestration to focused use cases:
+
+- `ImportUseCase`: Import bank files and create heuristic links
+- `CategorizeUseCase`: Categorize operations and manage heuristic links on category
+  change
+- `ManageTargetsUseCase`: CRUD and split for planned operations and budgets
+- `ManageLinksUseCase`: Manual link creation
+- `ComputeForecastUseCase`: Forecast report computation
+- `MatcherCache`: Shared lazy-loaded cache of operation matchers
+
+Lower-level services handle specific concerns:
 
 - `ForecastService`: CRUD for planned operations/budgets, report computation
 - `AccountForecaster`/`AccountAnalyzer`: Compute account projections and aggregates

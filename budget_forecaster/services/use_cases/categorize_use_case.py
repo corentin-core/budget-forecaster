@@ -2,7 +2,7 @@
 
 import logging
 
-from budget_forecaster.core.types import Category
+from budget_forecaster.core.types import Category, OperationId
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.services.operation.operation_link_service import (
@@ -31,7 +31,7 @@ class CategorizeUseCase:  # pylint: disable=too-few-public-methods
         self._matcher_cache = matcher_cache
 
     def categorize_operations(
-        self, operation_ids: tuple[int, ...], category: Category
+        self, operation_ids: tuple[OperationId, ...], category: Category
     ) -> tuple[OperationCategoryUpdate, ...]:
         """Categorize one or more operations and create heuristic links.
 
@@ -71,7 +71,7 @@ class CategorizeUseCase:  # pylint: disable=too-few-public-methods
             results.append(OperationCategoryUpdate(updated, category_changed, None))
 
         # Batch create heuristic links for all changed operations
-        created_links: dict[int, OperationLink] = {}
+        created_links: dict[OperationId, OperationLink] = {}
         if changed_operations and (matchers := self._matcher_cache.get_matchers()):
             for link in self._operation_link_service.create_heuristic_links(
                 tuple(changed_operations), matchers

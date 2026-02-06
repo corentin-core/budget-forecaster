@@ -95,7 +95,6 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         # Shared dependency
         matcher_cache = MatcherCache(forecast_service)
 
-        # Use cases (orchestration logic)
         self._import_uc = ImportUseCase(
             import_service, persistent_account, operation_link_service, matcher_cache
         )
@@ -139,7 +138,7 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
     # -------------------------------------------------------------------------
 
     def categorize_operations(
-        self, operation_ids: tuple[int, ...], category: Category
+        self, operation_ids: tuple[OperationId, ...], category: Category
     ) -> tuple[OperationCategoryUpdate, ...]:
         """Categorize operations and create heuristic links."""
         return self._categorize_uc.categorize_operations(operation_ids, category)
