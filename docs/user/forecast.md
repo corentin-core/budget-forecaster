@@ -142,6 +142,35 @@ For each budget, the forecast tracks consumption:
 - **Actualized** (Actualisé): Projected spending for the current period based on links
 - **Remaining**: Budget amount minus linked operations
 
+### Daily Projection (Linear Decrease)
+
+Budget spending is projected as a **linear decrease** over the period. For a monthly
+budget of 400 EUR in a 30-day month, the forecast assumes 400 / 30 = ~13.33 EUR spent
+per day.
+
+When actual spending is known (via links), the remaining budget is spread over the
+remaining days. For example, if 150 EUR has been spent by the 15th:
+
+- Remaining budget: 400 - 150 = 250 EUR
+- Remaining days: 15
+- Daily projection: 250 / 15 = ~16.67 EUR per day
+
+This gives a more realistic day-by-day balance curve than projecting the full amount on
+a single date.
+
+### Current Period Actualization
+
+For the current period, the forecast considers that the budget **will be fully
+consumed**:
+
+- If you've spent **less** than the budget, the actualized amount equals the budget
+  (e.g., spent 300 of 400 EUR -> actualized = 400 EUR)
+- If you've **already exceeded** the budget, the actualized amount equals what you've
+  actually spent (e.g., spent 450 of 400 EUR -> actualized = 450 EUR)
+
+In short: **actualized = max(spent, budget)**. The same logic applies to planned
+operations.
+
 ### Example
 
 Monthly groceries budget: 400 EUR
