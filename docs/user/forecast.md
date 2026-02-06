@@ -160,16 +160,20 @@ a single date.
 
 ### Current Period Actualization
 
-For the current period, the forecast considers that the budget **will be fully
-consumed**:
+**Budgets** are considered **fully consumed** for the current period:
 
-- If you've spent **less** than the budget, the actualized amount equals the budget
-  (e.g., spent 300 of 400 EUR -> actualized = 400 EUR)
-- If you've **already exceeded** the budget, the actualized amount equals what you've
-  actually spent (e.g., spent 450 of 400 EUR -> actualized = 450 EUR)
+- Spent less than the budget -> actualized = budget (e.g., spent 300 of 400 EUR ->
+  actualized = 400 EUR)
+- Already exceeded the budget -> actualized = actual spending (e.g., spent 450 of 400
+  EUR -> actualized = 450 EUR)
 
-In short: **actualized = max(spent, budget)**. The same logic applies to planned
-operations.
+In short: **actualized = max(spent, budget)**.
+
+**Planned operations** use the **actual amount as soon as it's known**:
+
+- If a planned expense of 150 EUR is linked to an actual operation of 100 EUR, the
+  forecast projects 100 EUR (not 150 EUR)
+- If the iteration is not yet linked, the planned amount is used
 
 ### Example
 
