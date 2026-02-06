@@ -14,6 +14,7 @@ classDiagram
         +load()
         +upsert_account()
         +replace_account()
+        +replace_operation()
     }
 
     class AggregatedAccount {
