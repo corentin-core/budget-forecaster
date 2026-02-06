@@ -6,3 +6,4 @@ venv
 .idea
 *.db
 agent-os/
+implementation-progress.md

@@ -52,6 +52,19 @@ gh pr diff <number>
 git diff main...HEAD
 ```
 
+### Step 2.5: Fetch existing comments (if re-reviewing)
+
+If the PR already has review comments:
+
+```bash
+gh api repos/{owner}/{repo}/pulls/<number>/comments \
+  --jq '.[] | {user: .user.login, path: .path, line: .line, body: .body}'
+```
+
+- Avoid duplicating existing feedback
+- Build on unresolved discussions
+- Note resolved vs. unresolved issues
+
 ### Step 3: Check CI status and coverage
 
 **Do NOT run tests locally** - use CI results instead.
@@ -226,6 +239,16 @@ gh api repos/{owner}/{repo}/pulls/<number>/comments \
 | Inline       | Specific code issues, suggestions for a particular line/block |
 | Summary      | Overall verdict, general observations, praise                 |
 
+**Comment placement strategy:**
+
+| Comment type              | Place on                       |
+| ------------------------- | ------------------------------ |
+| Missing tests for a class | The `class` definition line    |
+| Bug in specific code      | The exact line with the issue  |
+| Missing method            | The `class` definition line    |
+| Suggestion to add code    | The closest relevant line      |
+| Function implementation   | The `def` line of the function |
+
 ### Step 7: Submit the review
 
 After posting inline comments, submit the review with verdict and summary:
@@ -245,6 +268,19 @@ gh pr review <number> --request-changes --body "..."
 # Comment only (no verdict)
 gh pr review <number> --comment --body "..."
 ```
+
+### Step 8: Introspection
+
+After the review is submitted, reflect:
+
+1. **Were any comments incorrect or poorly calibrated?**
+   - If yes, note what to check differently next time
+2. **Did the user edit or reject any comments?**
+   - If yes, understand why and adjust future reviews
+3. **Were there issues you missed that the user caught?**
+   - If yes, consider updating `.claude/rules/` with the new pattern
+
+This feeds into the auto-introspection system (`.claude/rules/auto-introspection.md`).
 
 ## Review Summary Format
 

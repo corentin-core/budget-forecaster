@@ -147,6 +147,15 @@ ls budget_forecaster/<relevant_module>/
 2. **Are similar methods already defined?** Follow the same patterns.
 3. **Should this be behind an interface?** Match existing architecture.
 
+#### Step 1.3: Check coding conventions
+
+Before writing any code, re-read the quality rules:
+
+- `.claude/rules/python-quality.md` - Type hints, tuples, encapsulation
+- `.claude/rules/testing.md` - Two-tier strategy, fixtures, test style
+
+This prevents wasting time on code that will be rejected during review.
+
 ---
 
 ### Phase 1.5: Create Feature Branch
@@ -176,6 +185,26 @@ Present the checklist to the user:
 
 **WAIT for user confirmation ("go", "proceed", "yes") before coding.**
 
+#### 2.1 Create progress tracking file
+
+After the plan is validated, create `implementation-progress.md` at the project root:
+
+```markdown
+# Implementation Progress: Issue #<number>
+
+## Status: In Progress
+
+## Plan
+
+- [ ] `file1.py` - Description
+- [ ] `file2.py` - Description
+- [ ] `test_file.py` - Tests
+- [ ] Run quality checks
+```
+
+This file lets the user follow progress in real time. Update it as you complete each
+step.
+
 ---
 
 ### Phase 3: Implement
@@ -193,7 +222,7 @@ For each file:
 
 1. Implement following conventions
 2. Self-review against requirements
-3. Mark as done in checklist
+3. Mark as done in `implementation-progress.md`
 
 #### 3.3 Test implementation (CRITICAL)
 
@@ -214,16 +243,38 @@ def test_export():
 
 ---
 
-### Phase 4: Validate & Commit
+### Phase 4: Pre-review Validation & Commit
 
-#### 4.1 Run quality checks
+Before committing, validate against these checklists:
+
+#### 4.1 Design compliance
+
+- [ ] All files from the plan are implemented
+- [ ] No features added beyond the scope
+- [ ] Implementation matches acceptance criteria
+
+#### 4.2 Code conventions
+
+- [ ] Type hints on all functions
+- [ ] Tuple returns (not lists)
+- [ ] Private attributes by default
+- [ ] No circular imports
+
+#### 4.3 Testing adequacy
+
+- [ ] Unit tests for new logic
+- [ ] Integration test for the complete flow
+- [ ] Tests validate actual behavior (not just existence)
+- [ ] Fixtures for generated outputs
+
+#### 4.4 Run quality checks
 
 ```bash
 pytest tests/ -v
 # Pre-commit hooks run automatically on commit
 ```
 
-#### 4.2 Commit changes
+#### 4.5 Commit changes
 
 ```bash
 source budget-forecaster-venv/bin/activate && git add <files> && git commit -m "message"
@@ -234,6 +285,8 @@ Use conventional commit format: `type: description`
 ---
 
 ### Phase 5: Create PR
+
+Update `implementation-progress.md` status to "PR Created".
 
 ```bash
 git push -u origin <branch>
@@ -264,6 +317,8 @@ gh pr merge <number> --squash --delete-branch
 git checkout main && git pull origin main
 ```
 
+Clean up: delete `implementation-progress.md`.
+
 ---
 
 ## Workflow Summary
@@ -282,17 +337,23 @@ Phase 0.5: FINALIZE SCOPE (if needed)
 Phase 1: UNDERSTAND
   |-- Check parent issues
   |-- Read relevant code
+  |-- Read coding conventions
   v
 Phase 1.5: CREATE BRANCH
   v
 Phase 2: PLAN
   |-- Create checklist
   |-- ⏸️ CHECKPOINT 2: Confirm plan
+  |-- Create implementation-progress.md
   v
 Phase 3: IMPLEMENT
   |-- Models -> Logic -> Tests
+  |-- Update progress file per step
   v
-Phase 4: VALIDATE & COMMIT
+Phase 4: PRE-REVIEW VALIDATION & COMMIT
+  |-- Design compliance checklist
+  |-- Code conventions checklist
+  |-- Testing adequacy checklist
   |-- Run tests
   |-- Commit
   v
@@ -303,17 +364,20 @@ Phase 5: CREATE PR
 Phase 6: MERGE & CLEANUP
   |-- Merge after CI + user approval
   |-- Delete branch
+  |-- Delete implementation-progress.md
 ```
 
 ## Anti-Patterns to Avoid
 
-| Anti-Pattern                    | Correct Approach                    |
-| ------------------------------- | ----------------------------------- |
-| Implementing without analysis   | Always analyze and challenge first  |
-| Skipping checkpoints            | Wait for explicit user validation   |
-| Adding features not in scope    | Stick to agreed requirements        |
-| Merging without approval        | Always wait for user to say "merge" |
-| Tests that only check existence | Tests that validate actual behavior |
+| Anti-Pattern                             | Correct Approach                    |
+| ---------------------------------------- | ----------------------------------- |
+| Implementing without analysis            | Always analyze and challenge first  |
+| Implementing without reading conventions | Read rules before coding            |
+| Skipping checkpoints                     | Wait for explicit user validation   |
+| Adding features not in scope             | Stick to agreed requirements        |
+| No validation before commit              | Run pre-review checklist            |
+| Merging without approval                 | Always wait for user to say "merge" |
+| Tests that only check existence          | Tests that validate actual behavior |
 
 ## Tips
 
