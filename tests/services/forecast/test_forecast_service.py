@@ -12,7 +12,7 @@ import pytest
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import DailyTimeRange, TimeRange
+from budget_forecaster.core.date_range import DateRange, SingleDay
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.operation.budget import Budget
@@ -105,7 +105,7 @@ class TestLoadForecast:
             description="Test Budget",
             amount=Amount(-500.0, "EUR"),
             category=Category.GROCERIES,
-            time_range=TimeRange(date(2025, 1, 1), relativedelta(months=1)),
+            date_range=DateRange(date(2025, 1, 1), relativedelta(months=1)),
         )
         repository.upsert_budget(budget)
 
@@ -130,7 +130,7 @@ class TestLoadForecast:
             description="Test Op",
             amount=Amount(100.0, "EUR"),
             category=Category.SALARY,
-            time_range=DailyTimeRange(date(2025, 1, 15)),
+            date_range=SingleDay(date(2025, 1, 15)),
         )
         repository.upsert_planned_operation(op)
 
@@ -167,7 +167,7 @@ class TestReloadForecast:
             description="New Budget",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
-            time_range=TimeRange(date(2025, 1, 1), relativedelta(months=1)),
+            date_range=DateRange(date(2025, 1, 1), relativedelta(months=1)),
         )
         repository.upsert_budget(budget)
 
@@ -186,7 +186,7 @@ class TestBudgetCrud:
             description="Test Budget",
             amount=Amount(-200.0, "EUR"),
             category=Category.GROCERIES,
-            time_range=TimeRange(date(2025, 1, 1), relativedelta(months=1)),
+            date_range=DateRange(date(2025, 1, 1), relativedelta(months=1)),
         )
 
         created_budget = service.add_budget(budget)
@@ -206,7 +206,7 @@ class TestBudgetCrud:
             description="Original",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
-            time_range=TimeRange(date(2025, 1, 1), relativedelta(months=1)),
+            date_range=DateRange(date(2025, 1, 1), relativedelta(months=1)),
         )
         created_budget = service.add_budget(budget)
 
@@ -227,7 +227,7 @@ class TestBudgetCrud:
             description="Test",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
-            time_range=TimeRange(date(2025, 1, 1), relativedelta(months=1)),
+            date_range=DateRange(date(2025, 1, 1), relativedelta(months=1)),
         )
 
         with pytest.raises(ValueError, match="valid ID"):
@@ -240,7 +240,7 @@ class TestBudgetCrud:
             description="To Delete",
             amount=Amount(-100.0, "EUR"),
             category=Category.OTHER,
-            time_range=TimeRange(date(2025, 1, 1), relativedelta(months=1)),
+            date_range=DateRange(date(2025, 1, 1), relativedelta(months=1)),
         )
         created_budget = service.add_budget(budget)
         assert created_budget.id is not None
@@ -257,7 +257,7 @@ class TestBudgetCrud:
                 description=f"Budget {i}",
                 amount=Amount(-100.0 * (i + 1), "EUR"),
                 category=Category.OTHER,
-                time_range=TimeRange(date(2025, 1, 1), relativedelta(months=1)),
+                date_range=DateRange(date(2025, 1, 1), relativedelta(months=1)),
             )
             service.add_budget(budget)
 
@@ -275,7 +275,7 @@ class TestPlannedOperationCrud:
             description="Test Op",
             amount=Amount(100.0, "EUR"),
             category=Category.SALARY,
-            time_range=DailyTimeRange(date(2025, 1, 15)),
+            date_range=SingleDay(date(2025, 1, 15)),
         )
 
         created_op = service.add_planned_operation(op)
@@ -293,7 +293,7 @@ class TestPlannedOperationCrud:
             description="Original",
             amount=Amount(100.0, "EUR"),
             category=Category.SALARY,
-            time_range=DailyTimeRange(date(2025, 1, 15)),
+            date_range=SingleDay(date(2025, 1, 15)),
         )
         created_op = service.add_planned_operation(op)
 
@@ -314,7 +314,7 @@ class TestPlannedOperationCrud:
             description="Test",
             amount=Amount(100.0, "EUR"),
             category=Category.SALARY,
-            time_range=DailyTimeRange(date(2025, 1, 15)),
+            date_range=SingleDay(date(2025, 1, 15)),
         )
 
         with pytest.raises(ValueError, match="valid ID"):
@@ -327,7 +327,7 @@ class TestPlannedOperationCrud:
             description="To Delete",
             amount=Amount(100.0, "EUR"),
             category=Category.SALARY,
-            time_range=DailyTimeRange(date(2025, 1, 15)),
+            date_range=SingleDay(date(2025, 1, 15)),
         )
         created_op = service.add_planned_operation(op)
         assert created_op.id is not None
@@ -344,7 +344,7 @@ class TestPlannedOperationCrud:
                 description=f"Op {i}",
                 amount=Amount(100.0 * (i + 1), "EUR"),
                 category=Category.SALARY,
-                time_range=DailyTimeRange(date(2025, 1, 15 + i)),
+                date_range=SingleDay(date(2025, 1, 15 + i)),
             )
             service.add_planned_operation(op)
 

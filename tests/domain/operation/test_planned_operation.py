@@ -5,10 +5,10 @@ import pytest
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import (
-    DailyTimeRange,
-    PeriodicDailyTimeRange,
-    TimeRange,
+from budget_forecaster.core.date_range import (
+    DateRange,
+    RecurringDay,
+    SingleDay,
 )
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
@@ -23,7 +23,7 @@ def recurring_planned_operation() -> PlannedOperation:
         description="Test Operation",
         amount=Amount(100.0),
         category=Category.GROCERIES,
-        time_range=PeriodicDailyTimeRange(
+        date_range=RecurringDay(
             date(2023, 1, 1), relativedelta(months=1), date(2023, 12, 31)
         ),
     )
@@ -128,7 +128,7 @@ def isolated_planned_operation() -> PlannedOperation:
         description="Test Operation",
         amount=Amount(100.0),
         category=Category.GROCERIES,
-        time_range=DailyTimeRange(date(2023, 1, 1)),
+        date_range=SingleDay(date(2023, 1, 1)),
     )
 
 
@@ -211,14 +211,14 @@ class TestPlannedOperationTypeErrors:
         """Test PlannedOperation raises TypeError for invalid time_range type."""
         with pytest.raises(
             TypeError,
-            match="time_range must be DailyTimeRange or PeriodicDailyTimeRange",
+            match="date_range must be SingleDay or RecurringDay",
         ):
             PlannedOperation(
                 record_id=1,
                 description="Test",
                 amount=Amount(100.0),
                 category=Category.GROCERIES,
-                time_range=TimeRange(date(2023, 1, 1), relativedelta(months=1)),
+                date_range=DateRange(date(2023, 1, 1), relativedelta(months=1)),
             )
 
     @pytest.fixture
@@ -229,7 +229,7 @@ class TestPlannedOperationTypeErrors:
             description="Test",
             amount=Amount(100.0),
             category=Category.GROCERIES,
-            time_range=DailyTimeRange(date(2023, 1, 1)),
+            date_range=SingleDay(date(2023, 1, 1)),
         )
 
     def test_replace_invalid_record_id(
@@ -264,10 +264,10 @@ class TestPlannedOperationTypeErrors:
         """Test PlannedOperation.replace() raises TypeError for invalid time_range."""
         with pytest.raises(
             TypeError,
-            match="time_range must be DailyTimeRange or PeriodicDailyTimeRange",
+            match="date_range must be SingleDay or RecurringDay",
         ):
             planned_operation.replace(
-                time_range=TimeRange(date(2023, 1, 1), relativedelta(months=1))
+                date_range=DateRange(date(2023, 1, 1), relativedelta(months=1))
             )
 
 
@@ -281,7 +281,7 @@ class TestPlannedOperationSplitAt:
             description="Salary",
             amount=Amount(2500.0),
             category=Category.SALARY,
-            time_range=PeriodicDailyTimeRange(
+            date_range=RecurringDay(
                 date(2025, 1, 1), relativedelta(months=1), date(2025, 12, 31)
             ),
         )
@@ -289,11 +289,11 @@ class TestPlannedOperationSplitAt:
         terminated, continuation = op.split_at(date(2025, 6, 1))
 
         # Terminated ends day before first new iteration (June 1)
-        assert terminated.time_range.last_date == date(2025, 5, 31)
+        assert terminated.date_range.last_date == date(2025, 5, 31)
         assert terminated.id == 1  # Keeps original ID
 
         # Continuation starts at first iteration >= split date
-        assert continuation.time_range.initial_date == date(2025, 6, 1)
+        assert continuation.date_range.start_date == date(2025, 6, 1)
         assert continuation.id is None  # New record
         assert continuation.description == "Salary"
         assert continuation.amount == 2500.0
@@ -306,9 +306,7 @@ class TestPlannedOperationSplitAt:
             description="Salary",
             amount=Amount(2500.0),
             category=Category.SALARY,
-            time_range=PeriodicDailyTimeRange(
-                date(2025, 1, 1), relativedelta(months=1)
-            ),
+            date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
         )
 
         _, continuation = op.split_at(date(2025, 6, 1), new_amount=Amount(3000.0))
@@ -322,16 +320,14 @@ class TestPlannedOperationSplitAt:
             description="Salary",
             amount=Amount(2500.0),
             category=Category.SALARY,
-            time_range=PeriodicDailyTimeRange(
-                date(2025, 1, 1), relativedelta(months=1)
-            ),
+            date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
         )
 
         _, continuation = op.split_at(
             date(2025, 6, 1), new_period=relativedelta(months=3)
         )
 
-        assert continuation.time_range.period == relativedelta(months=3)
+        assert continuation.date_range.period == relativedelta(months=3)
 
     def test_split_at_copies_matcher_params(self) -> None:
         """Test split_at copies matcher parameters to continuation."""
@@ -340,9 +336,7 @@ class TestPlannedOperationSplitAt:
             description="Salary",
             amount=Amount(2500.0),
             category=Category.SALARY,
-            time_range=PeriodicDailyTimeRange(
-                date(2025, 1, 1), relativedelta(months=1)
-            ),
+            date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
         ).set_matcher_params(
             description_hints={"SALARY", "EMPLOYER"},
             approximation_date_range=timedelta(days=10),
@@ -362,7 +356,7 @@ class TestPlannedOperationSplitAt:
             description="One-time",
             amount=Amount(100.0),
             category=Category.OTHER,
-            time_range=DailyTimeRange(date(2025, 1, 1)),
+            date_range=SingleDay(date(2025, 1, 1)),
         )
 
         with pytest.raises(ValueError, match="Cannot split a non-periodic"):

@@ -5,7 +5,7 @@ import pytest
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import DailyTimeRange, PeriodicDailyTimeRange
+from budget_forecaster.core.date_range import RecurringDay, SingleDay
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
@@ -25,25 +25,21 @@ def forecast() -> Forecast:
                 description="Planned Operation 1",
                 amount=Amount(100.0, "EUR"),
                 category=Category.GROCERIES,
-                time_range=DailyTimeRange(date(2023, 1, 15)),
+                date_range=SingleDay(date(2023, 1, 15)),
             ).set_matcher_params(description_hints={"Operation 1"}),
             PlannedOperation(
                 record_id=2,
                 description="Planned Operation 2",
                 amount=Amount(200.0, "EUR"),
                 category=Category.OTHER,
-                time_range=PeriodicDailyTimeRange(
-                    date(2023, 2, 15), relativedelta(months=1)
-                ),
+                date_range=RecurringDay(date(2023, 2, 15), relativedelta(months=1)),
             ).set_matcher_params(description_hints={"Operation 2"}),
             PlannedOperation(
                 record_id=3,
                 description="Planned Operation 3",
                 amount=Amount(200.0, "EUR"),
                 category=Category.SALARY,
-                time_range=PeriodicDailyTimeRange(
-                    date(2023, 2, 15), relativedelta(months=1)
-                ),
+                date_range=RecurringDay(date(2023, 2, 15), relativedelta(months=1)),
             ),
         ),
         budgets=(),

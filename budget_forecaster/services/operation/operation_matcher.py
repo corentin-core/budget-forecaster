@@ -2,7 +2,7 @@
 from datetime import date, timedelta
 from typing import Any, Iterable, Iterator
 
-from budget_forecaster.core.time_range import TimeRangeInterface
+from budget_forecaster.core.date_range import DateRangeInterface
 from budget_forecaster.core.types import IterationDate
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.operation_link import OperationLink
@@ -74,8 +74,8 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         Raises:
             ValueError: If the date is not a valid iteration.
         """
-        time_range = self._operation_range.time_range.current_time_range(iteration_date)
-        if time_range is None or time_range.initial_date != iteration_date:
+        dr = self._operation_range.date_range.current_date_range(iteration_date)
+        if dr is None or dr.start_date != iteration_date:
             raise ValueError(
                 f"Invalid iteration date {iteration_date} for operation range "
                 f"'{self._operation_range.description}'"
@@ -127,8 +127,8 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
         return self
 
     def _out_of_range(self, operation: HistoricOperation) -> bool:
-        initial_date = self.operation_range.time_range.initial_date
-        last_date = self.operation_range.time_range.last_date
+        initial_date = self.operation_range.date_range.start_date
+        last_date = self.operation_range.date_range.last_date
         return (
             operation.operation_date < initial_date - self.approximation_date_range
             or operation.operation_date
@@ -155,7 +155,7 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
 
     def match_date_range(self, operation: HistoricOperation) -> bool:
         """Check if the date of the operation is within the time range of the operation range."""
-        return self.operation_range.time_range.is_within(
+        return self.operation_range.date_range.is_within(
             operation.operation_date,
             approx_before=self.approximation_date_range,
             approx_after=self.approximation_date_range,
@@ -214,65 +214,65 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
     ) -> Iterator[HistoricOperation]:
         """Returns the operations matching the last time range and close to current date."""
         for operation in self.matches(operations):
-            if operation.time_range.is_within(
+            if operation.date_range.is_within(
                 current_date, approx_after=self.approximation_date_range
             ):
                 yield operation
 
-    def late_time_ranges(
+    def late_date_ranges(
         self, current_date: date, operations: Iterable[HistoricOperation]
-    ) -> Iterator[TimeRangeInterface]:
-        """Returns the time ranges which are late and close to current date."""
+    ) -> Iterator[DateRangeInterface]:
+        """Returns the date ranges which are late and close to current date."""
         not_assigned_operations = {
             op.unique_id: op for op in operations if self.match(op)
         }
-        for time_range in self.operation_range.time_range.iterate_over_time_ranges(
+        for dr in self.operation_range.date_range.iterate_over_date_ranges(
             current_date - self.approximation_date_range
         ):
-            if time_range.is_future(current_date):
+            if dr.is_future(current_date):
                 return
-            if not time_range.is_within(
+            if not dr.is_within(
                 current_date, approx_after=self.approximation_date_range
             ):
                 continue
             for operation in not_assigned_operations.values():
-                if time_range.is_within(
+                if dr.is_within(
                     operation.operation_date,
                     approx_before=self.approximation_date_range,
                     approx_after=self.approximation_date_range,
                 ):
-                    # the time range was executed
+                    # the date range was executed
                     not_assigned_operations.pop(operation.unique_id)
                     break
             else:
-                yield time_range
+                yield dr
 
-    def anticipated_time_ranges(
+    def anticipated_date_ranges(
         self, current_date: date, operations: Iterable[HistoricOperation]
-    ) -> Iterator[tuple[TimeRangeInterface, HistoricOperation]]:
-        """Returns the time ranges which are anticipated and close to current date."""
+    ) -> Iterator[tuple[DateRangeInterface, HistoricOperation]]:
+        """Returns the date ranges which are anticipated and close to current date."""
         not_assigned_operations = {
             op.unique_id: op
             for op in self.latest_matching_operations(current_date, operations)
         }
-        for time_range in self.operation_range.time_range.iterate_over_time_ranges(
+        for dr in self.operation_range.date_range.iterate_over_date_ranges(
             current_date - self.approximation_date_range
         ):
-            if not time_range.is_future(current_date):
+            if not dr.is_future(current_date):
                 continue
-            if not time_range.is_within(
+            if not dr.is_within(
                 current_date, approx_before=self.approximation_date_range
             ):
-                # the time range is too far in the future
+                # the date range is too far in the future
                 return
             for operation in not_assigned_operations.values():
-                if time_range.is_within(
+                if dr.is_within(
                     operation.operation_date,
                     approx_before=self.approximation_date_range,
                 ):
-                    # the time range was executed with anticipation
+                    # the date range was executed with anticipation
                     not_assigned_operations.pop(operation.unique_id)
-                    yield time_range, operation
+                    yield dr, operation
                     break
 
     def replace(self, **kwargs: Any) -> "OperationMatcher":

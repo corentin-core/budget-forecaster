@@ -6,7 +6,7 @@ from typing import Final, Iterable
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import DailyTimeRange
+from budget_forecaster.core.date_range import SingleDay
 from budget_forecaster.core.types import (
     BudgetId,
     IterationDate,
@@ -113,16 +113,16 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         late_iterations: list[date] = []
         approximation = planned_operation.matcher.approximation_date_range
 
-        # Iterate over time ranges starting before the approximation window
-        for time_range in planned_operation.time_range.iterate_over_time_ranges(
+        # Iterate over date ranges starting before the approximation window
+        for dr in planned_operation.date_range.iterate_over_date_ranges(
             balance_date - approximation
         ):
             # Stop if we've reached or passed balance_date (not late yet)
-            if (iteration_date := time_range.initial_date) >= balance_date:
+            if (iteration_date := dr.start_date) >= balance_date:
                 break
 
             # Check if within the approximation window (not too old)
-            if not time_range.is_within(balance_date, approx_after=approximation):
+            if not dr.is_within(balance_date, approx_after=approximation):
                 continue
 
             # Check if this iteration has a link - if not, it's late
@@ -139,7 +139,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         """Create postponed operations for late iterations.
 
         Returns a tuple of:
-        - One DailyTimeRange operation for each late iteration (postponed to tomorrow)
+        - One SingleDay operation for each late iteration (postponed to tomorrow)
         - The original periodic operation advanced to after the postponed date (if applicable)
         """
         if not late_iterations:
@@ -153,16 +153,17 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         # Create one postponed operation per late iteration
         for _ in late_iterations:
             result.append(
-                planned_operation.replace(time_range=DailyTimeRange(postponed_date))
+                planned_operation.replace(date_range=SingleDay(postponed_date))
             )
 
         # Advance the periodic operation to start after the postponed date
-        next_time_range = planned_operation.time_range.next_time_range(postponed_date)
-        if next_time_range is not None:
+        if (
+            next_dr := planned_operation.date_range.next_date_range(postponed_date)
+        ) is not None:
             result.append(
                 planned_operation.replace(
-                    time_range=planned_operation.time_range.replace(
-                        initial_date=next_time_range.initial_date
+                    date_range=planned_operation.date_range.replace(
+                        start_date=next_dr.start_date
                     )
                 )
             )
@@ -220,30 +221,31 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
 
         if not actualized_iterations:
             # No actualized iterations, keep the operation as-is if future
-            if planned_operation.time_range.is_future(balance_date):
+            if planned_operation.date_range.is_future(balance_date):
                 return planned_operation
             # Current/past operation with no links: advance to next period
-            next_time_range = planned_operation.time_range.next_time_range(balance_date)
-            if next_time_range is None:
+            if (
+                next_dr := planned_operation.date_range.next_date_range(balance_date)
+            ) is None:
                 return None
             return planned_operation.replace(
-                time_range=planned_operation.time_range.replace(
-                    initial_date=next_time_range.initial_date
+                date_range=planned_operation.date_range.replace(
+                    start_date=next_dr.start_date
                 )
             )
 
         last_actualized_iteration = max(actualized_iterations)
 
         # Advance the planned operation to start after the last actualized iteration
-        next_time_range = planned_operation.time_range.next_time_range(
+        next_dr = planned_operation.date_range.next_date_range(
             last_actualized_iteration
         )
-        if next_time_range is None:
+        if next_dr is None:
             return None
 
         return planned_operation.replace(
-            time_range=planned_operation.time_range.replace(
-                initial_date=next_time_range.initial_date
+            date_range=planned_operation.date_range.replace(
+                start_date=next_dr.start_date
             )
         )
 
@@ -253,7 +255,7 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         actualized_planned_operations: list[PlannedOperation] = []
 
         for planned_operation in sorted(
-            planned_operations, key=lambda op: op.time_range.initial_date
+            planned_operations, key=lambda op: op.date_range.start_date
         ):
             linked_iterations = self._get_linked_iterations(planned_operation)
             # Check for late iterations (past iterations without links)
@@ -324,13 +326,13 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             updated_amount,
         )
         new_budget_start = self._account.balance_date + timedelta(days=1)
-        if new_budget_start > budget.time_range.last_date:
+        if new_budget_start > budget.date_range.last_date:
             return None
 
         return budget.replace(
-            time_range=budget.time_range.replace(
-                initial_date=new_budget_start,
-                duration=budget.time_range.last_date
+            date_range=budget.date_range.replace(
+                start_date=new_budget_start,
+                duration=budget.date_range.last_date
                 - new_budget_start
                 + relativedelta(days=1),
             ),
@@ -341,18 +343,19 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         updated_budgets: list[Budget] = []
 
         for budget in sorted(
-            budgets, key=lambda b: (b.time_range.initial_date, b.time_range.last_date)
+            budgets, key=lambda b: (b.date_range.start_date, b.date_range.last_date)
         ):
             balance_date = self._account.balance_date
-            if budget.time_range.is_expired(balance_date):
+            if budget.date_range.is_expired(balance_date):
                 # the budget is obsolete, discard it
                 continue
 
-            current_time_range = budget.time_range.current_time_range(balance_date)
-            if current_time_range is not None:
+            if (
+                current_dr := budget.date_range.current_date_range(balance_date)
+            ) is not None:
                 # create a budget for the current period and update it
-                current_budget = budget.replace(time_range=current_time_range)
-                iteration_date = current_time_range.initial_date
+                current_budget = budget.replace(date_range=current_dr)
+                iteration_date = current_dr.start_date
 
                 linked_op_ids = self._get_linked_operation_ids(
                     current_budget, iteration_date
@@ -366,19 +369,19 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
 
                 # update renewable budget to start after the current period
                 if (
-                    next_time_range := budget.time_range.next_time_range(balance_date)
+                    next_dr := budget.date_range.next_date_range(balance_date)
                 ) is not None:
                     # update renewable budget for the next period
                     updated_budgets.append(
                         budget.replace(
-                            time_range=budget.time_range.replace(
-                                initial_date=next_time_range.initial_date
+                            date_range=budget.date_range.replace(
+                                start_date=next_dr.start_date
                             )
                         )
                     )
                 continue
 
-            if budget.time_range.is_future(balance_date):
+            if budget.date_range.is_future(balance_date):
                 updated_budgets.append(budget)
 
         return tuple(updated_budgets)

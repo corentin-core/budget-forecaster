@@ -5,7 +5,7 @@ import pytest
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import PeriodicTimeRange, TimeRange
+from budget_forecaster.core.date_range import DateRange, RecurringDateRange
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.operation_range import OperationRange
 
@@ -17,7 +17,7 @@ def operation_range() -> OperationRange:
         "Test Operation",
         Amount(100, "EUR"),
         Category.GROCERIES,
-        TimeRange(date(2023, 1, 1), relativedelta(days=30)),
+        DateRange(date(2023, 1, 1), relativedelta(days=30)),
     )
 
 
@@ -78,7 +78,7 @@ class TestOperationRange:
         assert new_operation_range.description == "New Description"
         assert new_operation_range.amount == 100.0
         assert new_operation_range.category == Category.GROCERIES
-        assert new_operation_range.time_range == operation_range.time_range
+        assert new_operation_range.date_range == operation_range.date_range
 
     def test_replace_with_new_amount(self, operation_range: OperationRange) -> None:
         """Test the replace method with a new amount."""
@@ -86,7 +86,7 @@ class TestOperationRange:
         assert new_operation_range.description == "Test Operation"
         assert new_operation_range.amount == 200.0
         assert new_operation_range.category == Category.GROCERIES
-        assert new_operation_range.time_range == operation_range.time_range
+        assert new_operation_range.date_range == operation_range.date_range
 
 
 @pytest.fixture
@@ -96,8 +96,8 @@ def periodic_operation_range() -> OperationRange:
         "Test Operation",
         Amount(100, "EUR"),
         Category.GROCERIES,
-        PeriodicTimeRange(
-            TimeRange(date(2023, 1, 1), relativedelta(months=1)),
+        RecurringDateRange(
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
             relativedelta(months=1),
             date(2023, 12, 31),
         ),
@@ -169,7 +169,7 @@ class TestPeriodicOperationRange:
         assert new_operation_range.description == "New Description"
         assert new_operation_range.amount == 100.0
         assert new_operation_range.category == Category.GROCERIES
-        assert new_operation_range.time_range == periodic_operation_range.time_range
+        assert new_operation_range.date_range == periodic_operation_range.date_range
 
     def test_replace_with_new_amount(
         self, periodic_operation_range: OperationRange
@@ -181,7 +181,7 @@ class TestPeriodicOperationRange:
         assert new_operation_range.description == "Test Operation"
         assert new_operation_range.amount == 200.0
         assert new_operation_range.category == Category.GROCERIES
-        assert new_operation_range.time_range == periodic_operation_range.time_range
+        assert new_operation_range.date_range == periodic_operation_range.date_range
 
 
 class TestOperationRangeErrors:
@@ -194,7 +194,7 @@ class TestOperationRangeErrors:
             "Test Operation",
             Amount(100, "EUR"),
             Category.GROCERIES,
-            TimeRange(date(2023, 1, 1), relativedelta(days=30)),
+            DateRange(date(2023, 1, 1), relativedelta(days=30)),
         )
 
     def test_amount_on_period_invalid_date_order(
@@ -221,5 +221,5 @@ class TestOperationRangeErrors:
 
     def test_replace_invalid_time_range(self, operation_range: OperationRange) -> None:
         """Test replace() raises TypeError for invalid time_range."""
-        with pytest.raises(TypeError, match="time_range must be TimeRangeInterface"):
-            operation_range.replace(time_range="2023-01-01")
+        with pytest.raises(TypeError, match="date_range must be DateRangeInterface"):
+            operation_range.replace(date_range="2023-01-01")

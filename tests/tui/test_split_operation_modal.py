@@ -9,11 +9,11 @@ from textual.containers import Container
 from textual.widgets import Button, Input, Select, Static
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import (
-    DailyTimeRange,
-    PeriodicDailyTimeRange,
-    PeriodicTimeRange,
-    TimeRange,
+from budget_forecaster.core.date_range import (
+    DateRange,
+    RecurringDateRange,
+    RecurringDay,
+    SingleDay,
 )
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.budget import Budget
@@ -28,18 +28,18 @@ def make_periodic_planned_operation(
     record_id: int = 1,
     description: str = "Salary",
     amount: float = 2500.0,
-    initial_date: date | None = None,
+    start_date: date | None = None,
 ) -> PlannedOperation:
     """Create a test periodic PlannedOperation."""
-    if initial_date is None:
-        initial_date = date(2025, 1, 1)
+    if start_date is None:
+        start_date = date(2025, 1, 1)
     return PlannedOperation(
         record_id=record_id,
         description=description,
         amount=Amount(amount, "EUR"),
         category=Category.SALARY,
-        time_range=PeriodicDailyTimeRange(
-            initial_date,
+        date_range=RecurringDay(
+            start_date,
             relativedelta(months=1),
         ),
     )
@@ -52,7 +52,7 @@ def make_non_periodic_planned_operation() -> PlannedOperation:
         description="One-time payment",
         amount=Amount(-500.0, "EUR"),
         category=Category.OTHER,
-        time_range=DailyTimeRange(date(2025, 3, 15)),
+        date_range=SingleDay(date(2025, 3, 15)),
     )
 
 
@@ -60,18 +60,18 @@ def make_periodic_budget(
     record_id: int = 1,
     description: str = "Monthly groceries",
     amount: float = -400.0,
-    initial_date: date | None = None,
+    start_date: date | None = None,
 ) -> Budget:
     """Create a test periodic Budget."""
-    if initial_date is None:
-        initial_date = date(2025, 1, 1)
+    if start_date is None:
+        start_date = date(2025, 1, 1)
     return Budget(
         record_id=record_id,
         description=description,
         amount=Amount(amount, "EUR"),
         category=Category.GROCERIES,
-        time_range=PeriodicTimeRange(
-            TimeRange(initial_date, relativedelta(months=1)),
+        date_range=RecurringDateRange(
+            DateRange(start_date, relativedelta(months=1)),
             period=relativedelta(months=1),
         ),
     )
@@ -221,7 +221,7 @@ class TestSplitOperationModalValidation:
     @pytest.mark.asyncio
     async def test_date_before_start_shows_error(self) -> None:
         """Verify error is shown when split date is before operation start."""
-        operation = make_periodic_planned_operation(initial_date=date(2025, 1, 1))
+        operation = make_periodic_planned_operation(start_date=date(2025, 1, 1))
         app = SplitModalTestApp(operation)
         async with app.run_test(size=TEST_SIZE) as pilot:
             app.open_modal()
@@ -332,7 +332,7 @@ class TestSplitOperationModalSubmission:
     async def test_successful_planned_operation_split(self) -> None:
         """Verify successful split returns correct SplitResult for PlannedOperation."""
         operation = make_periodic_planned_operation(
-            initial_date=date(2025, 1, 1),
+            start_date=date(2025, 1, 1),
             amount=2500.0,
         )
         app = SplitModalTestApp(operation)
@@ -369,7 +369,7 @@ class TestSplitOperationModalSubmission:
     async def test_successful_budget_split_with_duration(self) -> None:
         """Verify successful split returns correct SplitResult for Budget."""
         budget = make_periodic_budget(
-            initial_date=date(2025, 1, 1),
+            start_date=date(2025, 1, 1),
             amount=-400.0,
         )
         app = SplitModalTestApp(budget)

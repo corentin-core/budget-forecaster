@@ -14,7 +14,7 @@ classDiagram
         +description
         +amount
         +category
-        +time_range
+        +date_range
         +amount_on_period()
     }
 
@@ -22,7 +22,7 @@ classDiagram
         #description
         #amount
         #category
-        #time_range
+        #date_range
     }
 
     class PlannedOperation {
@@ -50,57 +50,57 @@ HistoricOperation represents actual bank transactions (imported). PlannedOperati
 Budget represent expected future activity and include an OperationMatcher for automatic
 linking. All share amount_on_period() which computes the amount over any time slice.
 
-## TimeRange Hierarchy
+## DateRange Hierarchy
 
-Time ranges define when operations occur and how they repeat.
+Date ranges define when operations occur and how they repeat.
 
 ```mermaid
 classDiagram
-    class TimeRangeInterface {
+    class DateRangeInterface {
         <<interface>>
-        +initial_date
+        +start_date
         +last_date
         +duration
         +total_duration
         +is_expired()
         +is_future()
         +is_within()
-        +iterate_over_time_ranges()
-        +current_time_range()
+        +iterate_over_date_ranges()
+        +current_date_range()
         +replace()
     }
 
-    class TimeRange {
-        -initial_date
+    class DateRange {
+        -start_date
         -duration
     }
 
-    class DailyTimeRange {
-        +iterate_over_time_ranges()
+    class SingleDay {
+        +iterate_over_date_ranges()
     }
 
-    class PeriodicTimeRange {
+    class RecurringDateRange {
         -period
         -end_date
-        +iterate_over_time_ranges()
-        +current_time_range()
-        +next_time_range()
-        +last_time_range()
+        +iterate_over_date_ranges()
+        +current_date_range()
+        +next_date_range()
+        +last_date_range()
     }
 
-    class PeriodicDailyTimeRange {
-        +iterate_over_time_ranges()
+    class RecurringDay {
+        +iterate_over_date_ranges()
     }
 
-    TimeRangeInterface <|.. TimeRange
-    TimeRange <|-- DailyTimeRange
-    TimeRange <|-- PeriodicTimeRange
-    PeriodicTimeRange <|-- PeriodicDailyTimeRange
+    DateRangeInterface <|.. DateRange
+    DateRange <|-- SingleDay
+    DateRange <|-- RecurringDateRange
+    RecurringDateRange <|-- RecurringDay
 ```
 
-PeriodicTimeRange enables recurring operations (monthly rent, weekly groceries) by
-generating iterations via iterate_over_time_ranges(). DailyTimeRange is used for
-one-time operations on a specific date.
+RecurringDateRange enables recurring operations (monthly rent, weekly groceries) by
+generating iterations via iterate_over_date_ranges(). SingleDay is used for one-time
+operations on a specific date.
 
 ## Linking System
 

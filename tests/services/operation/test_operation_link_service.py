@@ -14,11 +14,11 @@ import pytest
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import (
-    DailyTimeRange,
-    PeriodicDailyTimeRange,
-    PeriodicTimeRange,
-    TimeRange,
+from budget_forecaster.core.date_range import (
+    DateRange,
+    RecurringDateRange,
+    RecurringDay,
+    SingleDay,
 )
 from budget_forecaster.core.types import Category, LinkType, MatcherKey
 from budget_forecaster.domain.operation.budget import Budget
@@ -64,13 +64,13 @@ def link_service(repository: SqliteRepository) -> OperationLinkService:
 @pytest.fixture
 def monthly_rent_range() -> OperationRange:
     """Create a periodic monthly operation range for rent."""
-    base_range = TimeRange(date(2024, 1, 1), relativedelta(months=1))
-    periodic = PeriodicTimeRange(base_range, relativedelta(months=1))
+    base_range = DateRange(date(2024, 1, 1), relativedelta(months=1))
+    periodic = RecurringDateRange(base_range, relativedelta(months=1))
     return OperationRange(
         description="Rent",
         amount=Amount(-800.0, "EUR"),  # Negative for expense
         category=Category.RENT,
-        time_range=periodic,
+        date_range=periodic,
     )
 
 
@@ -92,7 +92,7 @@ def monthly_rent_planned_op() -> PlannedOperation:
         description="Rent",
         amount=Amount(-800.0, "EUR"),
         category=Category.RENT,
-        time_range=PeriodicDailyTimeRange(date(2024, 1, 1), relativedelta(months=1)),
+        date_range=RecurringDay(date(2024, 1, 1), relativedelta(months=1)),
     )
     return planned_op.set_matcher_params(
         approximation_date_range=timedelta(days=5),
@@ -187,8 +187,8 @@ class TestLoadLinksForTarget:
             description="Housing Budget",
             amount=Amount(-1000.0, "EUR"),
             category=Category.RENT,
-            time_range=PeriodicTimeRange(
-                TimeRange(date(2024, 1, 1), relativedelta(months=1)),
+            date_range=RecurringDateRange(
+                DateRange(date(2024, 1, 1), relativedelta(months=1)),
                 relativedelta(months=1),
             ),
         )
@@ -295,7 +295,7 @@ class TestCreateHeuristicLinks:
             description="Salary",
             amount=Amount(3000.0, "EUR"),
             category=Category.SALARY,
-            time_range=DailyTimeRange(date(2024, 1, 1)),
+            date_range=SingleDay(date(2024, 1, 1)),
         )
         different_matcher = OperationMatcher(operation_range=different_range)
         matchers = {MatcherKey(LinkType.PLANNED_OPERATION, 99): different_matcher}
@@ -461,9 +461,7 @@ class TestApplicationServiceLinkIntegration:
             description="Rent",
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
-            time_range=PeriodicDailyTimeRange(
-                date(2024, 1, 1), relativedelta(months=1)
-            ),
+            date_range=RecurringDay(date(2024, 1, 1), relativedelta(months=1)),
         )
 
         new_op = app_service.add_planned_operation(planned_op)
@@ -483,9 +481,7 @@ class TestApplicationServiceLinkIntegration:
             description="Rent",
             amount=Amount(-800.0, "EUR"),
             category=Category.RENT,
-            time_range=PeriodicDailyTimeRange(
-                date(2024, 1, 1), relativedelta(months=1)
-            ),
+            date_range=RecurringDay(date(2024, 1, 1), relativedelta(months=1)),
         )
         new_op = app_service.add_planned_operation(planned_op)
         assert new_op.id is not None
@@ -497,9 +493,7 @@ class TestApplicationServiceLinkIntegration:
             description="Rent Updated",
             amount=Amount(-1500.0, "EUR"),  # Different amount
             category=Category.RENT,
-            time_range=PeriodicDailyTimeRange(
-                date(2024, 1, 1), relativedelta(months=1)
-            ),
+            date_range=RecurringDay(date(2024, 1, 1), relativedelta(months=1)),
         )
         app_service.update_planned_operation(updated_op)
 
@@ -518,8 +512,8 @@ class TestApplicationServiceLinkIntegration:
             description="Groceries Budget",
             amount=Amount(-50.0, "EUR"),
             category=Category.GROCERIES,
-            time_range=PeriodicTimeRange(
-                TimeRange(date(2024, 1, 1), relativedelta(months=1)),
+            date_range=RecurringDateRange(
+                DateRange(date(2024, 1, 1), relativedelta(months=1)),
                 relativedelta(months=1),
             ),
         )

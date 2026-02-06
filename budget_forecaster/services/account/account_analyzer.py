@@ -5,7 +5,7 @@ from datetime import date, timedelta
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 
-from budget_forecaster.core.time_range import PeriodicTimeRange
+from budget_forecaster.core.date_range import RecurringDateRange
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.forecast.forecast import Forecast
@@ -101,7 +101,7 @@ class AccountAnalyzer:
         for operation_range in itertools.chain(
             self._forecast.operations, self._forecast.budgets
         ):
-            time_range = operation_range.time_range
+            time_range = operation_range.date_range
             if time_range.is_future(end_date):
                 continue
 
@@ -111,12 +111,14 @@ class AccountAnalyzer:
             budget_forecast["Catégorie"].append(operation_range.category)
             budget_forecast["Description"].append(operation_range.description)
             budget_forecast["Montant"].append(operation_range.amount)
-            budget_forecast["Date de début"].append(time_range.initial_date)
+            budget_forecast["Date de début"].append(time_range.start_date)
             budget_forecast["Date de fin"].append(
                 time_range.last_date if time_range.last_date < date.max else None
             )
             period = (
-                time_range.period if isinstance(time_range, PeriodicTimeRange) else None
+                time_range.period
+                if isinstance(time_range, RecurringDateRange)
+                else None
             )
             budget_forecast["Périodicité"].append(self._relative_delta_to_str(period))
 

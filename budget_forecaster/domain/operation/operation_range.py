@@ -5,7 +5,7 @@ from functools import total_ordering
 from typing import Any
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import TimeRangeInterface
+from budget_forecaster.core.date_range import DateRangeInterface
 from budget_forecaster.core.types import Category
 
 
@@ -13,7 +13,7 @@ from budget_forecaster.core.types import Category
 class OperationRangeInterface(abc.ABC):
     """
     An operation range is an amount of money allocated to
-    an operation category and over a given time range.
+    an operation category and over a given date range.
     """
 
     @property
@@ -38,8 +38,8 @@ class OperationRangeInterface(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def time_range(self) -> TimeRangeInterface:
-        """The time range of the operation."""
+    def date_range(self) -> DateRangeInterface:
+        """The date range of the operation."""
 
     @abc.abstractmethod
     def amount_on_period(self, start_date: date, end_date: date) -> float:
@@ -57,13 +57,13 @@ class OperationRangeInterface(abc.ABC):
             and self.amount == other.amount
             and self.currency == other.currency
             and self.category == other.category
-            and self.time_range == other.time_range
+            and self.date_range == other.date_range
         )
 
     def __lt__(self, other: object) -> bool:
         if not isinstance(other, OperationRangeInterface):
             return NotImplemented
-        return self.time_range < other.time_range
+        return self.date_range < other.date_range
 
     def __hash__(self) -> int:
         return hash(
@@ -72,7 +72,7 @@ class OperationRangeInterface(abc.ABC):
                 self.amount,
                 self.currency,
                 self.category,
-                self.time_range,
+                self.date_range,
             )
         )
 
@@ -85,12 +85,12 @@ class OperationRange(OperationRangeInterface):
         description: str,
         amount: Amount,
         category: Category,
-        time_range: TimeRangeInterface,
+        date_range: DateRangeInterface,
     ) -> None:
         self._description = description
         self._amount = amount
         self._category = category
-        self._time_range = time_range
+        self._date_range = date_range
 
     @property
     def description(self) -> str:
@@ -109,8 +109,8 @@ class OperationRange(OperationRangeInterface):
         return self._category
 
     @property
-    def time_range(self) -> TimeRangeInterface:
-        return self._time_range
+    def date_range(self) -> DateRangeInterface:
+        return self._date_range
 
     def amount_on_period(self, start_date: date, end_date: date) -> float:
         if start_date > end_date:
@@ -118,35 +118,32 @@ class OperationRange(OperationRangeInterface):
                 f"start_date must be <= end_date, got {start_date} > {end_date}"
             )
 
-        if self.time_range.is_expired(start_date) or self.time_range.is_future(
+        if self.date_range.is_expired(start_date) or self.date_range.is_future(
             end_date
         ):
             return 0.0
 
         amount = 0.0
-        for time_range in self.time_range.iterate_over_time_ranges():
-            if time_range.is_expired(start_date):
+        for dr in self.date_range.iterate_over_date_ranges():
+            if dr.is_expired(start_date):
                 continue
 
-            if time_range.is_future(end_date):
+            if dr.is_future(end_date):
                 break
 
-            if (
-                time_range.initial_date >= start_date
-                and time_range.last_date <= end_date
-            ):
+            if dr.start_date >= start_date and dr.last_date <= end_date:
                 # we have a complete period
                 amount += self.amount
                 continue
 
-            amount_per_day = self.amount / time_range.total_duration.days
+            amount_per_day = self.amount / dr.total_duration.days
             # incomplete period, two cases:
-            # 1. time_range.initial_date < start_date
-            # 2. time_range.last_date > end_date
+            # 1. dr.start_date < start_date
+            # 2. dr.last_date > end_date
             days_in_period = (
-                (time_range.last_date - start_date).days + 1
-                if time_range.initial_date < start_date
-                else (end_date - time_range.initial_date).days + 1
+                (dr.last_date - start_date).days + 1
+                if dr.start_date < start_date
+                else (end_date - dr.start_date).days + 1
             )
             amount += amount_per_day * days_in_period
 
@@ -162,20 +159,20 @@ class OperationRange(OperationRangeInterface):
         new_category = kwargs.get("category", self._category)
         if not isinstance(new_category, Category):
             raise TypeError(f"category must be Category, got {type(new_category)}")
-        new_time_range = kwargs.get("time_range", self._time_range)
-        if not isinstance(new_time_range, TimeRangeInterface):
+        new_date_range = kwargs.get("date_range", self._date_range)
+        if not isinstance(new_date_range, DateRangeInterface):
             raise TypeError(
-                f"time_range must be TimeRangeInterface, got {type(new_time_range)}"
+                f"date_range must be DateRangeInterface, got {type(new_date_range)}"
             )
         return OperationRange(
             description=new_description,
             amount=new_amount,
             category=new_category,
-            time_range=new_time_range,
+            date_range=new_date_range,
         )
 
     def __repr__(self) -> str:
         return (
-            f"{self.time_range} - {self.category} - {self.description} "
+            f"{self.date_range} - {self.category} - {self.description} "
             f"- {self.amount} {self.currency}"
         )

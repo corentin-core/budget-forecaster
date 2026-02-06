@@ -12,7 +12,7 @@ from pathlib import Path
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import PeriodicTimeRange
+from budget_forecaster.core.date_range import RecurringDateRange
 from budget_forecaster.core.types import (
     BudgetId,
     Category,
@@ -686,7 +686,7 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
             return None
 
         # Must be periodic
-        if not isinstance(target.time_range, PeriodicTimeRange):
+        if not isinstance(target.date_range, RecurringDateRange):
             return None
 
         # Get all links for this target
@@ -695,9 +695,9 @@ class ApplicationService:  # pylint: disable=too-many-public-methods
 
         # Find the first future iteration that is not actualized
         today = date.today()
-        for time_range in target.time_range.iterate_over_time_ranges(today):
-            if time_range.initial_date not in actualized_dates:
-                return time_range.initial_date
+        for time_range in target.date_range.iterate_over_date_ranges(today):
+            if time_range.start_date not in actualized_dates:
+                return time_range.start_date
 
         return None
 

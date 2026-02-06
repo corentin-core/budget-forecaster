@@ -10,7 +10,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Select, Static
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import PeriodicTimeRange
+from budget_forecaster.core.date_range import RecurringDateRange
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 
@@ -146,7 +146,7 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
                 yield Static(self._target.description, id="info-description")
                 yield Static(self._format_current_state(), id="info-state")
                 yield Static(
-                    f"Depuis: {self._target.time_range.initial_date.strftime('%d/%m/%Y')}",
+                    f"Depuis: {self._target.date_range.start_date.strftime('%d/%m/%Y')}",
                     id="info-since",
                 )
 
@@ -237,8 +237,8 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
 
     def _get_period_months(self) -> int:
         """Get the period in months from the current target."""
-        tr = self._target.time_range
-        if isinstance(tr, PeriodicTimeRange):
+        tr = self._target.date_range
+        if isinstance(tr, RecurringDateRange):
             p = tr.period
             if p.months:
                 return p.months
@@ -248,8 +248,8 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
 
     def _get_duration_months(self) -> int:
         """Get the duration in months (for budgets)."""
-        tr = self._target.time_range
-        if isinstance(tr, PeriodicTimeRange):
+        tr = self._target.date_range
+        if isinstance(tr, RecurringDateRange):
             d = tr.duration
             if d.months:
                 return d.months
@@ -278,7 +278,7 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
                 raise ValueError("La date doit être au format YYYY-MM-DD") from exc
 
             # Validate split date is after initial date
-            if split_date <= self._target.time_range.initial_date:
+            if split_date <= self._target.date_range.start_date:
                 raise ValueError("La date doit être après la première itération")
 
             # Validate amount

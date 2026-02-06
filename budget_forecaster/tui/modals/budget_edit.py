@@ -13,7 +13,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Select, Static
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import PeriodicTimeRange, TimeRange
+from budget_forecaster.core.date_range import DateRange, RecurringDateRange
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.budget import Budget
 
@@ -137,7 +137,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
                 with Horizontal(classes="form-row"):
                     yield Label("Date début:", classes="form-label")
                     start = (
-                        self._budget.time_range.initial_date
+                        self._budget.date_range.start_date
                         if self._budget
                         else date.today()
                     )
@@ -162,7 +162,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
                 with Horizontal(classes="form-row"):
                     yield Label("Récurrent:", classes="form-label")
                     is_periodic = self._budget and isinstance(
-                        self._budget.time_range, PeriodicTimeRange
+                        self._budget.date_range, RecurringDateRange
                     )
                     yield Select(
                         [("Non", "no"), ("Oui", "yes")],
@@ -203,7 +203,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
         """Get the duration in months from the current budget."""
         if not self._budget:
             return 1
-        tr = self._budget.time_range
+        tr = self._budget.date_range
         rd = tr.duration
         return rd.months if rd.months else 1
 
@@ -211,8 +211,8 @@ class BudgetEditModal(ModalScreen[Budget | None]):
         """Get the period in months from the current budget."""
         if not self._budget:
             return None
-        tr = self._budget.time_range
-        if isinstance(tr, PeriodicTimeRange):
+        tr = self._budget.date_range
+        if isinstance(tr, RecurringDateRange):
             return tr.period.months if tr.period.months else 1
         return None
 
@@ -220,8 +220,8 @@ class BudgetEditModal(ModalScreen[Budget | None]):
         """Get the end date from the current budget."""
         if not self._budget:
             return None
-        tr = self._budget.time_range
-        if isinstance(tr, PeriodicTimeRange):
+        tr = self._budget.date_range
+        if isinstance(tr, RecurringDateRange):
             if tr.last_date != date.max:
                 return tr.last_date
         return None
@@ -292,18 +292,18 @@ class BudgetEditModal(ModalScreen[Budget | None]):
                 except ValueError:
                     raise ValueError("La date de fin doit être au format YYYY-MM-DD")
 
-            # Build time range
-            inner_range = TimeRange(start_date, relativedelta(months=duration_months))
+            # Build date range
+            inner_range = DateRange(start_date, relativedelta(months=duration_months))
 
-            time_range: TimeRange | PeriodicTimeRange
+            dr: DateRange | RecurringDateRange
             if is_periodic and period_months:
-                time_range = PeriodicTimeRange(
+                dr = RecurringDateRange(
                     inner_range,
                     relativedelta(months=period_months),
                     end_date,
                 )
             else:
-                time_range = inner_range
+                dr = inner_range
 
             # Create budget
             budget_id = self._budget.id if self._budget else None
@@ -312,7 +312,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
                 description=description,
                 amount=Amount(amount_val, "EUR"),
                 category=category,
-                time_range=time_range,
+                date_range=dr,
             )
 
             self.dismiss(budget)

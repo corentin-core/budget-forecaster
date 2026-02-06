@@ -10,11 +10,11 @@ import pytest
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import (
-    DailyTimeRange,
-    PeriodicDailyTimeRange,
-    PeriodicTimeRange,
-    TimeRange,
+from budget_forecaster.core.date_range import (
+    DateRange,
+    RecurringDateRange,
+    RecurringDay,
+    SingleDay,
 )
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.account.account import Account, AccountParameters
@@ -313,8 +313,8 @@ class TestBudgetRepository:
                 description="Courses mensuelles",
                 amount=Amount(-500.0, "EUR"),
                 category=Category.GROCERIES,
-                time_range=PeriodicTimeRange(
-                    TimeRange(date(2024, 1, 1), relativedelta(months=1)),
+                date_range=RecurringDateRange(
+                    DateRange(date(2024, 1, 1), relativedelta(months=1)),
                     relativedelta(months=1),
                     date(2024, 12, 31),
                 ),
@@ -336,7 +336,7 @@ class TestBudgetRepository:
                 description="Courses mensuelles",
                 amount=Amount(-500.0, "EUR"),
                 category=Category.GROCERIES,
-                time_range=TimeRange(date(2024, 1, 1), relativedelta(months=1)),
+                date_range=DateRange(date(2024, 1, 1), relativedelta(months=1)),
             )
             budget_id = repository.upsert_budget(budget)
 
@@ -358,7 +358,7 @@ class TestBudgetRepository:
                 description="Test budget",
                 amount=Amount(-100.0, "EUR"),
                 category=Category.OTHER,
-                time_range=TimeRange(date(2024, 1, 1), relativedelta(days=30)),
+                date_range=DateRange(date(2024, 1, 1), relativedelta(days=30)),
             )
             budget_id = repository.upsert_budget(budget)
 
@@ -376,17 +376,17 @@ class TestBudgetRepository:
                 description="Simple budget",
                 amount=Amount(-100.0, "EUR"),
                 category=Category.OTHER,
-                time_range=TimeRange(date(2024, 3, 15), relativedelta(days=10)),
+                date_range=DateRange(date(2024, 3, 15), relativedelta(days=10)),
             )
             budget_id = repository.upsert_budget(budget)
 
             retrieved = repository.get_budget_by_id(budget_id)
             assert retrieved is not None
-            assert isinstance(retrieved.time_range, TimeRange)
-            assert retrieved.time_range.initial_date == date(2024, 3, 15)
+            assert isinstance(retrieved.date_range, DateRange)
+            assert retrieved.date_range.start_date == date(2024, 3, 15)
             # TimeRange.last_date = initial_date + duration - 1 day
             # for 10 days: 2024-03-15 + 10 - 1 = 2024-03-24
-            assert retrieved.time_range.last_date == date(2024, 3, 24)
+            assert retrieved.date_range.last_date == date(2024, 3, 24)
 
     def test_budget_periodic_time_range_serialization(self, temp_db_path: Path) -> None:
         """Test PeriodicTimeRange serialization/deserialization."""
@@ -396,8 +396,8 @@ class TestBudgetRepository:
                 description="Periodic budget",
                 amount=Amount(-200.0, "EUR"),
                 category=Category.GROCERIES,
-                time_range=PeriodicTimeRange(
-                    TimeRange(date(2024, 1, 1), relativedelta(months=1)),
+                date_range=RecurringDateRange(
+                    DateRange(date(2024, 1, 1), relativedelta(months=1)),
                     relativedelta(months=1),
                     date(2024, 6, 30),
                 ),
@@ -406,11 +406,11 @@ class TestBudgetRepository:
 
             retrieved = repository.get_budget_by_id(budget_id)
             assert retrieved is not None
-            assert isinstance(retrieved.time_range, PeriodicTimeRange)
-            assert retrieved.time_range.initial_date == date(2024, 1, 1)
-            assert retrieved.time_range.period == relativedelta(months=1)
+            assert isinstance(retrieved.date_range, RecurringDateRange)
+            assert retrieved.date_range.start_date == date(2024, 1, 1)
+            assert retrieved.date_range.period == relativedelta(months=1)
             # PeriodicTimeRange.last_date returns _expiration_date
-            assert retrieved.time_range.last_date == date(2024, 6, 30)
+            assert retrieved.date_range.last_date == date(2024, 6, 30)
 
 
 class TestPlannedOperationRepository:
@@ -430,7 +430,7 @@ class TestPlannedOperationRepository:
                 description="Salaire mensuel",
                 amount=Amount(3000.0, "EUR"),
                 category=Category.SALARY,
-                time_range=PeriodicDailyTimeRange(
+                date_range=RecurringDay(
                     date(2024, 1, 28),
                     relativedelta(months=1),
                     date(2024, 12, 31),
@@ -458,7 +458,7 @@ class TestPlannedOperationRepository:
                 description="Loyer",
                 amount=Amount(-800.0, "EUR"),
                 category=Category.RENT,
-                time_range=DailyTimeRange(date(2024, 1, 5)),
+                date_range=SingleDay(date(2024, 1, 5)),
             )
             op_id = repository.upsert_planned_operation(op)
 
@@ -478,7 +478,7 @@ class TestPlannedOperationRepository:
                 description="Test op",
                 amount=Amount(-50.0, "EUR"),
                 category=Category.OTHER,
-                time_range=DailyTimeRange(date(2024, 2, 15)),
+                date_range=SingleDay(date(2024, 2, 15)),
             )
             op_id = repository.upsert_planned_operation(op)
 
@@ -496,7 +496,7 @@ class TestPlannedOperationRepository:
                 description="Test with matcher",
                 amount=Amount(-100.0, "EUR"),
                 category=Category.OTHER,
-                time_range=DailyTimeRange(date(2024, 1, 1)),
+                date_range=SingleDay(date(2024, 1, 1)),
             )
             op.set_matcher_params(
                 description_hints={"KEYWORD1", "KEYWORD2"},
@@ -521,7 +521,7 @@ class TestPlannedOperationRepository:
                 description="Test hints",
                 amount=Amount(-50.0, "EUR"),
                 category=Category.OTHER,
-                time_range=DailyTimeRange(date(2024, 1, 1)),
+                date_range=SingleDay(date(2024, 1, 1)),
             )
             # Test with empty hints
             op.set_matcher_params(description_hints=set())

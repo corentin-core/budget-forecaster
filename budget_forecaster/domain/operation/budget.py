@@ -7,7 +7,7 @@ from typing import Any
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.time_range import PeriodicTimeRange, TimeRangeInterface
+from budget_forecaster.core.date_range import DateRangeInterface, RecurringDateRange
 from budget_forecaster.core.types import BudgetId, Category
 from budget_forecaster.domain.operation.operation_range import OperationRange
 from budget_forecaster.services.operation.operation_matcher import OperationMatcher
@@ -25,12 +25,12 @@ class Budget(OperationRange):
         description: str,
         amount: Amount,
         category: Category,
-        time_range: TimeRangeInterface,
+        date_range: DateRangeInterface,
     ):
-        super().__init__(description, amount, category, time_range)
+        super().__init__(description, amount, category, date_range)
         self._id = record_id
         self._operation_matcher = OperationMatcher(operation_range=self)
-        # Only operations strictly in the budget time range will be considered
+        # Only operations strictly in the budget date range will be considered
         # However they can have any amount
         self.set_matcher_params(
             approximation_date_range=timedelta(), approximation_amount_ratio=math.inf
@@ -79,25 +79,25 @@ class Budget(OperationRange):
         Raises:
             ValueError: If this budget is not periodic.
         """
-        if not isinstance(self.time_range, PeriodicTimeRange):
+        if not isinstance(self.date_range, RecurringDateRange):
             raise ValueError("Cannot split a non-periodic budget")
 
-        terminated_range, continuation_range = self.time_range.split_at(split_date)
+        terminated_range, continuation_range = self.date_range.split_at(split_date)
 
-        terminated = self.replace(time_range=terminated_range)
+        terminated = self.replace(date_range=terminated_range)
 
         amount = new_amount or Amount(self.amount, self.currency)
-        time_range = continuation_range
+        dr = continuation_range
         if new_period:
-            time_range = time_range.replace(period=new_period)
+            dr = dr.replace(period=new_period)
         if new_duration:
-            base_tr = time_range.base_time_range.replace(duration=new_duration)
-            time_range = time_range.replace(initial_date=base_tr.initial_date)
-            # Rebuild with new base time range
-            time_range = PeriodicTimeRange(
-                base_tr,
-                time_range.period,
-                time_range.last_date if time_range.last_date < date.max else None,
+            base_dr = dr.base_date_range.replace(duration=new_duration)
+            dr = dr.replace(start_date=base_dr.start_date)
+            # Rebuild with new base date range
+            dr = RecurringDateRange(
+                base_dr,
+                dr.period,
+                dr.last_date if dr.last_date < date.max else None,
             )
 
         continuation = Budget(
@@ -105,7 +105,7 @@ class Budget(OperationRange):
             description=self.description,
             amount=amount,
             category=self.category,
-            time_range=time_range,
+            date_range=dr,
         ).set_matcher_params(
             description_hints=self.matcher.description_hints,
             approximation_date_range=self.matcher.approximation_date_range,
@@ -115,7 +115,7 @@ class Budget(OperationRange):
         return terminated, continuation
 
     def replace(self, **kwargs: Any) -> "Budget":
-        """Return a new instance of the planned operation with the given parameters replaced."""
+        """Return a new instance of the budget with the given parameters replaced."""
         new_id = kwargs.get("record_id", self.id)
         if new_id is not None and not isinstance(new_id, int):
             raise TypeError(f"record_id must be int or None, got {type(new_id)}")
@@ -128,17 +128,17 @@ class Budget(OperationRange):
         new_category = kwargs.get("category", self.category)
         if not isinstance(new_category, Category):
             raise TypeError(f"category must be Category, got {type(new_category)}")
-        new_time_range = kwargs.get("time_range", self.time_range)
-        if not isinstance(new_time_range, TimeRangeInterface):
+        new_date_range = kwargs.get("date_range", self.date_range)
+        if not isinstance(new_date_range, DateRangeInterface):
             raise TypeError(
-                f"time_range must be TimeRangeInterface, got {type(new_time_range)}"
+                f"date_range must be DateRangeInterface, got {type(new_date_range)}"
             )
         return Budget(
             record_id=new_id,
             description=new_description,
             amount=new_amount,
             category=new_category,
-            time_range=new_time_range,
+            date_range=new_date_range,
         ).set_matcher_params(
             description_hints=self.matcher.description_hints,
             approximation_date_range=self.matcher.approximation_date_range,
