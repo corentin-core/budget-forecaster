@@ -135,8 +135,10 @@ classDiagram
         -account
         -repository
         +load_forecast()
+        +reload_forecast()
         +compute_report()
         +get_monthly_summary()
+        +get_category_statistics()
     }
 
     class ImportService {
