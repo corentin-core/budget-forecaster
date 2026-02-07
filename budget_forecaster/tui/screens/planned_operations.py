@@ -1,7 +1,5 @@
 """Planned operations management screen for budget forecaster."""
 
-# pylint: disable=no-else-return
-
 import logging
 from datetime import date
 
@@ -178,11 +176,11 @@ class PlannedOperationsWidget(Vertical):
         """Format a relativedelta period."""
         if period.years:
             return f"{period.years} an(s)"
-        elif period.months:
+        if period.months:
             return f"{period.months} mois"
-        elif period.weeks:
+        if period.weeks:
             return f"{period.weeks} sem."
-        elif period.days:
+        if period.days:
             return f"{period.days} j."
         return "-"
 

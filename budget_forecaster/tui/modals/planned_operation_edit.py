@@ -1,7 +1,7 @@
 """Planned operation edit modal for creating/editing planned operations."""
 
 # pylint: disable=too-many-locals,too-many-branches,too-many-statements
-# pylint: disable=raise-missing-from,no-else-return
+# pylint: disable=raise-missing-from
 # pylint: disable=consider-using-assignment-expr
 
 from datetime import date, datetime, timedelta
@@ -234,7 +234,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
             p = tr.period
             if p.months:
                 return p.months
-            elif p.days:
+            if p.days:
                 return None  # Days, not months
         return None
 

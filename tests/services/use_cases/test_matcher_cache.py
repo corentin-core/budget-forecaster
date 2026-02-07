@@ -1,6 +1,5 @@
 """Tests for the MatcherCache."""
 
-# pylint: disable=redefined-outer-name
 
 from unittest.mock import MagicMock
 
@@ -14,8 +13,8 @@ from budget_forecaster.services.operation.operation_matcher import OperationMatc
 from budget_forecaster.services.use_cases.matcher_cache import MatcherCache
 
 
-@pytest.fixture
-def mock_forecast_service() -> MagicMock:
+@pytest.fixture(name="mock_forecast_service")
+def mock_forecast_service_fixture() -> MagicMock:
     """Create a mock forecast service."""
     mock = MagicMock(spec=ForecastService)
     mock.get_all_planned_operations.return_value = []
@@ -23,8 +22,8 @@ def mock_forecast_service() -> MagicMock:
     return mock
 
 
-@pytest.fixture
-def matcher_cache(mock_forecast_service: MagicMock) -> MatcherCache:
+@pytest.fixture(name="matcher_cache")
+def matcher_cache_fixture(mock_forecast_service: MagicMock) -> MatcherCache:
     """Create a MatcherCache with mock dependencies."""
     return MatcherCache(mock_forecast_service)
 

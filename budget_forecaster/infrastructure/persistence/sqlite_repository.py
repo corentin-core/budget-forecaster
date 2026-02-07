@@ -1,6 +1,5 @@
 """SQLite repository for account data persistence."""
 
-# pylint: disable=no-else-return
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 # pylint: disable=too-many-public-methods
 
@@ -469,30 +468,29 @@ class SqliteRepository(RepositoryInterface):
             )
             conn.commit()
             return budget.id
-        else:
-            # Insert new
-            cursor = conn.execute(
-                """INSERT INTO budgets (description, amount, currency, category,
-                   start_date, duration_value, duration_unit, period_value,
-                   period_unit, end_date)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    budget.description,
-                    budget.amount,
-                    budget.currency,
-                    budget.category.value,
-                    date_range_data["start_date"],
-                    date_range_data["duration_value"],
-                    date_range_data["duration_unit"],
-                    date_range_data["period_value"],
-                    date_range_data["period_unit"],
-                    date_range_data["end_date"],
-                ),
-            )
-            conn.commit()
-            if cursor.lastrowid is None:
-                raise RuntimeError("Failed to insert budget")
-            return cursor.lastrowid
+        # Insert new
+        cursor = conn.execute(
+            """INSERT INTO budgets (description, amount, currency, category,
+               start_date, duration_value, duration_unit, period_value,
+               period_unit, end_date)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                budget.description,
+                budget.amount,
+                budget.currency,
+                budget.category.value,
+                date_range_data["start_date"],
+                date_range_data["duration_value"],
+                date_range_data["duration_unit"],
+                date_range_data["period_value"],
+                date_range_data["period_unit"],
+                date_range_data["end_date"],
+            ),
+        )
+        conn.commit()
+        if cursor.lastrowid is None:
+            raise RuntimeError("Failed to insert budget")
+        return cursor.lastrowid
 
     def delete_budget(self, budget_id: int) -> None:
         """Delete a budget."""
@@ -581,31 +579,30 @@ class SqliteRepository(RepositoryInterface):
             )
             conn.commit()
             return op.id
-        else:
-            # Insert new
-            cursor = conn.execute(
-                """INSERT INTO planned_operations (description, amount, currency,
-                   category, start_date, period_value, period_unit, end_date,
-                   description_hints, approximation_date_days, approximation_amount_ratio)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    op.description,
-                    op.amount,
-                    op.currency,
-                    op.category.value,
-                    date_range_data["start_date"],
-                    date_range_data["period_value"],
-                    date_range_data["period_unit"],
-                    date_range_data["end_date"],
-                    hints,
-                    approx_days,
-                    op.matcher.approximation_amount_ratio,
-                ),
-            )
-            conn.commit()
-            if cursor.lastrowid is None:
-                raise RuntimeError("Failed to insert planned operation")
-            return cursor.lastrowid
+        # Insert new
+        cursor = conn.execute(
+            """INSERT INTO planned_operations (description, amount, currency,
+               category, start_date, period_value, period_unit, end_date,
+               description_hints, approximation_date_days, approximation_amount_ratio)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                op.description,
+                op.amount,
+                op.currency,
+                op.category.value,
+                date_range_data["start_date"],
+                date_range_data["period_value"],
+                date_range_data["period_unit"],
+                date_range_data["end_date"],
+                hints,
+                approx_days,
+                op.matcher.approximation_amount_ratio,
+            ),
+        )
+        conn.commit()
+        if cursor.lastrowid is None:
+            raise RuntimeError("Failed to insert planned operation")
+        return cursor.lastrowid
 
     def delete_planned_operation(self, op_id: int) -> None:
         """Delete a planned operation."""
@@ -654,17 +651,16 @@ class SqliteRepository(RepositoryInterface):
         """
         if rd.years:
             return (rd.years, "years")
-        elif rd.months:
+        if rd.months:
             return (rd.months, "months")
-        elif rd.days:
+        if rd.days:
             # Check days before weeks because rd.weeks is computed as days // 7
             return (rd.days, "days")
-        elif rd.weeks:
+        if rd.weeks:
             # Only reached if explicitly set as weeks with no days
             return (rd.weeks * 7, "days")
-        else:
-            # Default to days=0
-            return (0, "days")
+        # Default to days=0
+        return (0, "days")
 
     def _db_to_relativedelta(
         self, value: int | None, unit: str | None
@@ -674,12 +670,11 @@ class SqliteRepository(RepositoryInterface):
             return relativedelta()
         if unit == "years":
             return relativedelta(years=value)
-        elif unit == "months":
+        if unit == "months":
             return relativedelta(months=value)
-        elif unit == "weeks":
+        if unit == "weeks":
             return relativedelta(weeks=value)
-        else:
-            return relativedelta(days=value)
+        return relativedelta(days=value)
 
     def _serialize_budget_date_range(self, date_range: DateRangeInterface) -> dict:
         """Serialize a budget date range to database fields."""

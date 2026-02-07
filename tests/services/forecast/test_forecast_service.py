@@ -1,6 +1,6 @@
 """Tests for the ForecastService."""
 
-# pylint: disable=redefined-outer-name,too-few-public-methods
+# pylint: disable=too-few-public-methods
 
 from collections.abc import Iterator
 from datetime import date
@@ -33,8 +33,8 @@ from budget_forecaster.services.operation.operation_link_service import (
 )
 
 
-@pytest.fixture
-def mock_account() -> Account:
+@pytest.fixture(name="mock_account")
+def mock_account_fixture() -> Account:
     """Create a mock account."""
     return Account(
         name="Test Account",
@@ -45,27 +45,29 @@ def mock_account() -> Account:
     )
 
 
-@pytest.fixture
-def temp_db_path(tmp_path: Path) -> Path:
+@pytest.fixture(name="temp_db_path")
+def temp_db_path_fixture(tmp_path: Path) -> Path:
     """Create a temporary database path."""
     return tmp_path / "test.db"
 
 
-@pytest.fixture
-def repository(temp_db_path: Path) -> Iterator[RepositoryInterface]:
+@pytest.fixture(name="repository")
+def repository_fixture(temp_db_path: Path) -> Iterator[RepositoryInterface]:
     """Create an initialized repository."""
     with SqliteRepository(temp_db_path) as repo:
         yield repo
 
 
-@pytest.fixture
-def operation_link_service(repository: RepositoryInterface) -> OperationLinkService:
+@pytest.fixture(name="operation_link_service")
+def operation_link_service_fixture(
+    repository: RepositoryInterface,
+) -> OperationLinkService:
     """Create an OperationLinkService for testing."""
     return OperationLinkService(repository)
 
 
-@pytest.fixture
-def service(
+@pytest.fixture(name="service")
+def service_fixture(
     mock_account: Account,
     repository: RepositoryInterface,
 ) -> ForecastService:

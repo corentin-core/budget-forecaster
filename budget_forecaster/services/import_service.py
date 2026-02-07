@@ -76,7 +76,7 @@ class ImportService:
         self._include_patterns = include_patterns or []
         self._bank_adapter_factory = BankAdapterFactory()
 
-    def _is_excluded(self, path: Path) -> bool:
+    def is_excluded(self, path: Path) -> bool:
         """Check if a path matches any exclusion pattern.
 
         Args:
@@ -91,7 +91,7 @@ class ImportService:
                 return True
         return False
 
-    def _should_include(self, path: Path) -> bool:
+    def should_include(self, path: Path) -> bool:
         """Check if a file should be included in inbox processing.
 
         Args:
@@ -108,7 +108,7 @@ class ImportService:
                 return False
 
         # File must not match any exclude pattern
-        if self._is_excluded(path):
+        if self.is_excluded(path):
             return False
 
         return True
@@ -136,7 +136,7 @@ class ImportService:
         for item in sorted(self._inbox_path.iterdir()):
             if item.name == "processed":
                 continue
-            if not self._should_include(item):
+            if not self.should_include(item):
                 continue
             if self.is_supported_export(item):
                 exports.append(item)

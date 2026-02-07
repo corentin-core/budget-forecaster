@@ -1,6 +1,6 @@
 """Tests for OperationLinkService."""
 
-# pylint: disable=redefined-outer-name,protected-access,too-few-public-methods,import-outside-toplevel
+# pylint: disable=protected-access,too-few-public-methods
 
 from __future__ import annotations
 
@@ -8,7 +8,6 @@ import tempfile
 from collections.abc import Iterator
 from datetime import date, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 from dateutil.relativedelta import relativedelta
@@ -21,48 +20,52 @@ from budget_forecaster.core.date_range import (
     SingleDay,
 )
 from budget_forecaster.core.types import Category, LinkType, MatcherKey
+from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.operation_range import OperationRange
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.infrastructure.persistence.persistent_account import (
+    PersistentAccount,
+)
 from budget_forecaster.infrastructure.persistence.sqlite_repository import (
     SqliteRepository,
 )
+from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.services.forecast.forecast_service import ForecastService
+from budget_forecaster.services.import_service import ImportService
 from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
 )
 from budget_forecaster.services.operation.operation_matcher import OperationMatcher
-
-if TYPE_CHECKING:
-    from budget_forecaster.infrastructure.persistence.persistent_account import (
-        PersistentAccount,
-    )
-    from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.services.operation.operation_service import (
+    OperationService,
+)
 
 
-@pytest.fixture
-def temp_db_path() -> Path:
+@pytest.fixture(name="temp_db_path")
+def temp_db_path_fixture() -> Path:
     """Fixture that provides a temporary database path."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         return Path(f.name)
 
 
-@pytest.fixture
-def repository(temp_db_path: Path) -> Iterator[SqliteRepository]:
+@pytest.fixture(name="repository")
+def repository_fixture(temp_db_path: Path) -> Iterator[SqliteRepository]:
     """Fixture that provides an initialized repository."""
     with SqliteRepository(temp_db_path) as repo:
         yield repo
 
 
-@pytest.fixture
-def link_service(repository: SqliteRepository) -> OperationLinkService:
+@pytest.fixture(name="link_service")
+def link_service_fixture(repository: SqliteRepository) -> OperationLinkService:
     """Fixture that provides an OperationLinkService."""
     return OperationLinkService(repository)
 
 
-@pytest.fixture
-def monthly_rent_range() -> OperationRange:
+@pytest.fixture(name="monthly_rent_range")
+def monthly_rent_range_fixture() -> OperationRange:
     """Create a periodic monthly operation range for rent."""
     base_range = DateRange(date(2024, 1, 1), relativedelta(months=1))
     periodic = RecurringDateRange(base_range, relativedelta(months=1))
@@ -74,8 +77,10 @@ def monthly_rent_range() -> OperationRange:
     )
 
 
-@pytest.fixture
-def monthly_rent_matcher(monthly_rent_range: OperationRange) -> OperationMatcher:
+@pytest.fixture(name="monthly_rent_matcher")
+def monthly_rent_matcher_fixture(
+    monthly_rent_range: OperationRange,
+) -> OperationMatcher:
     """Create a matcher for monthly rent."""
     return OperationMatcher(
         operation_range=monthly_rent_range,
@@ -84,8 +89,8 @@ def monthly_rent_matcher(monthly_rent_range: OperationRange) -> OperationMatcher
     )
 
 
-@pytest.fixture
-def monthly_rent_planned_op() -> PlannedOperation:
+@pytest.fixture(name="monthly_rent_planned_op")
+def monthly_rent_planned_op_fixture() -> PlannedOperation:
     """Create a planned operation for monthly rent."""
     planned_op = PlannedOperation(
         record_id=1,
@@ -100,8 +105,8 @@ def monthly_rent_planned_op() -> PlannedOperation:
     )
 
 
-@pytest.fixture
-def sample_operations() -> tuple[HistoricOperation, ...]:
+@pytest.fixture(name="sample_operations")
+def sample_operations_fixture() -> tuple[HistoricOperation, ...]:
     """Create sample historic operations."""
     return (
         HistoricOperation(
@@ -403,11 +408,6 @@ class TestApplicationServiceLinkIntegration:
         sample_operations: tuple[HistoricOperation, ...],
     ) -> PersistentAccount:
         """Create a persistent account with operations."""
-        from budget_forecaster.domain.account.account import Account
-        from budget_forecaster.infrastructure.persistence.persistent_account import (
-            PersistentAccount,
-        )
-
         # Create account with operations
         account = Account(
             name="Test Account",
@@ -428,13 +428,6 @@ class TestApplicationServiceLinkIntegration:
         self, populated_persistent_account: PersistentAccount
     ) -> ApplicationService:
         """Create ApplicationService with all dependencies."""
-        from budget_forecaster.services.application_service import ApplicationService
-        from budget_forecaster.services.forecast.forecast_service import ForecastService
-        from budget_forecaster.services.import_service import ImportService
-        from budget_forecaster.services.operation.operation_service import (
-            OperationService,
-        )
-
         repository = populated_persistent_account.repository
         account = populated_persistent_account.account
 

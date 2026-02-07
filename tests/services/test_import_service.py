@@ -1,6 +1,6 @@
 """Tests for the ImportService."""
 
-# pylint: disable=redefined-outer-name,protected-access,too-few-public-methods
+# pylint: disable=too-few-public-methods
 
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -15,24 +15,24 @@ from budget_forecaster.services.import_service import (
 )
 
 
-@pytest.fixture
-def mock_persistent_account() -> MagicMock:
+@pytest.fixture(name="mock_persistent_account")
+def mock_persistent_account_fixture() -> MagicMock:
     """Create a mock persistent account."""
     mock = MagicMock()
     mock.account.operations = ()
     return mock
 
 
-@pytest.fixture
-def temp_inbox(tmp_path: Path) -> Path:
+@pytest.fixture(name="temp_inbox")
+def temp_inbox_fixture(tmp_path: Path) -> Path:
     """Create a temporary inbox directory."""
     inbox = tmp_path / "inbox"
     inbox.mkdir()
     return inbox
 
 
-@pytest.fixture
-def service(
+@pytest.fixture(name="service")
+def service_fixture(
     mock_persistent_account: MagicMock,
     temp_inbox: Path,
 ) -> ImportService:
@@ -97,7 +97,6 @@ class TestIsSupportedExport:
             persistent_account=MagicMock(),
             inbox_path=temp_inbox,
         )
-        new_service._bank_adapter_factory = mock_factory
 
         assert new_service.is_supported_export(supported_file) is True
 
@@ -107,13 +106,13 @@ class TestExcludePatterns:
 
     def test_is_excluded_matches_pattern(self, service: ImportService) -> None:
         """Files matching exclude patterns are excluded."""
-        assert service._is_excluded(Path("test.tmp")) is True
-        assert service._is_excluded(Path("ignore_this.xlsx")) is True
+        assert service.is_excluded(Path("test.tmp")) is True
+        assert service.is_excluded(Path("ignore_this.xlsx")) is True
 
     def test_is_excluded_no_match(self, service: ImportService) -> None:
         """Files not matching exclude patterns are not excluded."""
-        assert service._is_excluded(Path("valid.xlsx")) is False
-        assert service._is_excluded(Path("data.csv")) is False
+        assert service.is_excluded(Path("valid.xlsx")) is False
+        assert service.is_excluded(Path("data.csv")) is False
 
 
 class TestIncludePatterns:
@@ -124,8 +123,8 @@ class TestIncludePatterns:
     ) -> None:
         """Without include patterns, all non-excluded files are included."""
         service = ImportService(mock_persistent_account, temp_inbox)
-        assert service._should_include(Path("any_file.xlsx")) is True
-        assert service._should_include(Path("another.csv")) is True
+        assert service.should_include(Path("any_file.xlsx")) is True
+        assert service.should_include(Path("another.csv")) is True
 
     def test_should_include_with_include_patterns(
         self, mock_persistent_account: MagicMock, temp_inbox: Path
@@ -136,10 +135,10 @@ class TestIncludePatterns:
             temp_inbox,
             include_patterns=["BNP-*.xlsx", "Swile-*.xlsx"],
         )
-        assert service._should_include(Path("BNP-2025-01-01.xlsx")) is True
-        assert service._should_include(Path("Swile-export.xlsx")) is True
-        assert service._should_include(Path("other-bank.xlsx")) is False
-        assert service._should_include(Path("random.csv")) is False
+        assert service.should_include(Path("BNP-2025-01-01.xlsx")) is True
+        assert service.should_include(Path("Swile-export.xlsx")) is True
+        assert service.should_include(Path("other-bank.xlsx")) is False
+        assert service.should_include(Path("random.csv")) is False
 
     def test_should_include_exclude_takes_precedence(
         self, mock_persistent_account: MagicMock, temp_inbox: Path
@@ -152,9 +151,9 @@ class TestIncludePatterns:
             include_patterns=["BNP-*.xlsx"],
         )
         # Matches include but also matches exclude -> excluded
-        assert service._should_include(Path("BNP-backup.xlsx")) is False
+        assert service.should_include(Path("BNP-backup.xlsx")) is False
         # Matches include and doesn't match exclude -> included
-        assert service._should_include(Path("BNP-2025-01-01.xlsx")) is True
+        assert service.should_include(Path("BNP-2025-01-01.xlsx")) is True
 
     def test_get_supported_exports_with_include_patterns(
         self, mock_persistent_account: MagicMock, temp_inbox: Path

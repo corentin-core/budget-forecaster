@@ -1,7 +1,5 @@
 """Budgets management screen for budget forecaster."""
 
-# pylint: disable=no-else-return
-
 import logging
 from datetime import date
 
@@ -172,27 +170,26 @@ class BudgetsWidget(Vertical):
         days = (date_range.last_date - date_range.start_date).days + 1
         if days == 1:
             return "1 jour"
-        elif days < 7:
+        if days < 7:
             return f"{days} jours"
-        elif days < 30:
+        if days < 30:
             weeks = days // 7
             return f"{weeks} sem." if weeks > 1 else "1 sem."
-        elif days < 365:
+        if days < 365:
             months = days // 30
             return f"{months} mois"
-        else:
-            years = days // 365
-            return f"{years} an(s)"
+        years = days // 365
+        return f"{years} an(s)"
 
     def _format_period(self, period) -> str:
         """Format a relativedelta period."""
         if period.years:
             return f"{period.years} an(s)"
-        elif period.months:
+        if period.months:
             return f"{period.months} mois"
-        elif period.weeks:
+        if period.weeks:
             return f"{period.weeks} sem."
-        elif period.days:
+        if period.days:
             return f"{period.days} j."
         return "-"
 

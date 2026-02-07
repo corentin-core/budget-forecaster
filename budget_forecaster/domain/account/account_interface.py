@@ -1,5 +1,4 @@
 """Module defining the AccountInterface protocol."""
-# pylint: disable=unnecessary-ellipsis
 from typing import Protocol
 
 from budget_forecaster.core.types import ImportStats
@@ -13,12 +12,10 @@ class AccountInterface(Protocol):
     @property
     def account(self) -> Account:
         """Return the aggregated account."""
-        ...
 
     @property
     def accounts(self) -> tuple[Account, ...]:
         """Return the individual accounts."""
-        ...
 
     def upsert_account(self, account: AccountParameters) -> ImportStats:
         """Add or update an account.
@@ -26,12 +23,9 @@ class AccountInterface(Protocol):
         Returns:
             ImportStats with the number of new and duplicate operations.
         """
-        ...
 
     def replace_account(self, new_account: Account) -> None:
         """Replace an existing account."""
-        ...
 
     def replace_operation(self, new_operation: HistoricOperation) -> None:
         """Replace an existing operation."""
-        ...
