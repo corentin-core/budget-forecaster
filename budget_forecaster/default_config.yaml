@@ -6,3 +6,18 @@ backup:
   enabled: true
   max_backups: 5
   directory: ~/.local/share/budget-forecaster/backups/
+# logging:  # Override default logging (~/.local/share/budget-forecaster/budget-forecaster.log)
+#   version: 1
+#   disable_existing_loggers: false
+#   handlers:
+#     file:
+#       class: logging.FileHandler
+#       filename: /absolute/path/to/custom.log
+#       level: DEBUG
+#       formatter: default
+#   formatters:
+#     default:
+#       format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+#   root:
+#     level: DEBUG
+#     handlers: [file]

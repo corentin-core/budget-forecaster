@@ -2,6 +2,7 @@
 
 # pylint: disable=protected-access,redefined-outer-name
 
+import sqlite3
 import tempfile
 from datetime import date, timedelta
 from pathlib import Path
@@ -27,6 +28,9 @@ from budget_forecaster.infrastructure.persistence.persistent_account import (
 )
 from budget_forecaster.infrastructure.persistence.sqlite_repository import (
     CURRENT_SCHEMA_VERSION,
+    SCHEMA_V1,
+    SCHEMA_V2,
+    SCHEMA_V3,
     SqliteRepository,
 )
 
@@ -568,3 +572,73 @@ class TestSchemaMigration:
             assert len(accounts) == 1
             assert accounts[0].name == "Compte courant"
             assert len(accounts[0].operations) == 3
+
+    def test_migration_v3_to_v4_converts_datetime_to_date(
+        self, temp_db_path: Path
+    ) -> None:
+        """Test that migration v4 converts datetime strings to date strings."""
+        # Create a v3 database with datetime strings (old format)
+        conn = sqlite3.connect(temp_db_path)
+        conn.executescript(SCHEMA_V1)
+        conn.executescript(SCHEMA_V2)
+        conn.executescript(SCHEMA_V3)
+        conn.execute("INSERT INTO schema_version (version) VALUES (3)")
+        conn.execute("INSERT INTO aggregated_accounts (name) VALUES ('Test')")
+        conn.execute(
+            "INSERT INTO accounts (aggregated_account_id, name, balance, currency, "
+            "balance_date) VALUES (1, 'Compte', 1000.0, 'EUR', '2026-01-15T00:00:00')"
+        )
+        conn.execute(
+            "INSERT INTO operations (unique_id, account_id, description, category, "
+            "date, amount, currency) "
+            "VALUES (1, 1, 'Test op', 'Courses', '2026-01-28T00:00:00', -50.0, 'EUR')"
+        )
+        conn.execute(
+            "INSERT INTO planned_operations (description, amount, currency, category, "
+            "start_date, end_date) "
+            "VALUES ('Loyer', -800.0, 'EUR', 'Logement', '2025-01-01T00:00:00', "
+            "'2026-12-31T00:00:00')"
+        )
+        conn.execute(
+            "INSERT INTO budgets (description, amount, currency, category, start_date, "
+            "end_date) "
+            "VALUES ('Courses', -400.0, 'EUR', 'Courses', '2025-01-01T00:00:00', "
+            "'2026-12-31T00:00:00')"
+        )
+        conn.execute(
+            "INSERT INTO operation_links (operation_unique_id, target_type, target_id, "
+            "iteration_date, is_manual) "
+            "VALUES (1, 'PLANNED_OPERATION', 1, '2026-01-01T00:00:00', 0)"
+        )
+        conn.commit()
+        conn.close()
+
+        # Open with SqliteRepository to trigger migration
+        with SqliteRepository(temp_db_path) as repository:
+            assert repository._get_schema_version() == CURRENT_SCHEMA_VERSION
+
+            conn = repository._get_connection()
+
+            row = conn.execute("SELECT balance_date FROM accounts").fetchone()
+            assert row["balance_date"] == "2026-01-15"
+
+            row = conn.execute("SELECT date FROM operations").fetchone()
+            assert row["date"] == "2026-01-28"
+
+            row = conn.execute(
+                "SELECT start_date, end_date FROM planned_operations"
+            ).fetchone()
+            assert row["start_date"] == "2025-01-01"
+            assert row["end_date"] == "2026-12-31"
+
+            row = conn.execute("SELECT start_date, end_date FROM budgets").fetchone()
+            assert row["start_date"] == "2025-01-01"
+            assert row["end_date"] == "2026-12-31"
+
+            row = conn.execute("SELECT iteration_date FROM operation_links").fetchone()
+            assert row["iteration_date"] == "2026-01-01"
+
+            # Verify data loads correctly through the repository
+            accounts = repository.get_all_accounts()
+            assert len(accounts) == 1
+            assert accounts[0].operations[0].operation_date == date(2026, 1, 28)
