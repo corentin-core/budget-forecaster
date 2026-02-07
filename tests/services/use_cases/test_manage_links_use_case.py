@@ -1,6 +1,5 @@
 """Tests for the ManageLinksUseCase."""
 
-# pylint: disable=redefined-outer-name
 
 from datetime import date
 from unittest.mock import MagicMock
@@ -19,14 +18,14 @@ from budget_forecaster.services.use_cases.manage_links_use_case import (
 )
 
 
-@pytest.fixture
-def mock_operation_link_service() -> MagicMock:
+@pytest.fixture(name="mock_operation_link_service")
+def mock_operation_link_service_fixture() -> MagicMock:
     """Create a mock operation link service."""
     return MagicMock(spec=OperationLinkService)
 
 
-@pytest.fixture
-def use_case(mock_operation_link_service: MagicMock) -> ManageLinksUseCase:
+@pytest.fixture(name="use_case")
+def use_case_fixture(mock_operation_link_service: MagicMock) -> ManageLinksUseCase:
     """Create a ManageLinksUseCase with mock dependencies."""
     return ManageLinksUseCase(mock_operation_link_service)
 

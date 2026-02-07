@@ -1,6 +1,5 @@
 """Tests for the CategorizeUseCase."""
 
-# pylint: disable=redefined-outer-name
 
 from unittest.mock import MagicMock
 
@@ -16,28 +15,28 @@ from budget_forecaster.services.use_cases.categorize_use_case import CategorizeU
 from budget_forecaster.services.use_cases.matcher_cache import MatcherCache
 
 
-@pytest.fixture
-def mock_operation_service() -> MagicMock:
+@pytest.fixture(name="mock_operation_service")
+def mock_operation_service_fixture() -> MagicMock:
     """Create a mock operation service."""
     return MagicMock(spec=OperationService)
 
 
-@pytest.fixture
-def mock_operation_link_service() -> MagicMock:
+@pytest.fixture(name="mock_operation_link_service")
+def mock_operation_link_service_fixture() -> MagicMock:
     """Create a mock operation link service."""
     return MagicMock(spec=OperationLinkService)
 
 
-@pytest.fixture
-def mock_matcher_cache() -> MagicMock:
+@pytest.fixture(name="mock_matcher_cache")
+def mock_matcher_cache_fixture() -> MagicMock:
     """Create a mock matcher cache."""
     mock = MagicMock(spec=MatcherCache)
     mock.get_matchers.return_value = {}
     return mock
 
 
-@pytest.fixture
-def use_case(
+@pytest.fixture(name="use_case")
+def use_case_fixture(
     mock_operation_service: MagicMock,
     mock_operation_link_service: MagicMock,
     mock_matcher_cache: MagicMock,

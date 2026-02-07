@@ -1,6 +1,5 @@
 """Tests for the ImportUseCase."""
 
-# pylint: disable=redefined-outer-name
 
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -19,36 +18,36 @@ from budget_forecaster.services.use_cases.import_use_case import ImportUseCase
 from budget_forecaster.services.use_cases.matcher_cache import MatcherCache
 
 
-@pytest.fixture
-def mock_import_service() -> MagicMock:
+@pytest.fixture(name="mock_import_service")
+def mock_import_service_fixture() -> MagicMock:
     """Create a mock import service."""
     return MagicMock(spec=ImportService)
 
 
-@pytest.fixture
-def mock_persistent_account() -> MagicMock:
+@pytest.fixture(name="mock_persistent_account")
+def mock_persistent_account_fixture() -> MagicMock:
     """Create a mock persistent account."""
     mock = MagicMock()
     mock.account.operations = ()
     return mock
 
 
-@pytest.fixture
-def mock_operation_link_service() -> MagicMock:
+@pytest.fixture(name="mock_operation_link_service")
+def mock_operation_link_service_fixture() -> MagicMock:
     """Create a mock operation link service."""
     return MagicMock(spec=OperationLinkService)
 
 
-@pytest.fixture
-def mock_matcher_cache() -> MagicMock:
+@pytest.fixture(name="mock_matcher_cache")
+def mock_matcher_cache_fixture() -> MagicMock:
     """Create a mock matcher cache."""
     mock = MagicMock(spec=MatcherCache)
     mock.get_matchers.return_value = {}
     return mock
 
 
-@pytest.fixture
-def use_case(
+@pytest.fixture(name="use_case")
+def use_case_fixture(
     mock_import_service: MagicMock,
     mock_persistent_account: MagicMock,
     mock_operation_link_service: MagicMock,

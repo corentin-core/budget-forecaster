@@ -1,6 +1,6 @@
 """Tests for OperationLink data model and repository operations."""
 
-# pylint: disable=redefined-outer-name,protected-access
+# pylint: disable=protected-access
 
 import sqlite3
 import tempfile
@@ -17,8 +17,8 @@ from budget_forecaster.infrastructure.persistence.sqlite_repository import (
 )
 
 
-@pytest.fixture
-def temp_db_path() -> Path:
+@pytest.fixture(name="temp_db_path")
+def temp_db_path_fixture() -> Path:
     """Fixture that provides a temporary database path."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         return Path(f.name)

@@ -1,7 +1,6 @@
 """Tests for the ApplicationService."""
 
-# pylint: disable=redefined-outer-name,too-few-public-methods
-# pylint: disable=too-many-lines
+# pylint: disable=too-few-public-methods,too-many-lines
 
 from datetime import date
 from pathlib import Path
@@ -31,28 +30,28 @@ from budget_forecaster.services.operation.operation_matcher import OperationMatc
 from budget_forecaster.services.operation.operation_service import OperationService
 
 
-@pytest.fixture
-def mock_persistent_account() -> MagicMock:
+@pytest.fixture(name="mock_persistent_account")
+def mock_persistent_account_fixture() -> MagicMock:
     """Create a mock persistent account."""
     mock = MagicMock()
     mock.account.operations = ()
     return mock
 
 
-@pytest.fixture
-def mock_import_service() -> MagicMock:
+@pytest.fixture(name="mock_import_service")
+def mock_import_service_fixture() -> MagicMock:
     """Create a mock import service."""
     return MagicMock(spec=ImportService)
 
 
-@pytest.fixture
-def mock_operation_service() -> MagicMock:
+@pytest.fixture(name="mock_operation_service")
+def mock_operation_service_fixture() -> MagicMock:
     """Create a mock operation service."""
     return MagicMock(spec=OperationService)
 
 
-@pytest.fixture
-def mock_forecast_service() -> MagicMock:
+@pytest.fixture(name="mock_forecast_service")
+def mock_forecast_service_fixture() -> MagicMock:
     """Create a mock forecast service."""
     mock = MagicMock(spec=ForecastService)
     mock.get_all_planned_operations.return_value = []
@@ -60,14 +59,14 @@ def mock_forecast_service() -> MagicMock:
     return mock
 
 
-@pytest.fixture
-def mock_operation_link_service() -> MagicMock:
+@pytest.fixture(name="mock_operation_link_service")
+def mock_operation_link_service_fixture() -> MagicMock:
     """Create a mock operation link service."""
     return MagicMock(spec=OperationLinkService)
 
 
-@pytest.fixture
-def app_service(
+@pytest.fixture(name="app_service")
+def app_service_fixture(
     mock_persistent_account: MagicMock,
     mock_import_service: MagicMock,
     mock_operation_service: MagicMock,

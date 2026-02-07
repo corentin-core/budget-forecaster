@@ -31,6 +31,16 @@ class BackupService:
         self._max_backups = max_backups
         self._db_stem = database_path.stem
 
+    @property
+    def backup_directory(self) -> Path:
+        """Return the backup directory path."""
+        return self._backup_directory
+
+    @property
+    def max_backups(self) -> int:
+        """Return the maximum number of backups to keep."""
+        return self._max_backups
+
     def _get_backup_pattern(self) -> str:
         """Get the glob pattern for backup files."""
         return f"{self._db_stem}_*.db"

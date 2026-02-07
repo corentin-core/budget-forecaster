@@ -1,7 +1,5 @@
 """Tests for the BackupService and BackupConfig."""
 
-# pylint: disable=redefined-outer-name,protected-access
-
 import os
 import time
 from pathlib import Path
@@ -12,24 +10,24 @@ from budget_forecaster.infrastructure.backup import BackupService
 from budget_forecaster.infrastructure.config import BackupConfig, Config
 
 
-@pytest.fixture
-def temp_db(tmp_path: Path) -> Path:
+@pytest.fixture(name="temp_db")
+def temp_db_fixture(tmp_path: Path) -> Path:
     """Create a temporary database file."""
     db_path = tmp_path / "test.db"
     db_path.write_text("test database content")
     return db_path
 
 
-@pytest.fixture
-def backup_dir(tmp_path: Path) -> Path:
+@pytest.fixture(name="backup_dir")
+def backup_dir_fixture(tmp_path: Path) -> Path:
     """Create a temporary backup directory."""
     backup_path = tmp_path / "backups"
     backup_path.mkdir()
     return backup_path
 
 
-@pytest.fixture
-def service(temp_db: Path, backup_dir: Path) -> BackupService:
+@pytest.fixture(name="service")
+def service_fixture(temp_db: Path, backup_dir: Path) -> BackupService:
     """Create a BackupService with test configuration."""
     return BackupService(
         database_path=temp_db,
@@ -44,7 +42,7 @@ class TestBackupServiceInit:
     def test_default_backup_directory(self, temp_db: Path) -> None:
         """Backup directory defaults to database directory."""
         service = BackupService(database_path=temp_db)
-        assert service._backup_directory == temp_db.parent
+        assert service.backup_directory == temp_db.parent
 
     def test_custom_backup_directory(self, temp_db: Path, backup_dir: Path) -> None:
         """Custom backup directory is used when provided."""
@@ -52,12 +50,12 @@ class TestBackupServiceInit:
             database_path=temp_db,
             backup_directory=backup_dir,
         )
-        assert service._backup_directory == backup_dir
+        assert service.backup_directory == backup_dir
 
     def test_default_max_backups(self, temp_db: Path) -> None:
         """Default max_backups is 5."""
         service = BackupService(database_path=temp_db)
-        assert service._max_backups == 5
+        assert service.max_backups == 5
 
 
 class TestCreateBackup:

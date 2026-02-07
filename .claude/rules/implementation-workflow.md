@@ -14,6 +14,14 @@
 
 ### 2. Propose a design
 
+**Before making any claims about project tooling**, verify the actual configuration:
+
+- Check `mypy.ini`, `.mypy.ini`, `pyproject.toml [tool.mypy]` for type checking setup
+- Check `.pre-commit-config.yaml` for CI/quality hooks
+- Check `setup.py`, `setup.cfg`, `pyproject.toml` for dependencies and build config
+
+NEVER assume a tool is missing without checking these files first.
+
 Present a draft design including:
 
 - **Approach**: High-level solution

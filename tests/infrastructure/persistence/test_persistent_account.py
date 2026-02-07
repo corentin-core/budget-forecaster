@@ -1,6 +1,6 @@
 """Module with tests for the PersistentAccount and SqliteRepository classes."""
 
-# pylint: disable=protected-access,redefined-outer-name
+# pylint: disable=protected-access
 
 import sqlite3
 import tempfile
@@ -35,15 +35,15 @@ from budget_forecaster.infrastructure.persistence.sqlite_repository import (
 )
 
 
-@pytest.fixture
-def temp_db_path() -> Path:
+@pytest.fixture(name="temp_db_path")
+def temp_db_path_fixture() -> Path:
     """Fixture that provides a temporary database path."""
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
         return Path(f.name)
 
 
-@pytest.fixture
-def sample_operations() -> tuple[HistoricOperation, ...]:
+@pytest.fixture(name="sample_operations")
+def sample_operations_fixture() -> tuple[HistoricOperation, ...]:
     """Fixture with sample operations."""
     return (
         HistoricOperation(
@@ -70,8 +70,8 @@ def sample_operations() -> tuple[HistoricOperation, ...]:
     )
 
 
-@pytest.fixture
-def sample_account(sample_operations: tuple[HistoricOperation, ...]) -> Account:
+@pytest.fixture(name="sample_account")
+def sample_account_fixture(sample_operations: tuple[HistoricOperation, ...]) -> Account:
     """Fixture with a sample account."""
     return Account(
         name="Compte courant",
