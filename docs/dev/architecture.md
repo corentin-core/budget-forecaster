@@ -41,6 +41,7 @@ graph TB
         subgraph services/account
             AF[AccountForecaster]
             AN[AccountAnalyzer]
+            RND[AccountAnalysisRenderer]
         end
         subgraph services/operation
             OS[OperationService]
@@ -84,7 +85,6 @@ graph TB
         end
         CFG[Config]
         BK[BackupService]
-        RND[AccountAnalysisRenderer]
     end
 
     TUI --> AS
@@ -111,6 +111,7 @@ graph TB
     FS --> AN
     IS --> BA
     AN --> AF
+    RND --> AN
 ```
 
 Budget Forecaster is a personal finance application that imports bank statements,
@@ -135,6 +136,8 @@ Lower-level services handle specific concerns:
 
 - `ForecastService`: CRUD for planned operations/budgets, report computation
 - `AccountForecaster`/`AccountAnalyzer`: Compute account projections and aggregates
+- `AccountAnalysisRenderer`: Export analysis reports to Excel
+- `OperationService`/`OperationLinkService`: Manage operations and links
 - `OperationMatcher`/`OperationsCategorizer`: Match and categorize operations
 - `ForecastActualizer`: Adjust forecasts based on linked operations
 
