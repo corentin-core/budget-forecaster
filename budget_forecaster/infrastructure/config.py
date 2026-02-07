@@ -86,12 +86,19 @@ class Config:  # pylint: disable=too-few-public-methods
                 self.logging_config = config["logging"]
 
     def setup_logging(self) -> None:
-        """Initialize Python's logging system using the configuration."""
+        """Initialize Python's logging system using the configuration.
+
+        When no logging config is provided, logs to
+        ``~/.local/share/budget-forecaster/budget-forecaster.log`` at INFO level.
+        """
         if not self.logging_config:
-            # Default basic configuration
+            log_dir = Path.home() / ".local" / "share" / "budget-forecaster"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_file = log_dir / "budget-forecaster.log"
             logging.basicConfig(
                 level=logging.INFO,
                 format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                filename=str(log_file),
             )
         else:
             try:

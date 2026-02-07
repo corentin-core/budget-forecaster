@@ -34,7 +34,7 @@ from budget_forecaster.infrastructure.persistence.repository_interface import (
 logger = logging.getLogger(__name__)
 
 # Current schema version
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 
 # Base schema (version 0 -> 1)
 SCHEMA_V1 = """
@@ -127,6 +127,25 @@ CREATE INDEX IF NOT EXISTS idx_operation_links_target ON operation_links(target_
 """
 
 
+# Schema migration v3 -> v4: convert datetime strings to date strings
+SCHEMA_V4 = """
+UPDATE accounts SET balance_date = SUBSTR(balance_date, 1, 10)
+    WHERE LENGTH(balance_date) > 10;
+UPDATE operations SET date = SUBSTR(date, 1, 10)
+    WHERE LENGTH(date) > 10;
+UPDATE planned_operations SET start_date = SUBSTR(start_date, 1, 10)
+    WHERE LENGTH(start_date) > 10;
+UPDATE planned_operations SET end_date = SUBSTR(end_date, 1, 10)
+    WHERE end_date IS NOT NULL AND LENGTH(end_date) > 10;
+UPDATE budgets SET start_date = SUBSTR(start_date, 1, 10)
+    WHERE LENGTH(start_date) > 10;
+UPDATE budgets SET end_date = SUBSTR(end_date, 1, 10)
+    WHERE end_date IS NOT NULL AND LENGTH(end_date) > 10;
+UPDATE operation_links SET iteration_date = SUBSTR(iteration_date, 1, 10)
+    WHERE LENGTH(iteration_date) > 10;
+"""
+
+
 class SqliteRepository(RepositoryInterface):
     """Repository for persisting account data in SQLite."""
 
@@ -136,6 +155,7 @@ class SqliteRepository(RepositoryInterface):
         1: (0, SCHEMA_V1),
         2: (1, SCHEMA_V2),
         3: (2, SCHEMA_V3),
+        4: (3, SCHEMA_V4),
     }
 
     def __init__(self, db_path: Path) -> None:

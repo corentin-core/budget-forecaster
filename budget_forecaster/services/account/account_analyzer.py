@@ -305,12 +305,11 @@ class AccountAnalyzer:
                 expenses_per_category_dict.setdefault(operation.category, []).append(
                     (operation.operation_date, operation.amount)
                 )
-        expenses_per_category = {
-            category: pd.DataFrame(expenses, columns=["Date", "Montant"]).set_index(
-                "Date"
-            )
-            for category, expenses in expenses_per_category_dict.items()
-        }
+        expenses_per_category = {}
+        for category, expenses in expenses_per_category_dict.items():
+            df = pd.DataFrame(expenses, columns=["Date", "Montant"])
+            df["Date"] = pd.to_datetime(df["Date"])
+            expenses_per_category[category] = df.set_index("Date")
 
         df = pd.DataFrame(
             {
