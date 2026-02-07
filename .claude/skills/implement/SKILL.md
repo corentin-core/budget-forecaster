@@ -168,6 +168,18 @@ Create a checklist from the requirements:
 - [ ] `test_file.py` - Tests
 - [ ] Run tests
 
+#### Step 2.1: Update the issue with approved design
+
+Once the design is validated by the user, update the GitHub issue to document the agreed
+approach:
+
+```bash
+gh issue edit <number> --body "<updated body with design>"
+```
+
+This ensures the design is preserved for future reference, even if the conversation is
+lost.
+
 #### ⏸️ CHECKPOINT 2: Confirm Implementation Plan
 
 Present the checklist to the user:

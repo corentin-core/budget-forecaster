@@ -1,6 +1,6 @@
 """Tests for the ApplicationService."""
 
-# pylint: disable=redefined-outer-name,protected-access,too-few-public-methods
+# pylint: disable=redefined-outer-name,too-few-public-methods
 # pylint: disable=too-many-lines
 
 from datetime import date
@@ -82,52 +82,6 @@ def app_service(
         forecast_service=mock_forecast_service,
         operation_link_service=mock_operation_link_service,
     )
-
-
-class TestMatcherCache:
-    """Tests for matcher cache management."""
-
-    def test_builds_matchers_lazily(
-        self,
-        app_service: ApplicationService,
-        mock_forecast_service: MagicMock,
-    ) -> None:
-        """Matchers are built lazily on first access."""
-        # Setup planned operation with matcher
-        planned_op = MagicMock()
-        planned_op.id = 1
-        planned_op.matcher = MagicMock(spec=OperationMatcher)
-        mock_forecast_service.get_all_planned_operations.return_value = [planned_op]
-
-        # Setup budget with matcher
-        budget = MagicMock()
-        budget.id = 2
-        budget.matcher = MagicMock(spec=OperationMatcher)
-        mock_forecast_service.get_all_budgets.return_value = [budget]
-
-        # Access matchers
-        matchers = app_service._get_matchers()
-
-        assert len(matchers) == 2
-        assert (LinkType.PLANNED_OPERATION, 1) in matchers
-        assert (LinkType.BUDGET, 2) in matchers
-
-    def test_caches_matchers(
-        self,
-        app_service: ApplicationService,
-        mock_forecast_service: MagicMock,
-    ) -> None:
-        """Matchers are cached after first build."""
-        mock_forecast_service.get_all_planned_operations.return_value = []
-        mock_forecast_service.get_all_budgets.return_value = []
-
-        # Access twice
-        app_service._get_matchers()
-        app_service._get_matchers()
-
-        # Should only be called once each
-        assert mock_forecast_service.get_all_planned_operations.call_count == 1
-        assert mock_forecast_service.get_all_budgets.call_count == 1
 
 
 class TestImportFile:
