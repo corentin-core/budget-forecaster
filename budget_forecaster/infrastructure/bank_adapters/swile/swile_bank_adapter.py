@@ -5,6 +5,7 @@ from pathlib import Path
 
 from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.types import Category
+from budget_forecaster.exceptions import InvalidExportDataError
 from budget_forecaster.infrastructure.bank_adapters.bank_adapter import BankAdapterBase
 from budget_forecaster.services.operation.historic_operation_factory import (
     HistoricOperationFactory,
@@ -34,7 +35,10 @@ class SwileBankAdapter(BankAdapterBase):
         for wallet in wallets_json["wallets"]:
             if wallet["type"] == "meal_voucher":
                 if not isinstance(wallet["balance"]["value"], (float, int)):
-                    raise ValueError("The balance field should be a float")
+                    raise InvalidExportDataError(
+                        "The balance field should be a float",
+                        path=bank_export,
+                    )
                 self._balance = wallet["balance"]["value"]
                 break
 
@@ -63,8 +67,9 @@ class SwileBankAdapter(BankAdapterBase):
                 )
 
         if not self._operations:
-            raise ValueError(
-                "No meal voucher transactions found in the operations.json file"
+            raise InvalidExportDataError(
+                "No meal voucher transactions found in the operations.json file",
+                path=bank_export,
             )
 
         self._export_date = max(op.operation_date for op in self._operations)

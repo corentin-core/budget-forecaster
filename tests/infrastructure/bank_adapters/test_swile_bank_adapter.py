@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from budget_forecaster.core.types import Category
+from budget_forecaster.exceptions import InvalidExportDataError
 from budget_forecaster.infrastructure.bank_adapters.swile.swile_bank_adapter import (
     SwileBankAdapter,
 )
@@ -185,7 +186,9 @@ class TestSwileBankAdapterLoad:
         (tmp_path / "operations.json").write_text(json.dumps(operations))
         (tmp_path / "wallets.json").write_text(json.dumps(wallets))
 
-        with pytest.raises(ValueError, match="No meal voucher transactions found"):
+        with pytest.raises(
+            InvalidExportDataError, match="No meal voucher transactions found"
+        ):
             swile_adapter.load_bank_export(tmp_path, operation_factory)
 
     def test_load_invalid_balance_type_raises_error(
@@ -217,7 +220,9 @@ class TestSwileBankAdapterLoad:
         (tmp_path / "operations.json").write_text(json.dumps(operations))
         (tmp_path / "wallets.json").write_text(json.dumps(wallets))
 
-        with pytest.raises(ValueError, match="balance field should be a float"):
+        with pytest.raises(
+            InvalidExportDataError, match="balance field should be a float"
+        ):
             swile_adapter.load_bank_export(tmp_path, operation_factory)
 
 

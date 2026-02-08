@@ -20,6 +20,7 @@ from budget_forecaster.domain.account.account import Account, AccountParameters
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.exceptions import AccountNotLoadedError
 from budget_forecaster.infrastructure.persistence.persistent_account import (
     PersistentAccount,
 )
@@ -199,11 +200,11 @@ class TestPersistentAccount:
     """Tests for the PersistentAccount class."""
 
     def test_load_raises_when_no_account(self, temp_db_path: Path) -> None:
-        """Test that load raises FileNotFoundError when no account exists."""
+        """Test that load raises AccountNotLoadedError when no account exists."""
         with SqliteRepository(temp_db_path) as repository:
             persistent = PersistentAccount(repository)
 
-            with pytest.raises(FileNotFoundError):
+            with pytest.raises(AccountNotLoadedError):
                 persistent.load()
 
     def test_save_and_load(self, temp_db_path: Path, sample_account: Account) -> None:
@@ -228,7 +229,7 @@ class TestPersistentAccount:
         with SqliteRepository(temp_db_path) as repository:
             persistent = PersistentAccount(repository)
 
-            with pytest.raises(FileNotFoundError):
+            with pytest.raises(AccountNotLoadedError):
                 _ = persistent.account
 
     def test_upsert_account(self, temp_db_path: Path, sample_account: Account) -> None:

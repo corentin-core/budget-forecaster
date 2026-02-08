@@ -22,6 +22,7 @@ from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.exceptions import AccountNotLoadedError, BudgetForecasterError
 from budget_forecaster.infrastructure.backup import BackupService
 from budget_forecaster.infrastructure.config import Config
 from budget_forecaster.infrastructure.persistence.persistent_account import (
@@ -253,7 +254,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             self._load_config()
             # Use call_after_refresh to ensure screens are mounted
             self.call_after_refresh(self._refresh_screens)
-        except FileNotFoundError as e:
+        except AccountNotLoadedError as e:
             self.notify(f"Erreur: {e}", severity="error")
             self.exit()
 
@@ -587,9 +588,12 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             self.app_service.delete_budget(event.budget.id)
             self.notify(f"Budget '{event.budget.description}' supprimé")
             self._refresh_budgets()
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception("Error deleting budget")
+        except BudgetForecasterError as e:
+            logger.error("Error deleting budget: %s", e)
             self.notify(f"Erreur: {e}", severity="error")
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.exception("Unexpected error deleting budget")
+            self.notify("Une erreur inattendue est survenue", severity="error")
 
     def _on_budget_edited(self, budget: Budget | None) -> None:
         """Handle budget edit completion."""
@@ -606,9 +610,12 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
                 self.app_service.update_budget(budget)
                 self.notify(f"Budget '{budget.description}' modifié")
             self._refresh_budgets()
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception("Error saving budget")
+        except BudgetForecasterError as e:
+            logger.error("Error saving budget: %s", e)
             self.notify(f"Erreur: {e}", severity="error")
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.exception("Unexpected error saving budget")
+            self.notify("Une erreur inattendue est survenue", severity="error")
 
     def _refresh_budgets(self) -> None:
         """Refresh budgets and forecast widgets."""
@@ -641,9 +648,12 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             self.app_service.delete_planned_operation(event.operation.id)
             self.notify(f"Opération '{event.operation.description}' supprimée")
             self._refresh_planned_operations()
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception("Error deleting planned operation")
+        except BudgetForecasterError as e:
+            logger.error("Error deleting planned operation: %s", e)
             self.notify(f"Erreur: {e}", severity="error")
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.exception("Unexpected error deleting planned operation")
+            self.notify("Une erreur inattendue est survenue", severity="error")
 
     def on_planned_operations_widget_operation_split_requested(
         self, event: PlannedOperationsWidget.OperationSplitRequested
@@ -683,11 +693,12 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
                 f"(nouvelle: #{new_op.id})"
             )
             self._refresh_planned_operations()
-        except ValueError as e:
+        except (ValueError, BudgetForecasterError) as e:
+            logger.error("Error splitting planned operation: %s", e)
             self.notify(f"Erreur: {e}", severity="error")
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception("Error splitting planned operation")
-            self.notify(f"Erreur: {e}", severity="error")
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.exception("Unexpected error splitting planned operation")
+            self.notify("Une erreur inattendue est survenue", severity="error")
 
     def on_budgets_widget_budget_split_requested(
         self, event: BudgetsWidget.BudgetSplitRequested
@@ -725,11 +736,12 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
                 f"Budget '{budget.description}' scindé " f"(nouveau: #{new_budget.id})"
             )
             self._refresh_budgets()
-        except ValueError as e:
+        except (ValueError, BudgetForecasterError) as e:
+            logger.error("Error splitting budget: %s", e)
             self.notify(f"Erreur: {e}", severity="error")
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception("Error splitting budget")
-            self.notify(f"Erreur: {e}", severity="error")
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.exception("Unexpected error splitting budget")
+            self.notify("Une erreur inattendue est survenue", severity="error")
 
     def _on_planned_operation_edited(self, operation: PlannedOperation | None) -> None:
         """Handle planned operation edit completion."""
@@ -746,9 +758,12 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
                 self.app_service.update_planned_operation(operation)
                 self.notify(f"Opération '{operation.description}' modifiée")
             self._refresh_planned_operations()
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.exception("Error saving planned operation")
+        except BudgetForecasterError as e:
+            logger.error("Error saving planned operation: %s", e)
             self.notify(f"Erreur: {e}", severity="error")
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.exception("Unexpected error saving planned operation")
+            self.notify("Une erreur inattendue est survenue", severity="error")
 
     def _refresh_planned_operations(self) -> None:
         """Refresh planned operations and forecast widgets."""

@@ -4,6 +4,7 @@ import inspect
 import pathlib
 from typing import Generator
 
+from budget_forecaster.exceptions import UnsupportedExportError
 from budget_forecaster.infrastructure.bank_adapters.bank_adapter import (
     BankAdapterInterface,
 )
@@ -39,4 +40,4 @@ class BankAdapterFactory:  # pylint: disable=too-few-public-methods
             if adapter.match(bank_export):
                 return adapter()
 
-        raise RuntimeError(f"No bank adapter found for export: {bank_export}")
+        raise UnsupportedExportError(bank_export)
