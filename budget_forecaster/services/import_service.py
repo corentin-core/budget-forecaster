@@ -191,7 +191,7 @@ class ImportService:
             self._persistent_account.save()
 
             # Reload to get updated operations with unique_ids
-            self._persistent_account.load()
+            self._persistent_account.reload()
 
             if move_to_processed:
                 self._move_to_processed(path)

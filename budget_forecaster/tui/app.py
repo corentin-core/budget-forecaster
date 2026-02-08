@@ -183,8 +183,8 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             backup_service.rotate_backups()
 
         repository = SqliteRepository(self._config.database_path)
+        repository.initialize()
         self._persistent_account = PersistentAccount(repository)
-        self._persistent_account.load()
 
         # Create individual services
         operation_service = OperationService(self._persistent_account)
@@ -329,7 +329,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
     def action_refresh_data(self) -> None:
         """Refresh data from the database."""
         if self._persistent_account is not None:
-            self._persistent_account.load()
+            self._persistent_account.reload()
             self._refresh_screens()
 
     def save_changes(self) -> None:
@@ -367,7 +367,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         if event.success:
             # Reload data from database and refresh all screens
             if self._persistent_account:
-                self._persistent_account.load()
+                self._persistent_account.reload()
             self._refresh_screens()
 
     def _on_file_selected(self, path: Path | None) -> None:
@@ -437,7 +437,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         self.save_changes()
         # Reload data from database and refresh all screens
         if self._persistent_account:
-            self._persistent_account.load()
+            self._persistent_account.reload()
         self._refresh_screens()
 
         # Clear selection in all tables
