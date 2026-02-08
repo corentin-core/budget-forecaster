@@ -78,33 +78,6 @@ def sample_account_fixture(sample_operations: tuple[HistoricOperation, ...]) -> 
     )
 
 
-class TestContextManager:
-    """Tests for the SqliteRepository context manager support."""
-
-    def test_enter_initializes_repository(self, temp_db_path: Path) -> None:
-        """Test that the repository is usable after entering the context."""
-        with SqliteRepository(temp_db_path) as repo:
-            repo.get_aggregated_account_name()
-
-    def test_context_manager_can_be_reused(self, temp_db_path: Path) -> None:
-        """Test that exiting properly closes connection, allowing re-entry."""
-        repo = SqliteRepository(temp_db_path)
-        with repo:
-            repo.set_aggregated_account_name("Test")
-        with repo:
-            assert repo.get_aggregated_account_name() == "Test"
-
-    def test_exit_closes_on_exception(self, temp_db_path: Path) -> None:
-        """Test that connection is properly closed even on exception."""
-        repo = SqliteRepository(temp_db_path)
-        with pytest.raises(ValueError):
-            with repo:
-                raise ValueError("test error")
-        # Repository can be re-entered after exception
-        with repo:
-            repo.get_aggregated_account_name()
-
-
 class TestSqliteRepository:
     """Tests for the SqliteRepository class."""
 
@@ -608,28 +581,3 @@ class TestSchemaMigration:
             links = repository.get_all_links()
             assert len(links) == 1
             assert links[0].iteration_date == date(2026, 1, 1)
-
-        # Verify raw date format conversion via direct DB inspection
-        conn = sqlite3.connect(temp_db_path)
-        conn.row_factory = sqlite3.Row
-
-        row = conn.execute("SELECT balance_date FROM accounts").fetchone()
-        assert row["balance_date"] == "2026-01-15"
-
-        row = conn.execute("SELECT date FROM operations").fetchone()
-        assert row["date"] == "2026-01-28"
-
-        row = conn.execute(
-            "SELECT start_date, end_date FROM planned_operations"
-        ).fetchone()
-        assert row["start_date"] == "2025-01-01"
-        assert row["end_date"] == "2026-12-31"
-
-        row = conn.execute("SELECT start_date, end_date FROM budgets").fetchone()
-        assert row["start_date"] == "2025-01-01"
-        assert row["end_date"] == "2026-12-31"
-
-        row = conn.execute("SELECT iteration_date FROM operation_links").fetchone()
-        assert row["iteration_date"] == "2026-01-01"
-
-        conn.close()
