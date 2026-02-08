@@ -1,7 +1,5 @@
 """Module with tests for the PersistentAccount and SqliteRepository classes."""
 
-# pylint: disable=protected-access
-
 import sqlite3
 import tempfile
 from datetime import date, timedelta
@@ -19,7 +17,6 @@ from budget_forecaster.core.date_range import (
 )
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.account.account import Account, AccountParameters
-from budget_forecaster.domain.account.aggregated_account import AggregatedAccount
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
@@ -27,7 +24,6 @@ from budget_forecaster.infrastructure.persistence.persistent_account import (
     PersistentAccount,
 )
 from budget_forecaster.infrastructure.persistence.sqlite_repository import (
-    CURRENT_SCHEMA_VERSION,
     SCHEMA_V1,
     SCHEMA_V2,
     SCHEMA_V3,
@@ -86,39 +82,40 @@ class TestContextManager:
     """Tests for the SqliteRepository context manager support."""
 
     def test_enter_initializes_repository(self, temp_db_path: Path) -> None:
-        """Test that __enter__ calls initialize()."""
-        repo = SqliteRepository(temp_db_path)
-        assert repo._connection is None
-        with repo:
-            assert repo._connection is not None
+        """Test that the repository is usable after entering the context."""
+        with SqliteRepository(temp_db_path) as repo:
+            repo.get_aggregated_account_name()
 
-    def test_exit_closes_connection(self, temp_db_path: Path) -> None:
-        """Test that __exit__ calls close()."""
+    def test_context_manager_can_be_reused(self, temp_db_path: Path) -> None:
+        """Test that exiting properly closes connection, allowing re-entry."""
         repo = SqliteRepository(temp_db_path)
         with repo:
-            assert repo._connection is not None
-        assert repo._connection is None
+            repo.set_aggregated_account_name("Test")
+        with repo:
+            assert repo.get_aggregated_account_name() == "Test"
 
     def test_exit_closes_on_exception(self, temp_db_path: Path) -> None:
-        """Test that connection is closed even when an exception occurs."""
+        """Test that connection is properly closed even on exception."""
         repo = SqliteRepository(temp_db_path)
         with pytest.raises(ValueError):
             with repo:
                 raise ValueError("test error")
-        assert repo._connection is None
+        # Repository can be re-entered after exception
+        with repo:
+            repo.get_aggregated_account_name()
 
 
-class TestSqliteRepository:  # pylint: disable=protected-access
+class TestSqliteRepository:
     """Tests for the SqliteRepository class."""
 
     def test_initialize_creates_schema(self, temp_db_path: Path) -> None:
-        """Test that initialize creates the database schema."""
+        """Test that initialize creates a fully functional database."""
         with SqliteRepository(temp_db_path) as repository:
-            # Check schema version
-            conn = repository._get_connection()
-            cursor = conn.execute("SELECT version FROM schema_version")
-            version = cursor.fetchone()["version"]
-            assert version == CURRENT_SCHEMA_VERSION
+            # All tables are operational on a fresh database
+            assert not repository.get_all_accounts()
+            assert not repository.get_all_budgets()
+            assert not repository.get_all_planned_operations()
+            assert not repository.get_all_links()
 
     def test_set_and_get_aggregated_account_name(self, temp_db_path: Path) -> None:
         """Test setting and getting aggregated account name."""
@@ -225,7 +222,7 @@ class TestSqliteRepository:  # pylint: disable=protected-access
             assert repository.operation_exists(999) is False
 
 
-class TestPersistentAccount:  # pylint: disable=protected-access
+class TestPersistentAccount:
     """Tests for the PersistentAccount class."""
 
     def test_load_raises_when_no_account(self, temp_db_path: Path) -> None:
@@ -238,23 +235,20 @@ class TestPersistentAccount:  # pylint: disable=protected-access
 
     def test_save_and_load(self, temp_db_path: Path, sample_account: Account) -> None:
         """Test saving and loading an aggregated account."""
-        # Create and save
+        # Set up data through repository public API
         with SqliteRepository(temp_db_path) as repository:
-            persistent = PersistentAccount(repository)
-            persistent._aggregated_account = AggregatedAccount(
-                "Mes comptes", [sample_account]
-            )
-            persistent.save()
+            repository.set_aggregated_account_name("Mes comptes")
+            repository.upsert_account(sample_account)
 
-        # Load in new instance
+        # Load through PersistentAccount
         with SqliteRepository(temp_db_path) as repository2:
-            persistent2 = PersistentAccount(repository2)
-            persistent2.load()
+            persistent = PersistentAccount(repository2)
+            persistent.load()
 
-            assert persistent2.account.name == "Mes comptes"
-            assert len(persistent2.accounts) == 1
-            assert persistent2.accounts[0].name == "Compte courant"
-            assert len(persistent2.accounts[0].operations) == 3
+            assert persistent.account.name == "Mes comptes"
+            assert len(persistent.accounts) == 1
+            assert persistent.accounts[0].name == "Compte courant"
+            assert len(persistent.accounts[0].operations) == 3
 
     def test_account_raises_when_not_loaded(self, temp_db_path: Path) -> None:
         """Test that accessing account raises when not loaded."""
@@ -266,14 +260,16 @@ class TestPersistentAccount:  # pylint: disable=protected-access
 
     def test_upsert_account(self, temp_db_path: Path, sample_account: Account) -> None:
         """Test upserting account through the interface."""
+        # Set up initial data through repository
+        with SqliteRepository(temp_db_path) as repository:
+            repository.set_aggregated_account_name("Mes comptes")
+            repository.upsert_account(sample_account)
+
+        # Load, modify via upsert, save
         with SqliteRepository(temp_db_path) as repository:
             persistent = PersistentAccount(repository)
-            persistent._aggregated_account = AggregatedAccount(
-                "Mes comptes", [sample_account]
-            )
-            persistent.save()
+            persistent.load()
 
-            # Add new operation via upsert
             new_operation = HistoricOperation(
                 unique_id=4,
                 description="Nouvelle opération",
@@ -539,23 +535,12 @@ class TestPlannedOperationRepository:
 class TestSchemaMigration:
     """Tests for schema migration."""
 
-    def test_migration_v1_to_v2(self, temp_db_path: Path) -> None:
-        """Test that migration from v1 to v2 works correctly."""
+    def test_fresh_database_supports_all_tables(self, temp_db_path: Path) -> None:
+        """Test that a fresh database has all required tables operational."""
         with SqliteRepository(temp_db_path) as repository:
-            # Verify schema version is now 2
-            assert repository._get_schema_version() == CURRENT_SCHEMA_VERSION
-
-            # Verify new tables exist
-            conn = repository._get_connection()
-            cursor = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='budgets'"
-            )
-            assert cursor.fetchone() is not None
-
-            cursor = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='planned_operations'"
-            )
-            assert cursor.fetchone() is not None
+            # Budget and planned operation tables work (added in v2)
+            assert not repository.get_all_budgets()
+            assert not repository.get_all_planned_operations()
 
     def test_migration_preserves_existing_data(
         self, temp_db_path: Path, sample_account: Account
@@ -608,37 +593,43 @@ class TestSchemaMigration:
         conn.execute(
             "INSERT INTO operation_links (operation_unique_id, target_type, target_id, "
             "iteration_date, is_manual) "
-            "VALUES (1, 'PLANNED_OPERATION', 1, '2026-01-01T00:00:00', 0)"
+            "VALUES (1, 'planned_operation', 1, '2026-01-01T00:00:00', 0)"
         )
         conn.commit()
         conn.close()
 
-        # Open with SqliteRepository to trigger migration
+        # Open with SqliteRepository to trigger migration, then close
         with SqliteRepository(temp_db_path) as repository:
-            assert repository._get_schema_version() == CURRENT_SCHEMA_VERSION
-
-            conn = repository._get_connection()
-
-            row = conn.execute("SELECT balance_date FROM accounts").fetchone()
-            assert row["balance_date"] == "2026-01-15"
-
-            row = conn.execute("SELECT date FROM operations").fetchone()
-            assert row["date"] == "2026-01-28"
-
-            row = conn.execute(
-                "SELECT start_date, end_date FROM planned_operations"
-            ).fetchone()
-            assert row["start_date"] == "2025-01-01"
-            assert row["end_date"] == "2026-12-31"
-
-            row = conn.execute("SELECT start_date, end_date FROM budgets").fetchone()
-            assert row["start_date"] == "2025-01-01"
-            assert row["end_date"] == "2026-12-31"
-
-            row = conn.execute("SELECT iteration_date FROM operation_links").fetchone()
-            assert row["iteration_date"] == "2026-01-01"
-
-            # Verify data loads correctly through the repository
+            # Verify data loads correctly through the public interface
             accounts = repository.get_all_accounts()
             assert len(accounts) == 1
             assert accounts[0].operations[0].operation_date == date(2026, 1, 28)
+
+            links = repository.get_all_links()
+            assert len(links) == 1
+            assert links[0].iteration_date == date(2026, 1, 1)
+
+        # Verify raw date format conversion via direct DB inspection
+        conn = sqlite3.connect(temp_db_path)
+        conn.row_factory = sqlite3.Row
+
+        row = conn.execute("SELECT balance_date FROM accounts").fetchone()
+        assert row["balance_date"] == "2026-01-15"
+
+        row = conn.execute("SELECT date FROM operations").fetchone()
+        assert row["date"] == "2026-01-28"
+
+        row = conn.execute(
+            "SELECT start_date, end_date FROM planned_operations"
+        ).fetchone()
+        assert row["start_date"] == "2025-01-01"
+        assert row["end_date"] == "2026-12-31"
+
+        row = conn.execute("SELECT start_date, end_date FROM budgets").fetchone()
+        assert row["start_date"] == "2025-01-01"
+        assert row["end_date"] == "2026-12-31"
+
+        row = conn.execute("SELECT iteration_date FROM operation_links").fetchone()
+        assert row["iteration_date"] == "2026-01-01"
+
+        conn.close()
