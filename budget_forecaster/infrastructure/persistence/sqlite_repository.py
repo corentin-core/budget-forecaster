@@ -26,6 +26,7 @@ from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.exceptions import PersistenceError
 from budget_forecaster.infrastructure.persistence.repository_interface import (
     RepositoryInterface,
 )
@@ -323,7 +324,7 @@ class SqliteRepository(RepositoryInterface):
                 ),
             )
             if cursor.lastrowid is None:
-                raise RuntimeError("Failed to insert account")
+                raise PersistenceError("Failed to insert account")
             account_id = cursor.lastrowid
         else:
             conn.execute(
@@ -489,7 +490,7 @@ class SqliteRepository(RepositoryInterface):
         )
         conn.commit()
         if cursor.lastrowid is None:
-            raise RuntimeError("Failed to insert budget")
+            raise PersistenceError("Failed to insert budget")
         return cursor.lastrowid
 
     def delete_budget(self, budget_id: int) -> None:
@@ -601,7 +602,7 @@ class SqliteRepository(RepositoryInterface):
         )
         conn.commit()
         if cursor.lastrowid is None:
-            raise RuntimeError("Failed to insert planned operation")
+            raise PersistenceError("Failed to insert planned operation")
         return cursor.lastrowid
 
     def delete_planned_operation(self, op_id: int) -> None:

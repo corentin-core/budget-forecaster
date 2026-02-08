@@ -12,6 +12,7 @@ from typing import NamedTuple
 
 from budget_forecaster.core.types import ImportProgressCallback, ImportStats
 from budget_forecaster.domain.account.account import AccountParameters
+from budget_forecaster.exceptions import UnsupportedExportError
 from budget_forecaster.infrastructure.bank_adapters.bank_adapter_factory import (
     BankAdapterFactory,
 )
@@ -155,7 +156,7 @@ class ImportService:
         try:
             self._bank_adapter_factory.create_bank_adapter(path)
             return True
-        except RuntimeError:
+        except UnsupportedExportError:
             return False
 
     def import_file(

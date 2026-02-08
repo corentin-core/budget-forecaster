@@ -10,6 +10,7 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, DataTable, Input, Static
 
+from budget_forecaster.exceptions import AccountNotLoadedError, BudgetForecasterError
 from budget_forecaster.services.account.account_analysis_renderer import (
     AccountAnalysisRendererExcel,
 )
@@ -252,13 +253,17 @@ class ForecastWidget(Vertical):
                 self._app_service.compute_report(start_date, end_date)
             self._refresh_display()
             self.app.notify("Prévisions calculées")
-        except FileNotFoundError as e:
-            logger.error("Forecast file not found: %s", e)
-            self.app.notify(f"Fichier non trouvé: {e}", severity="error")
+        except AccountNotLoadedError as e:
+            logger.error("No account loaded: %s", e)
+            self.app.notify(f"{e}", severity="error")
             self._update_status()
-        except Exception as e:  # pylint: disable=broad-except
-            logger.exception("Error computing forecast")
+        except BudgetForecasterError as e:
+            logger.error("Error computing forecast: %s", e)
             self.app.notify(f"Erreur: {e}", severity="error")
+            self._update_status()
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Unexpected error computing forecast")
+            self.app.notify("Une erreur inattendue est survenue", severity="error")
             self._update_status()
         finally:
             # Restore button state
@@ -417,6 +422,9 @@ class ForecastWidget(Vertical):
                 renderer(report)
             logger.info("Exported forecast to %s", output_path)
             self.app.notify(f"Exporté vers {output_path}")
-        except Exception as e:  # pylint: disable=broad-except
-            logger.exception("Error exporting forecast")
+        except BudgetForecasterError as e:
+            logger.error("Error exporting forecast: %s", e)
             self.app.notify(f"Erreur d'export: {e}", severity="error")
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Unexpected error exporting forecast")
+            self.app.notify("Une erreur inattendue est survenue", severity="error")

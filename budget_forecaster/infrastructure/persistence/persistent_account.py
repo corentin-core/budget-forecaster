@@ -4,6 +4,7 @@ from budget_forecaster.core.types import ImportStats
 from budget_forecaster.domain.account.account import Account, AccountParameters
 from budget_forecaster.domain.account.aggregated_account import AggregatedAccount
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.exceptions import AccountNotLoadedError
 from budget_forecaster.infrastructure.persistence.repository_interface import (
     RepositoryInterface,
 )
@@ -32,7 +33,7 @@ class PersistentAccount:
         self._repository.initialize()
 
         if (aggregated_name := self._repository.get_aggregated_account_name()) is None:
-            raise FileNotFoundError("No account found")
+            raise AccountNotLoadedError()
 
         accounts = self._repository.get_all_accounts()
         self._aggregated_account = AggregatedAccount(aggregated_name, accounts)
@@ -41,14 +42,14 @@ class PersistentAccount:
     def account(self) -> Account:
         """Return the aggregated account."""
         if self._aggregated_account is None:
-            raise FileNotFoundError("No account found")
+            raise AccountNotLoadedError()
         return self._aggregated_account.account
 
     @property
     def accounts(self) -> tuple[Account, ...]:
         """Return the individual accounts."""
         if self._aggregated_account is None:
-            raise FileNotFoundError("No account found")
+            raise AccountNotLoadedError()
         return self._aggregated_account.accounts
 
     def upsert_account(self, account: AccountParameters) -> ImportStats:
@@ -58,19 +59,19 @@ class PersistentAccount:
             ImportStats with the number of new and duplicate operations.
         """
         if self._aggregated_account is None:
-            raise FileNotFoundError("No account found")
+            raise AccountNotLoadedError()
         return self._aggregated_account.upsert_account(account)
 
     def replace_account(self, new_account: Account) -> None:
         """Replace an existing account."""
         if self._aggregated_account is None:
-            raise FileNotFoundError("No account found")
+            raise AccountNotLoadedError()
         self._aggregated_account.replace_account(new_account)
 
     def replace_operation(self, new_operation: HistoricOperation) -> None:
         """Replace an existing operation."""
         if self._aggregated_account is None:
-            raise FileNotFoundError("No account found")
+            raise AccountNotLoadedError()
         self._aggregated_account.replace_operation(new_operation)
 
     @property
