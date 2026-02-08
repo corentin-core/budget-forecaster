@@ -1,7 +1,5 @@
 """Tests for OperationLink data model and repository operations."""
 
-# pylint: disable=protected-access
-
 import sqlite3
 import tempfile
 from datetime import date
@@ -12,7 +10,6 @@ import pytest
 from budget_forecaster.core.types import LinkType
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.infrastructure.persistence.sqlite_repository import (
-    CURRENT_SCHEMA_VERSION,
     SqliteRepository,
 )
 
@@ -295,55 +292,65 @@ class TestOperationLinkSchemaMigration:
     """Tests for schema migration v3."""
 
     def test_migration_v3_creates_table(self, temp_db_path: Path) -> None:
-        """Test that migration v3 creates the operation_links table."""
+        """Test that the operation_links table is functional."""
         with SqliteRepository(temp_db_path) as repository:
-            assert repository._get_schema_version() == CURRENT_SCHEMA_VERSION
-
-            # Verify table exists
-            conn = repository._get_connection()
-            cursor = conn.execute(
-                "SELECT name FROM sqlite_master WHERE type='table' AND name='operation_links'"
+            # Table works: insert and read back a link
+            link = OperationLink(
+                operation_unique_id=100,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
+                iteration_date=date(2024, 1, 15),
             )
-            assert cursor.fetchone() is not None
+            repository.upsert_link(link)
+            assert repository.get_link_for_operation(100) is not None
 
     def test_migration_v3_creates_indexes(self, temp_db_path: Path) -> None:
         """Test that migration v3 creates the required indexes."""
-        with SqliteRepository(temp_db_path) as repository:
-            conn = repository._get_connection()
+        # Initialize the database via SqliteRepository, then inspect directly
+        with SqliteRepository(temp_db_path):
+            pass
 
-            # Check for operation index
-            cursor = conn.execute(
-                "SELECT name FROM sqlite_master "
-                "WHERE type='index' AND name='idx_operation_links_operation'"
-            )
-            assert cursor.fetchone() is not None
+        conn = sqlite3.connect(temp_db_path)
+        conn.row_factory = sqlite3.Row
 
-            # Check for target index
-            cursor = conn.execute(
-                "SELECT name FROM sqlite_master "
-                "WHERE type='index' AND name='idx_operation_links_target'"
-            )
-            assert cursor.fetchone() is not None
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master "
+            "WHERE type='index' AND name='idx_operation_links_operation'"
+        )
+        assert cursor.fetchone() is not None
+
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master "
+            "WHERE type='index' AND name='idx_operation_links_target'"
+        )
+        assert cursor.fetchone() is not None
+
+        conn.close()
 
     def test_migration_v3_unique_constraint(self, temp_db_path: Path) -> None:
         """Test that the UNIQUE constraint on operation_unique_id is enforced."""
-        with SqliteRepository(temp_db_path) as repository:
-            conn = repository._get_connection()
+        # Initialize the database via SqliteRepository, then test directly
+        with SqliteRepository(temp_db_path):
+            pass
 
-            # Insert first link
+        conn = sqlite3.connect(temp_db_path)
+
+        # Insert first link
+        conn.execute(
+            """INSERT INTO operation_links
+               (operation_unique_id, target_type, target_id, iteration_date, is_manual)
+               VALUES (?, ?, ?, ?, ?)""",
+            (999, "planned_operation", 1, "2024-01-01", False),
+        )
+        conn.commit()
+
+        # Try to insert duplicate - should fail
+        with pytest.raises(sqlite3.IntegrityError):
             conn.execute(
                 """INSERT INTO operation_links
                    (operation_unique_id, target_type, target_id, iteration_date, is_manual)
                    VALUES (?, ?, ?, ?, ?)""",
-                (999, "planned_operation", 1, "2024-01-01", False),
+                (999, "budget", 2, "2024-02-01", False),
             )
-            conn.commit()
 
-            # Try to insert duplicate - should fail
-            with pytest.raises(sqlite3.IntegrityError):
-                conn.execute(
-                    """INSERT INTO operation_links
-                       (operation_unique_id, target_type, target_id, iteration_date, is_manual)
-                       VALUES (?, ?, ?, ?, ?)""",
-                    (999, "budget", 2, "2024-02-01", False),
-                )
+        conn.close()
