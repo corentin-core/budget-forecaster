@@ -18,7 +18,7 @@ def _make_operation(
     unique_id: int = 1,
     description: str = "SUPERMARKET CARREFOUR",
     amount: float = -85.20,
-    category: Category = Category.OTHER,
+    category: Category = Category.UNCATEGORIZED,
     operation_date: date = date(2025, 1, 15),
 ) -> HistoricOperation:
     return HistoricOperation(
@@ -62,7 +62,6 @@ class TestCategorizeOperations:
         operation = _make_operation(
             description="SUPERMARKET CARREFOUR",
             amount=-85.20,
-            category=Category.OTHER,
             operation_date=date(2025, 1, 15),
         )
         planned = _make_planned(
@@ -88,12 +87,12 @@ class TestCategorizeOperations:
 
     def test_empty_forecast_leaves_categories_unchanged(self) -> None:
         """No planned operations means all categories stay as-is."""
-        operation = _make_operation(category=Category.OTHER)
+        operation = _make_operation()
         forecast = Forecast(operations=(), budgets=())
 
         result = categorize_operations([operation], forecast)
 
-        assert result[0].category == Category.OTHER
+        assert result[0].category == Category.UNCATEGORIZED
 
     def test_no_description_match_skips_categorization(self) -> None:
         """Operation not matching description hints is not categorized."""
@@ -112,7 +111,7 @@ class TestCategorizeOperations:
 
         result = categorize_operations([operation], forecast)
 
-        assert result[0].category == Category.OTHER
+        assert result[0].category == Category.UNCATEGORIZED
 
     def test_amount_mismatch_skips_categorization(self) -> None:
         """Operation with different amount is not categorized."""
@@ -131,7 +130,7 @@ class TestCategorizeOperations:
 
         result = categorize_operations([operation], forecast)
 
-        assert result[0].category == Category.OTHER
+        assert result[0].category == Category.UNCATEGORIZED
 
     def test_date_range_mismatch_skips_categorization(self) -> None:
         """Operation outside the planned date range is not categorized."""
@@ -151,7 +150,7 @@ class TestCategorizeOperations:
 
         result = categorize_operations([operation], forecast)
 
-        assert result[0].category == Category.OTHER
+        assert result[0].category == Category.UNCATEGORIZED
 
     def test_first_matching_planned_operation_wins(self) -> None:
         """When multiple planned operations match, the first one assigns its category."""
@@ -197,7 +196,7 @@ class TestCategorizeOperations:
 
         result = categorize_operations([operation], forecast)
 
-        assert result[0].category == Category.OTHER
+        assert result[0].category == Category.UNCATEGORIZED
 
     def test_amount_within_tolerance_matches(self) -> None:
         """Amount within the default 5% approximation tolerance matches."""
@@ -239,7 +238,7 @@ class TestCategorizeOperations:
 
         result = categorize_operations([operation], forecast)
 
-        assert result[0].category == Category.OTHER
+        assert result[0].category == Category.UNCATEGORIZED
 
     def test_mixed_operations_some_match_some_not(self) -> None:
         """Only operations matching planned criteria get categorized."""
@@ -247,14 +246,12 @@ class TestCategorizeOperations:
             unique_id=1,
             description="SUPERMARKET CARREFOUR",
             amount=-85.20,
-            category=Category.OTHER,
             operation_date=date(2025, 1, 15),
         )
         non_matching_op = _make_operation(
             unique_id=2,
             description="RESTAURANT CHEZ PAUL",
             amount=-42.00,
-            category=Category.OTHER,
             operation_date=date(2025, 1, 20),
         )
         planned = _make_planned(
@@ -270,7 +267,7 @@ class TestCategorizeOperations:
 
         assert categories == {
             1: Category.GROCERIES,
-            2: Category.OTHER,
+            2: Category.UNCATEGORIZED,
         }
 
     def test_date_within_approximation_range_matches(self) -> None:
