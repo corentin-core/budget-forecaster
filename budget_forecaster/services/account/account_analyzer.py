@@ -277,6 +277,11 @@ class AccountAnalyzer:
         self, start_date: date, end_date: date
     ) -> pd.DataFrame:
         """Compute the expenses statistics per category."""
+        if not self._account.operations:
+            return pd.DataFrame(
+                columns=["Catégorie", "Total", "Moyenne mensuelle"]
+            ).set_index("Catégorie")
+
         expenses_per_category_dict: dict[Category, list[tuple[date, float]]] = {}
         analysis_start = max(
             min(operation.operation_date for operation in self._account.operations),
