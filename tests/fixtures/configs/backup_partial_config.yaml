@@ -1,0 +1,5 @@
+database_path: ./budget.db
+account_name: Test
+account_currency: EUR
+backup:
+  enabled: false
