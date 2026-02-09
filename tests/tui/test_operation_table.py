@@ -68,7 +68,6 @@ class OperationTableTestApp(App[None]):
 class TestOperationTableIntegration:
     """Integration tests for OperationTable using Textual test framework."""
 
-    @pytest.mark.asyncio
     async def test_toggle_selection_with_space(
         self, sample_operations: list[HistoricOperation]
     ) -> None:
@@ -88,7 +87,6 @@ class TestOperationTableIntegration:
 
             assert table.selected_count == 0
 
-    @pytest.mark.asyncio
     async def test_extend_selection_down_with_shift(
         self, sample_operations: list[HistoricOperation]
     ) -> None:
@@ -104,7 +102,6 @@ class TestOperationTableIntegration:
             # Should have 3 rows selected (initial + 2 extensions)
             assert table.selected_count == 3
 
-    @pytest.mark.asyncio
     async def test_extend_selection_up_with_shift(
         self, sample_operations: list[HistoricOperation]
     ) -> None:
@@ -124,7 +121,6 @@ class TestOperationTableIntegration:
             # Should have 3 rows selected
             assert table.selected_count == 3
 
-    @pytest.mark.asyncio
     async def test_select_all_with_ctrl_a(
         self, sample_operations: list[HistoricOperation]
     ) -> None:
@@ -138,7 +134,6 @@ class TestOperationTableIntegration:
             assert table.selected_count == 5
             assert app.last_selection_count == 5
 
-    @pytest.mark.asyncio
     async def test_clear_selection_with_escape(
         self, sample_operations: list[HistoricOperation]
     ) -> None:
@@ -157,7 +152,6 @@ class TestOperationTableIntegration:
             assert table.selected_count == 0
             assert app.last_selection_count == 0
 
-    @pytest.mark.asyncio
     async def test_get_selected_operations_returns_selection(
         self, sample_operations: list[HistoricOperation]
     ) -> None:
@@ -176,7 +170,6 @@ class TestOperationTableIntegration:
             # Verify we got actual operation objects
             assert all(isinstance(op, HistoricOperation) for op in selected)
 
-    @pytest.mark.asyncio
     async def test_get_selected_operations_returns_highlighted_when_no_selection(
         self, sample_operations: list[HistoricOperation]
     ) -> None:
@@ -197,7 +190,6 @@ class TestOperationTableIntegration:
             # Should return the highlighted operation
             assert len(selected) == 1
 
-    @pytest.mark.asyncio
     async def test_load_operations_clears_selection(
         self, sample_operations: list[HistoricOperation]
     ) -> None:
@@ -217,7 +209,6 @@ class TestOperationTableIntegration:
             # Selection should be cleared
             assert table.selected_count == 0
 
-    @pytest.mark.asyncio
     async def test_selection_changed_message_sent(
         self, sample_operations: list[HistoricOperation]
     ) -> None:
@@ -232,7 +223,6 @@ class TestOperationTableIntegration:
             assert app.selection_changed_count > initial_count
             assert app.last_selection_count == 1
 
-    @pytest.mark.asyncio
     async def test_extend_selection_at_boundary_does_nothing(
         self, sample_operations: list[HistoricOperation]
     ) -> None:
@@ -258,7 +248,6 @@ class TestOperationTableIntegration:
 class TestOperationTableEmpty:  # pylint: disable=too-few-public-methods
     """Tests for OperationTable with no operations."""
 
-    @pytest.mark.asyncio
     async def test_empty_table_operations(self) -> None:
         """Test that empty table handles operations gracefully."""
         app = OperationTableTestApp([])

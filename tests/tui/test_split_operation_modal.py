@@ -2,7 +2,6 @@
 
 from datetime import date
 
-import pytest
 from dateutil.relativedelta import relativedelta
 from textual.app import App, ComposeResult
 from textual.containers import Container
@@ -114,7 +113,6 @@ class SplitModalTestApp(App[None]):
 class TestSplitOperationModalDisplay:
     """Tests for modal display and initialization."""
 
-    @pytest.mark.asyncio
     async def test_displays_planned_operation_info(self) -> None:
         """Verify modal shows PlannedOperation description and details."""
         operation = make_periodic_planned_operation()
@@ -130,7 +128,6 @@ class TestSplitOperationModalDisplay:
             # The renderable is the text content
             assert "Salary" in str(info_desc.content)
 
-    @pytest.mark.asyncio
     async def test_displays_budget_info(self) -> None:
         """Verify modal shows Budget description and details."""
         budget = make_periodic_budget()
@@ -144,7 +141,6 @@ class TestSplitOperationModalDisplay:
             info_desc = modal.query_one("#info-description", Static)
             assert "Monthly groceries" in str(info_desc.content)
 
-    @pytest.mark.asyncio
     async def test_duration_field_visible_for_budget(self) -> None:
         """Verify duration field is visible for Budget."""
         budget = make_periodic_budget()
@@ -160,7 +156,6 @@ class TestSplitOperationModalDisplay:
             assert parent is not None
             assert "hidden" not in parent.classes
 
-    @pytest.mark.asyncio
     async def test_duration_field_hidden_for_planned_operation(self) -> None:
         """Verify duration field is hidden for PlannedOperation."""
         operation = make_periodic_planned_operation()
@@ -175,7 +170,6 @@ class TestSplitOperationModalDisplay:
             assert parent is not None
             assert "hidden" in parent.classes
 
-    @pytest.mark.asyncio
     async def test_default_date_populated(self) -> None:
         """Verify default date is populated in the input."""
         operation = make_periodic_planned_operation()
@@ -193,7 +187,6 @@ class TestSplitOperationModalDisplay:
 class TestSplitOperationModalValidation:
     """Tests for form validation."""
 
-    @pytest.mark.asyncio
     async def test_invalid_date_format_shows_error(self) -> None:
         """Verify error is shown for invalid date format."""
         operation = make_periodic_planned_operation()
@@ -218,7 +211,6 @@ class TestSplitOperationModalValidation:
             error_msg = modal.query_one("#error-message", Static)
             assert "YYYY-MM-DD" in str(error_msg.content)
 
-    @pytest.mark.asyncio
     async def test_date_before_start_shows_error(self) -> None:
         """Verify error is shown when split date is before operation start."""
         operation = make_periodic_planned_operation(start_date=date(2025, 1, 1))
@@ -241,7 +233,6 @@ class TestSplitOperationModalValidation:
             error_msg = modal.query_one("#error-message", Static)
             assert "après" in str(error_msg.content)
 
-    @pytest.mark.asyncio
     async def test_invalid_amount_shows_error(self) -> None:
         """Verify error is shown for invalid amount."""
         operation = make_periodic_planned_operation()
@@ -264,7 +255,6 @@ class TestSplitOperationModalValidation:
             error_msg = modal.query_one("#error-message", Static)
             assert "nombre" in str(error_msg.content)
 
-    @pytest.mark.asyncio
     async def test_invalid_duration_shows_error_for_budget(self) -> None:
         """Verify error is shown for invalid duration in budget."""
         budget = make_periodic_budget()
@@ -295,7 +285,6 @@ class TestSplitOperationModalValidation:
 class TestSplitOperationModalSubmission:
     """Tests for successful form submission."""
 
-    @pytest.mark.asyncio
     async def test_cancel_returns_none(self) -> None:
         """Verify cancel button returns None."""
         operation = make_periodic_planned_operation()
@@ -313,7 +302,6 @@ class TestSplitOperationModalSubmission:
             assert app.modal_dismissed
             assert app.modal_result is None
 
-    @pytest.mark.asyncio
     async def test_escape_returns_none(self) -> None:
         """Verify escape key returns None."""
         operation = make_periodic_planned_operation()
@@ -328,7 +316,6 @@ class TestSplitOperationModalSubmission:
             assert app.modal_dismissed
             assert app.modal_result is None
 
-    @pytest.mark.asyncio
     async def test_successful_planned_operation_split(self) -> None:
         """Verify successful split returns correct SplitResult for PlannedOperation."""
         operation = make_periodic_planned_operation(
@@ -365,7 +352,6 @@ class TestSplitOperationModalSubmission:
             assert app.modal_result.new_period == relativedelta(months=1)
             assert app.modal_result.new_duration is None  # Not a budget
 
-    @pytest.mark.asyncio
     async def test_successful_budget_split_with_duration(self) -> None:
         """Verify successful split returns correct SplitResult for Budget."""
         budget = make_periodic_budget(
@@ -402,7 +388,6 @@ class TestSplitOperationModalSubmission:
             assert app.modal_result.new_amount.value == -500.0
             assert app.modal_result.new_duration == relativedelta(months=2)
 
-    @pytest.mark.asyncio
     async def test_period_selection(self) -> None:
         """Verify period selection works correctly."""
         operation = make_periodic_planned_operation()
