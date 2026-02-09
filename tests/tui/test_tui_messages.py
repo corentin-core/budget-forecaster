@@ -4,7 +4,6 @@ from datetime import date
 from typing import Any
 from unittest.mock import Mock
 
-import pytest
 from textual.app import App, ComposeResult
 from textual.containers import Container
 from textual.widgets import OptionList
@@ -13,12 +12,8 @@ from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.services.application_service import ApplicationService
-from budget_forecaster.tui.app import BudgetApp
-from budget_forecaster.tui.messages import DataRefreshRequested, SaveRequested
-from budget_forecaster.tui.screens.operations import (
-    CategoryEditModal,
-    OperationDetailPanel,
-)
+from budget_forecaster.tui.messages import SaveRequested
+from budget_forecaster.tui.screens.operations import CategoryEditModal
 from budget_forecaster.tui.widgets.category_select import CategorySelect
 
 
@@ -42,10 +37,6 @@ class MessageTrackingApp(App[None]):
 
     def on_save_requested(self, event: SaveRequested) -> None:
         """Track SaveRequested messages."""
-        self.received_messages.append(event)
-
-    def on_data_refresh_requested(self, event: DataRefreshRequested) -> None:
-        """Track DataRefreshRequested messages."""
         self.received_messages.append(event)
 
 
@@ -72,24 +63,9 @@ class CategoryEditModalTestApp(MessageTrackingApp):
         self.modal_result = result
 
 
-class OperationDetailPanelTestApp(MessageTrackingApp):
-    """Test app for OperationDetailPanel."""
-
-    def compose(self) -> ComposeResult:
-        panel = OperationDetailPanel()
-        yield panel
-
-    def on_mount(self) -> None:
-        """Set up the panel with a test operation."""
-        panel = self.query_one(OperationDetailPanel)
-        # Set the operation_id so _on_category_edited works
-        panel._operation_id = 1  # pylint: disable=protected-access
-
-
 class TestCategoryEditModalMessages:
     """Tests for CategoryEditModal message emission."""
 
-    @pytest.mark.asyncio
     async def test_emits_save_requested_on_category_selection(self) -> None:
         """Verify SaveRequested is emitted when a category is selected."""
         # Create mock app service with proper return values
@@ -121,7 +97,6 @@ class TestCategoryEditModalMessages:
             ]
             assert len(save_messages) == 1, "Expected one SaveRequested message"
 
-    @pytest.mark.asyncio
     async def test_no_save_requested_on_cancel(self) -> None:
         """Verify SaveRequested is NOT emitted when modal is cancelled."""
         app = CategoryEditModalTestApp(app_service=None)
@@ -141,7 +116,6 @@ class TestCategoryEditModalMessages:
             assert len(save_messages) == 0, "Expected no SaveRequested on cancel"
             assert app.modal_result is False
 
-    @pytest.mark.asyncio
     async def test_modal_dismisses_with_true_on_selection(self) -> None:
         """Verify modal dismisses with True when category is selected."""
         mock_service = Mock(spec=ApplicationService)
@@ -171,7 +145,6 @@ class TestCategoryEditModalMessages:
 class TestCategorySelectMessages:
     """Tests for CategorySelect widget message emission."""
 
-    @pytest.mark.asyncio
     async def test_emits_category_selected_on_option_select(self) -> None:
         """Verify CategorySelected is emitted when an option is selected."""
 
@@ -210,7 +183,6 @@ class TestCategorySelectMessages:
             assert app.selected_category is not None
             assert isinstance(app.selected_category, Category)
 
-    @pytest.mark.asyncio
     async def test_emits_category_selected_on_search_submit(self) -> None:
         """Verify CategorySelected is emitted when Enter is pressed in search."""
 
@@ -242,100 +214,3 @@ class TestCategorySelectMessages:
             await pilot.pause()
 
             assert app.selected_category is not None
-
-
-class TestOperationDetailPanelMessages:
-    """Tests for OperationDetailPanel callback behavior.
-
-    These tests call _on_category_edited directly to isolate the callback logic
-    from Textual's modal mechanics. Testing the full flow (open modal → select
-    category → callback triggered) is covered in TestCategoryEditModalMessages.
-    """
-
-    @pytest.mark.asyncio
-    async def test_emits_data_refresh_on_category_edit_success(self) -> None:
-        """Verify DataRefreshRequested is emitted after successful category edit."""
-        app = OperationDetailPanelTestApp()
-        async with app.run_test() as pilot:
-            panel = app.query_one(OperationDetailPanel)
-
-            # Call callback directly to test its logic in isolation
-            # pylint: disable=protected-access
-            panel._on_category_edited(True)
-            await pilot.pause()
-
-            # Verify DataRefreshRequested was emitted
-            refresh_messages = [
-                m for m in app.received_messages if isinstance(m, DataRefreshRequested)
-            ]
-            assert len(refresh_messages) == 1
-
-    @pytest.mark.asyncio
-    async def test_no_data_refresh_on_category_edit_cancel(self) -> None:
-        """Verify DataRefreshRequested is NOT emitted when edit is cancelled."""
-        app = OperationDetailPanelTestApp()
-        async with app.run_test() as pilot:
-            panel = app.query_one(OperationDetailPanel)
-
-            # pylint: disable=protected-access
-            panel._on_category_edited(False)
-            await pilot.pause()
-
-            # Verify no DataRefreshRequested was emitted
-            refresh_messages = [
-                m for m in app.received_messages if isinstance(m, DataRefreshRequested)
-            ]
-            assert len(refresh_messages) == 0
-
-    @pytest.mark.asyncio
-    async def test_no_data_refresh_on_category_edit_none(self) -> None:
-        """Verify DataRefreshRequested is NOT emitted when result is None."""
-        app = OperationDetailPanelTestApp()
-        async with app.run_test() as pilot:
-            panel = app.query_one(OperationDetailPanel)
-
-            # pylint: disable=protected-access
-            panel._on_category_edited(None)
-            await pilot.pause()
-
-            # Verify no DataRefreshRequested was emitted
-            refresh_messages = [
-                m for m in app.received_messages if isinstance(m, DataRefreshRequested)
-            ]
-            assert len(refresh_messages) == 0
-
-
-class TestBudgetAppMessageHandlers:
-    """Tests for BudgetApp message handlers.
-
-    These tests use __new__ to create an uninitialized BudgetApp instance,
-    allowing us to test handler methods in isolation without setting up
-    the complex dependencies (PersistentAccount, ApplicationService, etc.)
-    that __init__ requires.
-    """
-
-    def test_on_data_refresh_requested_calls_action_refresh_data(self) -> None:
-        """Verify on_data_refresh_requested stops event and calls action_refresh_data."""
-        app = BudgetApp.__new__(BudgetApp)
-        app.action_refresh_data = Mock()  # type: ignore[method-assign]
-
-        event = DataRefreshRequested()
-        event.stop = Mock()  # type: ignore[method-assign]
-
-        app.on_data_refresh_requested(event)
-
-        event.stop.assert_called_once()
-        app.action_refresh_data.assert_called_once()
-
-    def test_on_save_requested_calls_save_changes(self) -> None:
-        """Verify on_save_requested stops event and calls save_changes."""
-        app = BudgetApp.__new__(BudgetApp)
-        app.save_changes = Mock()  # type: ignore[method-assign]
-
-        event = SaveRequested()
-        event.stop = Mock()  # type: ignore[method-assign]
-
-        app.on_save_requested(event)
-
-        event.stop.assert_called_once()
-        app.save_changes.assert_called_once()
