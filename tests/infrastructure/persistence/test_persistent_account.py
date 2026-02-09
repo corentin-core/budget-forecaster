@@ -199,13 +199,11 @@ class TestSqliteRepository:
 class TestPersistentAccount:
     """Tests for the PersistentAccount class."""
 
-    def test_load_raises_when_no_account(self, temp_db_path: Path) -> None:
-        """Test that load raises AccountNotLoadedError when no account exists."""
+    def test_constructor_raises_when_no_account(self, temp_db_path: Path) -> None:
+        """Test that constructor raises AccountNotLoadedError when no account exists."""
         with SqliteRepository(temp_db_path) as repository:
-            persistent = PersistentAccount(repository)
-
             with pytest.raises(AccountNotLoadedError):
-                persistent.load()
+                PersistentAccount(repository)
 
     def test_save_and_load(self, temp_db_path: Path, sample_account: Account) -> None:
         """Test saving and loading an aggregated account."""
@@ -217,20 +215,11 @@ class TestPersistentAccount:
         # Load through PersistentAccount
         with SqliteRepository(temp_db_path) as repository2:
             persistent = PersistentAccount(repository2)
-            persistent.load()
 
             assert persistent.account.name == "Mes comptes"
             assert len(persistent.accounts) == 1
             assert persistent.accounts[0].name == "Compte courant"
             assert len(persistent.accounts[0].operations) == 3
-
-    def test_account_raises_when_not_loaded(self, temp_db_path: Path) -> None:
-        """Test that accessing account raises when not loaded."""
-        with SqliteRepository(temp_db_path) as repository:
-            persistent = PersistentAccount(repository)
-
-            with pytest.raises(AccountNotLoadedError):
-                _ = persistent.account
 
     def test_upsert_account(self, temp_db_path: Path, sample_account: Account) -> None:
         """Test upserting account through the interface."""
@@ -242,7 +231,6 @@ class TestPersistentAccount:
         # Load, modify via upsert, save
         with SqliteRepository(temp_db_path) as repository:
             persistent = PersistentAccount(repository)
-            persistent.load()
 
             new_operation = HistoricOperation(
                 unique_id=4,
@@ -264,7 +252,6 @@ class TestPersistentAccount:
         # Reload and verify
         with SqliteRepository(temp_db_path) as repository2:
             persistent2 = PersistentAccount(repository2)
-            persistent2.load()
 
             account = persistent2.accounts[0]
             assert len(account.operations) == 4

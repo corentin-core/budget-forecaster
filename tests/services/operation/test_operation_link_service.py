@@ -420,7 +420,6 @@ class TestApplicationServiceLinkIntegration:
         repository.upsert_account(account)
 
         persistent = PersistentAccount(repository)
-        persistent.load()
         return persistent
 
     @pytest.fixture
