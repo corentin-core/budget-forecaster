@@ -47,7 +47,7 @@ graph TB
             OS[OperationService]
             OLS[OperationLinkService]
             OM[OperationMatcher]
-            OC[OperationsCategorizer]
+            OC[categorize_operations]
         end
         IS[ImportService]
     end
@@ -138,7 +138,7 @@ Lower-level services handle specific concerns:
 - `AccountForecaster`/`AccountAnalyzer`: Compute account projections and aggregates
 - `AccountAnalysisRenderer`: Export analysis reports to Excel
 - `OperationService`/`OperationLinkService`: Manage operations and links
-- `OperationMatcher`/`OperationsCategorizer`: Match and categorize operations
+- `OperationMatcher`/`categorize_operations`: Match and categorize operations
 - `ForecastActualizer`: Adjust forecasts based on linked operations
 
 The **Domain** layer holds pure business entities: accounts, operations, planned
