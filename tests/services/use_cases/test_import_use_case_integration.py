@@ -25,7 +25,7 @@ from budget_forecaster.services.operation.operation_link_service import (
 from budget_forecaster.services.use_cases.import_use_case import ImportUseCase
 from budget_forecaster.services.use_cases.matcher_cache import MatcherCache
 
-BNP_FIXTURE = Path(__file__).parent.parent.parent / "fixtures" / "bnp" / "export.xls"
+BNP_FIXTURE = Path(__file__).parents[2] / "fixtures" / "bnp" / "export.xls"
 
 
 @pytest.fixture(name="repository")
