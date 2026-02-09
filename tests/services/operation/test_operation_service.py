@@ -261,3 +261,52 @@ class TestOperationService:
     def test_currency_property(self, service: OperationService) -> None:
         """currency property returns account currency."""
         assert service.currency == "EUR"
+
+    def test_balance_date_property(self, service: OperationService) -> None:
+        """balance_date property returns account balance_date."""
+        assert service.balance_date == date(2025, 1, 20)
+
+
+class TestOperationServiceGaps:
+    """Additional edge-case tests for OperationService."""
+
+    def test_update_operation_description_only(
+        self, service: OperationService, mock_account_manager: MagicMock
+    ) -> None:
+        """update_operation changes only the description."""
+        result = service.update_operation(3, description="CARTE AMAZON PRIME")
+        assert result is not None
+        assert result.description == "CARTE AMAZON PRIME"
+        mock_account_manager.replace_operation.assert_called_once()
+
+    def test_update_operation_no_changes(
+        self, service: OperationService, mock_account_manager: MagicMock
+    ) -> None:
+        """update_operation returns unchanged operation when no kwargs given."""
+        result = service.update_operation(3)
+        assert result is not None
+        assert result.unique_id == 3
+        mock_account_manager.replace_operation.assert_not_called()
+
+    def test_suggest_category_returns_most_common(
+        self, service: OperationService
+    ) -> None:
+        """suggest_category returns the most common category among similar ops."""
+        # CARREFOUR op (id=1) is similar to CARREFOUR MARKET (id=4)
+        # Both are GROCERIES
+        carrefour = service.get_operation_by_id(1)
+        assert carrefour is not None
+
+        suggestion = service.suggest_category(carrefour)
+
+        assert suggestion == Category.GROCERIES
+
+    def test_suggest_category_no_similar(self, service: OperationService) -> None:
+        """suggest_category returns None when no similar operations exist."""
+        # EDF operation (id=5) has no similar operations
+        edf = service.get_operation_by_id(5)
+        assert edf is not None
+
+        suggestion = service.suggest_category(edf)
+
+        assert suggestion is None

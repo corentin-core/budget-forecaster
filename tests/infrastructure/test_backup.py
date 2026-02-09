@@ -236,6 +236,62 @@ class TestGetExistingBackups:
         assert backups[-1] == backup3  # Newest last
 
 
+class TestBackupErrorHandling:
+    """Tests for error handling in backup operations."""
+
+    def test_create_backup_returns_none_on_copy_error(
+        self, temp_db: Path, tmp_path: Path
+    ) -> None:
+        """create_backup returns None when the copy fails (e.g. read-only dir)."""
+        # Use a non-writable directory to trigger OSError
+        read_only_dir = tmp_path / "readonly"
+        read_only_dir.mkdir()
+        read_only_dir.chmod(0o444)
+
+        service = BackupService(
+            database_path=temp_db,
+            backup_directory=read_only_dir / "subdir",
+        )
+
+        result = service.create_backup()
+
+        assert result is None
+
+        # Cleanup: restore write permission for tmp_path cleanup
+        read_only_dir.chmod(0o755)
+
+    def test_rotate_backups_continues_on_individual_delete_failure(
+        self, temp_db: Path, backup_dir: Path
+    ) -> None:
+        """rotate_backups continues when a single file fails to delete."""
+        base_time = 1000000000.0
+        for i in range(5):
+            backup = backup_dir / f"test_2025-01-17_10000{i}.db"
+            backup.write_text(f"backup {i}")
+            os.utime(backup, (base_time + i, base_time + i))
+
+        # Make the oldest backup non-deletable
+        oldest = backup_dir / "test_2025-01-17_100000.db"
+        oldest.chmod(0o444)
+        backup_dir.chmod(0o555)
+
+        service = BackupService(
+            database_path=temp_db,
+            backup_directory=backup_dir,
+            max_backups=3,
+        )
+
+        deleted = service.rotate_backups()
+
+        # Should have attempted both deletions; some may fail
+        # The important thing is that it doesn't crash
+        assert isinstance(deleted, list)
+
+        # Cleanup
+        backup_dir.chmod(0o755)
+        oldest.chmod(0o644)
+
+
 class TestBackupConfigParsing:
     """Tests for BackupConfig parsing from YAML."""
 

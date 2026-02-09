@@ -543,3 +543,78 @@ class TestTimeRangeReplaceTypeErrors:
         )
         with pytest.raises(TypeError, match="expiration_date must be date"):
             t_range.replace(expiration_date="2023-12-31")
+
+
+class TestDateRangeProtocol:
+    """Tests for DateRange protocol methods: __repr__, __eq__, __lt__, __hash__."""
+
+    def test_date_range_repr(self) -> None:
+        """DateRange repr shows start and last date."""
+        dr = DateRange(date(2023, 1, 1), relativedelta(days=10))
+        result = repr(dr)
+        assert "2023-01-01" in result
+        assert "2023-01-10" in result
+
+    def test_date_range_eq_with_non_date_range(self) -> None:
+        """DateRange equality with non-DateRange returns False."""
+        dr = DateRange(date(2023, 1, 1), relativedelta(days=10))
+        assert dr != "not a date range"
+
+    def test_date_range_lt_with_non_date_range(self) -> None:
+        """DateRange comparison with non-DateRange raises TypeError."""
+        dr = DateRange(date(2023, 1, 1), relativedelta(days=10))
+        with pytest.raises(TypeError):
+            _ = dr < "not a date range"  # type: ignore[operator]
+
+    def test_recurring_date_range_repr(self) -> None:
+        """RecurringDateRange repr shows period and expiration."""
+        rdr = RecurringDateRange(
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
+            relativedelta(months=1),
+            date(2023, 12, 31),
+        )
+        result = repr(rdr)
+        assert "2023-01-01" in result
+        assert "2023-12-31" in result
+
+    def test_recurring_date_range_repr_no_expiration(self) -> None:
+        """RecurringDateRange repr shows 'forever' when no expiration."""
+        rdr = RecurringDateRange(
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
+            relativedelta(months=1),
+        )
+        result = repr(rdr)
+        assert "forever" in result
+
+    def test_recurring_date_range_eq_with_non_recurring(self) -> None:
+        """RecurringDateRange equality with non-RecurringDateRange returns False."""
+        rdr = RecurringDateRange(
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
+            relativedelta(months=1),
+        )
+        assert rdr != "not a range"
+
+    def test_recurring_date_range_hash(self) -> None:
+        """Equal RecurringDateRanges have the same hash."""
+        rdr1 = RecurringDateRange(
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
+            relativedelta(months=1),
+            date(2023, 12, 31),
+        )
+        rdr2 = RecurringDateRange(
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
+            relativedelta(months=1),
+            date(2023, 12, 31),
+        )
+        assert hash(rdr1) == hash(rdr2)
+
+    def test_recurring_date_range_last_date_range_within(self) -> None:
+        """last_date_range returns the current range when target is within it."""
+        rdr = RecurringDateRange(
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
+            relativedelta(months=1),
+            date(2023, 12, 31),
+        )
+        result = rdr.last_date_range(date(2023, 3, 15))
+        assert result is not None
+        assert result.start_date == date(2023, 3, 1)

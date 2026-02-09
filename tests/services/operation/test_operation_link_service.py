@@ -37,6 +37,7 @@ from budget_forecaster.services.forecast.forecast_service import ForecastService
 from budget_forecaster.services.import_service import ImportService
 from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
+    compute_match_score,
 )
 from budget_forecaster.services.operation.operation_matcher import OperationMatcher
 from budget_forecaster.services.operation.operation_service import (
@@ -588,3 +589,217 @@ class TestManualLinkProtection:
         final_link = repository.get_link_for_operation(1)
         assert final_link is not None
         assert final_link.is_manual is False
+
+
+class TestOperationLinkServiceCrud:
+    """Tests for CRUD delegation methods on OperationLinkService."""
+
+    def test_get_all_links(
+        self, link_service: OperationLinkService, repository: SqliteRepository
+    ) -> None:
+        """get_all_links delegates to repository."""
+        link = OperationLink(
+            operation_unique_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
+            iteration_date=date(2024, 1, 1),
+            is_manual=False,
+        )
+        repository.upsert_link(link)
+
+        result = link_service.get_all_links()
+
+        assert len(result) == 1
+        assert result[0].operation_unique_id == 1
+
+    def test_get_link_for_operation(
+        self, link_service: OperationLinkService, repository: SqliteRepository
+    ) -> None:
+        """get_link_for_operation delegates to repository."""
+        link = OperationLink(
+            operation_unique_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
+            iteration_date=date(2024, 1, 1),
+            is_manual=False,
+        )
+        repository.upsert_link(link)
+
+        result = link_service.get_link_for_operation(1)
+
+        assert result is not None
+        assert result.operation_unique_id == 1
+
+    def test_upsert_link(
+        self, link_service: OperationLinkService, repository: SqliteRepository
+    ) -> None:
+        """upsert_link delegates to repository."""
+        link = OperationLink(
+            operation_unique_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
+            iteration_date=date(2024, 1, 1),
+            is_manual=True,
+        )
+
+        link_service.upsert_link(link)
+
+        result = repository.get_link_for_operation(1)
+        assert result is not None
+        assert result.is_manual is True
+
+    def test_delete_link(
+        self, link_service: OperationLinkService, repository: SqliteRepository
+    ) -> None:
+        """delete_link delegates to repository."""
+        link = OperationLink(
+            operation_unique_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
+            iteration_date=date(2024, 1, 1),
+            is_manual=False,
+        )
+        repository.upsert_link(link)
+
+        link_service.delete_link(1)
+
+        assert repository.get_link_for_operation(1) is None
+
+    def test_load_links_for_target_without_id(
+        self, link_service: OperationLinkService
+    ) -> None:
+        """load_links_for_target returns empty tuple when target has no id."""
+        target = PlannedOperation(
+            record_id=None,
+            description="No ID",
+            amount=Amount(-100.0, "EUR"),
+            category=Category.RENT,
+            date_range=SingleDay(date(2024, 1, 1)),
+        )
+
+        result = link_service.load_links_for_target(target)
+
+        assert result == ()
+
+
+class TestCreateHeuristicLinksGaps:
+    """Additional tests for create_heuristic_links edge cases."""
+
+    def test_skips_operation_outside_date_range(
+        self, link_service: OperationLinkService
+    ) -> None:
+        """Operations outside the matcher's date range are skipped."""
+        # Operation far from the matcher's date range
+        operations = (
+            HistoricOperation(
+                unique_id=1,
+                description="Far Away Rent",
+                amount=Amount(-800.0, "EUR"),
+                category=Category.RENT,
+                operation_date=date(2024, 6, 15),  # Far from Jan 1
+            ),
+        )
+        # Matcher covers Jan 1 with tight tolerance
+        op_range = OperationRange(
+            description="Rent",
+            amount=Amount(-800.0, "EUR"),
+            category=Category.RENT,
+            date_range=SingleDay(date(2024, 1, 1)),
+        )
+        matcher = OperationMatcher(
+            operation_range=op_range,
+            approximation_date_range=timedelta(days=5),
+        )
+        matchers = {MatcherKey(LinkType.PLANNED_OPERATION, 1): matcher}
+
+        result = link_service.create_heuristic_links(operations, matchers)
+
+        assert len(result) == 0
+
+
+class TestComputeMatchScore:
+    """Tests for compute_match_score covering uncovered scoring paths."""
+
+    def test_gradual_amount_decrease_beyond_tolerance(self) -> None:
+        """Amount score decreases gradually when beyond tolerance."""
+        operation = HistoricOperation(
+            unique_id=1,
+            description="RENT",
+            amount=Amount(-900.0, "EUR"),
+            category=Category.RENT,
+            operation_date=date(2024, 1, 1),
+        )
+        op_range = OperationRange(
+            description="Rent",
+            amount=Amount(-800.0, "EUR"),
+            category=Category.RENT,
+            date_range=SingleDay(date(2024, 1, 1)),
+        )
+        # Amount diff = |900-800|/800 = 0.125, tolerance = 0.05
+        # Beyond tolerance → gradual decrease (line 80)
+        score = compute_match_score(
+            operation,
+            op_range,
+            date(2024, 1, 1),
+            approximation_amount_ratio=0.05,
+        )
+        # Should have some amount score (gradual) + date (30) + category (20)
+        assert 50.0 < score < 90.0
+
+    def test_description_hints_matching(self) -> None:
+        """Description hints add 10 points when all hints match."""
+        operation = HistoricOperation(
+            unique_id=1,
+            description="RENT TRANSFER",
+            amount=Amount(-800.0, "EUR"),
+            category=Category.RENT,
+            operation_date=date(2024, 1, 1),
+        )
+        op_range = OperationRange(
+            description="Rent",
+            amount=Amount(-800.0, "EUR"),
+            category=Category.RENT,
+            date_range=SingleDay(date(2024, 1, 1)),
+        )
+        score_with_hints = compute_match_score(
+            operation,
+            op_range,
+            date(2024, 1, 1),
+            description_hints={"RENT"},
+        )
+        score_without_hints = compute_match_score(
+            operation,
+            op_range,
+            date(2024, 1, 1),
+        )
+        # Hints matching adds 10 points
+        assert score_with_hints == score_without_hints + 10.0
+
+    def test_description_hints_not_matching(self) -> None:
+        """No points when hints don't match."""
+        operation = HistoricOperation(
+            unique_id=1,
+            description="RENT TRANSFER",
+            amount=Amount(-800.0, "EUR"),
+            category=Category.RENT,
+            operation_date=date(2024, 1, 1),
+        )
+        op_range = OperationRange(
+            description="Rent",
+            amount=Amount(-800.0, "EUR"),
+            category=Category.RENT,
+            date_range=SingleDay(date(2024, 1, 1)),
+        )
+        score_no_match = compute_match_score(
+            operation,
+            op_range,
+            date(2024, 1, 1),
+            description_hints={"NONEXISTENT"},
+        )
+        score_no_hints = compute_match_score(
+            operation,
+            op_range,
+            date(2024, 1, 1),
+        )
+        # Non-matching hints don't add points
+        assert score_no_match == score_no_hints

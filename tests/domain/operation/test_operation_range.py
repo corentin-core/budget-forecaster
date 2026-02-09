@@ -185,7 +185,20 @@ class TestPeriodicOperationRange:
 
 
 class TestOperationRangeErrors:
-    """Tests for errors in OperationRange methods."""
+    """Tests for errors and edge cases in OperationRange methods."""
+
+    def test_repr_contains_description_and_amount(self) -> None:
+        """repr includes description, category, and amount."""
+        op = OperationRange(
+            "Grocery Shopping",
+            Amount(100, "EUR"),
+            Category.GROCERIES,
+            DateRange(date(2023, 1, 1), relativedelta(days=30)),
+        )
+        result = repr(op)
+        assert "Grocery Shopping" in result
+        assert "100" in result
+        assert "EUR" in result
 
     @pytest.fixture
     def operation_range(self) -> OperationRange:

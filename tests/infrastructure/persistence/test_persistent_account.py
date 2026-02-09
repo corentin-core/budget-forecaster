@@ -493,6 +493,132 @@ class TestPlannedOperationRepository:
             assert retrieved.matcher.description_hints == set()
 
 
+class TestPersistentAccountOperations:
+    """Tests for PersistentAccount reload, replace, and close operations."""
+
+    def test_reload_refreshes_data(
+        self, temp_db_path: Path, sample_account: Account
+    ) -> None:
+        """reload() refreshes the account data from the repository."""
+        with SqliteRepository(temp_db_path) as repository:
+            repository.set_aggregated_account_name("Mes comptes")
+            repository.upsert_account(sample_account)
+            persistent = PersistentAccount(repository)
+
+            # Modify data directly through repository
+            updated_op = sample_account.operations[0].replace(
+                category=Category.OTHER,
+            )
+            repository.update_operation(updated_op)
+
+            # Before reload, persistent still has old data
+            persistent.reload()
+
+            # After reload, data is refreshed
+            ops = persistent.accounts[0].operations
+            matching = [o for o in ops if o.unique_id == 1]
+            assert matching[0].category == Category.OTHER
+
+    def test_replace_account_updates_in_memory(
+        self, temp_db_path: Path, sample_account: Account
+    ) -> None:
+        """replace_account updates the account in the aggregated account."""
+        with SqliteRepository(temp_db_path) as repository:
+            repository.set_aggregated_account_name("Mes comptes")
+            repository.upsert_account(sample_account)
+            persistent = PersistentAccount(repository)
+
+            updated_account = sample_account._replace(balance=9999.0)
+            persistent.replace_account(updated_account)
+
+            assert persistent.accounts[0].balance == 9999.0
+
+    def test_replace_operation_updates_in_memory(
+        self, temp_db_path: Path, sample_account: Account
+    ) -> None:
+        """replace_operation updates the operation in the aggregated account."""
+        with SqliteRepository(temp_db_path) as repository:
+            repository.set_aggregated_account_name("Mes comptes")
+            repository.upsert_account(sample_account)
+            persistent = PersistentAccount(repository)
+
+            new_op = sample_account.operations[1].replace(
+                category=Category.ENTERTAINMENT,
+            )
+            persistent.replace_operation(new_op)
+
+            ops = persistent.accounts[0].operations
+            matching = [o for o in ops if o.unique_id == 2]
+            assert matching[0].category == Category.ENTERTAINMENT
+
+    def test_close_delegates_to_repository(
+        self, temp_db_path: Path, sample_account: Account
+    ) -> None:
+        """close() delegates to the repository without error."""
+        with SqliteRepository(temp_db_path) as repository:
+            repository.set_aggregated_account_name("Mes comptes")
+            repository.upsert_account(sample_account)
+            persistent = PersistentAccount(repository)
+
+            # Should not raise
+            persistent.close()
+
+
+class TestSqliteRepositoryGaps:
+    """Tests for SqliteRepository uncovered paths."""
+
+    def test_get_account_by_name_returns_none_for_unknown(
+        self, temp_db_path: Path
+    ) -> None:
+        """get_account_by_name returns None when account doesn't exist."""
+        with SqliteRepository(temp_db_path) as repository:
+            repository.set_aggregated_account_name("Test")
+            result = repository.get_account_by_name("NonExistent")
+            assert result is None
+
+    def test_yearly_budget_serialization(self, temp_db_path: Path) -> None:
+        """Budgets with yearly duration are serialized and deserialized correctly."""
+        with SqliteRepository(temp_db_path) as repository:
+            budget = Budget(
+                record_id=None,
+                description="Annual budget",
+                amount=Amount(-5000.0, "EUR"),
+                category=Category.OTHER,
+                date_range=RecurringDateRange(
+                    DateRange(date(2024, 1, 1), relativedelta(years=1)),
+                    relativedelta(years=1),
+                    date(2026, 12, 31),
+                ),
+            )
+            budget_id = repository.upsert_budget(budget)
+
+            retrieved = repository.get_budget_by_id(budget_id)
+            assert retrieved is not None
+            assert isinstance(retrieved.date_range, RecurringDateRange)
+            assert retrieved.date_range.start_date == date(2024, 1, 1)
+            assert retrieved.date_range.duration == relativedelta(years=1)
+
+    def test_daily_planned_operation_serialization(self, temp_db_path: Path) -> None:
+        """Planned operations with day-based duration round-trip correctly."""
+        with SqliteRepository(temp_db_path) as repository:
+            op = PlannedOperation(
+                record_id=None,
+                description="Daily op",
+                amount=Amount(-10.0, "EUR"),
+                category=Category.OTHER,
+                date_range=RecurringDay(
+                    date(2024, 1, 1),
+                    relativedelta(days=7),
+                    date(2024, 12, 31),
+                ),
+            )
+            op_id = repository.upsert_planned_operation(op)
+
+            retrieved = repository.get_planned_operation_by_id(op_id)
+            assert retrieved is not None
+            assert retrieved.date_range.start_date == date(2024, 1, 1)
+
+
 class TestSchemaMigration:
     """Tests for schema migration."""
 

@@ -110,6 +110,18 @@ class TestAmountMultiplication:
         assert result.currency == "EUR"
 
 
+class TestAmountRepr:
+    """Tests for Amount.__repr__."""
+
+    def test_repr_format(self) -> None:
+        """repr shows value followed by currency."""
+        assert repr(Amount(42.5, "EUR")) == "42.5EUR"
+
+    def test_repr_negative(self) -> None:
+        """repr shows negative amounts correctly."""
+        assert repr(Amount(-10.0, "USD")) == "-10.0USD"
+
+
 class TestAmountAbsolute:
     """Tests for Amount.__abs__."""
 
