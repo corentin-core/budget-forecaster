@@ -16,7 +16,7 @@ from budget_forecaster.services.account.account_analysis_report import (
 from budget_forecaster.services.account.account_forecaster import AccountForecaster
 from budget_forecaster.services.forecast.forecast_actualizer import ForecastActualizer
 from budget_forecaster.services.operation.operations_categorizer import (
-    OperationsCategorizer,
+    categorize_operations,
 )
 
 
@@ -30,7 +30,7 @@ class AccountAnalyzer:
         operation_links: tuple[OperationLink, ...] = (),
     ) -> None:
         self._account = account._replace(
-            operations=OperationsCategorizer(forecast)(account.operations)
+            operations=categorize_operations(account.operations, forecast)
         )
         self._forecast = forecast
         self._operation_links = operation_links
