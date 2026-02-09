@@ -4,7 +4,6 @@ import warnings
 from datetime import date
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
 from budget_forecaster.core.types import Category
@@ -15,7 +14,7 @@ from budget_forecaster.services.operation.historic_operation_factory import (
     HistoricOperationFactory,
 )
 
-BNP_FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "bnp"
+BNP_FIXTURES_DIR = Path(__file__).parents[2] / "fixtures" / "bnp"
 CATEGORY_MAPPING_PATH = BNP_FIXTURES_DIR / "category_mapping.yaml"
 
 
@@ -199,28 +198,12 @@ class TestBnpParibasBankAdapterCategories:
     def test_no_warning_when_all_categories_known(
         self,
         operation_factory: HistoricOperationFactory,
-        tmp_path: Path,
     ) -> None:
         """Test that no warning is emitted when all categories are mapped."""
         all_known_adapter = BnpParibasBankAdapter(
             category_mapping_path=CATEGORY_MAPPING_PATH
         )
-
-        export_path = tmp_path / "all_known.xls"
-        header_df = pd.DataFrame(
-            {"A": [""], "Solde au 15/01/2025": [""], 1000.0: [None]}
-        )
-        operations_df = pd.DataFrame(
-            {
-                "Date operation": ["10-01-2025"],
-                "Libelle operation": ["CARREFOUR"],
-                "Montant operation": [-50.0],
-                "Sous Categorie operation": ["Alimentation"],
-            }
-        )
-        with pd.ExcelWriter(export_path, engine="xlsxwriter") as writer:
-            header_df.to_excel(writer, index=False, startrow=0)
-            operations_df.to_excel(writer, index=False, startrow=2, header=True)
+        export_path = BNP_FIXTURES_DIR / "bnp_all_known.xls"
 
         with warnings.catch_warnings():
             warnings.simplefilter("error")
@@ -242,10 +225,9 @@ class TestBnpParibasBankAdapterFindUnmapped:
         assert "Alimentation / Supermarché" not in unmapped
         assert "Revenus / Salaire" not in unmapped
 
-    def test_find_unmapped_invalid_file_raises(self, tmp_path: Path) -> None:
+    def test_find_unmapped_invalid_file_raises(self) -> None:
         """Test that an invalid export raises ValueError."""
-        bad_file = tmp_path / "bad.xls"
-        pd.DataFrame({"Wrong Column": [1, 2]}).to_excel(bad_file, index=False)
+        bad_file = BNP_FIXTURES_DIR / "bnp_bad_export.xls"
 
         with pytest.raises(ValueError, match="Not a valid BNP export file"):
             BnpParibasBankAdapter.find_unmapped_categories(bad_file)

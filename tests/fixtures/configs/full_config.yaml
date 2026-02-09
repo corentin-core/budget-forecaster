@@ -1,0 +1,24 @@
+database_path: ./budget.db
+account_name: Full Account
+account_currency: USD
+inbox_path: ./inbox
+inbox_exclude_patterns:
+  - "*.tmp"
+  - "*.bak"
+inbox_include_patterns:
+  - "*.xls"
+  - "*.csv"
+backup:
+  enabled: false
+  max_backups: 10
+  directory: ./backups
+logging:
+  version: 1
+  handlers:
+    console:
+      class: logging.StreamHandler
+      level: DEBUG
+  root:
+    level: DEBUG
+    handlers:
+      - console

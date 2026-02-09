@@ -1,0 +1,3 @@
+database_path: ./budget.db
+account_name: My Account
+account_currency: EUR
