@@ -107,3 +107,33 @@ timeline
     section Week 3
         : Forecast shows 300€ remaining
 ```
+
+### Budget Sign Matching
+
+A linked operation only consumes a budget when both share the same sign. This preserves
+the invariant: **a link can only reduce the remaining budget amount (in absolute value),
+never increase it**.
+
+Without this rule, a +30€ refund linked to a -500€ grocery budget would push the
+remaining amount to -530€, inflating the forecast beyond the original budget.
+
+| Budget sign | Operation sign | Result                                   |
+| ----------- | -------------- | ---------------------------------------- |
+| Negative    | Negative       | Consumed (reduces remaining amount)      |
+| Positive    | Positive       | Consumed (reduces remaining amount)      |
+| Negative    | Positive       | Skipped (would inflate remaining amount) |
+| Positive    | Negative       | Skipped (would inflate remaining amount) |
+
+```mermaid
+timeline
+    title Groceries Budget (-500€/month)
+    section Normal consumption
+        Mon : Supermarket -80€ → consumed
+        : Remaining: -420€
+    section Refund (sign mismatch)
+        Wed : Refund +30€ → skipped
+        : Remaining stays -420€
+    section Next purchase
+        Fri : Market -50€ → consumed
+        : Remaining: -370€
+```
