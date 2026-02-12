@@ -35,16 +35,28 @@ git commit -m "message"  # pylint not found!
 
 ## Branch Creation
 
-**ALWAYS create new branches from `main`, not from the current working branch.**
+**ALWAYS use git worktrees** to isolate work from the main working directory.
 
 ```bash
-# GOOD - create from main
-git checkout main
-git pull origin main
-git checkout -b issue/42-new-feature
+# GOOD - create a worktree from main
+git worktree add ../budget-forecaster-42 -b issue/42-new-feature origin/main
 
-# BAD - creates branch from current work, embedding unrelated commits
-git checkout -b issue/42-new-feature  # while on issue/36-other-feature
+# BAD - checkout in the main worktree (blocks other work)
+git checkout -b issue/42-new-feature
+```
+
+Worktree path convention: `../budget-forecaster-<issue-number>`.
+
+To activate the venv from a worktree:
+
+```bash
+source ../budget-forecaster/budget-forecaster-venv/bin/activate
+```
+
+Cleanup after merge:
+
+```bash
+git worktree remove ../budget-forecaster-42
 ```
 
 ## Branch Naming
