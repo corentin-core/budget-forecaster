@@ -85,7 +85,7 @@ When you split an operation or budget:
 │ └─────────────────────────────────────────────────────────┘   │
 │                                                               │
 │ Première itération:  [ 2025-06-01 ]                           │
-│ (i) Prochaine itération non actualisée                        │
+│ (i) Prochaine itération non ajustée                           │
 │ ───────────────────────────────────────────────────────────── │
 │ Montant:             [ 2700.0     ]                           │
 │ Période:             [ Mensuel   v]                           │
@@ -144,7 +144,7 @@ For budgets, an additional **Durée** field is displayed:
 
 ## Tips
 
-- **Default split date**: The modal suggests the next non-actualized iteration (first
+- **Default split date**: The modal suggests the next non-adjusted iteration (first
   future iteration without a linked operation)
 - **Preserve history**: Use split instead of edit when you want to keep historical
   values for reporting

@@ -138,7 +138,7 @@ class ForecastWidget(Vertical):
         with Vertical(id="tables-container"):
             yield Static("Budget par catégorie", classes="section-title")
             yield Static(
-                "R = Réel | A = Actualisé | P = Prévu",
+                "R = Réel | A = Ajusté | P = Prévu",
                 id="table-legend",
             )
             yield DataTable(id="budget-table")
@@ -372,14 +372,14 @@ class ForecastWidget(Vertical):
         table.add_column("Catégorie", key="category")
 
         # Build column structure from DataFrame columns
-        # Columns are (month, type) tuples where type is "Réel", "Prévu", or "Actualisé"
+        # Columns are (month, type) tuples where type is "Réel", "Prévu", or "Ajusté"
         columns_info: list[tuple] = []  # (month, type, column_key, column_label)
 
         for col in df.columns:
             month = col[0]  # pandas Timestamp
-            col_type = str(col[1])  # "Réel", "Prévu", or "Actualisé"
+            col_type = str(col[1])  # "Réel", "Prévu", or "Ajusté"
             month_str = month.strftime("%Y-%m")  # type: ignore[attr-defined]
-            type_abbrev = {"Réel": "R", "Prévu": "P", "Actualisé": "A"}.get(
+            type_abbrev = {"Réel": "R", "Prévu": "P", "Ajusté": "A"}.get(
                 col_type, col_type[0]
             )
             col_key = f"{month_str}_{type_abbrev}"
@@ -387,7 +387,7 @@ class ForecastWidget(Vertical):
             columns_info.append((month, col_type, col_key, col_label))
 
         # Sort columns by month then by type order (R, A, P)
-        type_order = {"Réel": 0, "Actualisé": 1, "Prévu": 2}
+        type_order = {"Réel": 0, "Ajusté": 1, "Prévu": 2}
         columns_info.sort(key=lambda x: (x[0], type_order.get(x[1], 3)))
 
         # Add columns to table

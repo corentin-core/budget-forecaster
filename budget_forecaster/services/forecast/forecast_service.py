@@ -277,8 +277,8 @@ class ForecastService:
                     else 0
                 )
                 actualized = (
-                    df.loc[category, (month, "Actualisé")]
-                    if (month, "Actualisé") in df.columns
+                    df.loc[category, (month, "Ajusté")]
+                    if (month, "Ajusté") in df.columns
                     else 0
                 )
 

@@ -195,7 +195,7 @@ class AccountAnalyzer:
                 increment_expense(
                     operation.category,
                     operation.operation_date.replace(day=1),
-                    "Actualisé",
+                    "Ajusté",
                     operation.amount,
                 )
 
@@ -239,7 +239,7 @@ class AccountAnalyzer:
         df.columns = df.columns.swaplevel(0, 1)  # type: ignore[attr-defined]
         df.sort_index(axis=1, level=0, inplace=True)
 
-        # Filter out "Actualisé" columns for dates before the current balance date
+        # Filter out "Ajusté" columns for dates before the current balance date
         df = df.loc[
             :,
             (df.columns.get_level_values(0) >= current_month)
@@ -247,7 +247,7 @@ class AccountAnalyzer:
             | (df.columns.get_level_values(1) == "Prévu"),
         ]
 
-        # Filter out "Réel" and "Actualisé" columns for dates after the current balance date
+        # Filter out "Réel" and "Ajusté" columns for dates after the current balance date
         df = df.loc[
             :,
             (df.columns.get_level_values(0) <= current_month)

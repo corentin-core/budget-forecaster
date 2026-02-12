@@ -139,7 +139,7 @@ For each budget, the forecast tracks consumption:
 
 - **Planned**: The full budget amount for the period
 - **Actual** (Réel): Sum of real bank operations linked to this budget
-- **Actualized** (Actualisé): Projected spending for the current period based on links
+- **Adjusted** (Ajusté): Projected spending for the current period based on links
 - **Remaining**: Budget amount minus linked operations
 
 ### Daily Projection (Linear Decrease)
@@ -192,11 +192,11 @@ If linked operations exceed the budget, the remaining amount goes negative (over
 
 The forecast report includes a monthly summary with three columns per month:
 
-| Column                     | Meaning                                                       |
-| -------------------------- | ------------------------------------------------------------- |
-| **Réel** (Actual)          | Sum of real bank operations for that month                    |
-| **Prévu** (Planned)        | Sum of planned operations and budgets for that month          |
-| **Actualisé** (Actualized) | Projected amounts for the current month, accounting for links |
+| Column                | Meaning                                                       |
+| --------------------- | ------------------------------------------------------------- |
+| **Réel** (Actual)     | Sum of real bank operations for that month                    |
+| **Prévu** (Planned)   | Sum of planned operations and budgets for that month          |
+| **Ajusté** (Adjusted) | Projected amounts for the current month, accounting for links |
 
 - Past months only show **Réel** and **Prévu**
 - The current month shows all three columns
@@ -207,7 +207,7 @@ The forecast report includes a monthly summary with three columns per month:
 The forecast report can be exported to Excel from the Forecast tab. The export includes:
 
 - Balance evolution chart
-- Monthly summary by category (Réel / Prévu / Actualisé)
+- Monthly summary by category (Réel / Prévu / Ajusté)
 - Budget statistics (total and monthly average per category)
 
 ## Tips

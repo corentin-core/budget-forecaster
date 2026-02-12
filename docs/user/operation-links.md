@@ -176,7 +176,7 @@ The modal displays a match score (0-100%) for each target to help you choose.
 
 When an operation is linked to a planned operation iteration:
 
-- The iteration is marked as **actualized** and excluded from future forecasts
+- The iteration is marked as **adjusted** and excluded from future forecasts
 - The actual amount replaces the planned amount for balance calculations
 - Other operations won't automatically match this iteration
 
