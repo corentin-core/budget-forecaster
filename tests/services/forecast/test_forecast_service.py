@@ -452,7 +452,7 @@ class TestGetMonthlySummary:
             [
                 (month, "Réel"),
                 (month, "Prévu"),
-                (month, "Actualisé"),
+                (month, "Ajusté"),
             ]
         )
         df = pd.DataFrame(

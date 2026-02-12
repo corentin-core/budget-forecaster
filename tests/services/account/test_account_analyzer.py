@@ -302,7 +302,7 @@ class TestComputeBudgetForecast:
         planned_operations: tuple[PlannedOperation, ...],
         budgets: tuple[Budget, ...],
     ) -> None:
-        """Expenses per category and month have Réel, Prévu, and Actualisé columns."""
+        """Expenses per category and month have Réel, Prévu, and Ajusté columns."""
         analyzer = AccountAnalyzer(account, Forecast(planned_operations, budgets))
         df = analyzer.compute_budget_forecast(date(2023, 1, 1), date(2023, 5, 1))
         assert df.loc[str(Category.GROCERIES)]["2023-01-01"]["Réel"] == -50.0
@@ -311,10 +311,10 @@ class TestComputeBudgetForecast:
         assert df.loc[str(Category.GROCERIES)]["2023-03-01"]["Prévu"] == -320.0
         assert df.loc[str(Category.CAR_FUEL)]["2023-03-01"]["Prévu"] == 0.0
         assert df.loc[str(Category.OTHER)]["2023-03-01"]["Prévu"] == -50.0
-        # "Actualisé" = after actualization: planned op advanced to April
-        assert df.loc[str(Category.GROCERIES)]["2023-03-01"]["Actualisé"] == -300.0
-        assert df.loc[str(Category.CAR_FUEL)]["2023-03-01"]["Actualisé"] == 0.0
-        assert df.loc[str(Category.OTHER)]["2023-03-01"]["Actualisé"] == -50.0
+        # "Ajusté" = after actualization: planned op advanced to April
+        assert df.loc[str(Category.GROCERIES)]["2023-03-01"]["Ajusté"] == -300.0
+        assert df.loc[str(Category.CAR_FUEL)]["2023-03-01"]["Ajusté"] == 0.0
+        assert df.loc[str(Category.OTHER)]["2023-03-01"]["Ajusté"] == -50.0
         assert df.loc[str(Category.GROCERIES)]["2023-04-01"]["Prévu"] == -320.0
         assert df.loc[str(Category.CAR_FUEL)]["2023-04-01"]["Prévu"] == 0.0
         assert df.loc[str(Category.OTHER)]["2023-04-01"]["Prévu"] == -250.0

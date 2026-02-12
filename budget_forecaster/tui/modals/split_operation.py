@@ -162,7 +162,7 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
                         classes="form-input",
                     )
                 yield Static(
-                    "ⓘ Prochaine itération non actualisée",
+                    "ⓘ Prochaine itération non ajustée",
                     classes="info-hint",
                 )
 

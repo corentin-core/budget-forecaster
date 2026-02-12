@@ -98,7 +98,7 @@ class TestComputeReportIntegration:
 
         Expected:
         - The March planned op iteration is marked as actualized (linked)
-        - The "Actualisé" column for March reflects only the remaining
+        - The "Ajusté" column for March reflects only the remaining
           unlinked planned operations (none here), not the linked one
         """
         historic_op = HistoricOperation(
@@ -179,9 +179,9 @@ class TestComputeReportIntegration:
         assert budget_forecast.loc[str(Category.OTHER)]["2025-03-01"]["Réel"] == -95.0
 
         # The linked planned op is actualized: the March iteration is consumed
-        # by the link, so "Actualisé" reflects the actual amount from the link
+        # by the link, so "Ajusté" reflects the actual amount from the link
         march_actualized = budget_forecast.loc[str(Category.OTHER)]["2025-03-01"][
-            "Actualisé"
+            "Ajusté"
         ]
         # Without link, March planned op would be advanced (not executed).
         # With link, it's recognized as actualized: the forecast shows the linked
