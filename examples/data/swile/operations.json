@@ -1,0 +1,1063 @@
+{
+  "items_count": 33,
+  "has_more": false,
+  "next_cursor": null,
+  "items": [
+    {
+      "id": "op-101",
+      "object": "operation",
+      "type": "Operations::Emission",
+      "display_type": "Versement",
+      "name": "Credit titres-resto Demo Corp",
+      "amount": {
+        "value": 18900,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-11-01T02:00:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-101",
+          "status": "VALIDATED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-11-01T02:00:01.000+01:00",
+          "amount": {
+            "value": 18900,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-102",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Poke Bowl Paris",
+      "amount": {
+        "value": -1140,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-11-02T12:29:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-102",
+          "status": "AUTHORIZED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-11-02T12:33:01.000+01:00",
+          "amount": {
+            "value": -1140,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-103",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Sushi Daily",
+      "amount": {
+        "value": -1316,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-11-03T12:43:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-103",
+          "status": "CAPTURED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-11-03T12:46:01.000+01:00",
+          "amount": {
+            "value": -1316,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-104",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Cantine Demo Corp",
+      "amount": {
+        "value": -1448,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-11-04T12:48:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-104",
+          "status": "AUTHORIZED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-11-04T12:17:01.000+01:00",
+          "amount": {
+            "value": -1448,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-105",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Le Bistrot Demo",
+      "amount": {
+        "value": -1098,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-11-05T12:18:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-105",
+          "status": "CAPTURED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-11-05T12:27:01.000+01:00",
+          "amount": {
+            "value": -1098,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-106",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Boulangerie Paul",
+      "amount": {
+        "value": -1214,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-11-06T12:46:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-106",
+          "status": "CAPTURED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-11-06T12:56:01.000+01:00",
+          "amount": {
+            "value": -1214,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-107",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Le Bistrot Demo",
+      "amount": {
+        "value": -1019,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-11-14T12:48:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-107",
+          "status": "AUTHORIZED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-11-14T12:11:01.000+01:00",
+          "amount": {
+            "value": -1019,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-108",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Sandwich Club",
+      "amount": {
+        "value": -858,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-11-20T12:19:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-108",
+          "status": "AUTHORIZED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-11-20T12:53:01.000+01:00",
+          "amount": {
+            "value": -858,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-109",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Le Bistrot Demo",
+      "amount": {
+        "value": -1269,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-11-21T12:12:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-109",
+          "status": "AUTHORIZED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-11-21T12:09:01.000+01:00",
+          "amount": {
+            "value": -1269,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-110",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Sushi Daily",
+      "amount": {
+        "value": -915,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-11-22T12:49:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-110",
+          "status": "AUTHORIZED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-11-22T12:59:01.000+01:00",
+          "amount": {
+            "value": -915,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-111",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Sandwich Club",
+      "amount": {
+        "value": -750,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-11-25T12:20:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-111",
+          "status": "AUTHORIZED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-11-25T12:31:01.000+01:00",
+          "amount": {
+            "value": -750,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-112",
+      "object": "operation",
+      "type": "Operations::Emission",
+      "display_type": "Versement",
+      "name": "Credit titres-resto Demo Corp",
+      "amount": {
+        "value": 18900,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-12-01T02:00:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-112",
+          "status": "VALIDATED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-12-01T02:00:01.000+01:00",
+          "amount": {
+            "value": 18900,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-113",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Le Bistrot Demo",
+      "amount": {
+        "value": -1247,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-12-02T12:48:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-113",
+          "status": "CAPTURED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-12-02T12:34:01.000+01:00",
+          "amount": {
+            "value": -1247,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-114",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Boulangerie Paul",
+      "amount": {
+        "value": -881,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-12-03T12:30:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-114",
+          "status": "AUTHORIZED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-12-03T12:35:01.000+01:00",
+          "amount": {
+            "value": -881,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-115",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Boulangerie Paul",
+      "amount": {
+        "value": -1021,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-12-04T12:55:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-115",
+          "status": "AUTHORIZED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-12-04T12:38:01.000+01:00",
+          "amount": {
+            "value": -1021,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-116",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Poke Bowl Paris",
+      "amount": {
+        "value": -966,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-12-08T12:48:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-116",
+          "status": "AUTHORIZED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-12-08T12:46:01.000+01:00",
+          "amount": {
+            "value": -966,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-117",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Le Bistrot Demo",
+      "amount": {
+        "value": -955,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-12-10T12:19:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-117",
+          "status": "AUTHORIZED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-12-10T12:25:01.000+01:00",
+          "amount": {
+            "value": -955,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-118",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Le Bistrot Demo",
+      "amount": {
+        "value": -1415,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-12-12T12:28:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-118",
+          "status": "VALIDATED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-12-12T12:57:01.000+01:00",
+          "amount": {
+            "value": -1415,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-119",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Sandwich Club",
+      "amount": {
+        "value": -1212,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-12-19T12:15:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-119",
+          "status": "CAPTURED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-12-19T12:14:01.000+01:00",
+          "amount": {
+            "value": -1212,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-120",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Cantine Demo Corp",
+      "amount": {
+        "value": -1096,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-12-20T12:37:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-120",
+          "status": "CAPTURED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-12-20T12:35:01.000+01:00",
+          "amount": {
+            "value": -1096,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-121",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Boulangerie Paul",
+      "amount": {
+        "value": -1352,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-12-24T12:00:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-121",
+          "status": "CAPTURED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-12-24T12:04:01.000+01:00",
+          "amount": {
+            "value": -1352,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-122",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Le Bistrot Demo",
+      "amount": {
+        "value": -1396,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2025-12-26T12:14:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-122",
+          "status": "CAPTURED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2025-12-26T12:04:01.000+01:00",
+          "amount": {
+            "value": -1396,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-123",
+      "object": "operation",
+      "type": "Operations::Emission",
+      "display_type": "Versement",
+      "name": "Credit titres-resto Demo Corp",
+      "amount": {
+        "value": 18900,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2026-01-01T02:00:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-123",
+          "status": "VALIDATED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2026-01-01T02:00:01.000+01:00",
+          "amount": {
+            "value": 18900,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-124",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Boulangerie Paul",
+      "amount": {
+        "value": -1490,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2026-01-03T12:36:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-124",
+          "status": "AUTHORIZED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2026-01-03T12:30:01.000+01:00",
+          "amount": {
+            "value": -1490,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-125",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Boulangerie Paul",
+      "amount": {
+        "value": -1234,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2026-01-07T12:12:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-125",
+          "status": "VALIDATED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2026-01-07T12:06:01.000+01:00",
+          "amount": {
+            "value": -1234,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-126",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Cantine Demo Corp",
+      "amount": {
+        "value": -1424,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2026-01-08T12:22:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-126",
+          "status": "VALIDATED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2026-01-08T12:27:01.000+01:00",
+          "amount": {
+            "value": -1424,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-127",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Poke Bowl Paris",
+      "amount": {
+        "value": -1228,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2026-01-09T12:03:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-127",
+          "status": "AUTHORIZED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2026-01-09T12:43:01.000+01:00",
+          "amount": {
+            "value": -1228,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-128",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Le Bistrot Demo",
+      "amount": {
+        "value": -1411,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2026-01-11T12:03:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-128",
+          "status": "CAPTURED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2026-01-11T12:25:01.000+01:00",
+          "amount": {
+            "value": -1411,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-129",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Le Bistrot Demo",
+      "amount": {
+        "value": -1097,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2026-01-16T12:15:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-129",
+          "status": "CAPTURED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2026-01-16T12:12:01.000+01:00",
+          "amount": {
+            "value": -1097,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-130",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Boulangerie Paul",
+      "amount": {
+        "value": -1299,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2026-01-17T12:08:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-130",
+          "status": "VALIDATED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2026-01-17T12:27:01.000+01:00",
+          "amount": {
+            "value": -1299,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-131",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Boulangerie Paul",
+      "amount": {
+        "value": -1035,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2026-01-18T12:15:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-131",
+          "status": "VALIDATED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2026-01-18T12:55:01.000+01:00",
+          "amount": {
+            "value": -1035,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-132",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Cantine Demo Corp",
+      "amount": {
+        "value": -1203,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2026-01-22T12:06:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-132",
+          "status": "AUTHORIZED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2026-01-22T12:03:01.000+01:00",
+          "amount": {
+            "value": -1203,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "op-133",
+      "object": "operation",
+      "type": "Operations::Merchant",
+      "display_type": "Paiement",
+      "name": "Le Bistrot Demo",
+      "amount": {
+        "value": -1303,
+        "currency": {
+          "iso_3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "date": "2026-01-28T12:05:00.000+01:00",
+      "transactions": [
+        {
+          "id": "tx-133",
+          "status": "CAPTURED",
+          "payment_method": "Wallets::MealVoucherWallet",
+          "date": "2026-01-28T12:59:01.000+01:00",
+          "amount": {
+            "value": -1303,
+            "currency": {
+              "iso_3": "EUR",
+              "symbol": "€",
+              "title": "Euro"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
