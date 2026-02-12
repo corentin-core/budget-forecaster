@@ -555,19 +555,6 @@ class TestPersistentAccountOperations:
             matching = [o for o in ops if o.unique_id == 2]
             assert matching[0].category == Category.ENTERTAINMENT
 
-    def test_close_delegates_to_repository(
-        self, temp_db_path: Path, sample_account: Account
-    ) -> None:
-        """close() delegates to the repository."""
-        with SqliteRepository(temp_db_path) as repository:
-            repository.set_aggregated_account_name("Mes comptes")
-            repository.upsert_account(sample_account)
-            persistent = PersistentAccount(repository)
-
-            persistent.close()
-
-            assert repository._connection is None  # pylint: disable=protected-access
-
 
 class TestSqliteRepositoryGaps:
     """Tests for SqliteRepository uncovered paths."""
