@@ -158,12 +158,27 @@ This prevents wasting time on code that will be rejected during review.
 
 ---
 
-### Phase 1.5: Create Feature Branch
+### Phase 1.5: Create Worktree
+
+**ALWAYS use a git worktree** to isolate work from the main working directory.
 
 ```bash
-git checkout main
-git pull origin main
-git checkout -b issue/<number>-<kebab-case-description>
+# From the main repo directory
+git worktree add ../budget-forecaster-<number> -b issue/<number>-<kebab-case-description> origin/main
+```
+
+Convention: worktree path is `../budget-forecaster-<issue-number>`.
+
+From this point, **all work happens in the worktree directory**:
+
+```bash
+cd ../budget-forecaster-<number>
+```
+
+The virtual environment is shared from the main worktree:
+
+```bash
+source ../budget-forecaster/budget-forecaster-venv/bin/activate
 ```
 
 ---
@@ -289,7 +304,7 @@ pytest tests/ -v
 #### 4.5 Commit changes
 
 ```bash
-source budget-forecaster-venv/bin/activate && git add <files> && git commit -m "message"
+source ../budget-forecaster/budget-forecaster-venv/bin/activate && git add <files> && git commit -m "message"
 ```
 
 Use conventional commit format: `type: description`
@@ -326,10 +341,18 @@ Only after explicit user approval:
 ```bash
 gh pr checks <number>  # Verify CI passed
 gh pr merge <number> --squash --delete-branch
-git checkout main && git pull origin main
 ```
 
-Clean up: delete `implementation-progress.md`.
+Clean up the worktree:
+
+```bash
+# From the main repo directory
+cd ../budget-forecaster
+git worktree remove ../budget-forecaster-<number>
+git pull origin main
+```
+
+Also delete `implementation-progress.md` if it was created.
 
 ---
 
@@ -351,7 +374,7 @@ Phase 1: UNDERSTAND
   |-- Read relevant code
   |-- Read coding conventions
   v
-Phase 1.5: CREATE BRANCH
+Phase 1.5: CREATE WORKTREE
   v
 Phase 2: PLAN
   |-- Create checklist
@@ -375,7 +398,7 @@ Phase 5: CREATE PR
   v
 Phase 6: MERGE & CLEANUP
   |-- Merge after CI + user approval
-  |-- Delete branch
+  |-- Remove worktree
   |-- Delete implementation-progress.md
 ```
 
