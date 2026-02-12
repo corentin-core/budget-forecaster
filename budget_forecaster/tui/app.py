@@ -186,8 +186,8 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             try:
                 backup_path = backup_service.create_backup()
                 logger.info("Database backup created: %s", backup_path)
-            except BackupError as e:
-                logger.error("Backup failed: %s", e)
+            except BackupError:
+                logger.exception("Backup failed")
             backup_service.rotate_backups()
 
         repository = SqliteRepository(self._config.database_path)

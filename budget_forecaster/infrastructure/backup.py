@@ -75,7 +75,7 @@ class BackupService:
             return backup_path
 
         except OSError as e:
-            raise BackupError(f"Failed to create backup: {e}") from e
+            raise BackupError("Failed to create backup") from e
 
     def rotate_backups(self) -> list[Path]:
         """Delete old backups exceeding max_backups.
