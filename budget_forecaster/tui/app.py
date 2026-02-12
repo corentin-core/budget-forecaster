@@ -23,7 +23,11 @@ from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
-from budget_forecaster.exceptions import AccountNotLoadedError, BudgetForecasterError
+from budget_forecaster.exceptions import (
+    AccountNotLoadedError,
+    BackupError,
+    BudgetForecasterError,
+)
 from budget_forecaster.infrastructure.backup import BackupService
 from budget_forecaster.infrastructure.config import Config
 from budget_forecaster.infrastructure.persistence.persistent_account import (
@@ -179,8 +183,11 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
                 backup_directory=self._config.backup.directory,
                 max_backups=self._config.backup.max_backups,
             )
-            if backup_path := backup_service.create_backup():
+            try:
+                backup_path = backup_service.create_backup()
                 logger.info("Database backup created: %s", backup_path)
+            except BackupError as e:
+                logger.error("Backup failed: %s", e)
             backup_service.rotate_backups()
 
         repository = SqliteRepository(self._config.database_path)

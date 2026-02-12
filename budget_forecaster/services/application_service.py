@@ -199,7 +199,7 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         """Get all uncategorized operations."""
         return tuple(self._operation_service.get_uncategorized_operations())
 
-    def get_operation_by_id(self, operation_id: int) -> HistoricOperation | None:
+    def get_operation_by_id(self, operation_id: int) -> HistoricOperation:
         """Get a single operation by its ID."""
         return self._operation_service.get_operation_by_id(operation_id)
 
@@ -263,13 +263,13 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         budgets = self._forecast_service.get_all_budgets()
         return tuple(sorted(budgets, key=lambda b: b.description.lower()))
 
-    def get_budget_by_id(self, budget_id: BudgetId) -> Budget | None:
+    def get_budget_by_id(self, budget_id: BudgetId) -> Budget:
         """Get a budget by ID."""
         return self._forecast_service.get_budget_by_id(budget_id)
 
     def get_planned_operation_by_id(
         self, op_id: PlannedOperationId
-    ) -> PlannedOperation | None:
+    ) -> PlannedOperation:
         """Get a planned operation by ID."""
         return self._forecast_service.get_planned_operation_by_id(op_id)
 

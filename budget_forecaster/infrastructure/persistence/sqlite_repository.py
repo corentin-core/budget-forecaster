@@ -26,7 +26,12 @@ from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
-from budget_forecaster.exceptions import PersistenceError
+from budget_forecaster.exceptions import (
+    AccountNotFoundError,
+    BudgetNotFoundError,
+    PersistenceError,
+    PlannedOperationNotFoundError,
+)
 from budget_forecaster.infrastructure.persistence.repository_interface import (
     RepositoryInterface,
 )
@@ -276,7 +281,7 @@ class SqliteRepository(RepositoryInterface):
             )
         return tuple(accounts)
 
-    def get_account_by_name(self, name: str) -> Account | None:
+    def get_account_by_name(self, name: str) -> Account:
         """Get an account by name."""
         conn = self._get_connection()
         cursor = conn.execute(
@@ -284,7 +289,7 @@ class SqliteRepository(RepositoryInterface):
             (name,),
         )
         if (row := cursor.fetchone()) is None:
-            return None
+            raise AccountNotFoundError(name)
         operations = self._get_operations_for_account(row["id"])
         return Account(
             name=row["name"],
@@ -428,7 +433,7 @@ class SqliteRepository(RepositoryInterface):
         )
         return tuple(self._row_to_budget(row) for row in cursor.fetchall())
 
-    def get_budget_by_id(self, budget_id: int) -> Budget | None:
+    def get_budget_by_id(self, budget_id: int) -> Budget:
         """Get a budget by id."""
         conn = self._get_connection()
         cursor = conn.execute(
@@ -438,7 +443,7 @@ class SqliteRepository(RepositoryInterface):
             (budget_id,),
         )
         if (row := cursor.fetchone()) is None:
-            return None
+            raise BudgetNotFoundError(budget_id)
         return self._row_to_budget(row)
 
     def upsert_budget(self, budget: Budget) -> int:
@@ -530,7 +535,7 @@ class SqliteRepository(RepositoryInterface):
         )
         return tuple(self._row_to_planned_operation(row) for row in cursor.fetchall())
 
-    def get_planned_operation_by_id(self, op_id: int) -> PlannedOperation | None:
+    def get_planned_operation_by_id(self, op_id: int) -> PlannedOperation:
         """Get a planned operation by id."""
         conn = self._get_connection()
         cursor = conn.execute(
@@ -541,7 +546,7 @@ class SqliteRepository(RepositoryInterface):
             (op_id,),
         )
         if (row := cursor.fetchone()) is None:
-            return None
+            raise PlannedOperationNotFoundError(op_id)
         return self._row_to_planned_operation(row)
 
     def upsert_planned_operation(self, op: PlannedOperation) -> int:

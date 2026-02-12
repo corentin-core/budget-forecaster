@@ -20,7 +20,12 @@ from budget_forecaster.domain.account.account import Account, AccountParameters
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
-from budget_forecaster.exceptions import AccountNotLoadedError
+from budget_forecaster.exceptions import (
+    AccountNotFoundError,
+    AccountNotLoadedError,
+    BudgetNotFoundError,
+    PlannedOperationNotFoundError,
+)
 from budget_forecaster.infrastructure.persistence.persistent_account import (
     PersistentAccount,
 )
@@ -113,7 +118,6 @@ class TestSqliteRepository:
             repository.upsert_account(sample_account)
 
             retrieved = repository.get_account_by_name("Compte courant")
-            assert retrieved is not None
             assert retrieved.name == sample_account.name
             assert retrieved.balance == sample_account.balance
             assert retrieved.currency == sample_account.currency
@@ -134,7 +138,6 @@ class TestSqliteRepository:
             repository.upsert_account(updated_account)
 
             retrieved = repository.get_account_by_name("Compte courant")
-            assert retrieved is not None
             assert retrieved.balance == 2000.0
 
     def test_get_all_accounts(
@@ -180,7 +183,6 @@ class TestSqliteRepository:
             repository.update_operation(updated_op)
 
             retrieved = repository.get_account_by_name("Compte courant")
-            assert retrieved is not None
             op = next(o for o in retrieved.operations if o.unique_id == 2)
             assert op.category == Category.OTHER
 
@@ -284,7 +286,6 @@ class TestBudgetRepository:
 
             assert budget_id > 0
             retrieved = repository.get_budget_by_id(budget_id)
-            assert retrieved is not None
             assert retrieved.description == "Courses mensuelles"
             assert retrieved.amount == -500.0
             assert retrieved.category == Category.GROCERIES
@@ -308,7 +309,6 @@ class TestBudgetRepository:
             repository.upsert_budget(updated_budget)
 
             retrieved = repository.get_budget_by_id(budget_id)
-            assert retrieved is not None
             assert retrieved.amount == -600.0
 
     def test_delete_budget(self, temp_db_path: Path) -> None:
@@ -325,7 +325,8 @@ class TestBudgetRepository:
 
             repository.delete_budget(budget_id)
 
-            assert repository.get_budget_by_id(budget_id) is None
+            with pytest.raises(BudgetNotFoundError):
+                repository.get_budget_by_id(budget_id)
 
     def test_budget_time_range_serialization(self, temp_db_path: Path) -> None:
         """Test TimeRange serialization/deserialization."""
@@ -342,7 +343,6 @@ class TestBudgetRepository:
             budget_id = repository.upsert_budget(budget)
 
             retrieved = repository.get_budget_by_id(budget_id)
-            assert retrieved is not None
             assert isinstance(retrieved.date_range, DateRange)
             assert retrieved.date_range.start_date == date(2024, 3, 15)
             # TimeRange.last_date = initial_date + duration - 1 day
@@ -366,7 +366,6 @@ class TestBudgetRepository:
             budget_id = repository.upsert_budget(budget)
 
             retrieved = repository.get_budget_by_id(budget_id)
-            assert retrieved is not None
             assert isinstance(retrieved.date_range, RecurringDateRange)
             assert retrieved.date_range.start_date == date(2024, 1, 1)
             assert retrieved.date_range.period == relativedelta(months=1)
@@ -406,7 +405,6 @@ class TestPlannedOperationRepository:
 
             assert op_id > 0
             retrieved = repository.get_planned_operation_by_id(op_id)
-            assert retrieved is not None
             assert retrieved.description == "Salaire mensuel"
             assert retrieved.amount == 3000.0
             assert retrieved.category == Category.SALARY
@@ -428,7 +426,6 @@ class TestPlannedOperationRepository:
             repository.upsert_planned_operation(updated_op)
 
             retrieved = repository.get_planned_operation_by_id(op_id)
-            assert retrieved is not None
             assert retrieved.amount == -850.0
 
     def test_delete_planned_operation(self, temp_db_path: Path) -> None:
@@ -445,7 +442,8 @@ class TestPlannedOperationRepository:
 
             repository.delete_planned_operation(op_id)
 
-            assert repository.get_planned_operation_by_id(op_id) is None
+            with pytest.raises(PlannedOperationNotFoundError):
+                repository.get_planned_operation_by_id(op_id)
 
     def test_planned_operation_matcher_params_serialization(
         self, temp_db_path: Path
@@ -467,7 +465,6 @@ class TestPlannedOperationRepository:
             op_id = repository.upsert_planned_operation(op)
 
             retrieved = repository.get_planned_operation_by_id(op_id)
-            assert retrieved is not None
             assert retrieved.matcher.description_hints == {"KEYWORD1", "KEYWORD2"}
             assert retrieved.matcher.approximation_date_range == timedelta(days=7)
             assert retrieved.matcher.approximation_amount_ratio == 0.15
@@ -489,7 +486,6 @@ class TestPlannedOperationRepository:
             op_id = repository.upsert_planned_operation(op)
 
             retrieved = repository.get_planned_operation_by_id(op_id)
-            assert retrieved is not None
             assert retrieved.matcher.description_hints == set()
 
 
@@ -559,14 +555,12 @@ class TestPersistentAccountOperations:
 class TestSqliteRepositoryGaps:
     """Tests for SqliteRepository uncovered paths."""
 
-    def test_get_account_by_name_returns_none_for_unknown(
-        self, temp_db_path: Path
-    ) -> None:
-        """get_account_by_name returns None when account doesn't exist."""
+    def test_get_account_by_name_raises_for_unknown(self, temp_db_path: Path) -> None:
+        """get_account_by_name raises AccountNotFoundError when account doesn't exist."""
         with SqliteRepository(temp_db_path) as repository:
             repository.set_aggregated_account_name("Test")
-            result = repository.get_account_by_name("NonExistent")
-            assert result is None
+            with pytest.raises(AccountNotFoundError):
+                repository.get_account_by_name("NonExistent")
 
     def test_yearly_budget_serialization(self, temp_db_path: Path) -> None:
         """Budgets with yearly duration are serialized and deserialized correctly."""

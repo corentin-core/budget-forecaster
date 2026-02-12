@@ -12,6 +12,7 @@ from budget_forecaster.core.types import Category
 from budget_forecaster.domain.account.account_interface import AccountInterface
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.operation_link import OperationLink
+from budget_forecaster.exceptions import OperationNotFoundError
 
 
 class OperationCategoryUpdate(NamedTuple):
@@ -122,19 +123,22 @@ class OperationService:
             reverse=sort_reverse,
         )
 
-    def get_operation_by_id(self, operation_id: int) -> HistoricOperation | None:
+    def get_operation_by_id(self, operation_id: int) -> HistoricOperation:
         """Get a single operation by its ID.
 
         Args:
             operation_id: The unique ID of the operation.
 
         Returns:
-            The operation if found, None otherwise.
+            The operation.
+
+        Raises:
+            OperationNotFoundError: If no operation with the given ID exists.
         """
         for operation in self.operations:
             if operation.unique_id == operation_id:
                 return operation
-        return None
+        raise OperationNotFoundError(operation_id)
 
     def get_uncategorized_operations(self) -> list[HistoricOperation]:
         """Get all operations that need categorization.
@@ -152,7 +156,7 @@ class OperationService:
         *,
         category: Category | None = None,
         description: str | None = None,
-    ) -> HistoricOperation | None:
+    ) -> HistoricOperation:
         """Update an operation's fields.
 
         Args:
@@ -161,10 +165,12 @@ class OperationService:
             description: New description (if provided).
 
         Returns:
-            The updated operation, or None if not found.
+            The updated operation.
+
+        Raises:
+            OperationNotFoundError: If no operation with the given ID exists.
         """
-        if (operation := self.get_operation_by_id(operation_id)) is None:
-            return None
+        operation = self.get_operation_by_id(operation_id)
 
         kwargs: dict[str, object] = {}
         if category is not None:
@@ -181,7 +187,7 @@ class OperationService:
 
     def categorize_operation(
         self, operation_id: int, category: Category
-    ) -> HistoricOperation | None:
+    ) -> HistoricOperation:
         """Categorize an operation.
 
         Args:
@@ -189,7 +195,10 @@ class OperationService:
             category: The category to assign.
 
         Returns:
-            The updated operation, or None if not found.
+            The updated operation.
+
+        Raises:
+            OperationNotFoundError: If no operation with the given ID exists.
         """
         return self.update_operation(operation_id, category=category)
 
@@ -203,13 +212,12 @@ class OperationService:
             category: The category to assign to all operations.
 
         Returns:
-            List of updated operations (excludes any that weren't found).
+            List of updated operations.
+
+        Raises:
+            OperationNotFoundError: If any operation ID is not found.
         """
-        updated = []
-        for op_id in operation_ids:
-            if (result := self.categorize_operation(op_id, category)) is not None:
-                updated.append(result)
-        return updated
+        return [self.categorize_operation(op_id, category) for op_id in operation_ids]
 
     def find_similar_operations(
         self, operation: HistoricOperation, limit: int = 5

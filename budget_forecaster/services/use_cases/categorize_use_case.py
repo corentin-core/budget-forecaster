@@ -44,21 +44,16 @@ class CategorizeUseCase:  # pylint: disable=too-few-public-methods
             category: The category to assign to all operations.
 
         Returns:
-            Tuple of OperationCategoryUpdate for each successfully updated operation.
-            Operations not found are silently skipped.
+            Tuple of OperationCategoryUpdate for each updated operation.
         """
         results: list[OperationCategoryUpdate] = []
         changed_operations: list[HistoricOperation] = []
 
         for op_id in operation_ids:
-            if (op := self._operation_service.get_operation_by_id(op_id)) is None:
-                continue
+            op = self._operation_service.get_operation_by_id(op_id)
 
             old_category = op.category
-            if (
-                updated := self._operation_service.categorize_operation(op_id, category)
-            ) is None:
-                continue
+            updated = self._operation_service.categorize_operation(op_id, category)
 
             if category_changed := old_category != category:
                 existing = self._operation_link_service.get_link_for_operation(op_id)

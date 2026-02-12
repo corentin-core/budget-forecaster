@@ -7,6 +7,7 @@ import pytest
 
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.operation_link import OperationLink
+from budget_forecaster.exceptions import OperationNotFoundError
 from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
 )
@@ -50,17 +51,18 @@ def use_case_fixture(
 class TestCategorizeOperations:
     """Tests for categorize_operations."""
 
-    def test_skips_nonexistent_operations(
+    def test_raises_for_nonexistent_operation(
         self,
         use_case: CategorizeUseCase,
         mock_operation_service: MagicMock,
     ) -> None:
-        """Non-existent operations are silently skipped."""
-        mock_operation_service.get_operation_by_id.return_value = None
+        """Non-existent operations raise OperationNotFoundError."""
+        mock_operation_service.get_operation_by_id.side_effect = OperationNotFoundError(
+            999
+        )
 
-        results = use_case.categorize_operations((999,), Category.GROCERIES)
-
-        assert len(results) == 0
+        with pytest.raises(OperationNotFoundError):
+            use_case.categorize_operations((999,), Category.GROCERIES)
 
     def test_delegates_to_operation_service(
         self,

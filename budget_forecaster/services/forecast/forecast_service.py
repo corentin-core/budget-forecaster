@@ -102,7 +102,7 @@ class ForecastService:
         """Get all budgets from the database."""
         return self._repository.get_all_budgets()
 
-    def get_budget_by_id(self, budget_id: BudgetId) -> Budget | None:
+    def get_budget_by_id(self, budget_id: BudgetId) -> Budget:
         """Get a budget by ID."""
         return self._repository.get_budget_by_id(budget_id)
 
@@ -151,7 +151,7 @@ class ForecastService:
 
     def get_planned_operation_by_id(
         self, op_id: PlannedOperationId
-    ) -> PlannedOperation | None:
+    ) -> PlannedOperation:
         """Get a planned operation by ID."""
         return self._repository.get_planned_operation_by_id(op_id)
 

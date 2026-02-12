@@ -5,6 +5,8 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
+from budget_forecaster.exceptions import BackupError
+
 logger = logging.getLogger(__name__)
 
 
@@ -45,18 +47,17 @@ class BackupService:
         """Get the glob pattern for backup files."""
         return f"{self._db_stem}_*.db"
 
-    def create_backup(self) -> Path | None:
+    def create_backup(self) -> Path:
         """Create a backup of the database.
 
         Returns:
-            Path to the created backup file, or None if database doesn't exist.
+            Path to the created backup file.
+
+        Raises:
+            BackupError: If the database doesn't exist or the copy fails.
         """
         if not self._database_path.exists():
-            logger.info(
-                "Database file does not exist, skipping backup: %s",
-                self._database_path,
-            )
-            return None
+            raise BackupError(f"Database file does not exist: {self._database_path}")
 
         try:
             # Create backup directory if needed
@@ -74,8 +75,7 @@ class BackupService:
             return backup_path
 
         except OSError as e:
-            logger.error("Failed to create backup: %s", e)
-            return None
+            raise BackupError(f"Failed to create backup: {e}") from e
 
     def rotate_backups(self) -> list[Path]:
         """Delete old backups exceeding max_backups.
