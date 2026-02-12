@@ -198,15 +198,6 @@ class TestOperationService:
         assert result.category == Category.ENTERTAINMENT
         mock_account_manager.replace_operation.assert_called_once()
 
-    def test_bulk_categorize(
-        self, service: OperationService, mock_account_manager: MagicMock
-    ) -> None:
-        """bulk_categorize updates multiple operations."""
-        # Note: operations 1 and 4 are GROCERIES, we're re-categorizing
-        results = service.bulk_categorize([1, 4], Category.GROCERIES)
-        assert len(results) == 2
-        assert mock_account_manager.replace_operation.call_count == 2
-
     def test_find_similar_operations(self, service: OperationService) -> None:
         """find_similar_operations finds operations with common words."""
         # Get the CARREFOUR operation

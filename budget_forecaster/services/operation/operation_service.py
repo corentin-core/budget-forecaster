@@ -202,23 +202,6 @@ class OperationService:
         """
         return self.update_operation(operation_id, category=category)
 
-    def bulk_categorize(
-        self, operation_ids: list[int], category: Category
-    ) -> list[HistoricOperation]:
-        """Categorize multiple operations at once.
-
-        Args:
-            operation_ids: List of operation IDs to categorize.
-            category: The category to assign to all operations.
-
-        Returns:
-            List of updated operations.
-
-        Raises:
-            OperationNotFoundError: If any operation ID is not found.
-        """
-        return [self.categorize_operation(op_id, category) for op_id in operation_ids]
-
     def find_similar_operations(
         self, operation: HistoricOperation, limit: int = 5
     ) -> list[HistoricOperation]:
