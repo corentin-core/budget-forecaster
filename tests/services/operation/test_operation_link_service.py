@@ -609,8 +609,7 @@ class TestOperationLinkServiceCrud:
 
         result = link_service.get_all_links()
 
-        assert len(result) == 1
-        assert result[0].operation_unique_id == 1
+        assert result == (link._replace(link_id=1),)
 
     def test_get_link_for_operation(
         self, link_service: OperationLinkService, repository: SqliteRepository
@@ -627,26 +626,7 @@ class TestOperationLinkServiceCrud:
 
         result = link_service.get_link_for_operation(1)
 
-        assert result is not None
-        assert result.operation_unique_id == 1
-
-    def test_upsert_link(
-        self, link_service: OperationLinkService, repository: SqliteRepository
-    ) -> None:
-        """upsert_link delegates to repository."""
-        link = OperationLink(
-            operation_unique_id=1,
-            target_type=LinkType.PLANNED_OPERATION,
-            target_id=1,
-            iteration_date=date(2024, 1, 1),
-            is_manual=True,
-        )
-
-        link_service.upsert_link(link)
-
-        result = repository.get_link_for_operation(1)
-        assert result is not None
-        assert result.is_manual is True
+        assert result == link._replace(link_id=1)
 
     def test_delete_link(
         self, link_service: OperationLinkService, repository: SqliteRepository
@@ -714,7 +694,7 @@ class TestCreateHeuristicLinksGaps:
 
         result = link_service.create_heuristic_links(operations, matchers)
 
-        assert len(result) == 0
+        assert not result
 
 
 class TestComputeMatchScore:
@@ -736,7 +716,7 @@ class TestComputeMatchScore:
             date_range=SingleDay(date(2024, 1, 1)),
         )
         # Amount diff = |900-800|/800 = 0.125, tolerance = 0.05
-        # Beyond tolerance → gradual decrease (line 80)
+        # Beyond tolerance → gradual decrease in score
         score = compute_match_score(
             operation,
             op_range,

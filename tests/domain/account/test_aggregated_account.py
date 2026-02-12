@@ -223,8 +223,7 @@ class TestReplaceOperation:
         agg.replace_operation(new_op)
 
         updated_op = agg.accounts[0].operations[0]
-        assert updated_op.description == "NEW"
-        assert updated_op.category == Category.GROCERIES
+        assert updated_op == new_op
 
     def test_raises_for_unknown_operation_id(self) -> None:
         """Replacing a non-existing operation raises ValueError."""

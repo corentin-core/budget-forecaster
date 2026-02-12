@@ -115,11 +115,11 @@ class TestAmountRepr:
 
     def test_repr_format(self) -> None:
         """repr shows value followed by currency."""
-        assert repr(Amount(42.5, "EUR")) == "42.5EUR"
+        assert repr(Amount(42.5, "EUR")) == "42.5 EUR"
 
     def test_repr_negative(self) -> None:
         """repr shows negative amounts correctly."""
-        assert repr(Amount(-10.0, "USD")) == "-10.0USD"
+        assert repr(Amount(-10.0, "USD")) == "-10.0 USD"
 
 
 class TestAmountAbsolute:

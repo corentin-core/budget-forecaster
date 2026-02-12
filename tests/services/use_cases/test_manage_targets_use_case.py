@@ -288,27 +288,25 @@ class TestGetNextNonActualizedIteration:
         target = MagicMock(spec=Budget)
         target.id = 1
         target.date_range = RecurringDateRange(
-            DateRange(date(2025, 1, 1), relativedelta(months=1)),
+            DateRange(date(2030, 1, 1), relativedelta(months=1)),
             relativedelta(months=1),
         )
         mock_forecast_service.get_budget_by_id.return_value = target
 
-        # January iteration is linked, February is not
+        # January 2030 iteration is linked, February 2030 is not
         mock_operation_link_service.load_links_for_target.return_value = (
             OperationLink(
                 operation_unique_id=1,
                 target_type=LinkType.BUDGET,
                 target_id=1,
-                iteration_date=date(2025, 1, 1),
+                iteration_date=date(2030, 1, 1),
                 is_manual=False,
             ),
         )
 
         result = use_case.get_next_non_actualized_iteration(LinkType.BUDGET, 1)
 
-        # First non-actualized iteration should be found
-        assert result is not None
-        assert result != date(2025, 1, 1)  # Not the linked iteration
+        assert result == date(2030, 2, 1)
 
 
 class TestUpdateBudget:

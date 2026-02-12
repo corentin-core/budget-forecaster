@@ -564,7 +564,7 @@ class TestDateRangeProtocol:
         """DateRange comparison with non-DateRange raises TypeError."""
         dr = DateRange(date(2023, 1, 1), relativedelta(days=10))
         with pytest.raises(TypeError):
-            _ = dr < "not a date range"  # type: ignore[operator]
+            dr < "not a date range"  # type: ignore[operator]  # pylint: disable=pointless-statement
 
     def test_recurring_date_range_repr(self) -> None:
         """RecurringDateRange repr shows period and expiration."""
@@ -573,9 +573,9 @@ class TestDateRangeProtocol:
             relativedelta(months=1),
             date(2023, 12, 31),
         )
-        result = repr(rdr)
-        assert "2023-01-01" in result
-        assert "2023-12-31" in result
+        assert repr(rdr) == (
+            "2023-01-01 - 2023-01-31 every relativedelta(months=+1) until 2023-12-31"
+        )
 
     def test_recurring_date_range_repr_no_expiration(self) -> None:
         """RecurringDateRange repr shows 'forever' when no expiration."""
@@ -583,8 +583,9 @@ class TestDateRangeProtocol:
             DateRange(date(2023, 1, 1), relativedelta(months=1)),
             relativedelta(months=1),
         )
-        result = repr(rdr)
-        assert "forever" in result
+        assert repr(rdr) == (
+            "2023-01-01 - 2023-01-31 every relativedelta(months=+1) until forever"
+        )
 
     def test_recurring_date_range_eq_with_non_recurring(self) -> None:
         """RecurringDateRange equality with non-RecurringDateRange returns False."""

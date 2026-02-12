@@ -512,6 +512,10 @@ class TestPersistentAccountOperations:
             repository.update_operation(updated_op)
 
             # Before reload, persistent still has old data
+            ops_before = persistent.accounts[0].operations
+            before = [o for o in ops_before if o.unique_id == 1]
+            assert before[0].category == Category.SALARY
+
             persistent.reload()
 
             # After reload, data is refreshed
@@ -554,14 +558,15 @@ class TestPersistentAccountOperations:
     def test_close_delegates_to_repository(
         self, temp_db_path: Path, sample_account: Account
     ) -> None:
-        """close() delegates to the repository without error."""
+        """close() delegates to the repository."""
         with SqliteRepository(temp_db_path) as repository:
             repository.set_aggregated_account_name("Mes comptes")
             repository.upsert_account(sample_account)
             persistent = PersistentAccount(repository)
 
-            # Should not raise
             persistent.close()
+
+            assert repository._connection is None  # pylint: disable=protected-access
 
 
 class TestSqliteRepositoryGaps:
@@ -593,10 +598,7 @@ class TestSqliteRepositoryGaps:
             budget_id = repository.upsert_budget(budget)
 
             retrieved = repository.get_budget_by_id(budget_id)
-            assert retrieved is not None
-            assert isinstance(retrieved.date_range, RecurringDateRange)
-            assert retrieved.date_range.start_date == date(2024, 1, 1)
-            assert retrieved.date_range.duration == relativedelta(years=1)
+            assert retrieved == budget.replace(record_id=budget_id)
 
     def test_daily_planned_operation_serialization(self, temp_db_path: Path) -> None:
         """Planned operations with day-based duration round-trip correctly."""
@@ -615,8 +617,7 @@ class TestSqliteRepositoryGaps:
             op_id = repository.upsert_planned_operation(op)
 
             retrieved = repository.get_planned_operation_by_id(op_id)
-            assert retrieved is not None
-            assert retrieved.date_range.start_date == date(2024, 1, 1)
+            assert retrieved == op.replace(record_id=op_id)
 
 
 class TestSchemaMigration:

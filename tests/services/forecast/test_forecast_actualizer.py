@@ -561,12 +561,10 @@ class TestForecastActualizerGaps:
             ),
             budgets=(),
         )
+        planned_op = forecast.operations[0]
         actualizer = ForecastActualizer(account)
         actualized_forecast = actualizer(forecast)
-        assert len(actualized_forecast.operations) == 1
-        op = actualized_forecast.operations[0]
-        assert op.description == "No ID Operation"
-        assert op.date_range.start_date == date(2023, 1, 5)
+        assert actualized_forecast.operations == (planned_op,)
 
     def test_one_time_planned_operation_fully_actualized_is_removed(
         self, account: Account
@@ -624,7 +622,7 @@ class TestForecastActualizerGaps:
         actualized_forecast = actualizer(forecast)
         # Budget amount is unchanged (link was ignored)
         assert len(actualized_forecast.budgets) == 1
-        assert actualized_forecast.budgets[0].amount == -100.0
+        assert actualized_forecast.budgets[0].amount == budget.amount
 
     def test_budget_link_with_sign_mismatch_is_ignored(self, account: Account) -> None:
         """Budget link where operation sign mismatches budget sign is ignored."""
@@ -660,9 +658,9 @@ class TestForecastActualizerGaps:
         forecast = Forecast(operations=(), budgets=(budget,))
         actualizer = ForecastActualizer(account_with_positive_op, operation_links=links)
         actualized_forecast = actualizer(forecast)
-        # Budget not consumed because of sign mismatch
+        # Budget amount is unchanged (sign mismatch, link was ignored)
         assert len(actualized_forecast.budgets) == 1
-        assert actualized_forecast.budgets[0].amount == -100.0
+        assert actualized_forecast.budgets[0].amount == budget.amount
 
     def test_budget_fully_consumed_is_removed(self, account: Account) -> None:
         """A budget fully consumed by linked operations is removed."""

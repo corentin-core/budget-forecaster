@@ -113,6 +113,14 @@ class PlannedOperation(OperationRange):
 
         return terminated, continuation
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, PlannedOperation):
+            return NotImplemented
+        return self._id == other._id and super().__eq__(other)
+
+    def __hash__(self) -> int:
+        return hash((self._id, super().__hash__()))
+
     def replace(self, **kwargs: Any) -> "PlannedOperation":
         """Return a new instance of the planned operation with the given parameters replaced."""
         new_id = kwargs.get("record_id", self.id)

@@ -2,8 +2,6 @@
 
 from datetime import date
 
-import pytest
-
 from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
@@ -47,17 +45,6 @@ class TestEquality:
         op2 = _make_op(unique_id=2)
         assert op1 != op2
 
-    def test_eq_with_non_historic_operation_returns_not_implemented(self) -> None:
-        """Equality with a non-HistoricOperation returns NotImplemented."""
-        op = _make_op()
-        assert op != "not an operation"
-
-    def test_lt_with_non_historic_operation_returns_not_implemented(self) -> None:
-        """Comparison with a non-HistoricOperation returns NotImplemented."""
-        op = _make_op()
-        with pytest.raises(TypeError):
-            _ = op < "not an operation"  # type: ignore[operator]
-
 
 class TestHash:
     """Tests for HistoricOperation.__hash__."""
@@ -90,14 +77,11 @@ class TestReplace:
         op = _make_op(category=Category.UNCATEGORIZED)
         replaced = op.replace(category=Category.GROCERIES)
 
-        assert replaced.category == Category.GROCERIES
-        assert replaced.unique_id == op.unique_id
-        assert replaced.description == op.description
+        assert replaced == _make_op(category=Category.GROCERIES)
 
     def test_replace_description(self) -> None:
         """replace() with description returns new operation."""
         op = _make_op(description="OLD")
         replaced = op.replace(description="NEW")
 
-        assert replaced.description == "NEW"
-        assert replaced.unique_id == op.unique_id
+        assert replaced == _make_op(description="NEW")

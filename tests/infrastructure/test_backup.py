@@ -253,12 +253,12 @@ class TestBackupErrorHandling:
             backup_directory=read_only_dir / "subdir",
         )
 
-        result = service.create_backup()
+        try:
+            result = service.create_backup()
 
-        assert result is None
-
-        # Cleanup: restore write permission for tmp_path cleanup
-        read_only_dir.chmod(0o755)
+            assert result is None
+        finally:
+            read_only_dir.chmod(0o755)
 
     def test_rotate_backups_continues_on_individual_delete_failure(
         self, temp_db: Path, backup_dir: Path
@@ -281,15 +281,15 @@ class TestBackupErrorHandling:
             max_backups=3,
         )
 
-        deleted = service.rotate_backups()
+        try:
+            deleted = service.rotate_backups()
 
-        # Should have attempted both deletions; some may fail
-        # The important thing is that it doesn't crash
-        assert isinstance(deleted, list)
-
-        # Cleanup
-        backup_dir.chmod(0o755)
-        oldest.chmod(0o644)
+            # Should have attempted both deletions; some may fail
+            # The important thing is that it doesn't crash
+            assert isinstance(deleted, list)
+        finally:
+            backup_dir.chmod(0o755)
+            oldest.chmod(0o644)
 
 
 class TestBackupConfigParsing:

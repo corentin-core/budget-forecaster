@@ -195,10 +195,9 @@ class TestOperationRangeErrors:
             Category.GROCERIES,
             DateRange(date(2023, 1, 1), relativedelta(days=30)),
         )
-        result = repr(op)
-        assert "Grocery Shopping" in result
-        assert "100" in result
-        assert "EUR" in result
+        assert repr(op) == (
+            "2023-01-01 - 2023-01-30 - Courses - Grocery Shopping - 100 EUR"
+        )
 
     @pytest.fixture
     def operation_range(self) -> OperationRange:
