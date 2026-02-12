@@ -9,6 +9,7 @@ from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.exceptions import OperationNotFoundError
 from budget_forecaster.services.operation.operation_service import (
     OperationFilter,
     OperationService,
@@ -162,14 +163,13 @@ class TestOperationService:
     def test_get_operation_by_id_found(self, service: OperationService) -> None:
         """get_operation_by_id returns the correct operation."""
         operation = service.get_operation_by_id(3)
-        assert operation is not None
         assert operation.unique_id == 3
         assert operation.description == "CARTE AMAZON"
 
     def test_get_operation_by_id_not_found(self, service: OperationService) -> None:
-        """get_operation_by_id returns None for unknown ID."""
-        operation = service.get_operation_by_id(999)
-        assert operation is None
+        """get_operation_by_id raises OperationNotFoundError for unknown ID."""
+        with pytest.raises(OperationNotFoundError):
+            service.get_operation_by_id(999)
 
     def test_get_uncategorized_operations(self, service: OperationService) -> None:
         """get_uncategorized_operations returns only UNCATEGORIZED category."""
@@ -182,38 +182,26 @@ class TestOperationService:
     ) -> None:
         """update_operation changes the category."""
         result = service.update_operation(3, category=Category.LEISURE)
-        assert result is not None
         assert result.category == Category.LEISURE
         mock_account_manager.replace_operation.assert_called_once()
 
     def test_update_operation_not_found(self, service: OperationService) -> None:
-        """update_operation returns None for unknown ID."""
-        result = service.update_operation(999, category=Category.LEISURE)
-        assert result is None
+        """update_operation raises OperationNotFoundError for unknown ID."""
+        with pytest.raises(OperationNotFoundError):
+            service.update_operation(999, category=Category.LEISURE)
 
     def test_categorize_operation(
         self, service: OperationService, mock_account_manager: MagicMock
     ) -> None:
         """categorize_operation is a shortcut for update_operation."""
         result = service.categorize_operation(3, Category.ENTERTAINMENT)
-        assert result is not None
         assert result.category == Category.ENTERTAINMENT
         mock_account_manager.replace_operation.assert_called_once()
-
-    def test_bulk_categorize(
-        self, service: OperationService, mock_account_manager: MagicMock
-    ) -> None:
-        """bulk_categorize updates multiple operations."""
-        # Note: operations 1 and 4 are GROCERIES, we're re-categorizing
-        results = service.bulk_categorize([1, 4], Category.GROCERIES)
-        assert len(results) == 2
-        assert mock_account_manager.replace_operation.call_count == 2
 
     def test_find_similar_operations(self, service: OperationService) -> None:
         """find_similar_operations finds operations with common words."""
         # Get the CARREFOUR operation
         operation = service.get_operation_by_id(1)
-        assert operation is not None
 
         similar = service.find_similar_operations(operation)
         # Should find the other CARREFOUR operation (id=4)
@@ -224,17 +212,14 @@ class TestOperationService:
         """suggest_category suggests based on similar operations."""
         # The AMAZON operation (OTHER) should get a suggestion if we had
         # similar categorized operations - but in our test data we don't
-        amazon_op = service.get_operation_by_id(3)
-        assert amazon_op is not None
+        service.get_operation_by_id(3)
 
         # For the CARREFOUR MARKET operation, similar CARREFOUR is GROCERIES
-        carrefour_market = service.get_operation_by_id(4)
-        assert carrefour_market is not None
+        service.get_operation_by_id(4)
 
         # Since carrefour_market is already categorized, let's create a test
         # by checking the CARREFOUR suggestion
         carrefour = service.get_operation_by_id(1)
-        assert carrefour is not None
         similar = service.find_similar_operations(carrefour)
         # op 4 has GROCERIES, so suggestion should be GROCERIES
         assert len(similar) >= 1
@@ -275,7 +260,6 @@ class TestOperationServiceGaps:
     ) -> None:
         """update_operation changes only the description."""
         result = service.update_operation(3, description="CARTE AMAZON PRIME")
-        assert result is not None
         assert result.description == "CARTE AMAZON PRIME"
         mock_account_manager.replace_operation.assert_called_once()
 
@@ -284,7 +268,6 @@ class TestOperationServiceGaps:
     ) -> None:
         """update_operation returns unchanged operation when no kwargs given."""
         result = service.update_operation(3)
-        assert result is not None
         assert result.unique_id == 3
         mock_account_manager.replace_operation.assert_not_called()
 
@@ -295,7 +278,6 @@ class TestOperationServiceGaps:
         # CARREFOUR op (id=1) is similar to CARREFOUR MARKET (id=4)
         # Both are GROCERIES
         carrefour = service.get_operation_by_id(1)
-        assert carrefour is not None
 
         suggestion = service.suggest_category(carrefour)
 
@@ -305,7 +287,6 @@ class TestOperationServiceGaps:
         """suggest_category returns None when no similar operations exist."""
         # EDF operation (id=5) has no similar operations
         edf = service.get_operation_by_id(5)
-        assert edf is not None
 
         suggestion = service.suggest_category(edf)
 

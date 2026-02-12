@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from budget_forecaster.exceptions import BackupError
 from budget_forecaster.infrastructure.backup import BackupService
 from budget_forecaster.infrastructure.config import BackupConfig, Config
 
@@ -67,7 +68,6 @@ class TestCreateBackup:
         """Backup file is created with correct naming pattern."""
         backup_path = service.create_backup()
 
-        assert backup_path is not None
         assert backup_path.exists()
         assert backup_path.parent == backup_dir
         assert backup_path.suffix == ".db"
@@ -79,22 +79,18 @@ class TestCreateBackup:
         """Backup file contains the original database content."""
         backup_path = service.create_backup()
 
-        assert backup_path is not None
         assert backup_path.read_text() == temp_db.read_text()
 
-    def test_returns_none_when_db_missing(
-        self, tmp_path: Path, backup_dir: Path
-    ) -> None:
-        """Returns None when database file doesn't exist."""
+    def test_raises_when_db_missing(self, tmp_path: Path, backup_dir: Path) -> None:
+        """Raises BackupError when database file doesn't exist."""
         missing_db = tmp_path / "missing.db"
         service = BackupService(
             database_path=missing_db,
             backup_directory=backup_dir,
         )
 
-        result = service.create_backup()
-
-        assert result is None
+        with pytest.raises(BackupError, match="does not exist"):
+            service.create_backup()
 
     def test_creates_backup_directory_if_missing(
         self, temp_db: Path, tmp_path: Path
@@ -109,7 +105,6 @@ class TestCreateBackup:
         backup_path = service.create_backup()
 
         assert new_backup_dir.exists()
-        assert backup_path is not None
         assert backup_path.parent == new_backup_dir
 
     def test_multiple_backups_have_different_names(
@@ -120,8 +115,6 @@ class TestCreateBackup:
         time.sleep(1.1)  # Ensure different timestamp
         backup2 = service.create_backup()
 
-        assert backup1 is not None
-        assert backup2 is not None
         assert backup1.name != backup2.name
 
 
@@ -239,10 +232,10 @@ class TestGetExistingBackups:
 class TestBackupErrorHandling:
     """Tests for error handling in backup operations."""
 
-    def test_create_backup_returns_none_on_copy_error(
+    def test_create_backup_raises_on_copy_error(
         self, temp_db: Path, tmp_path: Path
     ) -> None:
-        """create_backup returns None when the copy fails (e.g. read-only dir)."""
+        """create_backup raises BackupError when the copy fails."""
         # Use a non-writable directory to trigger OSError
         read_only_dir = tmp_path / "readonly"
         read_only_dir.mkdir()
@@ -254,9 +247,8 @@ class TestBackupErrorHandling:
         )
 
         try:
-            result = service.create_backup()
-
-            assert result is None
+            with pytest.raises(BackupError, match="Failed to create backup"):
+                service.create_backup()
         finally:
             read_only_dir.chmod(0o755)
 

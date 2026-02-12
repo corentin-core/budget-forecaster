@@ -12,6 +12,7 @@ from budget_forecaster.core.types import Category, LinkType
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.exceptions import PlannedOperationNotFoundError
 from budget_forecaster.infrastructure.persistence.persistent_account import (
     PersistentAccount,
 )
@@ -104,7 +105,6 @@ class TestManageTargetsIntegration:
         # Verify the planned operation is persisted with an ID
         assert result.id is not None
         persisted = repository.get_planned_operation_by_id(result.id)
-        assert persisted is not None
         assert persisted.description == "Loyer"
         assert persisted.amount == -800.0
 
@@ -139,5 +139,6 @@ class TestManageTargetsIntegration:
         use_case.delete_planned_operation(result.id)
 
         # Verify operation and links are gone
-        assert repository.get_planned_operation_by_id(result.id) is None
+        with pytest.raises(PlannedOperationNotFoundError):
+            repository.get_planned_operation_by_id(result.id)
         assert repository.get_link_for_operation(1) is None

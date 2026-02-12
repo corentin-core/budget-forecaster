@@ -93,9 +93,7 @@ class OperationDetailPanel(Vertical):
         if not self._app_service:
             return
 
-        if not (operation := self._app_service.get_operation_by_id(operation_id)):
-            self._clear()
-            return
+        operation = self._app_service.get_operation_by_id(operation_id)
 
         self.query_one("#detail-id", Static).update(str(operation.unique_id))
         self.query_one("#detail-date", Static).update(
@@ -185,10 +183,8 @@ class CategoryEditModal(ModalScreen[bool]):
             # Get suggested category
             suggested = None
             if self._app_service:
-                if operation := self._app_service.get_operation_by_id(
-                    self._operation_id
-                ):
-                    suggested = self._app_service.suggest_category(operation)
+                operation = self._app_service.get_operation_by_id(self._operation_id)
+                suggested = self._app_service.suggest_category(operation)
 
             yield CategorySelect(suggested=suggested)
             yield Button("Annuler", id="btn-cancel", variant="default")

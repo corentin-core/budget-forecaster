@@ -220,13 +220,13 @@ class ManageTargetsUseCase:
         """
         match target_type:
             case LinkType.PLANNED_OPERATION:
-                target: PlannedOperation | Budget | None = (
+                target: PlannedOperation | Budget = (
                     self._forecast_service.get_planned_operation_by_id(target_id)
                 )
             case LinkType.BUDGET:
                 target = self._forecast_service.get_budget_by_id(target_id)
 
-        if target is None or target.id is None:
+        if target.id is None:
             return None
 
         if not isinstance(target.date_range, RecurringDateRange):
@@ -265,12 +265,10 @@ class ManageTargetsUseCase:
             The newly created PlannedOperation.
 
         Raises:
-            ValueError: If the operation doesn't exist or isn't periodic.
+            PlannedOperationNotFoundError: If the operation doesn't exist.
+            ValueError: If the operation isn't periodic.
         """
-        if (
-            original := self._forecast_service.get_planned_operation_by_id(operation_id)
-        ) is None:
-            raise ValueError(f"Planned operation {operation_id} not found")
+        original = self._forecast_service.get_planned_operation_by_id(operation_id)
 
         terminated, continuation = original.split_at(split_date, new_amount, new_period)
 
@@ -320,10 +318,10 @@ class ManageTargetsUseCase:
             The newly created Budget.
 
         Raises:
-            ValueError: If the budget doesn't exist or isn't periodic.
+            BudgetNotFoundError: If the budget doesn't exist.
+            ValueError: If the budget isn't periodic.
         """
-        if (original := self._forecast_service.get_budget_by_id(budget_id)) is None:
-            raise ValueError(f"Budget {budget_id} not found")
+        original = self._forecast_service.get_budget_by_id(budget_id)
 
         terminated, continuation = original.split_at(
             split_date, new_amount, new_period, new_duration
@@ -367,14 +365,11 @@ class ManageTargetsUseCase:
         """
         match target_type:
             case LinkType.PLANNED_OPERATION:
-                old_target: PlannedOperation | Budget | None = (
+                old_target: PlannedOperation | Budget = (
                     self._forecast_service.get_planned_operation_by_id(old_target_id)
                 )
             case LinkType.BUDGET:
                 old_target = self._forecast_service.get_budget_by_id(old_target_id)
-
-        if old_target is None:
-            return
 
         links = self._operation_link_service.load_links_for_target(old_target)
 

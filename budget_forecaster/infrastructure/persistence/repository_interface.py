@@ -28,14 +28,17 @@ class BudgetRepositoryInterface(ABC):
         """
 
     @abstractmethod
-    def get_budget_by_id(self, budget_id: int) -> Budget | None:
+    def get_budget_by_id(self, budget_id: int) -> Budget:
         """Get a budget by its ID.
 
         Args:
             budget_id: The budget ID to look up.
 
         Returns:
-            The Budget if found, None otherwise.
+            The Budget.
+
+        Raises:
+            BudgetNotFoundError: If no budget with the given ID exists.
         """
 
     @abstractmethod
@@ -70,14 +73,17 @@ class PlannedOperationRepositoryInterface(ABC):
         """
 
     @abstractmethod
-    def get_planned_operation_by_id(self, op_id: int) -> PlannedOperation | None:
+    def get_planned_operation_by_id(self, op_id: int) -> PlannedOperation:
         """Get a planned operation by its ID.
 
         Args:
             op_id: The planned operation ID to look up.
 
         Returns:
-            The PlannedOperation if found, None otherwise.
+            The PlannedOperation.
+
+        Raises:
+            PlannedOperationNotFoundError: If no planned operation with the given ID exists.
         """
 
     @abstractmethod
@@ -128,14 +134,17 @@ class AccountRepositoryInterface(ABC):
         """
 
     @abstractmethod
-    def get_account_by_name(self, name: str) -> Account | None:
+    def get_account_by_name(self, name: str) -> Account:
         """Get an account by name.
 
         Args:
             name: The account name to look up.
 
         Returns:
-            The Account if found, None otherwise.
+            The Account.
+
+        Raises:
+            AccountNotFoundError: If no account with the given name exists.
         """
 
     @abstractmethod

@@ -17,6 +17,10 @@ from budget_forecaster.core.types import Category
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.exceptions import (
+    BudgetNotFoundError,
+    PlannedOperationNotFoundError,
+)
 from budget_forecaster.infrastructure.persistence.repository_interface import (
     RepositoryInterface,
 )
@@ -197,7 +201,6 @@ class TestBudgetCrud:
 
         # Verify it was added
         retrieved = service.get_budget_by_id(created_budget.id)
-        assert retrieved is not None
         assert retrieved.description == "Test Budget"
 
     def test_update_budget(self, service: ForecastService) -> None:
@@ -219,7 +222,6 @@ class TestBudgetCrud:
         # Verify the update
         assert created_budget.id is not None
         retrieved = service.get_budget_by_id(created_budget.id)
-        assert retrieved is not None
         assert retrieved.description == "Updated"
 
     def test_update_budget_requires_valid_id(self, service: ForecastService) -> None:
@@ -249,7 +251,8 @@ class TestBudgetCrud:
 
         service.delete_budget(created_budget.id)
 
-        assert service.get_budget_by_id(created_budget.id) is None
+        with pytest.raises(BudgetNotFoundError):
+            service.get_budget_by_id(created_budget.id)
 
     def test_get_all_budgets(self, service: ForecastService) -> None:
         """get_all_budgets returns all budgets."""
@@ -285,7 +288,6 @@ class TestPlannedOperationCrud:
         assert created_op.id > 0
 
         retrieved = service.get_planned_operation_by_id(created_op.id)
-        assert retrieved is not None
         assert retrieved.description == "Test Op"
 
     def test_update_planned_operation(self, service: ForecastService) -> None:
@@ -304,7 +306,6 @@ class TestPlannedOperationCrud:
 
         assert created_op.id is not None
         retrieved = service.get_planned_operation_by_id(created_op.id)
-        assert retrieved is not None
         assert retrieved.description == "Updated"
 
     def test_update_planned_operation_requires_valid_id(
@@ -336,7 +337,8 @@ class TestPlannedOperationCrud:
 
         service.delete_planned_operation(created_op.id)
 
-        assert service.get_planned_operation_by_id(created_op.id) is None
+        with pytest.raises(PlannedOperationNotFoundError):
+            service.get_planned_operation_by_id(created_op.id)
 
     def test_get_all_planned_operations(self, service: ForecastService) -> None:
         """get_all_planned_operations returns all operations."""

@@ -20,6 +20,11 @@ from budget_forecaster.core.types import Category, ImportStats, LinkType
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.exceptions import (
+    BudgetNotFoundError,
+    OperationNotFoundError,
+    PlannedOperationNotFoundError,
+)
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.forecast.forecast_service import ForecastService
 from budget_forecaster.services.import_service import ImportResult, ImportService
@@ -162,17 +167,18 @@ class TestImportFile:
 class TestCategorizeOperations:
     """Tests for categorize_operations method."""
 
-    def test_returns_empty_for_nonexistent_operation(
+    def test_raises_for_nonexistent_operation(
         self,
         app_service: ApplicationService,
         mock_operation_service: MagicMock,
     ) -> None:
-        """categorize_operations returns empty tuple if operation not found."""
-        mock_operation_service.get_operation_by_id.return_value = None
+        """categorize_operations raises OperationNotFoundError if operation not found."""
+        mock_operation_service.get_operation_by_id.side_effect = OperationNotFoundError(
+            999
+        )
 
-        results = app_service.categorize_operations((999,), Category.GROCERIES)
-
-        assert results == ()
+        with pytest.raises(OperationNotFoundError):
+            app_service.categorize_operations((999,), Category.GROCERIES)
 
     def test_delegates_to_operation_service(
         self,
@@ -562,17 +568,18 @@ class TestCategorizeOperationsMultiple:
         assert results[0].operation is updated_op1
         assert results[1].operation is updated_op2
 
-    def test_skips_nonexistent_operations(
+    def test_raises_for_nonexistent_operations(
         self,
         app_service: ApplicationService,
         mock_operation_service: MagicMock,
     ) -> None:
-        """categorize_operations skips operations that don't exist."""
-        mock_operation_service.get_operation_by_id.return_value = None
+        """categorize_operations raises OperationNotFoundError for nonexistent ops."""
+        mock_operation_service.get_operation_by_id.side_effect = OperationNotFoundError(
+            1
+        )
 
-        results = app_service.categorize_operations((1, 2, 3), Category.GROCERIES)
-
-        assert len(results) == 0
+        with pytest.raises(OperationNotFoundError):
+            app_service.categorize_operations((1, 2, 3), Category.GROCERIES)
 
     def test_batch_creates_links_for_changed_operations(
         self,
@@ -718,9 +725,11 @@ class TestSplitOperations:
         mock_forecast_service: MagicMock,
     ) -> None:
         """split_planned_operation_at_date raises error if operation not found."""
-        mock_forecast_service.get_planned_operation_by_id.return_value = None
+        mock_forecast_service.get_planned_operation_by_id.side_effect = (
+            PlannedOperationNotFoundError(1)
+        )
 
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(PlannedOperationNotFoundError):
             app_service.split_planned_operation_at_date(
                 operation_id=1,
                 split_date=date(2025, 3, 1),
@@ -894,9 +903,9 @@ class TestSplitOperations:
         mock_forecast_service: MagicMock,
     ) -> None:
         """split_budget_at_date raises error if budget not found."""
-        mock_forecast_service.get_budget_by_id.return_value = None
+        mock_forecast_service.get_budget_by_id.side_effect = BudgetNotFoundError(1)
 
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(BudgetNotFoundError):
             app_service.split_budget_at_date(
                 budget_id=1,
                 split_date=date(2025, 3, 1),
@@ -1055,15 +1064,16 @@ class TestSplitOperations:
         app_service: ApplicationService,
         mock_forecast_service: MagicMock,
     ) -> None:
-        """get_next_non_actualized_iteration returns None if target not found."""
-        mock_forecast_service.get_planned_operation_by_id.return_value = None
-
-        result = app_service.get_next_non_actualized_iteration(
-            target_type=LinkType.PLANNED_OPERATION,
-            target_id=1,
+        """get_next_non_actualized_iteration raises if target not found."""
+        mock_forecast_service.get_planned_operation_by_id.side_effect = (
+            PlannedOperationNotFoundError(1)
         )
 
-        assert result is None
+        with pytest.raises(PlannedOperationNotFoundError):
+            app_service.get_next_non_actualized_iteration(
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
+            )
 
     def test_get_next_non_actualized_iteration_non_periodic(
         self,

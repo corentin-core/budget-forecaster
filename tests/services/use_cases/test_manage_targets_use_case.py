@@ -19,6 +19,10 @@ from budget_forecaster.core.types import (
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.exceptions import (
+    BudgetNotFoundError,
+    PlannedOperationNotFoundError,
+)
 from budget_forecaster.services.forecast.forecast_service import ForecastService
 from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
@@ -204,10 +208,12 @@ class TestSplitPlannedOperation:
         use_case: ManageTargetsUseCase,
         mock_forecast_service: MagicMock,
     ) -> None:
-        """Splitting a non-existent operation raises ValueError."""
-        mock_forecast_service.get_planned_operation_by_id.return_value = None
+        """Splitting a non-existent operation raises PlannedOperationNotFoundError."""
+        mock_forecast_service.get_planned_operation_by_id.side_effect = (
+            PlannedOperationNotFoundError(999)
+        )
 
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(PlannedOperationNotFoundError):
             use_case.split_planned_operation_at_date(
                 999, date(2025, 6, 1), Amount(100.0)
             )
@@ -247,19 +253,18 @@ class TestSplitPlannedOperation:
 class TestGetNextNonActualizedIteration:
     """Tests for get_next_non_actualized_iteration."""
 
-    def test_not_found_returns_none(
+    def test_not_found_raises(
         self,
         use_case: ManageTargetsUseCase,
         mock_forecast_service: MagicMock,
     ) -> None:
-        """Non-existent target returns None."""
-        mock_forecast_service.get_planned_operation_by_id.return_value = None
-
-        result = use_case.get_next_non_actualized_iteration(
-            LinkType.PLANNED_OPERATION, 999
+        """Non-existent target raises PlannedOperationNotFoundError."""
+        mock_forecast_service.get_planned_operation_by_id.side_effect = (
+            PlannedOperationNotFoundError(999)
         )
 
-        assert result is None
+        with pytest.raises(PlannedOperationNotFoundError):
+            use_case.get_next_non_actualized_iteration(LinkType.PLANNED_OPERATION, 999)
 
     def test_non_periodic_returns_none(
         self,
@@ -354,10 +359,10 @@ class TestSplitBudget:
         use_case: ManageTargetsUseCase,
         mock_forecast_service: MagicMock,
     ) -> None:
-        """Splitting a non-existent budget raises ValueError."""
-        mock_forecast_service.get_budget_by_id.return_value = None
+        """Splitting a non-existent budget raises BudgetNotFoundError."""
+        mock_forecast_service.get_budget_by_id.side_effect = BudgetNotFoundError(999)
 
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(BudgetNotFoundError):
             use_case.split_budget_at_date(999, date(2025, 6, 1))
 
     def test_split_creates_continuation_and_migrates_links(
