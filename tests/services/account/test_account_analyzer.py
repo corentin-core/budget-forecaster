@@ -471,6 +471,55 @@ class TestComputeBudgetStatistics:
         # Apr 1 > Feb 28 → no operations qualify
         assert len(df) == 0
 
+    def test_zero_months_included_in_average(self) -> None:
+        """Months with no operations count as 0 in the monthly average.
+
+        Over a 4-month period (Jan–Apr), if groceries only appear in
+        January (-100€) and March (-100€), the monthly average should be
+        -200/4 = -50€, not -200/2 = -100€.
+        """
+        operations = (
+            HistoricOperation(
+                unique_id=1,
+                description="Jan grocery",
+                amount=Amount(-100.0),
+                category=Category.GROCERIES,
+                operation_date=date(2023, 1, 1),
+            ),
+            HistoricOperation(
+                unique_id=2,
+                description="Mar grocery",
+                amount=Amount(-100.0),
+                category=Category.GROCERIES,
+                operation_date=date(2023, 3, 1),
+            ),
+            # Apr operation anchors the end of the analysis window
+            HistoricOperation(
+                unique_id=3,
+                description="Apr grocery",
+                amount=Amount(-0.01),
+                category=Category.GROCERIES,
+                operation_date=date(2023, 4, 30),
+            ),
+        )
+        test_account = Account(
+            name="Test",
+            balance=5000.0,
+            currency="EUR",
+            balance_date=date(2023, 5, 1),
+            operations=operations,
+        )
+        analyzer = AccountAnalyzer(test_account, Forecast((), ()))
+        df = analyzer.compute_budget_statistics(date(2023, 1, 1), date(2023, 5, 1))
+        # analysis_start = max(Jan 1, Jan 1) = Jan 1 (day 1 → kept)
+        # analysis_end = min(Apr 30, May 1) = Apr 30 (not day 1 → Mar 31)
+        # Range: Jan 1 to Mar 31 → months Jan, Feb, Mar
+        # Groceries: Jan=-100, Feb=0, Mar=-100 → total=-200, avg=-200/3≈-66.67
+        assert df.loc[str(Category.GROCERIES)]["Total"] == pytest.approx(-200.0)
+        assert df.loc[str(Category.GROCERIES)]["Moyenne mensuelle"] == pytest.approx(
+            -200.0 / 3, abs=0.01
+        )
+
 
 class TestComputeReport:
     """Tests for compute_report."""

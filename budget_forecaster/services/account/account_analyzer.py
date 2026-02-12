@@ -305,6 +305,8 @@ class AccountAnalyzer:
             else analysis_end
         )
 
+        all_months = pd.date_range(analysis_start, analysis_end, freq="MS")
+
         for operation in self._account.operations:
             if analysis_start <= operation.operation_date <= analysis_end:
                 expenses_per_category_dict.setdefault(operation.category, []).append(
@@ -321,7 +323,10 @@ class AccountAnalyzer:
                 "Catégorie": list(expenses_per_category),
                 "Total": [df["Montant"].sum() for df in expenses_per_category.values()],
                 "Moyenne mensuelle": [
-                    df.resample("MS")["Montant"].sum().mean()
+                    df.resample("MS")["Montant"]
+                    .sum()
+                    .reindex(all_months, fill_value=0.0)
+                    .mean()
                     for df in expenses_per_category.values()
                 ],
             }
