@@ -114,6 +114,14 @@ class Budget(OperationRange):
 
         return terminated, continuation
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Budget):
+            return NotImplemented
+        return self._id == other._id and super().__eq__(other)
+
+    def __hash__(self) -> int:
+        return hash((self._id, super().__hash__()))
+
     def replace(self, **kwargs: Any) -> "Budget":
         """Return a new instance of the budget with the given parameters replaced."""
         new_id = kwargs.get("record_id", self.id)

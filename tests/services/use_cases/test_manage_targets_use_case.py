@@ -6,9 +6,10 @@ from datetime import date
 from unittest.mock import MagicMock
 
 import pytest
+from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.date_range import SingleDay
+from budget_forecaster.core.date_range import DateRange, RecurringDateRange, SingleDay
 from budget_forecaster.core.types import (
     BudgetId,
     LinkType,
@@ -16,6 +17,7 @@ from budget_forecaster.core.types import (
     PlannedOperationId,
 )
 from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.services.forecast.forecast_service import ForecastService
 from budget_forecaster.services.operation.operation_link_service import (
@@ -275,3 +277,139 @@ class TestGetNextNonActualizedIteration:
         )
 
         assert result is None
+
+    def test_budget_returns_first_non_actualized(
+        self,
+        use_case: ManageTargetsUseCase,
+        mock_forecast_service: MagicMock,
+        mock_operation_link_service: MagicMock,
+    ) -> None:
+        """Returns first non-actualized iteration for a budget."""
+        target = MagicMock(spec=Budget)
+        target.id = 1
+        target.date_range = RecurringDateRange(
+            DateRange(date(2030, 1, 1), relativedelta(months=1)),
+            relativedelta(months=1),
+        )
+        mock_forecast_service.get_budget_by_id.return_value = target
+
+        # January 2030 iteration is linked, February 2030 is not
+        mock_operation_link_service.load_links_for_target.return_value = (
+            OperationLink(
+                operation_unique_id=1,
+                target_type=LinkType.BUDGET,
+                target_id=1,
+                iteration_date=date(2030, 1, 1),
+                is_manual=False,
+            ),
+        )
+
+        result = use_case.get_next_non_actualized_iteration(LinkType.BUDGET, 1)
+
+        assert result == date(2030, 2, 1)
+
+
+class TestUpdateBudget:
+    """Tests for update_budget."""
+
+    def test_requires_id(self, use_case: ManageTargetsUseCase) -> None:
+        """Update requires a valid ID."""
+        budget = MagicMock(spec=Budget)
+        budget.id = None
+
+        with pytest.raises(ValueError, match="valid ID"):
+            use_case.update_budget(budget)
+
+    def test_recalculates_links(
+        self,
+        use_case: ManageTargetsUseCase,
+        mock_forecast_service: MagicMock,
+        mock_operation_link_service: MagicMock,
+        mock_matcher_cache: MagicMock,
+    ) -> None:
+        """Update deletes automatic links and recreates them."""
+        budget = MagicMock(spec=Budget)
+        budget.id = 5
+        updated_budget = MagicMock(spec=Budget)
+        updated_budget.id = 5
+        updated_budget.matcher = MagicMock(spec=OperationMatcher)
+        mock_forecast_service.update_budget.return_value = updated_budget
+        mock_operation_link_service.create_heuristic_links.return_value = []
+
+        result = use_case.update_budget(budget)
+
+        assert result is updated_budget
+        mock_matcher_cache.add_matcher.assert_called_once_with(updated_budget)
+        mock_operation_link_service.delete_automatic_links_for_target.assert_called_once_with(
+            LinkType.BUDGET, 5
+        )
+        mock_operation_link_service.create_heuristic_links.assert_called_once()
+
+
+class TestSplitBudget:
+    """Tests for split_budget_at_date."""
+
+    def test_not_found_raises(
+        self,
+        use_case: ManageTargetsUseCase,
+        mock_forecast_service: MagicMock,
+    ) -> None:
+        """Splitting a non-existent budget raises ValueError."""
+        mock_forecast_service.get_budget_by_id.return_value = None
+
+        with pytest.raises(ValueError, match="not found"):
+            use_case.split_budget_at_date(999, date(2025, 6, 1))
+
+    def test_split_creates_continuation_and_migrates_links(
+        self,
+        use_case: ManageTargetsUseCase,
+        mock_forecast_service: MagicMock,
+        mock_matcher_cache: MagicMock,
+        mock_operation_link_service: MagicMock,
+    ) -> None:
+        """Splitting creates a terminated + continuation pair and migrates links."""
+        original = MagicMock(spec=Budget)
+        original.id = 1
+        terminated = MagicMock(spec=Budget)
+        terminated.id = 1
+        continuation = MagicMock(spec=Budget)
+        original.split_at.return_value = (terminated, continuation)
+
+        new_budget = MagicMock(spec=Budget)
+        new_budget.id = 2
+        mock_forecast_service.get_budget_by_id.return_value = original
+        mock_forecast_service.add_budget.return_value = new_budget
+
+        # Set up links: one before split date, one after
+        mock_operation_link_service.load_links_for_target.return_value = (
+            OperationLink(
+                operation_unique_id=10,
+                target_type=LinkType.BUDGET,
+                target_id=1,
+                iteration_date=date(2025, 3, 1),  # Before split
+                is_manual=False,
+            ),
+            OperationLink(
+                operation_unique_id=20,
+                target_type=LinkType.BUDGET,
+                target_id=1,
+                iteration_date=date(2025, 7, 1),  # After split
+                is_manual=True,
+                notes="User note",
+            ),
+        )
+
+        result = use_case.split_budget_at_date(1, date(2025, 6, 1))
+
+        assert result is new_budget
+        mock_forecast_service.update_budget.assert_called_once_with(terminated)
+        mock_forecast_service.add_budget.assert_called_once_with(continuation)
+        mock_matcher_cache.add_matcher.assert_called_once_with(new_budget)
+
+        # Link for op 20 (after split) should be migrated
+        mock_operation_link_service.delete_link.assert_called_once_with(20)
+        mock_operation_link_service.upsert_link.assert_called_once()
+        migrated_link = mock_operation_link_service.upsert_link.call_args[0][0]
+        assert migrated_link.target_id == 2  # New budget ID
+        assert migrated_link.is_manual is True
+        assert migrated_link.notes == "User note"

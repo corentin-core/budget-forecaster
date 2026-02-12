@@ -10,7 +10,7 @@ class Amount:
     currency: str = "EUR"
 
     def __repr__(self) -> str:
-        return f"{self.value}{self.currency}"
+        return f"{self.value} {self.currency}"
 
     def __add__(self, other: "Amount") -> "Amount":
         """Add two amounts together."""

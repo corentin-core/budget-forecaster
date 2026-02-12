@@ -540,3 +540,211 @@ class TestForecastActualizerWithLinks:
         ]
         assert len(january_budgets) == 1
         assert january_budgets[0].amount == -70.0  # -100 - (-30) = -70
+
+
+class TestForecastActualizerGaps:
+    """Additional tests covering remaining uncovered paths."""
+
+    def test_planned_operation_without_record_id_is_kept(
+        self, account: Account
+    ) -> None:
+        """A planned operation without a record_id is returned unchanged."""
+        forecast = Forecast(
+            operations=(
+                PlannedOperation(
+                    record_id=None,
+                    description="No ID Operation",
+                    amount=Amount(50.0, "EUR"),
+                    category=Category.GROCERIES,
+                    date_range=SingleDay(date(2023, 1, 5)),
+                ),
+            ),
+            budgets=(),
+        )
+        planned_op = forecast.operations[0]
+        actualizer = ForecastActualizer(account)
+        actualized_forecast = actualizer(forecast)
+        assert actualized_forecast.operations == (planned_op,)
+
+    def test_one_time_planned_operation_fully_actualized_is_removed(
+        self, account: Account
+    ) -> None:
+        """A one-time planned operation with all iterations actualized is removed."""
+        forecast = Forecast(
+            operations=(
+                PlannedOperation(
+                    record_id=1,
+                    description="One-time Past",
+                    amount=Amount(50.0, "EUR"),
+                    category=Category.GROCERIES,
+                    date_range=SingleDay(date(2023, 1, 1)),
+                ),
+            ),
+            budgets=(),
+        )
+        links = (
+            OperationLink(
+                operation_unique_id=1,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
+                iteration_date=date(2023, 1, 1),
+                is_manual=False,
+            ),
+        )
+        actualizer = ForecastActualizer(account, operation_links=links)
+        actualized_forecast = actualizer(forecast)
+        # One-time operation fully actualized: no next period, removed
+        assert not actualized_forecast.operations
+
+    def test_budget_link_to_missing_operation_is_ignored(
+        self, account: Account
+    ) -> None:
+        """Budget link pointing to a non-existent operation is ignored."""
+        budget = Budget(
+            record_id=1,
+            description="Groceries Budget",
+            amount=Amount(-100.0, "EUR"),
+            category=Category.GROCERIES,
+            date_range=DateRange(date(2023, 1, 1), relativedelta(months=1)),
+        )
+        # Link references an operation ID that doesn't exist in the account
+        links = (
+            OperationLink(
+                operation_unique_id=999,
+                target_type=LinkType.BUDGET,
+                target_id=1,
+                iteration_date=date(2023, 1, 1),
+                is_manual=False,
+            ),
+        )
+        forecast = Forecast(operations=(), budgets=(budget,))
+        actualizer = ForecastActualizer(account, operation_links=links)
+        actualized_forecast = actualizer(forecast)
+        # Budget amount is unchanged (link was ignored)
+        assert len(actualized_forecast.budgets) == 1
+        assert actualized_forecast.budgets[0].amount == budget.amount
+
+    def test_budget_link_with_sign_mismatch_is_ignored(self, account: Account) -> None:
+        """Budget link where operation sign mismatches budget sign is ignored."""
+        # Account has a positive operation
+        account_with_positive_op = account._replace(
+            operations=(
+                HistoricOperation(
+                    unique_id=1,
+                    description="Positive Op",
+                    amount=Amount(50.0, "EUR"),
+                    category=Category.GROCERIES,
+                    operation_date=date(2023, 1, 1),
+                ),
+            )
+        )
+        budget = Budget(
+            record_id=1,
+            description="Expense Budget",
+            amount=Amount(-100.0, "EUR"),
+            category=Category.GROCERIES,
+            date_range=DateRange(date(2023, 1, 1), relativedelta(months=1)),
+        )
+        # Link positive operation to negative budget
+        links = (
+            OperationLink(
+                operation_unique_id=1,
+                target_type=LinkType.BUDGET,
+                target_id=1,
+                iteration_date=date(2023, 1, 1),
+                is_manual=False,
+            ),
+        )
+        forecast = Forecast(operations=(), budgets=(budget,))
+        actualizer = ForecastActualizer(account_with_positive_op, operation_links=links)
+        actualized_forecast = actualizer(forecast)
+        # Budget amount is unchanged (sign mismatch, link was ignored)
+        assert len(actualized_forecast.budgets) == 1
+        assert actualized_forecast.budgets[0].amount == budget.amount
+
+    def test_budget_fully_consumed_is_removed(self, account: Account) -> None:
+        """A budget fully consumed by linked operations is removed."""
+        account_with_ops = account._replace(
+            operations=(
+                HistoricOperation(
+                    unique_id=1,
+                    description="Full Expense",
+                    amount=Amount(-100.0, "EUR"),
+                    category=Category.GROCERIES,
+                    operation_date=date(2023, 1, 1),
+                ),
+            )
+        )
+        budget = Budget(
+            record_id=1,
+            description="Groceries Budget",
+            amount=Amount(-100.0, "EUR"),
+            category=Category.GROCERIES,
+            date_range=DateRange(date(2023, 1, 1), relativedelta(months=1)),
+        )
+        links = (
+            OperationLink(
+                operation_unique_id=1,
+                target_type=LinkType.BUDGET,
+                target_id=1,
+                iteration_date=date(2023, 1, 1),
+                is_manual=False,
+            ),
+        )
+        forecast = Forecast(operations=(), budgets=(budget,))
+        actualizer = ForecastActualizer(account_with_ops, operation_links=links)
+        actualized_forecast = actualizer(forecast)
+        # Budget fully consumed: removed
+        assert not actualized_forecast.budgets
+
+    def test_budget_ending_at_balance_date_is_removed_after_actualization(
+        self, account: Account
+    ) -> None:
+        """Budget whose last_date equals balance_date is removed after actualization.
+
+        After actualization, new_budget_start = balance_date + 1 day which is
+        past the budget's last_date, so the budget is discarded.
+        """
+        budget = Budget(
+            record_id=1,
+            description="Ending Budget",
+            amount=Amount(-50.0, "EUR"),
+            category=Category.GROCERIES,
+            # Budget from Jan 1 for 1 day: last_date = Jan 1 = balance_date
+            date_range=DateRange(date(2023, 1, 1), relativedelta(days=1)),
+        )
+        forecast = Forecast(operations=(), budgets=(budget,))
+        actualizer = ForecastActualizer(account)
+        actualized_forecast = actualizer(forecast)
+        # new_budget_start (Jan 2) > last_date (Jan 1): removed
+        assert not actualized_forecast.budgets
+
+    def test_future_iteration_with_link_to_unknown_operation_not_actualized(
+        self, account: Account
+    ) -> None:
+        """A future iteration linked to a non-existent operation is not actualized."""
+        planned_op = PlannedOperation(
+            record_id=1,
+            description="Monthly Op",
+            amount=Amount(50.0, "EUR"),
+            category=Category.GROCERIES,
+            date_range=RecurringDay(date(2022, 12, 1), relativedelta(months=1)),
+        )
+        # Link references a non-existent operation for a future iteration
+        links = (
+            OperationLink(
+                operation_unique_id=999,  # Not in account
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
+                iteration_date=date(2023, 1, 5),  # Future
+                is_manual=True,
+            ),
+        )
+        forecast = Forecast(operations=(planned_op,), budgets=())
+        actualizer = ForecastActualizer(account, operation_links=links)
+        actualized_forecast = actualizer(forecast)
+        # The future link is not actualized (op 999 doesn't exist in account)
+        # Monthly op advances to Feb 1 (next period after balance_date)
+        assert len(actualized_forecast.operations) == 1
+        op = actualized_forecast.operations[0]
+        assert op.date_range.start_date == date(2023, 2, 1)

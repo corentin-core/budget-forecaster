@@ -171,6 +171,19 @@ class OperationRange(OperationRangeInterface):
             date_range=new_date_range,
         )
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, OperationRange):
+            return NotImplemented
+        return (
+            self._description == other._description
+            and self._amount == other._amount
+            and self._category == other._category
+            and self._date_range == other._date_range
+        )
+
+    def __hash__(self) -> int:
+        return hash((self._description, self._amount, self._category, self._date_range))
+
     def __repr__(self) -> str:
         return (
             f"{self.date_range} - {self.category} - {self.description} "
