@@ -18,6 +18,7 @@ from budget_forecaster.core.types import (
     OperationId,
     TargetName,
 )
+from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.operation_link import OperationLink
@@ -184,6 +185,21 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
 
         repository = SqliteRepository(self._config.database_path)
         repository.initialize()
+
+        # Bootstrap empty database with account from config
+        if repository.get_aggregated_account_name() is None:
+            logger.info("Empty database detected, creating initial account")
+            repository.set_aggregated_account_name(self._config.account.name)
+            repository.upsert_account(
+                Account(
+                    name=self._config.account.name,
+                    balance=0.0,
+                    currency=self._config.account.currency,
+                    balance_date=date.today(),
+                    operations=(),
+                )
+            )
+
         self._persistent_account = PersistentAccount(repository)
 
         # Create individual services

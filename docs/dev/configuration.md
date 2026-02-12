@@ -3,6 +3,17 @@
 The application uses YAML configuration. A default configuration file is created on
 first run at `~/.config/budget-forecaster/config.yaml`.
 
+## Default Paths
+
+| Resource      | Default path                                             |
+| ------------- | -------------------------------------------------------- |
+| Configuration | `~/.config/budget-forecaster/config.yaml`                |
+| Database      | `~/.local/share/budget-forecaster/budget.db`             |
+| Log file      | `~/.local/share/budget-forecaster/budget-forecaster.log` |
+| Backups       | `~/.local/share/budget-forecaster/backups/`              |
+
+All paths can be customized in the configuration file (see below).
+
 ## Configuration Structure
 
 ```yaml
@@ -65,4 +76,7 @@ set the path explicitly.
 
 The `logging` section accepts Python's
 [dictConfig format](https://docs.python.org/3/library/logging.config.html#logging-config-dictschema).
-If omitted or invalid, the application falls back to basic `INFO`-level console logging.
+When no logging configuration is provided, the application logs to
+`~/.local/share/budget-forecaster/budget-forecaster.log` at `INFO` level. If the
+provided configuration is invalid, the application falls back to basic `DEBUG`-level
+console logging.
