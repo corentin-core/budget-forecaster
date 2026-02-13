@@ -3,6 +3,8 @@ import enum
 from datetime import date
 from typing import Callable, NamedTuple
 
+from budget_forecaster.i18n import _
+
 OperationId = int
 """Unique identifier for a historic operation."""
 
@@ -69,65 +71,74 @@ class ImportStats(NamedTuple):
 
 
 class Category(enum.StrEnum):
-    """A category is a group of transactions."""
+    """A category is a group of transactions.
+
+    The enum *value* is a language-neutral key used for persistence.
+    Use :attr:`display_name` for the user-facing translated label.
+    """
 
     # Uncategorized (default for imports)
-    UNCATEGORIZED = "Non catégorisé"
+    UNCATEGORIZED = "uncategorized"
 
     # Income
-    SALARY = "Salaire"
-    TAX_CREDIT = "Crédit d'impot"
-    BENEFITS = "Allocations"
+    SALARY = "salary"
+    TAX_CREDIT = "tax_credit"
+    BENEFITS = "benefits"
 
     # Housing
-    HOUSE_LOAN = "Prêt maison"
-    WORKS_LOAN = "Prêt travaux"
-    RENT = "Loyer"
-    LOAN_INSURANCE = "Assurance prêt"
-    HOUSE_WORKS = "Travaux"
-    FURNITURE = "Mobilier, electromenager, deco."
+    HOUSE_LOAN = "house_loan"
+    WORKS_LOAN = "works_loan"
+    RENT = "rent"
+    LOAN_INSURANCE = "loan_insurance"
+    HOUSE_WORKS = "house_works"
+    FURNITURE = "furniture"
 
     # Investments
-    SAVINGS = "Epargne"
+    SAVINGS = "savings"
 
     # Insurance
-    CAR_INSURANCE = "Assurance auto"
-    HOUSE_INSURANCE = "Assurance habitation"
-    OTHER_INSURANCE = "Autre assurance"
+    CAR_INSURANCE = "car_insurance"
+    HOUSE_INSURANCE = "house_insurance"
+    OTHER_INSURANCE = "other_insurance"
 
     # Children
-    CHILDCARE = "Enfants"
-    CHILD_SUPPORT = "Pension alimentaire"
+    CHILDCARE = "childcare"
+    CHILD_SUPPORT = "child_support"
 
     # Leisure
-    ENTERTAINMENT = "Divertissement"
-    LEISURE = "Loisirs"
-    HOLIDAYS = "Voyages, vacances"
+    ENTERTAINMENT = "entertainment"
+    LEISURE = "leisure"
+    HOLIDAYS = "holidays"
 
     # Utilities
-    ELECTRICITY = "Electricité"
-    WATER = "Eau"
-    INTERNET = "Internet"
-    PHONE = "Téléphone"
+    ELECTRICITY = "electricity"
+    WATER = "water"
+    INTERNET = "internet"
+    PHONE = "phone"
 
     # Daily life
-    GROCERIES = "Courses"
-    CLOTHING = "Habillement"
-    HEALTH_CARE = "Santé"
-    CARE = "Coiffeur, cosmétique, soins"
-    PUBLIC_TRANSPORT = "Transports publics"
-    CAR_FUEL = "Carburant"
-    PARKING = "Stationnement"
-    TOLL = "Péage"
-    CAR_MAINTENANCE = "Entretien automobile"
-    CAR_LOAN = "Crédit auto"
-    GIFTS = "Cadeaux"
+    GROCERIES = "groceries"
+    CLOTHING = "clothing"
+    HEALTH_CARE = "health_care"
+    CARE = "care"
+    PUBLIC_TRANSPORT = "public_transport"
+    CAR_FUEL = "car_fuel"
+    PARKING = "parking"
+    TOLL = "toll"
+    CAR_MAINTENANCE = "car_maintenance"
+    CAR_LOAN = "car_loan"
+    GIFTS = "gifts"
 
     # Professional
-    PROFESSIONAL_EXPENSES = "Frais professionnels"
+    PROFESSIONAL_EXPENSES = "professional_expenses"
 
     # Other
-    OTHER = "Autre"
-    CHARITY = "Dons"
-    BANK_FEES = "Commissions bancaires"
-    TAXES = "Impôts, taxes"
+    OTHER = "other"
+    CHARITY = "charity"
+    BANK_FEES = "bank_fees"
+    TAXES = "taxes"
+
+    @property
+    def display_name(self) -> str:
+        """Return the translated display name for this category."""
+        return _(self.value)

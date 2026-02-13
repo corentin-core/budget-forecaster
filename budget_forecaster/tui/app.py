@@ -27,6 +27,7 @@ from budget_forecaster.exceptions import (
     BackupError,
     BudgetForecasterError,
 )
+from budget_forecaster.i18n import _, setup_i18n
 from budget_forecaster.infrastructure.backup import BackupService
 from budget_forecaster.infrastructure.config import Config
 from budget_forecaster.infrastructure.persistence.persistent_account import (
@@ -141,10 +142,10 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
     """
 
     BINDINGS = [
-        Binding("r", "refresh_data", "Rafraîchir", show=True),
-        Binding("c", "categorize", "Catégoriser", show=True),
-        Binding("l", "link_operation", "Lier", show=True),
-        Binding("q", "quit", "Quitter", show=True),
+        Binding("r", "refresh_data", _("Refresh"), show=True),
+        Binding("c", "categorize", _("Categorize"), show=True),
+        Binding("l", "link_operation", _("Link"), show=True),
+        Binding("q", "quit", _("Quit"), show=True),
     ]
 
     def __init__(
@@ -170,6 +171,9 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         """Load configuration and account."""
         self._config = Config()
         self._config.parse(self._config_path)
+
+        # Setup i18n before any translated strings are accessed
+        setup_i18n(self._config.language)
 
         # Setup logging from config
         self._config.setup_logging()
@@ -242,22 +246,22 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         """Create the UI layout."""
         yield Header()
         with TabbedContent(initial="dashboard"):
-            with TabPane("Dashboard", id="dashboard"):
+            with TabPane(_("Dashboard"), id="dashboard"):
                 # Simple stats display
                 with Horizontal(id="stats-row"):
-                    yield Static("Solde: -", id="stat-balance")
-                    yield Static("Opérations ce mois: -", id="stat-month-ops")
-                    yield Static("Non catégorisées: -", id="stat-uncategorized")
+                    yield Static(_("Balance: -"), id="stat-balance")
+                    yield Static(_("Operations this month: -"), id="stat-month-ops")
+                    yield Static(_("Uncategorized: -"), id="stat-uncategorized")
                 yield OperationTable(id="dashboard-table")
-            with TabPane("Opérations", id="operations"):
+            with TabPane(_("Operations"), id="operations"):
                 yield OperationTable(id="operations-table")
-            with TabPane("Import", id="import"):
+            with TabPane(_("Import"), id="import"):
                 yield ImportWidget(id="import-widget")
-            with TabPane("Prévisions", id="forecast"):
+            with TabPane(_("Forecasts"), id="forecast"):
                 yield ForecastWidget(id="forecast-widget")
-            with TabPane("Budgets", id="budgets"):
+            with TabPane(_("Budgets"), id="budgets"):
                 yield BudgetsWidget(id="budgets-widget")
-            with TabPane("Op. planifiées", id="planned-ops"):
+            with TabPane(_("Planned ops"), id="planned-ops"):
                 yield PlannedOperationsWidget(id="planned-ops-widget")
         yield Footer()
 
@@ -268,7 +272,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             # Use call_after_refresh to ensure screens are mounted
             self.call_after_refresh(self._refresh_screens)
         except AccountNotLoadedError as e:
-            self.notify(f"Erreur: {e}", severity="error")
+            self.notify(_("Error: {}").format(e), severity="error")
             self.exit()
 
     def _refresh_screens(self) -> None:  # pylint: disable=too-many-locals
@@ -292,7 +296,9 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         # Update dashboard stats
         balance = self.app_service.balance
         stat_balance = self.query_one("#stat-balance", Static)
-        stat_balance.update(f"Solde: {balance:,.2f} {self.app_service.currency}")
+        stat_balance.update(
+            _("Balance: {} {}").format(f"{balance:,.2f}", self.app_service.currency)
+        )
         stat_balance.remove_class("stat-positive", "stat-negative")
         stat_balance.add_class("stat-negative" if balance < 0 else "stat-positive")
 
@@ -304,13 +310,13 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         recent_filter = OperationFilter(date_from=date(year, month, 1))
         recent_ops = self.app_service.get_operations(recent_filter)
         self.query_one("#stat-month-ops", Static).update(
-            f"3 derniers mois: {len(recent_ops)} opérations"
+            _("Last 3 months: {} operations").format(len(recent_ops))
         )
 
         # Uncategorized count
         uncategorized = self.app_service.get_uncategorized_operations()
         stat_uncat = self.query_one("#stat-uncategorized", Static)
-        stat_uncat.update(f"Non catégorisées: {len(uncategorized)}")
+        stat_uncat.update(_("Uncategorized: {}").format(len(uncategorized)))
         stat_uncat.remove_class("stat-positive", "stat-negative")
         stat_uncat.add_class("stat-negative" if uncategorized else "stat-positive")
 
@@ -349,7 +355,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         """Save changes to the database."""
         if self._persistent_account:
             self._persistent_account.save()
-            self.notify("Modifications enregistrées")
+            self.notify(_("Changes saved"))
 
     def on_data_refresh_requested(self, event: DataRefreshRequested) -> None:
         """Handle data refresh request from child components."""
@@ -432,7 +438,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
                 )
                 return
 
-        self.notify("Aucune opération sélectionnée", severity="warning")
+        self.notify(_("No operation selected"), severity="warning")
 
     def _on_category_selected(self, category: Category | None) -> None:
         """Handle category selection from modal."""
@@ -444,7 +450,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         )
 
         if not results:
-            self.notify("Aucune opération trouvée", severity="error")
+            self.notify(_("No operation found"), severity="error")
             return
 
         self.save_changes()
@@ -464,13 +470,15 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         # Build notification message
         links_created = sum(1 for r in results if r.new_link is not None)
         if len(results) == 1:
-            message = f"Catégorie '{category.value}' assignée"
+            message = _("Category '{}' assigned").format(category.display_name)
             if links_created:
-                message += " (lien créé)"
+                message += _(" (link created)")
         else:
-            message = f"{len(results)} opérations catégorisées '{category.value}'"
+            message = _("{} operations categorized as '{}'").format(
+                len(results), category.display_name
+            )
             if links_created:
-                message += f" ({links_created} lien(s) créé(s))"
+                message += _(" ({} link(s) created)").format(links_created)
         self.notify(message)
 
         # Reset state
@@ -522,7 +530,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
                 )
                 return
 
-        self.notify("Aucune opération sélectionnée", severity="warning")
+        self.notify(_("No operation selected"), severity="warning")
 
     def _on_target_selected(
         self, result: PlannedOperation | Budget | str | None
@@ -539,9 +547,9 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
                     self.app_service.delete_link(op.unique_id)
                     count += 1
             if count > 0:
-                self.notify(f"{count} liaison(s) supprimée(s)")
+                self.notify(_("{} link(s) removed").format(count))
             else:
-                self.notify("Aucune liaison à supprimer", severity="warning")
+                self.notify(_("No links to remove"), severity="warning")
             self._refresh_screens()
             self._linking_operations = ()
             return
@@ -563,7 +571,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             return
 
         if target.id is None:
-            self.notify("Cible invalide", severity="error")
+            self.notify(_("Invalid target"), severity="error")
             return
 
         # Create manual links for all selected operations
@@ -573,9 +581,11 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             count += 1
 
         if count == 1:
-            self.notify(f"Opération liée à '{target.description}'")
+            self.notify(_("Operation linked to '{}'").format(target.description))
         else:
-            self.notify(f"{count} opérations liées à '{target.description}'")
+            self.notify(
+                _("{} operations linked to '{}'").format(count, target.description)
+            )
 
         self._refresh_screens()
         self._linking_operations = ()
@@ -595,18 +605,18 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         """Handle budget delete request."""
         event.stop()
         if event.budget.id is None:
-            self.notify("Cannot delete unsaved budget", severity="error")
+            self.notify(_("Cannot delete unsaved budget"), severity="error")
             return
         try:
             self.app_service.delete_budget(event.budget.id)
-            self.notify(f"Budget '{event.budget.description}' supprimé")
+            self.notify(_("Budget '{}' deleted").format(event.budget.description))
             self._refresh_budgets()
         except BudgetForecasterError as e:
             logger.error("Error deleting budget: %s", e)
-            self.notify(f"Erreur: {e}", severity="error")
+            self.notify(_("Error: {}").format(e), severity="error")
         except Exception:  # pylint: disable=broad-exception-caught
             logger.exception("Unexpected error deleting budget")
-            self.notify("Une erreur inattendue est survenue", severity="error")
+            self.notify(_("An unexpected error occurred"), severity="error")
 
     def _on_budget_edited(self, budget: Budget | None) -> None:
         """Handle budget edit completion."""
@@ -617,18 +627,18 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             if budget.id is None:
                 # New budget
                 self.app_service.add_budget(budget)
-                self.notify(f"Budget '{budget.description}' créé")
+                self.notify(_("Budget '{}' created").format(budget.description))
             else:
                 # Update existing
                 self.app_service.update_budget(budget)
-                self.notify(f"Budget '{budget.description}' modifié")
+                self.notify(_("Budget '{}' modified").format(budget.description))
             self._refresh_budgets()
         except BudgetForecasterError as e:
             logger.error("Error saving budget: %s", e)
-            self.notify(f"Erreur: {e}", severity="error")
+            self.notify(_("Error: {}").format(e), severity="error")
         except Exception:  # pylint: disable=broad-exception-caught
             logger.exception("Unexpected error saving budget")
-            self.notify("Une erreur inattendue est survenue", severity="error")
+            self.notify(_("An unexpected error occurred"), severity="error")
 
     def _refresh_budgets(self) -> None:
         """Refresh budgets and forecast widgets."""
@@ -655,18 +665,18 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         """Handle planned operation delete request."""
         event.stop()
         if event.operation.id is None:
-            self.notify("Cannot delete unsaved operation", severity="error")
+            self.notify(_("Cannot delete unsaved operation"), severity="error")
             return
         try:
             self.app_service.delete_planned_operation(event.operation.id)
-            self.notify(f"Opération '{event.operation.description}' supprimée")
+            self.notify(_("Operation '{}' deleted").format(event.operation.description))
             self._refresh_planned_operations()
         except BudgetForecasterError as e:
             logger.error("Error deleting planned operation: %s", e)
-            self.notify(f"Erreur: {e}", severity="error")
+            self.notify(_("Error: {}").format(e), severity="error")
         except Exception:  # pylint: disable=broad-exception-caught
             logger.exception("Unexpected error deleting planned operation")
-            self.notify("Une erreur inattendue est survenue", severity="error")
+            self.notify(_("An unexpected error occurred"), severity="error")
 
     def on_planned_operations_widget_operation_split_requested(
         self, event: PlannedOperationsWidget.OperationSplitRequested
@@ -674,7 +684,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         """Handle planned operation split request."""
         event.stop()
         if event.operation.id is None:
-            self.notify("Cannot split unsaved operation", severity="error")
+            self.notify(_("Cannot split unsaved operation"), severity="error")
             return
 
         # Get default date (next non-actualized iteration)
@@ -702,16 +712,17 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
                 new_period=result.new_period,
             )
             self.notify(
-                f"Opération '{operation.description}' scindée "
-                f"(nouvelle: #{new_op.id})"
+                _("Operation '{}' split (new: #{})").format(
+                    operation.description, new_op.id
+                )
             )
             self._refresh_planned_operations()
         except (ValueError, BudgetForecasterError) as e:
             logger.error("Error splitting planned operation: %s", e)
-            self.notify(f"Erreur: {e}", severity="error")
+            self.notify(_("Error: {}").format(e), severity="error")
         except Exception:  # pylint: disable=broad-exception-caught
             logger.exception("Unexpected error splitting planned operation")
-            self.notify("Une erreur inattendue est survenue", severity="error")
+            self.notify(_("An unexpected error occurred"), severity="error")
 
     def on_budgets_widget_budget_split_requested(
         self, event: BudgetsWidget.BudgetSplitRequested
@@ -719,7 +730,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         """Handle budget split request."""
         event.stop()
         if event.budget.id is None:
-            self.notify("Cannot split unsaved budget", severity="error")
+            self.notify(_("Cannot split unsaved budget"), severity="error")
             return
 
         # Get default date (next non-actualized iteration)
@@ -746,15 +757,17 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
                 new_duration=result.new_duration,
             )
             self.notify(
-                f"Budget '{budget.description}' scindé " f"(nouveau: #{new_budget.id})"
+                _("Budget '{}' split (new: #{})").format(
+                    budget.description, new_budget.id
+                )
             )
             self._refresh_budgets()
         except (ValueError, BudgetForecasterError) as e:
             logger.error("Error splitting budget: %s", e)
-            self.notify(f"Erreur: {e}", severity="error")
+            self.notify(_("Error: {}").format(e), severity="error")
         except Exception:  # pylint: disable=broad-exception-caught
             logger.exception("Unexpected error splitting budget")
-            self.notify("Une erreur inattendue est survenue", severity="error")
+            self.notify(_("An unexpected error occurred"), severity="error")
 
     def _on_planned_operation_edited(self, operation: PlannedOperation | None) -> None:
         """Handle planned operation edit completion."""
@@ -765,18 +778,18 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             if operation.id is None:
                 # New operation
                 self.app_service.add_planned_operation(operation)
-                self.notify(f"Opération '{operation.description}' créée")
+                self.notify(_("Operation '{}' created").format(operation.description))
             else:
                 # Update existing
                 self.app_service.update_planned_operation(operation)
-                self.notify(f"Opération '{operation.description}' modifiée")
+                self.notify(_("Operation '{}' modified").format(operation.description))
             self._refresh_planned_operations()
         except BudgetForecasterError as e:
             logger.error("Error saving planned operation: %s", e)
-            self.notify(f"Erreur: {e}", severity="error")
+            self.notify(_("Error: {}").format(e), severity="error")
         except Exception:  # pylint: disable=broad-exception-caught
             logger.exception("Unexpected error saving planned operation")
-            self.notify("Une erreur inattendue est survenue", severity="error")
+            self.notify(_("An unexpected error occurred"), severity="error")
 
     def _refresh_planned_operations(self) -> None:
         """Refresh planned operations and forecast widgets."""

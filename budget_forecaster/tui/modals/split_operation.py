@@ -13,6 +13,7 @@ from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.date_range import RecurringDateRange
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.i18n import _
 
 
 class SplitResult(NamedTuple):
@@ -117,7 +118,7 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
     }
     """
 
-    BINDINGS = [("escape", "cancel", "Annuler")]
+    BINDINGS = [("escape", "cancel", _("Cancel"))]
 
     def __init__(
         self,
@@ -139,21 +140,23 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
     def compose(self) -> ComposeResult:
         """Create the modal layout."""
         with Vertical(id="modal-container"):
-            yield Static("Scinder à partir d'une date", id="modal-title")
+            yield Static(_("Split from a date"), id="modal-title")
 
             # Current info box
             with Vertical(id="current-info"):
                 yield Static(self._target.description, id="info-description")
                 yield Static(self._format_current_state(), id="info-state")
                 yield Static(
-                    f"Depuis: {self._target.date_range.start_date.strftime('%d/%m/%Y')}",
+                    _("Since: {}").format(
+                        self._target.date_range.start_date.strftime("%d/%m/%Y")
+                    ),
                     id="info-since",
                 )
 
             with VerticalScroll(id="form-scroll"):
                 # Split date
                 with Horizontal(classes="form-row"):
-                    yield Label("Première itération:", classes="form-label")
+                    yield Label(_("First iteration:"), classes="form-label")
                     default_date = self._default_date or date.today()
                     yield Input(
                         value=default_date.strftime("%Y-%m-%d"),
@@ -162,7 +165,7 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
                         classes="form-input",
                     )
                 yield Static(
-                    "ⓘ Prochaine itération non ajustée",
+                    _("ⓘ Next unadjusted iteration"),
                     classes="info-hint",
                 )
 
@@ -170,7 +173,7 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
 
                 # New amount
                 with Horizontal(classes="form-row"):
-                    yield Label("Montant:", classes="form-label")
+                    yield Label(_("Amount:"), classes="form-label")
                     yield Input(
                         value=str(self._target.amount),
                         id="input-amount",
@@ -179,13 +182,13 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
 
                 # New period
                 with Horizontal(classes="form-row"):
-                    yield Label("Période:", classes="form-label")
+                    yield Label(_("Period:"), classes="form-label")
                     period_options = [
-                        ("Mensuel", "1"),
-                        ("Bimestriel", "2"),
-                        ("Trimestriel", "3"),
-                        ("Semestriel", "6"),
-                        ("Annuel", "12"),
+                        (_("Monthly"), "1"),
+                        (_("Bimonthly"), "2"),
+                        (_("Quarterly"), "3"),
+                        (_("Semi-annual"), "6"),
+                        (_("Annual"), "12"),
                     ]
                     current_period = self._get_period_months()
                     yield Select(
@@ -198,7 +201,7 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
                 # Duration (only for budgets)
                 hidden_class = "" if self._is_budget else "hidden"
                 with Horizontal(classes=f"form-row {hidden_class}"):
-                    yield Label("Durée (mois):", classes="form-label")
+                    yield Label(_("Duration (months):"), classes="form-label")
                     duration = self._get_duration_months() if self._is_budget else 1
                     yield Input(
                         value=str(duration),
@@ -210,8 +213,8 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
 
             # Buttons
             with Horizontal(id="buttons-row"):
-                yield Button("Annuler", id="btn-cancel", variant="default")
-                yield Button("Appliquer", id="btn-apply", variant="primary")
+                yield Button(_("Cancel"), id="btn-cancel", variant="default")
+                yield Button(_("Apply"), id="btn-apply", variant="primary")
 
     def _format_current_state(self) -> str:
         """Format the current state for display."""
@@ -220,20 +223,20 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
 
         if self._is_budget:
             duration = self._get_duration_months()
-            return f"Actuellement: {amount} / {duration} mois, {period}"
-        return f"Actuellement: {amount} {period}"
+            return _("Currently: {} / {} months, {}").format(amount, duration, period)
+        return _("Currently: {} {}").format(amount, period)
 
     def _format_period(self) -> str:
         """Format the period for display."""
         months = self._get_period_months()
         period_names = {
-            1: "mensuel",
-            2: "bimestriel",
-            3: "trimestriel",
-            6: "semestriel",
-            12: "annuel",
+            1: _("monthly"),
+            2: _("bimonthly"),
+            3: _("quarterly"),
+            6: _("semi-annual"),
+            12: _("annual"),
         }
-        return period_names.get(months, f"tous les {months} mois")
+        return period_names.get(months, _("every {} months").format(months))
 
     def _get_period_months(self) -> int:
         """Get the period in months from the current target."""
@@ -275,23 +278,23 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
             try:
                 split_date = datetime.strptime(date_str, "%Y-%m-%d").date()
             except ValueError as exc:
-                raise ValueError("La date doit être au format YYYY-MM-DD") from exc
+                raise ValueError(_("Date must be in YYYY-MM-DD format")) from exc
 
             # Validate split date is after initial date
             if split_date <= self._target.date_range.start_date:
-                raise ValueError("La date doit être après la première itération")
+                raise ValueError(_("Date must be after first iteration"))
 
             # Validate amount
             amount_str = self.query_one("#input-amount", Input).value.strip()
             try:
                 amount_val = float(amount_str)
             except ValueError as exc:
-                raise ValueError("Le montant doit être un nombre") from exc
+                raise ValueError(_("Amount must be a number")) from exc
 
             # Get period
             period_select = self.query_one("#select-period", Select)
             if period_select.value == Select.BLANK:
-                raise ValueError("La période est requise")
+                raise ValueError(_("Period is required"))
             period_months = int(str(period_select.value))
             new_period = relativedelta(months=period_months)
 
@@ -304,9 +307,7 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
                         raise ValueError("must be positive")
                     new_duration = relativedelta(months=duration_months)
                 except ValueError as exc:
-                    raise ValueError(
-                        "La durée doit être un nombre entier positif"
-                    ) from exc
+                    raise ValueError(_("Duration must be a positive integer")) from exc
 
             result = SplitResult(
                 split_date=split_date,

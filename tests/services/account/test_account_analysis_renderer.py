@@ -24,9 +24,9 @@ def sample_report() -> AccountAnalysisReport:
     # Operations DataFrame: indexed by date, with Category, Description, Amount
     operations = pd.DataFrame(
         {
-            "Catégorie": ["Courses", "Salaire", "Loisirs"],
+            "Category": ["groceries", "salary", "entertainment"],
             "Description": ["CARREFOUR", "VIREMENT SALAIRE", "CINEMA"],
-            "Montant": [-85.20, 2500.00, -15.00],
+            "Amount": [-85.20, 2500.00, -15.00],
         },
         index=pd.Index(
             [date(2025, 1, 10), date(2025, 1, 11), date(2025, 1, 12)],
@@ -37,35 +37,38 @@ def sample_report() -> AccountAnalysisReport:
     # Forecast DataFrame: indexed by description, columns for forecast data
     forecast = pd.DataFrame(
         {
-            "Description": ["Loyer", "Salaire"],
-            "Montant": [-800.0, 2500.0],
-            "Date début": [date(2025, 1, 1), date(2025, 1, 1)],
-            "Date fin": [date(2025, 3, 31), date(2025, 3, 31)],
+            "Description": ["rent", "salary"],
+            "Amount": [-800.0, 2500.0],
+            "Start date": [date(2025, 1, 1), date(2025, 1, 1)],
+            "End date": [date(2025, 3, 31), date(2025, 3, 31)],
         }
     ).set_index("Description")
 
-    # Balance evolution per day: DatetimeIndex with "Solde" column
+    # Balance evolution per day: DatetimeIndex with "Balance" column
     date_range = pd.date_range(start_date, end_date, freq="D")
     balance_values = [1000.0 + i * 10 for i in range(len(date_range))]
     balance_evolution = pd.DataFrame(
-        {"Solde": balance_values},
+        {"Balance": balance_values},
         index=date_range,
     )
 
-    # Budget forecast: MultiIndex columns (date, Prévu/Réel)
+    # Budget forecast: MultiIndex columns (date, Forecast/Actual)
     budget_forecast = pd.DataFrame(
         {
-            ("Jan 25", "Prévu"): [-800.0, -100.0],
-            ("Jan 25", "Réel"): [-800.0, -85.20],
+            ("Jan 25", "Forecast"): [-800.0, -100.0],
+            ("Jan 25", "Actual"): [-800.0, -85.20],
         },
-        index=["Loyer", "Courses"],
+        index=["rent", "groceries"],
     )
     budget_forecast.columns = pd.MultiIndex.from_tuples(budget_forecast.columns)
 
     # Budget statistics: indexed by category
     budget_statistics = pd.DataFrame(
-        {"Total": [-800.0, -100.0, 2500.0], "Moyenne": [-800.0, -100.0, 2500.0]},
-        index=["Loyer", "Courses", "Salaire"],
+        {
+            "Total": [-800.0, -100.0, 2500.0],
+            "Monthly average": [-800.0, -100.0, 2500.0],
+        },
+        index=["rent", "groceries", "salary"],
     )
 
     return AccountAnalysisReport(
@@ -103,11 +106,11 @@ class TestAccountAnalysisRendererExcel:
 
         xls = pd.ExcelFile(output_path)
         assert set(xls.sheet_names) == {
-            "Evolution du solde",
-            "Prévisions des dépenses",
-            "Statistiques des dépenses",
-            "Opérations",
-            "Source prévisions",
+            "Balance evolution",
+            "Expense forecast",
+            "Expense statistics",
+            "Operations",
+            "Forecast source",
         }
 
     def test_operations_sheet_data(
@@ -118,10 +121,10 @@ class TestAccountAnalysisRendererExcel:
         with AccountAnalysisRendererExcel(output_path) as renderer:
             renderer(sample_report)
 
-        ops_df = pd.read_excel(output_path, sheet_name="Opérations", index_col=0)
+        ops_df = pd.read_excel(output_path, sheet_name="Operations", index_col=0)
         assert len(ops_df) == 3
         assert "Description" in ops_df.columns
-        assert "Montant" in ops_df.columns
+        assert "Amount" in ops_df.columns
         assert set(ops_df["Description"]) == {
             "CARREFOUR",
             "VIREMENT SALAIRE",
@@ -137,11 +140,11 @@ class TestAccountAnalysisRendererExcel:
             renderer(sample_report)
 
         forecast_df = pd.read_excel(
-            output_path, sheet_name="Source prévisions", index_col=0
+            output_path, sheet_name="Forecast source", index_col=0
         )
         assert len(forecast_df) == 2
-        assert "Loyer" in forecast_df.index
-        assert "Salaire" in forecast_df.index
+        assert "rent" in forecast_df.index
+        assert "salary" in forecast_df.index
 
     def test_balance_evolution_sheet_data(
         self, sample_report: AccountAnalysisReport, tmp_path: Path
@@ -152,13 +155,13 @@ class TestAccountAnalysisRendererExcel:
             renderer(sample_report)
 
         balance_df = pd.read_excel(
-            output_path, sheet_name="Evolution du solde", index_col=0
+            output_path, sheet_name="Balance evolution", index_col=0
         )
         # Jan, Feb, Mar = 3 months
         assert len(balance_df) == 3
-        assert "Solde" in balance_df.columns
-        assert "Solde Min." in balance_df.columns
-        assert "Marge" in balance_df.columns
+        assert "Balance" in balance_df.columns
+        assert "Min. Balance" in balance_df.columns
+        assert "Margin" in balance_df.columns
 
     def test_budget_statistics_sheet_data(
         self, sample_report: AccountAnalysisReport, tmp_path: Path
@@ -169,10 +172,10 @@ class TestAccountAnalysisRendererExcel:
             renderer(sample_report)
 
         stats_df = pd.read_excel(
-            output_path, sheet_name="Statistiques des dépenses", index_col=0
+            output_path, sheet_name="Expense statistics", index_col=0
         )
         assert "Total" in stats_df.columns
-        assert "Loyer" in stats_df.index
+        assert "rent" in stats_df.index
 
     def test_budget_forecast_sheet_data(
         self, sample_report: AccountAnalysisReport, tmp_path: Path
@@ -186,13 +189,13 @@ class TestAccountAnalysisRendererExcel:
         # read with header=[0,1] to reconstruct them properly
         forecast_df = pd.read_excel(
             output_path,
-            sheet_name="Prévisions des dépenses",
+            sheet_name="Expense forecast",
             index_col=0,
             header=[0, 1],
         )
         assert len(forecast_df) == 2
-        assert "Loyer" in forecast_df.index
-        assert "Courses" in forecast_df.index
+        assert "rent" in forecast_df.index
+        assert "groceries" in forecast_df.index
 
     def test_render_with_empty_operations(self, tmp_path: Path) -> None:
         """Test rendering with empty DataFrames doesn't crash."""
@@ -201,18 +204,18 @@ class TestAccountAnalysisRendererExcel:
             start_date=date(2025, 1, 1),
             end_date=date(2025, 3, 31),
             operations=pd.DataFrame(
-                columns=["Catégorie", "Description", "Montant"],
+                columns=["Category", "Description", "Amount"],
                 index=pd.Index([], dtype="object", name="Date"),
             ),
             forecast=pd.DataFrame(
-                columns=["Montant", "Date début", "Date fin"],
+                columns=["Amount", "Start date", "End date"],
             ).rename_axis("Description"),
             balance_evolution_per_day=pd.DataFrame(
-                {"Solde": [1000.0]},
+                {"Balance": [1000.0]},
                 index=pd.date_range("2025-01-01", periods=1, freq="D"),
             ),
             budget_forecast=pd.DataFrame(),
-            budget_statistics=pd.DataFrame(columns=["Total", "Moyenne"]),
+            budget_statistics=pd.DataFrame(columns=["Total", "Monthly average"]),
         )
 
         output_path = tmp_path / "empty_report.xlsx"

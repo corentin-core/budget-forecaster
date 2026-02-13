@@ -1,0 +1,874 @@
+# French translations for budget-forecaster
+# Copyright (C) 2025
+# This file is distributed under the same license as the budget-forecaster package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: budget-forecaster 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-01-01 00:00+0000\n"
+"PO-Revision-Date: 2025-01-01 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: French\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+# ============================================================
+# Category display names
+# ============================================================
+
+msgid "uncategorized"
+msgstr "Non catégorisé"
+
+msgid "salary"
+msgstr "Salaire"
+
+msgid "tax_credit"
+msgstr "Crédit d'impôt"
+
+msgid "benefits"
+msgstr "Allocations"
+
+msgid "house_loan"
+msgstr "Prêt maison"
+
+msgid "works_loan"
+msgstr "Prêt travaux"
+
+msgid "car_loan"
+msgstr "Crédit auto"
+
+msgid "rent"
+msgstr "Loyer"
+
+msgid "house_works"
+msgstr "Travaux"
+
+msgid "furniture"
+msgstr "Mobilier, électroménager, déco."
+
+msgid "savings"
+msgstr "Épargne"
+
+msgid "car_insurance"
+msgstr "Assurance véhicule"
+
+msgid "house_insurance"
+msgstr "Assurance maison"
+
+msgid "loan_insurance"
+msgstr "Assurance emprunt"
+
+msgid "other_insurance"
+msgstr "Autre assurance"
+
+msgid "car_fuel"
+msgstr "Carburant"
+
+msgid "car_maintenance"
+msgstr "Entretien véhicule"
+
+msgid "parking"
+msgstr "Parking"
+
+msgid "toll"
+msgstr "Péage"
+
+msgid "public_transport"
+msgstr "Transport en commun"
+
+msgid "phone"
+msgstr "Téléphone"
+
+msgid "internet"
+msgstr "Internet"
+
+msgid "electricity"
+msgstr "Électricité"
+
+msgid "water"
+msgstr "Eau"
+
+msgid "groceries"
+msgstr "Alimentation"
+
+msgid "entertainment"
+msgstr "Loisirs"
+
+msgid "leisure"
+msgstr "Détente"
+
+msgid "clothing"
+msgstr "Habillement"
+
+msgid "holidays"
+msgstr "Vacances"
+
+msgid "care"
+msgstr "Soins"
+
+msgid "health_care"
+msgstr "Santé"
+
+msgid "childcare"
+msgstr "Garde d'enfant"
+
+msgid "child_support"
+msgstr "Aide parentale"
+
+msgid "gifts"
+msgstr "Cadeaux"
+
+msgid "charity"
+msgstr "Don"
+
+msgid "bank_fees"
+msgstr "Frais bancaires"
+
+msgid "other"
+msgstr "Autre"
+
+msgid "planned_operation"
+msgstr "Opération prévue"
+
+msgid "budget"
+msgstr "Budget"
+
+msgid "professional_expenses"
+msgstr "Frais professionnels"
+
+msgid "taxes"
+msgstr "Impôts"
+
+# ============================================================
+# Navigation & tabs
+# ============================================================
+
+msgid "Dashboard"
+msgstr "Tableau de bord"
+
+msgid "Operations"
+msgstr "Opérations"
+
+msgid "Planned ops"
+msgstr "Prévisions"
+
+msgid "Budgets"
+msgstr "Budgets"
+
+msgid "Forecasts"
+msgstr "Prévisions"
+
+msgid "Import"
+msgstr "Import"
+
+msgid "Categorize"
+msgstr "Catégoriser"
+
+msgid "Link"
+msgstr "Lier"
+
+msgid "Quit"
+msgstr "Quitter"
+
+# ============================================================
+# Dashboard
+# ============================================================
+
+msgid "No account loaded. Import a bank export first."
+msgstr "Aucun compte chargé. Importez d'abord un relevé bancaire."
+
+msgid "Current balance"
+msgstr "Solde actuel"
+
+msgid "Balance: {} {}"
+msgstr "Solde : {} {}"
+
+msgid "Balance: -"
+msgstr "Solde : -"
+
+msgid "Operations this month"
+msgstr "Opérations ce mois"
+
+msgid "Operations this month: -"
+msgstr "Opérations ce mois : -"
+
+msgid "Expenses this month"
+msgstr "Dépenses ce mois"
+
+msgid "Expenses by category (this month)"
+msgstr "Dépenses par catégorie (ce mois)"
+
+msgid "Currently: {} {}"
+msgstr "Actuellement : {} {}"
+
+msgid "Currently: {} / {} months, {}"
+msgstr "Actuellement : {} / {} mois, {}"
+
+msgid "Uncategorized: {}"
+msgstr "Non catégorisé : {}"
+
+msgid "Uncategorized: -"
+msgstr "Non catégorisé : -"
+
+msgid "Last 3 months: {} operations"
+msgstr "3 derniers mois : {} opérations"
+
+msgid "{} operations to categorize"
+msgstr "{} opérations à catégoriser"
+
+msgid "{} operations to link"
+msgstr "{} opérations à lier"
+
+msgid "Files pending import"
+msgstr "Fichiers en attente d'import"
+
+msgid "Inbox folder: {}"
+msgstr "Dossier d'import : {}"
+
+msgid "Inbox folder: -"
+msgstr "Dossier d'import : -"
+
+# ============================================================
+# Operations screen
+# ============================================================
+
+msgid "Filter"
+msgstr "Filtrer"
+
+msgid "Refresh"
+msgstr "Rafraîchir"
+
+msgid "{} operation(s)"
+msgstr "{} opération(s)"
+
+msgid "0 operations"
+msgstr "0 opérations"
+
+msgid "Operation detail"
+msgstr "Détail de l'opération"
+
+msgid "No operation selected"
+msgstr "Aucune opération sélectionnée"
+
+msgid "No operation found"
+msgstr "Aucune opération trouvée"
+
+msgid "ID:"
+msgstr "ID :"
+
+msgid "Date:"
+msgstr "Date :"
+
+msgid "Category:"
+msgstr "Catégorie :"
+
+msgid "Description:"
+msgstr "Description :"
+
+msgid "Amount:"
+msgstr "Montant :"
+
+msgid "Period:"
+msgstr "Période :"
+
+msgid "Keywords:"
+msgstr "Mots-clés :"
+
+msgid "Change category"
+msgstr "Changer de catégorie"
+
+msgid "Category '{}' assigned"
+msgstr "Catégorie '{}' attribuée"
+
+# ============================================================
+# Planned operations screen
+# ============================================================
+
+msgid "Planned operations"
+msgstr "Opérations prévues"
+
+msgid "{} planned operation(s)"
+msgstr "{} opération(s) prévue(s)"
+
+msgid "New operation"
+msgstr "Nouvelle opération"
+
+msgid "Edit"
+msgstr "Modifier"
+
+msgid "Delete"
+msgstr "Supprimer"
+
+msgid "Split"
+msgstr "Scinder"
+
+msgid "Edit operation"
+msgstr "Modifier l'opération"
+
+msgid "Operation '{}' created"
+msgstr "Opération '{}' créée"
+
+msgid "Operation '{}' modified"
+msgstr "Opération '{}' modifiée"
+
+msgid "Operation '{}' deleted"
+msgstr "Opération '{}' supprimée"
+
+msgid "Operation '{}' split (new: #{})"
+msgstr "Opération '{}' scindée (nouvelle : #{})"
+
+msgid "Cannot delete unsaved operation"
+msgstr "Impossible de supprimer une opération non enregistrée"
+
+msgid "Cannot split unsaved operation"
+msgstr "Impossible de scinder une opération non enregistrée"
+
+# ============================================================
+# Budgets screen
+# ============================================================
+
+msgid "{} budget(s) configured"
+msgstr "{} budget(s) configuré(s)"
+
+msgid "New budget"
+msgstr "Nouveau budget"
+
+msgid "Edit budget"
+msgstr "Modifier le budget"
+
+msgid "Budget '{}' created"
+msgstr "Budget '{}' créé"
+
+msgid "Budget '{}' modified"
+msgstr "Budget '{}' modifié"
+
+msgid "Budget '{}' deleted"
+msgstr "Budget '{}' supprimé"
+
+msgid "Budget '{}' split (new: #{})"
+msgstr "Budget '{}' scindé (nouveau : #{})"
+
+msgid "Cannot delete unsaved budget"
+msgstr "Impossible de supprimer un budget non enregistré"
+
+msgid "Cannot split unsaved budget"
+msgstr "Impossible de scinder un budget non enregistré"
+
+# ============================================================
+# Forecast screen
+# ============================================================
+
+msgid "From"
+msgstr "Du"
+
+msgid "to"
+msgstr "au"
+
+msgid "Calculate"
+msgstr "Calculer"
+
+msgid "Export Excel"
+msgstr "Exporter Excel"
+
+msgid "Balance evolution"
+msgstr "Évolution du solde"
+
+msgid "Budget by category"
+msgstr "Budget par catégorie"
+
+msgid "R = Real | A = Adjusted | P = Planned"
+msgstr "R = Réel | A = Ajusté | P = Prévu"
+
+msgid "Service not initialized"
+msgstr "Service non initialisé"
+
+msgid "Ready - Click 'Calculate' to generate forecasts"
+msgstr "Prêt - Cliquez sur 'Calculer' pour générer les prévisions"
+
+msgid "Report calculated from {} to {}"
+msgstr "Rapport calculé du {} au {}"
+
+msgid "Calculating..."
+msgstr "Calcul en cours..."
+
+msgid "Calculating forecasts..."
+msgstr "Calcul des prévisions..."
+
+msgid "Forecasts calculated"
+msgstr "Prévisions calculées"
+
+msgid "No report to export"
+msgstr "Aucun rapport à exporter"
+
+msgid "Exported to {}"
+msgstr "Exporté vers {}"
+
+msgid "Export error: {}"
+msgstr "Erreur d'export : {}"
+
+msgid "No data"
+msgstr "Aucune donnée"
+
+msgid "Category"
+msgstr "Catégorie"
+
+# ============================================================
+# Import screen
+# ============================================================
+
+msgid "Manual import"
+msgstr "Import manuel"
+
+msgid "Import from inbox ({})"
+msgstr "Import depuis la boîte ({})"
+
+msgid "Import from inbox"
+msgstr "Import depuis la boîte"
+
+msgid "Inbox empty"
+msgstr "Boîte de réception vide"
+
+msgid "Importing..."
+msgstr "Import en cours..."
+
+msgid "Importing {}..."
+msgstr "Import de {}..."
+
+msgid "Preparing..."
+msgstr "Préparation..."
+
+msgid "Import completed"
+msgstr "Import terminé"
+
+msgid "Import completed with errors"
+msgstr "Import terminé avec des erreurs"
+
+msgid "Imported: {} new"
+msgstr "Importé : {} nouveau(x)"
+
+msgid "{} duplicate(s) skipped"
+msgstr "{} doublon(s) ignoré(s)"
+
+msgid "No files to import"
+msgstr "Aucun fichier à importer"
+
+msgid "{} file(s) imported\n{} new operation(s)"
+msgstr "{} fichier(s) importé(s)\n{} nouvelle(s) opération(s)"
+
+msgid "File not found: {}"
+msgstr "Fichier non trouvé : {}"
+
+msgid "Permission denied"
+msgstr "Permission refusée"
+
+msgid "Unsupported or unrecognized format"
+msgstr "Format non supporté ou non reconnu"
+
+# ============================================================
+# Modals - Common
+# ============================================================
+
+msgid "Save"
+msgstr "Enregistrer"
+
+msgid "Cancel"
+msgstr "Annuler"
+
+msgid "Close"
+msgstr "Fermer"
+
+msgid "Apply"
+msgstr "Appliquer"
+
+msgid "Yes"
+msgstr "Oui"
+
+msgid "No"
+msgstr "Non"
+
+msgid "Select"
+msgstr "Sélectionner"
+
+msgid "Select all"
+msgstr "Tout sélectionner"
+
+msgid "Deselect"
+msgstr "Désélectionner"
+
+msgid "Reset"
+msgstr "Réinitialiser"
+
+# ============================================================
+# Modal - Edit planned operation / budget
+# ============================================================
+
+msgid "Description"
+msgstr "Description"
+
+msgid "Description is required"
+msgstr "La description est requise"
+
+msgid "Amount"
+msgstr "Montant"
+
+msgid "Amount must be a number"
+msgstr "Le montant doit être un nombre"
+
+msgid "Category is required"
+msgstr "La catégorie est requise"
+
+msgid "Start date:"
+msgstr "Date de début :"
+
+msgid "Start date must be in YYYY-MM-DD format"
+msgstr "La date de début doit être au format AAAA-MM-JJ"
+
+msgid "End date:"
+msgstr "Date de fin :"
+
+msgid "End date must be in YYYY-MM-DD format"
+msgstr "La date de fin doit être au format AAAA-MM-JJ"
+
+msgid "Leave empty for indefinite"
+msgstr "Laisser vide pour une durée indéfinie"
+
+msgid "Period (months):"
+msgstr "Période (mois) :"
+
+msgid "Period is required"
+msgstr "La période est requise"
+
+msgid "Period must be a positive integer"
+msgstr "La période doit être un entier positif"
+
+msgid "Leave empty if not recurring"
+msgstr "Laisser vide si non récurrent"
+
+msgid "Comma separated"
+msgstr "Séparés par des virgules"
+
+msgid "Amount tolerance:"
+msgstr "Tolérance de montant :"
+
+msgid "E.g. 0.05 for 5%"
+msgstr "Ex. 0.05 pour 5%"
+
+msgid "Date tolerance (days):"
+msgstr "Tolérance de date (jours) :"
+
+msgid "Date tolerance must be a positive integer"
+msgstr "La tolérance de date doit être un entier positif"
+
+msgid "Duration (months):"
+msgstr "Durée (mois) :"
+
+msgid "Duration must be a positive integer"
+msgstr "La durée doit être un entier positif"
+
+msgid "Changes saved"
+msgstr "Modifications enregistrées"
+
+# ============================================================
+# Modal - Split operation
+# ============================================================
+
+msgid "Split from a date"
+msgstr "Scinder à partir d'une date"
+
+msgid "Date must be after first iteration"
+msgstr "La date doit être après la première itération"
+
+msgid "Date must be in YYYY-MM-DD format"
+msgstr "La date doit être au format AAAA-MM-JJ"
+
+msgid "ⓘ Next unadjusted iteration"
+msgstr "ⓘ Prochaine itération non ajustée"
+
+# ============================================================
+# Modal - Category selection
+# ============================================================
+
+msgid "Search category..."
+msgstr "Rechercher une catégorie..."
+
+msgid "Operation to categorize"
+msgstr "Opération à catégoriser"
+
+msgid "Similar operations"
+msgstr "Opérations similaires"
+
+msgid "★ {} (suggestion)"
+msgstr "★ {} (suggestion)"
+
+msgid "Suggestion: {}"
+msgstr "Suggestion : {}"
+
+msgid "Invalid category"
+msgstr "Catégorie invalide"
+
+msgid "{} operations categorized as '{}'"
+msgstr "{} opérations catégorisées comme '{}'"
+
+# ============================================================
+# Modal - Link target
+# ============================================================
+
+msgid "Operation to link"
+msgstr "Opération à lier"
+
+msgid "Link operation"
+msgstr "Lier l'opération"
+
+msgid "Link {} operations"
+msgstr "Lier {} opérations"
+
+msgid "Invalid target"
+msgstr "Cible invalide"
+
+msgid "Please select a target"
+msgstr "Veuillez sélectionner une cible"
+
+msgid "Operation linked to '{}'"
+msgstr "Opération liée à '{}'"
+
+msgid "{} operations linked to '{}'"
+msgstr "{} opérations liées à '{}'"
+
+msgid "🔗 Linked to: {}"
+msgstr "🔗 Lié à : {}"
+
+# ============================================================
+# Modal - Link iteration
+# ============================================================
+
+msgid "Select iteration"
+msgstr "Sélectionner une itération"
+
+msgid "Score  Iteration"
+msgstr "Score  Itération"
+
+msgid "First iteration:"
+msgstr "Première itération :"
+
+msgid "Recurring:"
+msgstr "Récurrence :"
+
+msgid "Please select an iteration"
+msgstr "Veuillez sélectionner une itération"
+
+msgid "No iteration in this period"
+msgstr "Aucune itération dans cette période"
+
+msgid " (link created)"
+msgstr " (lien créé)"
+
+msgid " ({} link(s) created)"
+msgstr " ({} lien(s) créé(s))"
+
+# ============================================================
+# Modal - File browser
+# ============================================================
+
+msgid "Browse"
+msgstr "Parcourir"
+
+msgid "File"
+msgstr "Fichier"
+
+msgid "Folder"
+msgstr "Dossier"
+
+msgid "← Parent"
+msgstr "← Parent"
+
+msgid "Parent folder"
+msgstr "Dossier parent"
+
+msgid "Path to file or folder..."
+msgstr "Chemin vers un fichier ou dossier..."
+
+msgid "Please enter a path"
+msgstr "Veuillez entrer un chemin"
+
+# ============================================================
+# Widget - Category select
+# ============================================================
+
+msgid "Search..."
+msgstr "Rechercher..."
+
+msgid "Uncategorized"
+msgstr "Non catégorisé"
+
+# ============================================================
+# Widget - Operation table
+# ============================================================
+
+msgid "Date"
+msgstr "Date"
+
+msgid "Name"
+msgstr "Nom"
+
+msgid "Type"
+msgstr "Type"
+
+msgid "Period"
+msgstr "Période"
+
+msgid "Duration"
+msgstr "Durée"
+
+msgid "Start"
+msgstr "Début"
+
+msgid "End"
+msgstr "Fin"
+
+msgid "Score"
+msgstr "Score"
+
+msgid "Keywords"
+msgstr "Mots-clés"
+
+msgid "Add"
+msgstr "Ajouter"
+
+msgid "Extend up"
+msgstr "Étendre vers le haut"
+
+msgid "Extend down"
+msgstr "Étendre vers le bas"
+
+msgid "Unlink"
+msgstr "Délier"
+
+msgid "No links to remove"
+msgstr "Aucun lien à supprimer"
+
+msgid "{} link(s) removed"
+msgstr "{} lien(s) supprimé(s)"
+
+# ============================================================
+# Frequency labels
+# ============================================================
+
+msgid "monthly"
+msgstr "mensuel"
+
+msgid "Monthly"
+msgstr "Mensuel"
+
+msgid "bimonthly"
+msgstr "bimestriel"
+
+msgid "Bimonthly"
+msgstr "Bimestriel"
+
+msgid "quarterly"
+msgstr "trimestriel"
+
+msgid "Quarterly"
+msgstr "Trimestriel"
+
+msgid "semi-annual"
+msgstr "semestriel"
+
+msgid "Semi-annual"
+msgstr "Semestriel"
+
+msgid "annual"
+msgstr "annuel"
+
+msgid "Annual"
+msgstr "Annuel"
+
+# ============================================================
+# Duration formatting
+# ============================================================
+
+msgid "1 day"
+msgstr "1 jour"
+
+msgid "{} days"
+msgstr "{} jours"
+
+msgid "{} d."
+msgstr "{} j."
+
+msgid "{} wk."
+msgstr "{} sem."
+
+msgid "{} mo."
+msgstr "{} mois"
+
+msgid "{} yr."
+msgstr "{} an(s)"
+
+# ============================================================
+# Bank adapter labels
+# ============================================================
+
+msgid "bnp"
+msgstr "BNP"
+
+msgid "swile"
+msgstr "Swile"
+
+# ============================================================
+# Error messages
+# ============================================================
+
+msgid "An unexpected error occurred"
+msgstr "Une erreur inattendue est survenue"
+
+msgid "Error: {}"
+msgstr "Erreur : {}"
+
+msgid "Invalid date format (use YYYY-MM-DD)"
+msgstr "Format de date invalide (utilisez AAAA-MM-JJ)"
+
+msgid "Start date must be before end date"
+msgstr "La date de début doit être antérieure à la date de fin"
+
+# ============================================================
+# Excel export - Sheet names & plot titles
+# ============================================================
+
+msgid "Forecast source"
+msgstr "Source des prévisions"
+
+msgid "Expense forecast"
+msgstr "Prévision des dépenses"
+
+msgid "Expense statistics"
+msgstr "Statistiques des dépenses"
+
+msgid "Account balance evolution"
+msgstr "Évolution du solde du compte"
+
+msgid "Expense breakdown"
+msgstr "Répartition des dépenses"
+
+msgid "Balance"
+msgstr "Solde"
+
+msgid "Margin"
+msgstr "Marge"
+
+# ============================================================
+# Misc
+# ============================================================
+
+msgid "Since: {}"
+msgstr "Depuis : {}"
+
+msgid "... and {} other(s)"
+msgstr "... et {} autre(s)"
+
+msgid "every {} months"
+msgstr "tous les {} mois"

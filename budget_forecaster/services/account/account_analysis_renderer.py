@@ -10,6 +10,7 @@ from types import TracebackType
 import pandas as pd
 from matplotlib import pyplot as plt
 
+from budget_forecaster.i18n import _
 from budget_forecaster.services.account.account_analysis_report import (
     AccountAnalysisReport,
 )
@@ -103,7 +104,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         self._add_forecast(report.forecast)
 
     def _add_operations(self, operations: pd.DataFrame) -> None:
-        sheet_name = "Opérations"
+        sheet_name = _("Operations")
 
         operations_reformatted = operations.copy()
         operations_reformatted.index.name = "Date"
@@ -119,7 +120,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         worksheet.freeze_panes(1, 0)
 
     def _add_forecast(self, forecast: pd.DataFrame) -> None:
-        sheet_name = "Source prévisions"
+        sheet_name = _("Forecast source")
         forecast_reformatted = forecast.copy()
         forecast_reformatted.to_excel(self._writer, sheet_name=sheet_name, index=True)
         worksheet = self._writer.sheets[sheet_name]
@@ -136,13 +137,13 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         balance_evolution_with_margin = balance_evolution.copy()
         # add the minimum balance of the subsequent months
         # to do so, we reverse the dataframe, compute the cumulative minimum and reverse it back
-        balance_evolution_with_margin["Marge"] = (
-            balance_evolution["Solde"].iloc[::-1].expanding().min().iloc[::-1]
+        balance_evolution_with_margin["Margin"] = (
+            balance_evolution["Balance"].iloc[::-1].expanding().min().iloc[::-1]
         )
         # remove margin values before balance date as they are not relevant
         balance_evolution_with_margin.loc[
             balance_evolution_with_margin.index < balance_date.strftime("%Y-%m-%d"),
-            "Marge",
+            "Margin",
         ] = None
         return balance_evolution_with_margin
 
@@ -159,7 +160,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
             balance_date, balance_evolution
         )
         balance_evolution_per_month = balance_evolution_per_month.resample("MS").first()
-        balance_evolution_per_month["Solde Min."] = balance_evolution.resample(
+        balance_evolution_per_month["Min. Balance"] = balance_evolution.resample(
             "MS"
         ).min()
         balance_evolution_per_month = balance_evolution_per_month.round(2)
@@ -178,13 +179,13 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
             balance_date, balance_evolution
         )
         ax = balance_evolution_with_stats.plot(figsize=(15, 10))
-        ax.set_yticks(range(0, int(balance_evolution_with_stats["Solde"].max()), 250))
+        ax.set_yticks(range(0, int(balance_evolution_with_stats["Balance"].max()), 250))
         ax.set_xticks(
             [date for date in balance_evolution_with_stats.index if date.day == 1]
         )
-        plt.legend(["Solde", "Marge"])
+        plt.legend([_("Balance"), _("Margin")])
         plt.grid()
-        plt.title("Evolution du solde du compte")
+        plt.title(_("Account balance evolution"))
         saved_path = self._temp_dir / "balance_evolution.png"
         plt.savefig(saved_path)
         return saved_path
@@ -192,7 +193,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
     def _add_balance_evolution(
         self, balance_date: date, balance_evolution: pd.DataFrame
     ) -> None:
-        sheet_name = "Evolution du solde"
+        sheet_name = _("Balance evolution")
 
         balance_evolution_per_month = self._get_balance_evolution_per_month(
             balance_date, balance_evolution
@@ -222,7 +223,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         worksheet.insert_image("F1", plot_path)
 
     def _add_expenses_forecast(self, expenses_forecast: pd.DataFrame) -> None:
-        sheet_name = "Prévisions des dépenses"
+        sheet_name = _("Expense forecast")
 
         expenses_forecast = expenses_forecast.mask(expenses_forecast.eq(0))
         expenses_forecast.to_excel(self._writer, sheet_name=sheet_name, index=True)
@@ -230,19 +231,19 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         worksheet.autofit()
         worksheet.set_column(1, 21, 12, self._money_format)
 
-        # compare "Prévu" and "Réel" columns
-        # and highlight the cells where the "Réel" value is lower than the "Prévu" value
+        # compare "Forecast" and "Actual" columns
+        # and highlight the cells where the "Actual" value is lower than the "Forecast" value
         date_to_header_column: dict[str, dict[str, int]] = {}
         for i, col_tuple in enumerate(expenses_forecast.columns):
             col_date, header = col_tuple[0], col_tuple[1]
             date_to_header_column.setdefault(col_date, {}).setdefault(header, i)
 
-        for _, header_to_column in date_to_header_column.items():
-            if "Prévu" not in header_to_column or "Réel" not in header_to_column:
+        for _date_key, header_to_column in date_to_header_column.items():
+            if "Forecast" not in header_to_column or "Actual" not in header_to_column:
                 continue
 
-            real_column_letter = chr(ord("B") + header_to_column["Réel"])
-            forecast_column_letter = chr(ord("B") + header_to_column["Prévu"])
+            real_column_letter = chr(ord("B") + header_to_column["Actual"])
+            forecast_column_letter = chr(ord("B") + header_to_column["Forecast"])
             worksheet.conditional_format(
                 f"{real_column_letter}2:{real_column_letter}{len(expenses_forecast)}",
                 {
@@ -257,7 +258,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         worksheet.freeze_panes(0, 1)
 
     def _add_expenses_statistics(self, expenses_statistics: pd.DataFrame) -> None:
-        sheet_name = "Statistiques des dépenses"
+        sheet_name = _("Expense statistics")
 
         expenses_statistics = expenses_statistics.sort_index()
         expenses_statistics.to_excel(self._writer, sheet_name=sheet_name, index=True)
@@ -274,7 +275,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
             labels=list(filtered_expenses.index),
             autopct="%1.1f%%",
         )
-        plt.title("Répartition des dépenses")
+        plt.title(_("Expense breakdown"))
         plot_path = self._temp_dir / "expenses_pie.png"
         plt.savefig(plot_path)
         worksheet.insert_image("E1", plot_path)

@@ -241,7 +241,7 @@ class ForecastService:
         sampled = df.resample("W").last()
 
         return [
-            (d.to_pydatetime().date(), float(row["Solde"]))  # type: ignore[attr-defined]
+            (d.to_pydatetime().date(), float(row["Balance"]))  # type: ignore[attr-defined]
             for d, row in sampled.iterrows()
         ]
 
@@ -267,18 +267,18 @@ class ForecastService:
                     continue
 
                 real = (
-                    df.loc[category, (month, "Réel")]
-                    if (month, "Réel") in df.columns
+                    df.loc[category, (month, "Actual")]
+                    if (month, "Actual") in df.columns
                     else 0
                 )
                 predicted = (
-                    df.loc[category, (month, "Prévu")]
-                    if (month, "Prévu") in df.columns
+                    df.loc[category, (month, "Forecast")]
+                    if (month, "Forecast") in df.columns
                     else 0
                 )
                 actualized = (
-                    df.loc[category, (month, "Ajusté")]
-                    if (month, "Ajusté") in df.columns
+                    df.loc[category, (month, "Adjusted")]
+                    if (month, "Adjusted") in df.columns
                     else 0
                 )
 
@@ -303,6 +303,6 @@ class ForecastService:
 
         df = self._report.budget_statistics
         return [
-            (str(cat), float(row["Total"]), float(row["Moyenne mensuelle"]))
+            (str(cat), float(row["Total"]), float(row["Monthly average"]))
             for cat, row in df.iterrows()
         ]

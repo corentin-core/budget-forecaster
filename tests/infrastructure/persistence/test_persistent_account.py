@@ -645,18 +645,18 @@ class TestSchemaMigration:
         conn.execute(
             "INSERT INTO operations (unique_id, account_id, description, category, "
             "date, amount, currency) "
-            "VALUES (1, 1, 'Test op', 'Courses', '2026-01-28T00:00:00', -50.0, 'EUR')"
+            "VALUES (1, 1, 'Test op', 'groceries', '2026-01-28T00:00:00', -50.0, 'EUR')"
         )
         conn.execute(
             "INSERT INTO planned_operations (description, amount, currency, category, "
             "start_date, end_date) "
-            "VALUES ('Loyer', -800.0, 'EUR', 'Logement', '2025-01-01T00:00:00', "
+            "VALUES ('Loyer', -800.0, 'EUR', 'rent', '2025-01-01T00:00:00', "
             "'2026-12-31T00:00:00')"
         )
         conn.execute(
             "INSERT INTO budgets (description, amount, currency, category, start_date, "
             "end_date) "
-            "VALUES ('Courses', -400.0, 'EUR', 'Courses', '2025-01-01T00:00:00', "
+            "VALUES ('Courses', -400.0, 'EUR', 'groceries', '2025-01-01T00:00:00', "
             "'2026-12-31T00:00:00')"
         )
         conn.execute(
@@ -677,3 +677,47 @@ class TestSchemaMigration:
             links = repository.get_all_links()
             assert len(links) == 1
             assert links[0].iteration_date == date(2026, 1, 1)
+
+    def test_migration_v4_to_v5_converts_french_categories(
+        self, temp_db_path: Path
+    ) -> None:
+        """Test that migration v5 converts French category values to English keys."""
+        conn = sqlite3.connect(temp_db_path)
+        conn.executescript(SCHEMA_V1)
+        conn.executescript(SCHEMA_V2)
+        conn.executescript(SCHEMA_V3)
+        conn.execute("INSERT INTO schema_version (version) VALUES (4)")
+        conn.execute("INSERT INTO aggregated_accounts (name) VALUES ('Test')")
+        conn.execute(
+            "INSERT INTO accounts (aggregated_account_id, name, balance, currency, "
+            "balance_date) VALUES (1, 'Compte', 1000.0, 'EUR', '2026-01-15')"
+        )
+        conn.execute(
+            "INSERT INTO operations (unique_id, account_id, description, category, "
+            "date, amount, currency) "
+            "VALUES (1, 1, 'Supermarché', 'Courses', '2026-01-10', -85.0, 'EUR')"
+        )
+        conn.execute(
+            "INSERT INTO planned_operations (description, amount, currency, category, "
+            "start_date, end_date) "
+            "VALUES ('Loyer mensuel', -800.0, 'EUR', 'Loyer', '2025-01-01', "
+            "'2026-12-31')"
+        )
+        conn.execute(
+            "INSERT INTO budgets (description, amount, currency, category, start_date, "
+            "end_date) "
+            "VALUES ('Budget courses', -400.0, 'EUR', 'Courses', '2025-01-01', "
+            "'2026-12-31')"
+        )
+        conn.commit()
+        conn.close()
+
+        with SqliteRepository(temp_db_path) as repository:
+            accounts = repository.get_all_accounts()
+            assert accounts[0].operations[0].category == Category.GROCERIES
+
+            planned_ops = repository.get_all_planned_operations()
+            assert planned_ops[0].category == Category.RENT
+
+            budgets = repository.get_all_budgets()
+            assert budgets[0].category == Category.GROCERIES

@@ -231,7 +231,7 @@ class TestSplitOperationModalValidation:
 
             assert not app.modal_dismissed
             error_msg = modal.query_one("#error-message", Static)
-            assert "après" in str(error_msg.content)
+            assert "after" in str(error_msg.content)
 
     async def test_invalid_amount_shows_error(self) -> None:
         """Verify error is shown for invalid amount."""
@@ -253,7 +253,7 @@ class TestSplitOperationModalValidation:
 
             assert not app.modal_dismissed
             error_msg = modal.query_one("#error-message", Static)
-            assert "nombre" in str(error_msg.content)
+            assert "number" in str(error_msg.content)
 
     async def test_invalid_duration_shows_error_for_budget(self) -> None:
         """Verify error is shown for invalid duration in budget."""
@@ -279,7 +279,7 @@ class TestSplitOperationModalValidation:
 
             assert not app.modal_dismissed
             error_msg = modal.query_one("#error-message", Static)
-            assert "durée" in str(error_msg.content).lower()
+            assert "duration" in str(error_msg.content).lower()
 
 
 class TestSplitOperationModalSubmission:

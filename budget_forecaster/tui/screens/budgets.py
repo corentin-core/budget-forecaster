@@ -10,6 +10,7 @@ from textual.widgets import Button, DataTable, Static
 
 from budget_forecaster.core.date_range import RecurringDateRange
 from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
 
 logger = logging.getLogger(__name__)
@@ -88,12 +89,12 @@ class BudgetsWidget(Vertical):
     def compose(self) -> ComposeResult:
         """Create the widget layout."""
         with Horizontal(id="budgets-header"):
-            yield Static("Budgets", id="budgets-title")
+            yield Static(_("Budgets"), id="budgets-title")
             with Horizontal(id="budgets-buttons"):
-                yield Button("Ajouter", id="btn-add-budget", variant="primary")
-                yield Button("Modifier", id="btn-edit-budget", variant="default")
-                yield Button("Scinder", id="btn-split-budget", variant="default")
-                yield Button("Supprimer", id="btn-delete-budget", variant="error")
+                yield Button(_("Add"), id="btn-add-budget", variant="primary")
+                yield Button(_("Edit"), id="btn-edit-budget", variant="default")
+                yield Button(_("Split"), id="btn-split-budget", variant="default")
+                yield Button(_("Delete"), id="btn-delete-budget", variant="error")
 
         yield DataTable(id="budgets-table")
         yield Static("", id="budgets-status")
@@ -105,13 +106,13 @@ class BudgetsWidget(Vertical):
         table.zebra_stripes = True
         table.add_columns(
             "ID",
-            "Description",
-            "Montant",
-            "Catégorie",
-            "Début",
-            "Durée",
-            "Périodicité",
-            "Fin",
+            _("Description"),
+            _("Amount"),
+            _("Category"),
+            _("Start"),
+            _("Duration"),
+            _("Period"),
+            _("End"),
         )
         self._update_button_states()
 
@@ -157,7 +158,7 @@ class BudgetsWidget(Vertical):
                 str(budget.id),
                 budget.description,
                 f"{budget.amount:.2f} {budget.currency}",
-                budget.category.value,
+                budget.category.display_name,
                 start_date,
                 duration,
                 period,
@@ -169,35 +170,35 @@ class BudgetsWidget(Vertical):
         """Format the duration of a date range."""
         days = (date_range.last_date - date_range.start_date).days + 1
         if days == 1:
-            return "1 jour"
+            return _("1 day")
         if days < 7:
-            return f"{days} jours"
+            return _("{} days").format(days)
         if days < 30:
             weeks = days // 7
-            return f"{weeks} sem." if weeks > 1 else "1 sem."
+            return _("{} wk.").format(weeks) if weeks > 1 else "1 wk."
         if days < 365:
             months = days // 30
-            return f"{months} mois"
+            return _("{} mo.").format(months)
         years = days // 365
-        return f"{years} an(s)"
+        return _("{} yr.").format(years)
 
     def _format_period(self, period) -> str:
         """Format a relativedelta period."""
         if period.years:
-            return f"{period.years} an(s)"
+            return _("{} yr.").format(period.years)
         if period.months:
-            return f"{period.months} mois"
+            return _("{} mo.").format(period.months)
         if period.weeks:
-            return f"{period.weeks} sem."
+            return _("{} wk.").format(period.weeks)
         if period.days:
-            return f"{period.days} j."
+            return _("{} d.").format(period.days)
         return "-"
 
     def _update_status(self) -> None:
         """Update the status display."""
         status = self.query_one("#budgets-status", Static)
         count = len(self._budgets)
-        status.update(f"{count} budget(s) configuré(s)")
+        status.update(_("{} budget(s) configured").format(count))
 
     def _update_button_states(self) -> None:
         """Update button enabled states based on selection."""

@@ -10,6 +10,7 @@ from textual.message import Message
 from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, Input, ProgressBar, Static
 
+from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
 
 logger = logging.getLogger(__name__)
@@ -54,7 +55,7 @@ class ImportProgressModal(ModalScreen[bool]):
     }
     """
 
-    BINDINGS = [("escape", "close", "Fermer")]
+    BINDINGS = [("escape", "close", _("Close"))]
 
     def __init__(self, app_service: ApplicationService, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -63,11 +64,11 @@ class ImportProgressModal(ModalScreen[bool]):
 
     def compose(self) -> ComposeResult:
         with Container():
-            yield Static("Import en cours...", classes="modal-title", id="modal-title")
-            yield Static("Préparation...", id="progress-text")
+            yield Static(_("Importing..."), classes="modal-title", id="modal-title")
+            yield Static(_("Preparing..."), id="progress-text")
             yield ProgressBar(total=100, id="progress-bar")
             yield Static("", id="result-text")
-            yield Button("Fermer", id="btn-close", variant="primary", disabled=True)
+            yield Button(_("Close"), id="btn-close", variant="primary", disabled=True)
 
     def on_mount(self) -> None:
         """Start the import process."""
@@ -78,7 +79,7 @@ class ImportProgressModal(ModalScreen[bool]):
         pending = self._app_service.get_supported_exports_in_inbox()
 
         if (total := len(pending)) == 0:
-            self._show_result("Aucun fichier à importer", success=True)
+            self._show_result(_("No files to import"), success=True)
             return
 
         progress_bar = self.query_one("#progress-bar", ProgressBar)
@@ -86,7 +87,7 @@ class ImportProgressModal(ModalScreen[bool]):
         progress_bar.update(total=total, progress=0)
 
         def on_progress(current: int, _total_count: int, filename: str) -> None:
-            progress_text.update(f"Import de {filename}...")
+            progress_text.update(_("Importing {}...").format(filename))
             progress_bar.update(progress=current)
             self.refresh()
 
@@ -109,19 +110,17 @@ class ImportProgressModal(ModalScreen[bool]):
 
         # Show results
         if summary.failed_imports == 0:
-            result_msg = (
-                f"{summary.successful_imports} fichier(s) importé(s)\n"
-                f"{summary.total_new_operations} nouvelle(s) opération(s)"
+            result_msg = _("{} file(s) imported\n{} new operation(s)").format(
+                summary.successful_imports, summary.total_new_operations
             )
             if summary.total_duplicates_skipped > 0:
-                result_msg += (
-                    f"\n{summary.total_duplicates_skipped} doublon(s) ignoré(s)"
+                result_msg += "\n" + _("{} duplicate(s) skipped").format(
+                    summary.total_duplicates_skipped
                 )
             self._show_result(result_msg, success=True)
         else:
-            result_msg = (
-                f"{summary.successful_imports} importé(s), "
-                f"{summary.failed_imports} erreur(s) - voir logs"
+            result_msg = _("{} imported, {} error(s) - see logs").format(
+                summary.successful_imports, summary.failed_imports
             )
             self._show_result(result_msg, success=False)
 
@@ -129,7 +128,9 @@ class ImportProgressModal(ModalScreen[bool]):
         """Show the import result."""
         self._import_done = True
         title = self.query_one("#modal-title", Static)
-        title.update("Import terminé" if success else "Import terminé avec erreurs")
+        title.update(
+            _("Import completed") if success else _("Import completed with errors")
+        )
 
         result_text = self.query_one("#result-text", Static)
         result_text.update(message)
@@ -165,25 +166,25 @@ class ImportWidget(Vertical):
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="import-header"):
-            yield Static("Dossier inbox: -", id="inbox-info")
+            yield Static(_("Inbox folder: -"), id="inbox-info")
             yield Button(
-                "Importer depuis inbox", id="btn-import-inbox", variant="primary"
+                _("Import from inbox"), id="btn-import-inbox", variant="primary"
             )
-        yield Static("Fichiers en attente d'import", id="pending-title")
+        yield Static(_("Files pending import"), id="pending-title")
         yield DataTable(id="pending-table")
-        yield Static("Import manuel", id="manual-title")
+        yield Static(_("Manual import"), id="manual-title")
         with Horizontal(id="file-input-row"):
             yield Input(
-                placeholder="Chemin vers le fichier ou dossier...",
+                placeholder=_("Path to file or folder..."),
                 id="file-path-input",
             )
-            yield Button("Parcourir", id="btn-browse", variant="default")
-            yield Button("Importer", id="btn-import-file", variant="primary")
+            yield Button(_("Browse"), id="btn-browse", variant="default")
+            yield Button(_("Import"), id="btn-import-file", variant="primary")
 
     def on_mount(self) -> None:
         """Initialize the table."""
         table = self.query_one("#pending-table", DataTable)
-        table.add_columns("Fichier", "Type")
+        table.add_columns(_("File"), _("Type"))
         table.cursor_type = "row"
 
     def set_app_service(self, service: ApplicationService) -> None:
@@ -199,7 +200,7 @@ class ImportWidget(Vertical):
         # Update inbox info
         inbox_info = self.query_one("#inbox-info", Static)
         inbox_path = self._app_service.inbox_path
-        inbox_info.update(f"Dossier inbox: {inbox_path}")
+        inbox_info.update(_("Inbox folder: {}").format(inbox_path))
 
         # Update pending files table
         table = self.query_one("#pending-table", DataTable)
@@ -207,16 +208,16 @@ class ImportWidget(Vertical):
 
         pending = self._app_service.get_supported_exports_in_inbox()
         for path in pending:
-            file_type = "Dossier" if path.is_dir() else path.suffix.upper()
+            file_type = _("Folder") if path.is_dir() else path.suffix.upper()
             table.add_row(path.name, file_type, key=str(path))
 
         # Update import button state
         btn = self.query_one("#btn-import-inbox", Button)
         if pending:
-            btn.label = f"Importer depuis inbox ({len(pending)})"
+            btn.label = _("Import from inbox ({})").format(len(pending))
             btn.disabled = False
         else:
-            btn.label = "Inbox vide"
+            btn.label = _("Inbox empty")
             btn.disabled = True
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -256,19 +257,19 @@ class ImportWidget(Vertical):
         path_input = self.query_one("#file-path-input", Input)
 
         if not (path_str := path_input.value.strip()):
-            self.app.notify("Veuillez entrer un chemin", severity="warning")
+            self.app.notify(_("Please enter a path"), severity="warning")
             return
 
         path = Path(path_str).expanduser().resolve()
 
         if not path.exists():
             logger.warning("File not found: %s", path)
-            self.app.notify(f"Fichier non trouvé: {path}", severity="error")
+            self.app.notify(_("File not found: {}").format(path), severity="error")
             return
 
         if not self._app_service.is_supported_export(path):
             logger.warning("Unsupported format: %s", path)
-            self.app.notify("Format non supporté ou non reconnu", severity="error")
+            self.app.notify(_("Unsupported or unrecognized format"), severity="error")
             return
 
         logger.info("Importing file: %s", path)
@@ -283,15 +284,19 @@ class ImportWidget(Vertical):
                 result.stats.new_operations,
                 result.stats.duplicates_skipped,
             )
-            msg = f"Importé: {result.stats.new_operations} nouvelle(s)"
+            msg = _("Imported: {} new").format(result.stats.new_operations)
             if result.stats.duplicates_skipped > 0:
-                msg += f", {result.stats.duplicates_skipped} doublon(s) ignoré(s)"
+                msg += ", " + _("{} duplicate(s) skipped").format(
+                    result.stats.duplicates_skipped
+                )
             self.app.notify(msg)
             path_input.value = ""
             self._on_import_complete(True)
         else:
             logger.error("Failed to import %s: %s", path, result.error_message)
-            self.app.notify(f"Erreur: {result.error_message}", severity="error")
+            self.app.notify(
+                _("Error: {}").format(result.error_message), severity="error"
+            )
 
     def _on_import_complete(self, success: bool | None) -> None:
         """Handle import completion."""

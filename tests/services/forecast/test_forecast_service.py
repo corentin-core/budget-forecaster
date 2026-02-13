@@ -414,7 +414,7 @@ class TestGetBalanceEvolutionSummary:
 
         # Create a simple DataFrame for balance evolution
         dates = pd.date_range("2025-01-01", periods=10, freq="D")
-        df = pd.DataFrame({"Solde": [1000 + i * 10 for i in range(10)]}, index=dates)
+        df = pd.DataFrame({"Balance": [1000 + i * 10 for i in range(10)]}, index=dates)
 
         mock_report = MagicMock()
         mock_report.balance_evolution_per_day = df
@@ -452,14 +452,14 @@ class TestGetMonthlySummary:
         month = pd.Timestamp("2025-01-01")
         columns = pd.MultiIndex.from_tuples(
             [
-                (month, "Réel"),
-                (month, "Prévu"),
-                (month, "Ajusté"),
+                (month, "Actual"),
+                (month, "Forecast"),
+                (month, "Adjusted"),
             ]
         )
         df = pd.DataFrame(
             [[100, 150, 120], [200, 250, 220]],
-            index=["Courses", "Loisirs"],
+            index=["groceries", "entertainment"],
             columns=columns,
         )
 
@@ -502,8 +502,8 @@ class TestGetCategoryStatistics:
 
         # Create mock budget statistics DataFrame
         df = pd.DataFrame(
-            {"Total": [1000, 500], "Moyenne mensuelle": [100, 50]},
-            index=["Courses", "Loisirs"],
+            {"Total": [1000, 500], "Monthly average": [100, 50]},
+            index=["groceries", "entertainment"],
         )
 
         mock_report = MagicMock()
@@ -520,8 +520,8 @@ class TestGetCategoryStatistics:
         assert all(isinstance(item, tuple) for item in result)
         assert all(len(item) == 3 for item in result)
         # (category_name, total, monthly_avg)
-        assert result[0] == ("Courses", 1000.0, 100.0)
-        assert result[1] == ("Loisirs", 500.0, 50.0)
+        assert result[0] == ("groceries", 1000.0, 100.0)
+        assert result[1] == ("entertainment", 500.0, 50.0)
 
 
 class TestTypedDicts:
@@ -539,8 +539,8 @@ class TestTypedDicts:
 
         month = pd.Timestamp("2025-01-01")
         categories = {
-            "Courses": CategoryBudget(real=100.0, predicted=150.0, actualized=120.0)
+            "groceries": CategoryBudget(real=100.0, predicted=150.0, actualized=120.0)
         }
         summary = MonthlySummary(month=month, categories=categories)
         assert summary["month"] == month
-        assert "Courses" in summary["categories"]
+        assert "groceries" in summary["categories"]

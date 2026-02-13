@@ -8,6 +8,7 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, Static
 
+from budget_forecaster.i18n import _
 from budget_forecaster.tui.widgets import get_row_key_at_cursor
 
 
@@ -52,8 +53,8 @@ class FileBrowserModal(ModalScreen[Path | None]):
     """
 
     BINDINGS = [
-        ("escape", "cancel", "Annuler"),
-        ("backspace", "go_up", "Dossier parent"),
+        ("escape", "cancel", _("Cancel")),
+        ("backspace", "go_up", _("Parent folder")),
     ]
 
     def __init__(self, start_path: Path | None = None, **kwargs: Any) -> None:
@@ -68,14 +69,14 @@ class FileBrowserModal(ModalScreen[Path | None]):
             yield Static(str(self._current_path), id="current-path")
             yield DataTable(id="file-list")
             with Horizontal(id="button-row"):
-                yield Button("← Parent", id="btn-parent", variant="default")
-                yield Button("Sélectionner", id="btn-select", variant="primary")
-                yield Button("Annuler", id="btn-cancel", variant="default")
+                yield Button(_("← Parent"), id="btn-parent", variant="default")
+                yield Button(_("Select"), id="btn-select", variant="primary")
+                yield Button(_("Cancel"), id="btn-cancel", variant="default")
 
     def on_mount(self) -> None:
         """Initialize the file list."""
         table = self.query_one("#file-list", DataTable)
-        table.add_columns("Type", "Nom")
+        table.add_columns(_("Type"), _("Name"))
         table.cursor_type = "row"
         self._refresh_file_list()
 
@@ -92,7 +93,7 @@ class FileBrowserModal(ModalScreen[Path | None]):
                 key=lambda p: (not p.is_dir(), p.name.lower()),
             )
         except PermissionError:
-            self.app.notify("Permission refusée", severity="error")
+            self.app.notify(_("Permission denied"), severity="error")
             return
 
         for entry in entries:

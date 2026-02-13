@@ -49,7 +49,7 @@ def persistent_account_fixture(repository: SqliteRepository) -> PersistentAccoun
             operations=(
                 HistoricOperation(
                     unique_id=1,
-                    description="LOYER JANVIER",
+                    description="RENT JANUARY",
                     amount=Amount(-800.0),
                     category=Category.UNCATEGORIZED,
                     operation_date=date(2025, 1, 2),
@@ -93,7 +93,7 @@ class TestCategorizeOperationsIntegration:
         # Add a planned operation matching RENT for heuristic linking
         planned_op = PlannedOperation(
             record_id=None,
-            description="Loyer",
+            description="Rent",
             amount=Amount(-800.0),
             category=Category.RENT,
             date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
@@ -122,7 +122,7 @@ class TestCategorizeOperationsIntegration:
         # Seed a planned operation and an initial heuristic link
         planned_op = PlannedOperation(
             record_id=None,
-            description="Loyer",
+            description="Rent",
             amount=Amount(-800.0),
             category=Category.RENT,
             date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),

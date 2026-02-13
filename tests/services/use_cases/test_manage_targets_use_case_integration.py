@@ -50,14 +50,14 @@ def persistent_account_fixture(repository: SqliteRepository) -> PersistentAccoun
             operations=(
                 HistoricOperation(
                     unique_id=1,
-                    description="LOYER JANVIER",
+                    description="RENT JANUARY",
                     amount=Amount(-800.0),
                     category=Category.RENT,
                     operation_date=date(2025, 1, 2),
                 ),
                 HistoricOperation(
                     unique_id=2,
-                    description="LOYER FEVRIER",
+                    description="RENT FEBRUARY",
                     amount=Amount(-800.0),
                     category=Category.RENT,
                     operation_date=date(2025, 2, 1),
@@ -94,7 +94,7 @@ class TestManageTargetsIntegration:
         """Adding a planned operation persists it and creates heuristic links."""
         planned_op = PlannedOperation(
             record_id=None,
-            description="Loyer",
+            description="Rent",
             amount=Amount(-800.0),
             category=Category.RENT,
             date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
@@ -105,7 +105,7 @@ class TestManageTargetsIntegration:
         # Verify the planned operation is persisted with an ID
         assert result.id is not None
         persisted = repository.get_planned_operation_by_id(result.id)
-        assert persisted.description == "Loyer"
+        assert persisted.description == "Rent"
         assert persisted.amount == -800.0
 
         # Verify heuristic links were created for matching operations
@@ -124,7 +124,7 @@ class TestManageTargetsIntegration:
         # First add an operation (which creates heuristic links)
         planned_op = PlannedOperation(
             record_id=None,
-            description="Loyer",
+            description="Rent",
             amount=Amount(-800.0),
             category=Category.RENT,
             date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),

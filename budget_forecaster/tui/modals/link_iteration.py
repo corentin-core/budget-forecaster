@@ -14,6 +14,7 @@ from budget_forecaster.core.date_range import DateRangeInterface
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.i18n import _
 from budget_forecaster.services.operation.operation_link_service import (
     compute_match_score,
 )
@@ -107,7 +108,7 @@ class LinkIterationModal(ModalScreen[date | None]):
     }
     """
 
-    BINDINGS = [("escape", "cancel", "Annuler")]
+    BINDINGS = [("escape", "cancel", _("Cancel"))]
 
     def __init__(
         self,
@@ -150,7 +151,7 @@ class LinkIterationModal(ModalScreen[date | None]):
         amount_class = "amount-negative" if op.amount < 0 else "amount-positive"
 
         with Vertical(id="modal-container"):
-            yield Static("Sélectionner l'itération", id="modal-title")
+            yield Static(_("Select iteration"), id="modal-title")
 
             # Info section
             with Vertical(id="info-section"):
@@ -172,15 +173,15 @@ class LinkIterationModal(ModalScreen[date | None]):
                 yield Button(">", id="btn-next-month")
 
             # List header
-            yield Static("Score  Itération", id="list-header")
+            yield Static(_("Score  Iteration"), id="list-header")
 
             # Iterations list
             yield OptionList(*self._build_iteration_options(), id="iteration-list")
 
             # Buttons
             with Horizontal(id="buttons-row"):
-                yield Button("Annuler", id="btn-cancel", variant="default")
-                yield Button("Lier", id="btn-link", variant="primary")
+                yield Button(_("Cancel"), id="btn-cancel", variant="default")
+                yield Button(_("Link"), id="btn-link", variant="primary")
 
     def _get_date_range_text(self) -> str:
         """Get the display text for the current date range."""
@@ -220,7 +221,7 @@ class LinkIterationModal(ModalScreen[date | None]):
 
         if not iterations_with_scores:
             # No iterations in window - show message
-            options.append(Option("Aucune itération dans cette période", id="empty"))
+            options.append(Option(_("No iteration in this period"), id="empty"))
             return options
 
         # Pre-select the best match
@@ -295,7 +296,7 @@ class LinkIterationModal(ModalScreen[date | None]):
             if self._selected_date:
                 self.dismiss(self._selected_date)
             else:
-                self.notify("Veuillez sélectionner une itération", severity="warning")
+                self.notify(_("Please select an iteration"), severity="warning")
 
     def action_cancel(self) -> None:
         """Cancel selection."""

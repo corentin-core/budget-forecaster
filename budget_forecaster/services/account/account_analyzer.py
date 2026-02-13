@@ -56,16 +56,16 @@ class AccountAnalyzer:
         """Compute the operations of the account."""
         operations: dict[str, list] = {
             "Date": [],
-            "Catégorie": [],
+            "Category": [],
             "Description": [],
-            "Montant": [],
+            "Amount": [],
         }
         for operation in self._account.operations:
             if start_date <= operation.operation_date <= end_date:
                 operations["Date"].append(operation.operation_date)
-                operations["Catégorie"].append(operation.category)
+                operations["Category"].append(operation.category)
                 operations["Description"].append(operation.description)
-                operations["Montant"].append(operation.amount)
+                operations["Amount"].append(operation.amount)
 
         df = pd.DataFrame(operations)
         df.set_index("Date", inplace=True)
@@ -81,22 +81,28 @@ class AccountAnalyzer:
         months_str = ""
         days_str = ""
         if delta.years:
-            years_str = f"{delta.years} Ans"
+            years_str = (
+                f"{delta.years} Year" if delta.years == 1 else f"{delta.years} Years"
+            )
         if delta.months:
-            months_str = f"{delta.months} Mois"
+            months_str = (
+                f"{delta.months} Month"
+                if delta.months == 1
+                else f"{delta.months} Months"
+            )
         if delta.days:
-            days_str = f"{delta.days} Jours"
+            days_str = f"{delta.days} Day" if delta.days == 1 else f"{delta.days} Days"
         return " ".join(filter(None, [years_str, months_str, days_str]))
 
     def compute_forecast(self, start_date: date, end_date: date) -> pd.DataFrame:
         """Compute the budget forecast of the account."""
         budget_forecast: dict[str, list] = {
-            "Catégorie": [],
+            "Category": [],
             "Description": [],
-            "Montant": [],
-            "Date de début": [],
-            "Date de fin": [],
-            "Périodicité": [],
+            "Amount": [],
+            "Start date": [],
+            "End date": [],
+            "Frequency": [],
         }
         for operation_range in itertools.chain(
             self._forecast.operations, self._forecast.budgets
@@ -108,11 +114,11 @@ class AccountAnalyzer:
             if time_range.is_expired(start_date):
                 continue
 
-            budget_forecast["Catégorie"].append(operation_range.category)
+            budget_forecast["Category"].append(operation_range.category)
             budget_forecast["Description"].append(operation_range.description)
-            budget_forecast["Montant"].append(operation_range.amount)
-            budget_forecast["Date de début"].append(time_range.start_date)
-            budget_forecast["Date de fin"].append(
+            budget_forecast["Amount"].append(operation_range.amount)
+            budget_forecast["Start date"].append(time_range.start_date)
+            budget_forecast["End date"].append(
                 time_range.last_date if time_range.last_date < date.max else None
             )
             period = (
@@ -120,10 +126,10 @@ class AccountAnalyzer:
                 if isinstance(time_range, RecurringDateRange)
                 else None
             )
-            budget_forecast["Périodicité"].append(self._relative_delta_to_str(period))
+            budget_forecast["Frequency"].append(self._relative_delta_to_str(period))
 
         df = pd.DataFrame(budget_forecast)
-        df.set_index("Catégorie", inplace=True)
+        df.set_index("Category", inplace=True)
         df.sort_index(inplace=True)
         return df
 
@@ -154,7 +160,7 @@ class AccountAnalyzer:
                     current_balance += operation.amount
             balance_evolution.append(current_balance)
 
-        df = pd.DataFrame({"Date": dates, "Solde": balance_evolution})
+        df = pd.DataFrame({"Date": dates, "Balance": balance_evolution})
         df.set_index("Date", inplace=True)
         return df
 
@@ -195,7 +201,7 @@ class AccountAnalyzer:
                 increment_expense(
                     operation.category,
                     operation.operation_date.replace(day=1),
-                    "Ajusté",
+                    "Adjusted",
                     operation.amount,
                 )
 
@@ -204,7 +210,7 @@ class AccountAnalyzer:
                 increment_expense(
                     operation.category,
                     operation.operation_date.replace(day=1),
-                    "Réel",
+                    "Actual",
                     operation.amount,
                 )
 
@@ -218,7 +224,7 @@ class AccountAnalyzer:
                 increment_expense(
                     operation_range.category,
                     month_start_date,
-                    "Prévu",
+                    "Forecast",
                     operation_range.amount_on_period(
                         month_start_date,
                         month_start_date + relativedelta(months=1) - timedelta(days=1),
@@ -234,24 +240,24 @@ class AccountAnalyzer:
             orient="index",
         )
 
-        df.index = pd.MultiIndex.from_tuples(df.index, names=["Catégorie", "Mois"])
+        df.index = pd.MultiIndex.from_tuples(df.index, names=["Category", "Month"])
         df = df.unstack(level=-1).fillna(0)  # type: ignore[assignment]
         df.columns = df.columns.swaplevel(0, 1)  # type: ignore[attr-defined]
         df.sort_index(axis=1, level=0, inplace=True)
 
-        # Filter out "Ajusté" columns for dates before the current balance date
+        # Filter out "Adjusted" columns for dates before the current balance date
         df = df.loc[
             :,
             (df.columns.get_level_values(0) >= current_month)
-            | (df.columns.get_level_values(1) == "Réel")
-            | (df.columns.get_level_values(1) == "Prévu"),
+            | (df.columns.get_level_values(1) == "Actual")
+            | (df.columns.get_level_values(1) == "Forecast"),
         ]
 
-        # Filter out "Réel" and "Ajusté" columns for dates after the current balance date
+        # Filter out "Actual" and "Adjusted" columns for dates after the current balance date
         df = df.loc[
             :,
             (df.columns.get_level_values(0) <= current_month)
-            | (df.columns.get_level_values(1) == "Prévu"),
+            | (df.columns.get_level_values(1) == "Forecast"),
         ]
 
         # convert columns and sort dates
@@ -279,8 +285,8 @@ class AccountAnalyzer:
         """Compute the expenses statistics per category."""
         if not self._account.operations:
             return pd.DataFrame(
-                columns=["Catégorie", "Total", "Moyenne mensuelle"]
-            ).set_index("Catégorie")
+                columns=["Category", "Total", "Monthly average"]
+            ).set_index("Category")
 
         expenses_per_category_dict: dict[Category, list[tuple[date, float]]] = {}
         analysis_start = max(
@@ -314,16 +320,16 @@ class AccountAnalyzer:
                 )
         expenses_per_category = {}
         for category, expenses in expenses_per_category_dict.items():
-            df = pd.DataFrame(expenses, columns=["Date", "Montant"])
+            df = pd.DataFrame(expenses, columns=["Date", "Amount"])
             df["Date"] = pd.to_datetime(df["Date"])
             expenses_per_category[category] = df.set_index("Date")
 
         df = pd.DataFrame(
             {
-                "Catégorie": list(expenses_per_category),
-                "Total": [df["Montant"].sum() for df in expenses_per_category.values()],
-                "Moyenne mensuelle": [
-                    df.resample("MS")["Montant"]
+                "Category": list(expenses_per_category),
+                "Total": [df["Amount"].sum() for df in expenses_per_category.values()],
+                "Monthly average": [
+                    df.resample("MS")["Amount"]
                     .sum()
                     .reindex(all_months, fill_value=0.0)
                     .mean()
@@ -331,6 +337,6 @@ class AccountAnalyzer:
                 ],
             }
         )
-        df.set_index("Catégorie", inplace=True)
+        df.set_index("Category", inplace=True)
         df = df.round(2)
         return df

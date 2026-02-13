@@ -38,7 +38,7 @@ class BackupConfig(NamedTuple):
     directory: Path | None = None  # None = same directory as database
 
 
-class Config:  # pylint: disable=too-few-public-methods
+class Config:  # pylint: disable=too-few-public-methods,too-many-instance-attributes
     """A class to store the configuration."""
 
     def __init__(self) -> None:
@@ -53,6 +53,8 @@ class Config:  # pylint: disable=too-few-public-methods
         self.inbox_include_patterns: list[str] = []
         # Logging config (native Python logging dictConfig format)
         self.logging_config: dict[str, Any] | None = None
+        # i18n config
+        self.language: str = "en"
 
     def _parse_yaml(self, yaml_path: Path) -> None:
         """Parse a YAML configuration file."""
@@ -84,6 +86,9 @@ class Config:  # pylint: disable=too-few-public-methods
             # Parse logging config (native dictConfig format)
             if "logging" in config:
                 self.logging_config = config["logging"]
+            # Parse language setting
+            if "language" in config:
+                self.language = config["language"]
 
     def setup_logging(self) -> None:
         """Initialize Python's logging system using the configuration.
