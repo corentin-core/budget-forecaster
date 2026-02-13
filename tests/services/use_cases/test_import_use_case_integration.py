@@ -118,3 +118,34 @@ class TestImportFileIntegration:
         all_links = repository.get_all_links()
         assert len(all_links) > 0
         assert all(not link.is_manual for link in all_links)
+
+
+def test_first_import_on_empty_db_creates_account(
+    repository: SqliteRepository,
+    tmp_path: Path,
+) -> None:
+    """Regression: first import on bootstrapped DB creates account and persists ops."""
+    # Bootstrap: only set aggregated name, no sub-accounts
+    repository.set_aggregated_account_name("My Budget")
+    persistent_account = PersistentAccount(repository)
+
+    import_service = ImportService(persistent_account, tmp_path / "inbox")
+    forecast_service = ForecastService(persistent_account.account, repository)
+    operation_link_service = OperationLinkService(repository)
+    matcher_cache = MatcherCache(forecast_service)
+    use_case = ImportUseCase(
+        import_service,
+        persistent_account,
+        operation_link_service,
+        matcher_cache,
+    )
+
+    result = use_case.import_file(BNP_FIXTURE)
+
+    assert result.success
+    assert result.stats is not None
+    assert result.stats.new_operations == 3
+
+    # Operations must be persisted and available after reload
+    operations = persistent_account.account.operations
+    assert len(operations) == 3

@@ -22,6 +22,7 @@ dataclass
 dataframe
 daterange
 datetime
+deduplicates
 deletable
 deserialization
 deserialize
