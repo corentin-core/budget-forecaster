@@ -39,6 +39,9 @@ backup:
   max_backups: 5 # default: 5
   directory: ~/.local/share/budget-forecaster/backups/ # default: same as database
 
+# Optional - Language for the UI and exports (default: en)
+# language: fr
+
 # Optional - Python dictConfig format for logging
 # logging:
 #   version: 1
@@ -64,6 +67,7 @@ backup:
 | `backup.enabled`         | no       | `true`                 | Enable automatic backups at startup        |
 | `backup.max_backups`     | no       | `5`                    | Maximum backup files to retain             |
 | `backup.directory`       | no       | _(database directory)_ | Where to store backup files                |
+| `language`               | no       | `en`                   | UI and export language (`en` or `fr`)      |
 | `logging`                | no       | basic INFO logging     | Python dictConfig format for logging setup |
 
 ## Inbox Auto-Detection
