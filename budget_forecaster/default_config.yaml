@@ -1,3 +1,4 @@
+language: en # "en" or "fr"
 database_path: ~/.local/share/budget-forecaster/budget.db
 account_name: "Main Account"
 account_currency: EUR

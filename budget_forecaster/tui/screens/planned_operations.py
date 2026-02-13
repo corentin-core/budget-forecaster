@@ -10,6 +10,7 @@ from textual.widgets import Button, DataTable, Static
 
 from budget_forecaster.core.date_range import RecurringDay
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
 
 logger = logging.getLogger(__name__)
@@ -88,12 +89,12 @@ class PlannedOperationsWidget(Vertical):
     def compose(self) -> ComposeResult:
         """Create the widget layout."""
         with Horizontal(id="planned-ops-header"):
-            yield Static("Opérations planifiées", id="planned-ops-title")
+            yield Static(_("Planned operations"), id="planned-ops-title")
             with Horizontal(id="planned-ops-buttons"):
-                yield Button("Ajouter", id="btn-add-op", variant="primary")
-                yield Button("Modifier", id="btn-edit-op", variant="default")
-                yield Button("Scinder", id="btn-split-op", variant="default")
-                yield Button("Supprimer", id="btn-delete-op", variant="error")
+                yield Button(_("Add"), id="btn-add-op", variant="primary")
+                yield Button(_("Edit"), id="btn-edit-op", variant="default")
+                yield Button(_("Split"), id="btn-split-op", variant="default")
+                yield Button(_("Delete"), id="btn-delete-op", variant="error")
 
         yield DataTable(id="planned-ops-table")
         yield Static("", id="planned-ops-status")
@@ -105,13 +106,13 @@ class PlannedOperationsWidget(Vertical):
         table.zebra_stripes = True
         table.add_columns(
             "ID",
-            "Description",
-            "Montant",
-            "Catégorie",
-            "Date",
-            "Périodicité",
-            "Fin",
-            "Mots-clés",
+            _("Description"),
+            _("Amount"),
+            _("Category"),
+            _("Date"),
+            _("Period"),
+            _("End"),
+            _("Keywords"),
         )
         self._update_button_states()
 
@@ -164,7 +165,7 @@ class PlannedOperationsWidget(Vertical):
                 str(op.id),
                 op.description,
                 f"{op.amount:.2f} {op.currency}",
-                op.category.value,
+                op.category.display_name,
                 start_date,
                 period,
                 end_date,
@@ -175,20 +176,20 @@ class PlannedOperationsWidget(Vertical):
     def _format_period(self, period) -> str:
         """Format a relativedelta period."""
         if period.years:
-            return f"{period.years} an(s)"
+            return _("{} yr.").format(period.years)
         if period.months:
-            return f"{period.months} mois"
+            return _("{} mo.").format(period.months)
         if period.weeks:
-            return f"{period.weeks} sem."
+            return _("{} wk.").format(period.weeks)
         if period.days:
-            return f"{period.days} j."
+            return _("{} d.").format(period.days)
         return "-"
 
     def _update_status(self) -> None:
         """Update the status display."""
         status = self.query_one("#planned-ops-status", Static)
         count = len(self._operations)
-        status.update(f"{count} opération(s) planifiée(s)")
+        status.update(_("{} planned operation(s)").format(count))
 
     def _update_button_states(self) -> None:
         """Update button enabled states based on selection."""

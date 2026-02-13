@@ -135,9 +135,9 @@ class TestComputeBalanceEvolution:
         )
         assert df.index[0].date() == date(2023, 1, 1)
         assert df.index[-1].date() == date(2023, 3, 1)
-        assert df.loc["2023-01-01"]["Solde"] == 1080.0
-        assert df.loc["2023-01-15"]["Solde"] == 1030.0
-        assert df.loc["2023-02-15"]["Solde"] == 1000.0
+        assert df.loc["2023-01-01"]["Balance"] == 1080.0
+        assert df.loc["2023-01-15"]["Balance"] == 1030.0
+        assert df.loc["2023-02-15"]["Balance"] == 1000.0
 
     def test_with_planned_operations(
         self, account: Account, planned_operations: tuple[PlannedOperation, ...]
@@ -171,7 +171,7 @@ class TestComputeBalanceEvolution:
             "2023-07-01": 890.0,
             "2023-08-01": 890.0,
         }.items():
-            assert df.loc[date_str]["Solde"] == pytest.approx(
+            assert df.loc[date_str]["Balance"] == pytest.approx(
                 expected_balance
             ), f"Date: {date_str}"
 
@@ -198,7 +198,7 @@ class TestComputeBalanceEvolution:
             # Recurring budget 1: -300€
             "2023-07-31": -850.0,
         }.items():
-            assert df.loc[date_str]["Solde"] == pytest.approx(
+            assert df.loc[date_str]["Balance"] == pytest.approx(
                 expected_balance
             ), f"Date: {date_str}"
 
@@ -212,7 +212,7 @@ class TestComputeOperations:
         df = analyzer.compute_operations(date(2023, 1, 1), date(2023, 1, 31))
         assert len(df) == 1
         assert df.iloc[0]["Description"] == "Operation 1"
-        assert float(df.iloc[0]["Montant"]) == -50.0
+        assert float(df.iloc[0]["Amount"]) == -50.0
 
     def test_includes_boundary_dates(self, account: Account) -> None:
         """Operations on start_date and end_date are included."""
@@ -225,7 +225,7 @@ class TestComputeOperations:
         analyzer = AccountAnalyzer(account, Forecast((), ()))
         df = analyzer.compute_operations(date(2023, 6, 1), date(2023, 7, 1))
         assert len(df) == 0
-        assert list(df.columns) == ["Catégorie", "Description", "Montant"]
+        assert list(df.columns) == ["Category", "Description", "Amount"]
 
     def test_empty_account(self) -> None:
         """Account with no operations returns empty DataFrame."""
@@ -281,10 +281,10 @@ class TestComputeForecast:
         analyzer = AccountAnalyzer(account, Forecast((), budgets))
         df = analyzer.compute_forecast(date(2023, 3, 1), date(2023, 6, 30))
         recurring_row = df[df["Description"] == "Recurring budget 1"].iloc[0]
-        assert recurring_row["Périodicité"] == "1 Mois"
+        assert recurring_row["Frequency"] == "1 Month"
 
         isolated_row = df[df["Description"] == "Isolated budget"].iloc[0]
-        assert isolated_row["Périodicité"] == ""
+        assert isolated_row["Frequency"] == ""
 
     def test_empty_forecast(self, account: Account) -> None:
         """No forecast items returns empty DataFrame."""
@@ -302,22 +302,22 @@ class TestComputeBudgetForecast:
         planned_operations: tuple[PlannedOperation, ...],
         budgets: tuple[Budget, ...],
     ) -> None:
-        """Expenses per category and month have Réel, Prévu, and Ajusté columns."""
+        """Expenses per category and month have Actual, Forecast, and Adjusted columns."""
         analyzer = AccountAnalyzer(account, Forecast(planned_operations, budgets))
         df = analyzer.compute_budget_forecast(date(2023, 1, 1), date(2023, 5, 1))
-        assert df.loc[str(Category.GROCERIES)]["2023-01-01"]["Réel"] == -50.0
-        assert df.loc[str(Category.GROCERIES)]["2023-02-01"]["Réel"] == -30.0
-        # "Prévu" = raw forecast: budget (-300) + planned op (-20) = -320
-        assert df.loc[str(Category.GROCERIES)]["2023-03-01"]["Prévu"] == -320.0
-        assert df.loc[str(Category.CAR_FUEL)]["2023-03-01"]["Prévu"] == 0.0
-        assert df.loc[str(Category.OTHER)]["2023-03-01"]["Prévu"] == -50.0
-        # "Ajusté" = after actualization: planned op advanced to April
-        assert df.loc[str(Category.GROCERIES)]["2023-03-01"]["Ajusté"] == -300.0
-        assert df.loc[str(Category.CAR_FUEL)]["2023-03-01"]["Ajusté"] == 0.0
-        assert df.loc[str(Category.OTHER)]["2023-03-01"]["Ajusté"] == -50.0
-        assert df.loc[str(Category.GROCERIES)]["2023-04-01"]["Prévu"] == -320.0
-        assert df.loc[str(Category.CAR_FUEL)]["2023-04-01"]["Prévu"] == 0.0
-        assert df.loc[str(Category.OTHER)]["2023-04-01"]["Prévu"] == -250.0
+        assert df.loc[str(Category.GROCERIES)]["2023-01-01"]["Actual"] == -50.0
+        assert df.loc[str(Category.GROCERIES)]["2023-02-01"]["Actual"] == -30.0
+        # "Forecast" = raw forecast: budget (-300) + planned op (-20) = -320
+        assert df.loc[str(Category.GROCERIES)]["2023-03-01"]["Forecast"] == -320.0
+        assert df.loc[str(Category.CAR_FUEL)]["2023-03-01"]["Forecast"] == 0.0
+        assert df.loc[str(Category.OTHER)]["2023-03-01"]["Forecast"] == -50.0
+        # "Adjusted" = after actualization: planned op advanced to April
+        assert df.loc[str(Category.GROCERIES)]["2023-03-01"]["Adjusted"] == -300.0
+        assert df.loc[str(Category.CAR_FUEL)]["2023-03-01"]["Adjusted"] == 0.0
+        assert df.loc[str(Category.OTHER)]["2023-03-01"]["Adjusted"] == -50.0
+        assert df.loc[str(Category.GROCERIES)]["2023-04-01"]["Forecast"] == -320.0
+        assert df.loc[str(Category.CAR_FUEL)]["2023-04-01"]["Forecast"] == 0.0
+        assert df.loc[str(Category.OTHER)]["2023-04-01"]["Forecast"] == -250.0
 
 
 class TestComputeBudgetStatistics:
@@ -336,7 +336,7 @@ class TestComputeBudgetStatistics:
         df = analyzer.compute_budget_statistics(date(2023, 1, 1), date(2023, 12, 31))
         assert len(df) == 0
         assert "Total" in df.columns
-        assert "Moyenne mensuelle" in df.columns
+        assert "Monthly average" in df.columns
 
     def test_statistics_across_complete_months(self) -> None:
         """Statistics are computed only for complete months.
@@ -399,7 +399,7 @@ class TestComputeBudgetStatistics:
         # Rent: Feb (-800)
         assert df.loc[str(Category.RENT)]["Total"] == -800.0
         # Monthly average for groceries: -220 / 2 months = -110
-        assert df.loc[str(Category.GROCERIES)]["Moyenne mensuelle"] == -110.0
+        assert df.loc[str(Category.GROCERIES)]["Monthly average"] == -110.0
 
     def test_operations_outside_range_excluded(self) -> None:
         """Operations outside the requested date range are excluded."""
@@ -516,7 +516,7 @@ class TestComputeBudgetStatistics:
         # Range: Jan 1 to Mar 31 → months Jan, Feb, Mar
         # Groceries: Jan=-100, Feb=0, Mar=-100 → total=-200, avg=-200/3≈-66.67
         assert df.loc[str(Category.GROCERIES)]["Total"] == pytest.approx(-200.0)
-        assert df.loc[str(Category.GROCERIES)]["Moyenne mensuelle"] == pytest.approx(
+        assert df.loc[str(Category.GROCERIES)]["Monthly average"] == pytest.approx(
             -200.0 / 3, abs=0.01
         )
 
@@ -540,9 +540,9 @@ class TestComputeReport:
 
         # Operations DataFrame has expected columns
         assert list(report.operations.columns) == [
-            "Catégorie",
+            "Category",
             "Description",
-            "Montant",
+            "Amount",
         ]
         assert len(report.operations) == 2
 
@@ -558,4 +558,4 @@ class TestComputeReport:
 
         # Budget statistics has expected columns
         assert "Total" in report.budget_statistics.columns
-        assert "Moyenne mensuelle" in report.budget_statistics.columns
+        assert "Monthly average" in report.budget_statistics.columns

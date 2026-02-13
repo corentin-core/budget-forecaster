@@ -12,6 +12,7 @@ from textual.widgets.data_table import ColumnKey, RowKey
 from budget_forecaster.core.types import MatcherKey, OperationId, TargetName
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.operation_link import OperationLink
+from budget_forecaster.i18n import _
 
 
 def get_row_key_at_cursor(table: DataTable) -> RowKey | None:  # type: ignore[type-arg]
@@ -39,13 +40,11 @@ class OperationTable(DataTable[str]):  # pylint: disable=too-many-instance-attri
     """A table widget for displaying operations with multi-selection support."""
 
     BINDINGS = [
-        Binding("space", "toggle_selection", "Sélectionner", show=True),
-        Binding("shift+up", "extend_selection_up", "Étendre vers le haut", show=False),
-        Binding(
-            "shift+down", "extend_selection_down", "Étendre vers le bas", show=False
-        ),
-        Binding("ctrl+a", "select_all", "Tout sélectionner", show=False),
-        Binding("escape", "clear_selection", "Désélectionner", show=False),
+        Binding("space", "toggle_selection", _("Select"), show=True),
+        Binding("shift+up", "extend_selection_up", _("Extend up"), show=False),
+        Binding("shift+down", "extend_selection_down", _("Extend down"), show=False),
+        Binding("ctrl+a", "select_all", _("Select all"), show=False),
+        Binding("escape", "clear_selection", _("Deselect"), show=False),
     ]
 
     class OperationSelected(Message):
@@ -90,7 +89,7 @@ class OperationTable(DataTable[str]):  # pylint: disable=too-many-instance-attri
         """Ensure table columns exist (only once)."""
         if not self._columns_added:
             column_keys = self.add_columns(
-                "Date", "Description", "Montant", "Catégorie", "Lien"
+                _("Date"), _("Description"), _("Amount"), _("Category"), _("Link")
             )
             self._date_column_key = column_keys[0]
             self._columns_added = True
@@ -144,7 +143,7 @@ class OperationTable(DataTable[str]):  # pylint: disable=too-many-instance-attri
             date_str,
             self._truncate(op.description, 50),
             amount_str,
-            op.category.value,
+            op.category.display_name,
             link_str,
             key=row_key,
         )

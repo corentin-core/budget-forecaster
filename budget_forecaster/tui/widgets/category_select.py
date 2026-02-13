@@ -9,6 +9,7 @@ from textual.widgets import Input, OptionList, Static
 from textual.widgets.option_list import Option
 
 from budget_forecaster.core.types import Category
+from budget_forecaster.i18n import _
 
 
 class CategorySelect(Vertical):
@@ -57,14 +58,18 @@ class CategorySelect(Vertical):
         """
         super().__init__(**kwargs)
         self._suggested = suggested
-        self._all_categories = sorted(Category, key=lambda c: c.value)
+        self._all_categories = sorted(Category, key=lambda c: c.display_name)
         self._filtered_categories = self._all_categories.copy()
 
     def compose(self) -> ComposeResult:
         """Create the widget layout."""
-        hint = "Suggestion: " + self._suggested.value if self._suggested else ""
+        hint = (
+            _("Suggestion: {}").format(self._suggested.display_name)
+            if self._suggested
+            else ""
+        )
         yield Static(hint, id="suggestion-hint")
-        yield Input(placeholder="Rechercher une catégorie...", id="category-search")
+        yield Input(placeholder=_("Search category..."), id="category-search")
         yield OptionList(id="category-list")
 
     def on_mount(self) -> None:
@@ -78,9 +83,9 @@ class CategorySelect(Vertical):
 
         for cat in self._filtered_categories:
             # Mark suggested category
-            label = cat.value
+            label = cat.display_name
             if cat == self._suggested:
-                label = f"★ {label} (suggestion)"
+                label = _("★ {} (suggestion)").format(label)
             option_list.add_option(Option(label, id=cat.name))
 
     def on_input_changed(self, event: Input.Changed) -> None:
@@ -92,7 +97,9 @@ class CategorySelect(Vertical):
             self._filtered_categories = self._all_categories.copy()
         else:
             self._filtered_categories = [
-                cat for cat in self._all_categories if search in cat.value.lower()
+                cat
+                for cat in self._all_categories
+                if search in cat.display_name.lower()
             ]
 
         self._update_options()
@@ -124,7 +131,7 @@ class CategorySelect(Vertical):
         self._suggested = category
         hint_widget = self.query_one("#suggestion-hint", Static)
         if category:
-            hint_widget.update(f"Suggestion: {category.value}")
+            hint_widget.update(_("Suggestion: {}").format(category.display_name))
         else:
             hint_widget.update("")
         self._update_options()

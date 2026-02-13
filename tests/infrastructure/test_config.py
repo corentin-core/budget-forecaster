@@ -18,6 +18,11 @@ CONFIGS_FIXTURES_DIR = Path(__file__).parents[1] / "fixtures" / "configs"
 class TestConfigDefaults:
     """Tests for Config default values."""
 
+    def test_default_language(self) -> None:
+        """Test that default language is English."""
+        config = Config()
+        assert config.language == "en"
+
     def test_default_account(self) -> None:
         """Test that default account config is Main Account / EUR."""
         config = Config()
@@ -75,6 +80,7 @@ class TestConfigParseYaml:
         config = Config()
         config.parse(CONFIGS_FIXTURES_DIR / "full_config.yaml")
 
+        assert config.language == "fr"
         assert config.account == AccountConfig(name="Full Account", currency="USD")
         assert config.database_path == Path("budget.db")
         assert config.inbox_path == Path("inbox")

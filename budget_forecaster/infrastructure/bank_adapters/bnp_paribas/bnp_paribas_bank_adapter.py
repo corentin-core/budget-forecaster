@@ -127,7 +127,7 @@ class BnpParibasBankAdapter(BankAdapterBase):
         # Report unknown categories at the end
         if self._unknown_categories:
             warnings.warn(
-                f"Unknown BNP categories (assigned to 'Autre'): "
+                f"Unknown BNP categories (assigned to 'uncategorized'): "
                 f"{sorted(self._unknown_categories)}. "
                 f"Add them to category_mapping.yaml to map them correctly.",
                 stacklevel=2,

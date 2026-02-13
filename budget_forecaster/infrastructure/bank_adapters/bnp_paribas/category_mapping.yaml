@@ -3,112 +3,112 @@
 # How it works:
 # - Each keyword is searched in the BNP category (case-insensitive, accent-insensitive)
 # - If multiple keywords match, the longest one wins (more specific)
-# - If no keyword matches, the category falls back to "Autre" with a warning
+# - If no keyword matches, the category falls back to "uncategorized" with a warning
 #
 # To add a new keyword:
 # 1. Check the warning message for unmapped categories
 # 2. Add a keyword that matches the BNP category
 #
-# Available internal categories:
-#   Income: Salaire, Crédit d'impot, Allocations
-#   Housing: Prêt maison, Loyer, Travaux, Mobilier, electromenager, deco.
-#   Insurance: Assurance auto, Assurance habitation, Autre assurance
-#   Children: Enfants, Pension alimentaire
-#   Leisure: Divertissement, Loisirs, Voyages, vacances, Cadeaux
-#   Utilities: Electricité, Eau, Internet, Téléphone
-#   Daily: Courses, Habillement, Santé, Transports publics, Carburant, etc.
-#   Other: Frais professionnels, Autre, Dons, Commissions bancaires, Impôts, taxes
+# Available internal categories (language-neutral keys):
+#   Income: salary, tax_credit, benefits
+#   Housing: house_loan, rent, house_works, furniture
+#   Insurance: car_insurance, house_insurance, other_insurance
+#   Children: childcare, child_support
+#   Leisure: entertainment, leisure, holidays, gifts
+#   Utilities: electricity, water, internet, phone
+#   Daily: groceries, clothing, health_care, public_transport, car_fuel, etc.
+#   Other: professional_expenses, other, charity, bank_fees, taxes
 
 keywords:
   # Income
-  salaire: Salaire
-  revenu: Salaire
-  aides: Allocations
-  allocations: Allocations
+  salaire: salary
+  revenu: salary
+  aides: benefits
+  allocations: benefits
 
   # Housing
-  emprunt: Prêt maison
-  immobilier: Prêt maison
-  loyer: Loyer
-  travaux: Travaux
-  reparation: Travaux
-  bricolage: Travaux
-  jardinage: Travaux
-  chauffage: Travaux
-  mobilier: "Mobilier, electromenager, deco."
-  electromenager: "Mobilier, electromenager, deco."
-  deco: "Mobilier, electromenager, deco."
+  emprunt: house_loan
+  immobilier: house_loan
+  loyer: rent
+  travaux: house_works
+  reparation: house_works
+  bricolage: house_works
+  jardinage: house_works
+  chauffage: house_works
+  mobilier: furniture
+  electromenager: furniture
+  deco: furniture
 
   # Transportation
-  carburant: Carburant
-  essence: Carburant
-  entretien vehicule: Entretien automobile
-  transport: Transports publics
-  train: Transports publics
-  avion: Transports publics
-  stationnement: Stationnement
-  parking: Stationnement
-  peage: Péage
-  credit auto: Crédit auto
-  location vehicule: "Voyages, vacances"
+  carburant: car_fuel
+  essence: car_fuel
+  entretien vehicule: car_maintenance
+  transport: public_transport
+  train: public_transport
+  avion: public_transport
+  stationnement: parking
+  parking: parking
+  peage: toll
+  credit auto: car_loan
+  location vehicule: holidays
 
   # Insurance
-  assurance vehicule: Assurance auto
-  assurance auto: Assurance auto
-  assurance habitation: Assurance habitation
-  assurance: Autre assurance
+  assurance vehicule: car_insurance
+  assurance auto: car_insurance
+  assurance habitation: house_insurance
+  assurance: other_insurance
 
   # Utilities
-  eau: Eau
-  electricite: Electricité
-  gaz: Electricité
-  internet: Internet
-  tv: Internet
-  telephone: Téléphone
+  eau: water
+  electricite: electricity
+  gaz: electricity
+  internet: internet
+  tv: internet
+  telephone: phone
 
   # Daily life
-  alimentation: Courses
-  supermarche: Courses
-  habillement: Habillement
-  vetement: Habillement
-  coiffeur: "Coiffeur, cosmétique, soins"
-  cosmetique: "Coiffeur, cosmétique, soins"
-  soins: "Coiffeur, cosmétique, soins"
-  medecin: Santé
-  pharmacie: Santé
-  sante: Santé
-  mutuelle: Santé
-  restaurant: Loisirs
-  bar: Loisirs
-  sport: Loisirs
-  multimedia: Divertissement
-  high-tech: Divertissement
-  hightech: Divertissement
-  musique: Divertissement
-  livre: Divertissement
-  film: Divertissement
+  alimentation: groceries
+  supermarche: groceries
+  habillement: clothing
+  vetement: clothing
+  coiffeur: care
+  cosmetique: care
+  soins: care
+  medecin: health_care
+  pharmacie: health_care
+  sante: health_care
+  mutuelle: health_care
+  restaurant: leisure
+  bar: leisure
+  sport: leisure
+  multimedia: entertainment
+  high-tech: entertainment
+  hightech: entertainment
+  musique: entertainment
+  livre: entertainment
+  film: entertainment
 
   # Leisure
-  divertissement: Loisirs
-  sortie: Loisirs
-  loisir: Loisirs
-  voyage: "Voyages, vacances"
-  vacances: "Voyages, vacances"
-  cadeau: Cadeaux
+  divertissement: leisure
+  sortie: leisure
+  loisir: leisure
+  voyage: holidays
+  vacances: holidays
+  cadeau: gifts
 
   # Children
-  creche: Enfants
-  baby-sitter: Enfants
-  scolarite: Enfants
-  etude: Enfants
-  enfant: Enfants
-  pension alimentaire: Pension alimentaire
+  creche: childcare
+  baby-sitter: childcare
+  scolarite: childcare
+  etude: childcare
+  enfant: childcare
+  pension alimentaire: child_support
 
   # Other
-  frais bancaire: Commissions bancaires
-  epargne: Epargne
-  taxe: "Impôts, taxes"
-  impot: "Impôts, taxes"
-  don: Dons
-  caritatif: Dons
-  frais professionnel: Frais professionnels
+  frais bancaire: bank_fees
+  epargne: savings
+  taxe: taxes
+  impot: taxes
+  don: charity
+  caritatif: charity
+  frais professionnel: professional_expenses

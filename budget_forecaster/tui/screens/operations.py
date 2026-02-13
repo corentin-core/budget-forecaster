@@ -15,6 +15,7 @@ from budget_forecaster.core.types import (
     TargetName,
 )
 from budget_forecaster.domain.operation.operation_link import OperationLink
+from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.operation.operation_service import OperationFilter
 from budget_forecaster.tui.messages import DataRefreshRequested, SaveRequested
@@ -63,20 +64,20 @@ class OperationDetailPanel(Vertical):
         self._app_service: ApplicationService | None = None
 
     def compose(self) -> ComposeResult:
-        yield Static("Détail de l'opération", classes="detail-title")
-        yield Static("ID:", classes="detail-label")
+        yield Static(_("Operation detail"), classes="detail-title")
+        yield Static(_("ID:"), classes="detail-label")
         yield Static("-", id="detail-id", classes="detail-value")
-        yield Static("Date:", classes="detail-label")
+        yield Static(_("Date:"), classes="detail-label")
         yield Static("-", id="detail-date", classes="detail-value")
-        yield Static("Description:", classes="detail-label")
+        yield Static(_("Description:"), classes="detail-label")
         yield Static("-", id="detail-description", classes="detail-value")
-        yield Static("Montant:", classes="detail-label")
+        yield Static(_("Amount:"), classes="detail-label")
         yield Static("-", id="detail-amount", classes="detail-value")
-        yield Static("Catégorie:", classes="detail-label")
+        yield Static(_("Category:"), classes="detail-label")
         yield Static("-", id="detail-category", classes="detail-value")
 
         with Vertical(id="edit-category-container", classes="hidden"):
-            yield Button("Modifier la catégorie", id="btn-edit-category")
+            yield Button(_("Change category"), id="btn-edit-category")
 
     def set_app_service(self, service: ApplicationService) -> None:
         """Set the application service."""
@@ -103,7 +104,9 @@ class OperationDetailPanel(Vertical):
 
         amount_str = f"{operation.amount:+.2f} €"
         self.query_one("#detail-amount", Static).update(amount_str)
-        self.query_one("#detail-category", Static).update(operation.category.value)
+        self.query_one("#detail-category", Static).update(
+            operation.category.display_name
+        )
 
         # Show edit button
         self.query_one("#edit-category-container").remove_class("hidden")
@@ -164,7 +167,7 @@ class CategoryEditModal(ModalScreen[bool]):
     }
     """
 
-    BINDINGS = [("escape", "cancel", "Annuler")]
+    BINDINGS = [("escape", "cancel", _("Cancel"))]
 
     def __init__(
         self,
@@ -178,7 +181,7 @@ class CategoryEditModal(ModalScreen[bool]):
 
     def compose(self) -> ComposeResult:
         with Container():
-            yield Static("Modifier la catégorie", classes="modal-title")
+            yield Static(_("Change category"), classes="modal-title")
 
             # Get suggested category
             suggested = None
@@ -187,7 +190,7 @@ class CategoryEditModal(ModalScreen[bool]):
                 suggested = self._app_service.suggest_category(operation)
 
             yield CategorySelect(suggested=suggested)
-            yield Button("Annuler", id="btn-cancel", variant="default")
+            yield Button(_("Cancel"), id="btn-cancel", variant="default")
 
     def on_category_select_category_selected(
         self, event: CategorySelect.CategorySelected
@@ -258,23 +261,23 @@ class OperationsScreen(Container):
     def compose(self) -> ComposeResult:
         # Filter bar
         with Horizontal(id="filter-bar"):
-            yield Input(placeholder="Rechercher...", id="search-input")
+            yield Input(placeholder=_("Search..."), id="search-input")
             yield Select[str](
                 [
-                    (cat.value, cat.name)
-                    for cat in sorted(Category, key=lambda c: c.value)
+                    (cat.display_name, cat.name)
+                    for cat in sorted(Category, key=lambda c: c.display_name)
                 ],
-                prompt="Catégorie",
+                prompt=_("Category"),
                 id="category-filter",
                 allow_blank=True,
             )
-            yield Button("Filtrer", id="btn-filter")
-            yield Button("Réinitialiser", id="btn-reset")
+            yield Button(_("Filter"), id="btn-filter")
+            yield Button(_("Reset"), id="btn-reset")
 
         # Table only - simplified layout
         yield OperationTable(id="operations-table")
 
-        yield Static("0 opérations", id="status-bar")
+        yield Static(_("0 operations"), id="status-bar")
 
     def set_app_service(self, service: ApplicationService) -> None:
         """Set the application service and refresh."""
@@ -308,7 +311,7 @@ class OperationsScreen(Container):
         table.load_operations(operations, links, targets)
 
         status = self.query_one("#status-bar", Static)
-        status.update(f"{len(operations)} opération(s)")
+        status.update(_("{} operation(s)").format(len(operations)))
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""

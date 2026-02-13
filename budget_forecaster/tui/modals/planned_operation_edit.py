@@ -17,6 +17,7 @@ from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.date_range import RecurringDay, SingleDay
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.i18n import _
 
 
 class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
@@ -77,7 +78,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
     }
     """
 
-    BINDINGS = [("escape", "cancel", "Annuler")]
+    BINDINGS = [("escape", "cancel", _("Cancel"))]
 
     def __init__(
         self, operation: PlannedOperation | None = None, **kwargs: Any
@@ -93,7 +94,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
 
     def compose(self) -> ComposeResult:
         """Create the modal layout."""
-        title = "Nouvelle opération" if self._is_new else "Modifier l'opération"
+        title = _("New operation") if self._is_new else _("Edit operation")
 
         with Vertical(id="modal-container"):
             yield Static(title, id="modal-title")
@@ -101,7 +102,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
             with VerticalScroll(id="form-scroll"):
                 # Description
                 with Horizontal(classes="form-row"):
-                    yield Label("Description:", classes="form-label")
+                    yield Label(_("Description:"), classes="form-label")
                     yield Input(
                         value=self._operation.description if self._operation else "",
                         id="input-description",
@@ -110,7 +111,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
 
                 # Amount
                 with Horizontal(classes="form-row"):
-                    yield Label("Montant:", classes="form-label")
+                    yield Label(_("Amount:"), classes="form-label")
                     yield Input(
                         value=str(self._operation.amount) if self._operation else "100",
                         id="input-amount",
@@ -119,10 +120,10 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
 
                 # Category
                 with Horizontal(classes="form-row"):
-                    yield Label("Catégorie:", classes="form-label")
+                    yield Label(_("Category:"), classes="form-label")
                     categories = [
-                        (cat.value, cat.name)
-                        for cat in sorted(Category, key=lambda c: c.value)
+                        (cat.display_name, cat.name)
+                        for cat in sorted(Category, key=lambda c: c.display_name)
                     ]
                     current = (
                         self._operation.category.name
@@ -138,7 +139,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
 
                 # Date
                 with Horizontal(classes="form-row"):
-                    yield Label("Date:", classes="form-label")
+                    yield Label(_("Date:"), classes="form-label")
                     start = (
                         self._operation.date_range.start_date
                         if self._operation
@@ -153,12 +154,12 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
 
                 # Periodic
                 with Horizontal(classes="form-row"):
-                    yield Label("Récurrent:", classes="form-label")
+                    yield Label(_("Recurring:"), classes="form-label")
                     is_periodic = self._operation and isinstance(
                         self._operation.date_range, RecurringDay
                     )
                     yield Select(
-                        [("Non", "no"), ("Oui", "yes")],
+                        [(_("No"), "no"), (_("Yes"), "yes")],
                         value="yes" if is_periodic else "no",
                         id="select-periodic",
                         classes="form-input",
@@ -166,40 +167,40 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
 
                 # Period (months)
                 with Horizontal(classes="form-row"):
-                    yield Label("Période (mois):", classes="form-label")
+                    yield Label(_("Period (months):"), classes="form-label")
                     period = self._get_period_months()
                     yield Input(
                         value=str(period) if period else "",
                         id="input-period",
-                        placeholder="Laisser vide si non récurrent",
+                        placeholder=_("Leave empty if not recurring"),
                         classes="form-input",
                     )
 
                 # End date
                 with Horizontal(classes="form-row"):
-                    yield Label("Date fin:", classes="form-label")
+                    yield Label(_("End date:"), classes="form-label")
                     end_date = self._get_end_date()
                     yield Input(
                         value=end_date.strftime("%Y-%m-%d") if end_date else "",
                         id="input-end-date",
-                        placeholder="Laisser vide pour indéfini",
+                        placeholder=_("Leave empty for indefinite"),
                         classes="form-input",
                     )
 
                 # Description hints
                 with Horizontal(classes="form-row"):
-                    yield Label("Mots-clés:", classes="form-label")
+                    yield Label(_("Keywords:"), classes="form-label")
                     hints = self._get_hints()
                     yield Input(
                         value=hints,
                         id="input-hints",
-                        placeholder="Séparés par des virgules",
+                        placeholder=_("Comma separated"),
                         classes="form-input",
                     )
 
                 # Approximation days
                 with Horizontal(classes="form-row"):
-                    yield Label("Tolérance date (j):", classes="form-label")
+                    yield Label(_("Date tolerance (days):"), classes="form-label")
                     approx_days = self._get_approx_days()
                     yield Input(
                         value=str(approx_days),
@@ -209,12 +210,12 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
 
                 # Approximation ratio
                 with Horizontal(classes="form-row"):
-                    yield Label("Tolérance montant:", classes="form-label")
+                    yield Label(_("Amount tolerance:"), classes="form-label")
                     approx_ratio = self._get_approx_ratio()
                     yield Input(
                         value=str(approx_ratio),
                         id="input-approx-ratio",
-                        placeholder="Ex: 0.05 pour 5%",
+                        placeholder=_("E.g. 0.05 for 5%"),
                         classes="form-input",
                     )
 
@@ -222,8 +223,8 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
 
             # Buttons
             with Horizontal(id="buttons-row"):
-                yield Button("Annuler", id="btn-cancel", variant="default")
-                yield Button("Enregistrer", id="btn-save", variant="primary")
+                yield Button(_("Cancel"), id="btn-cancel", variant="default")
+                yield Button(_("Save"), id="btn-save", variant="primary")
 
     def _get_period_months(self) -> int | None:
         """Get the period in months from the current operation."""
@@ -285,27 +286,27 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
             # Get values
             description = self.query_one("#input-description", Input).value.strip()
             if not description:
-                raise ValueError("La description est requise")
+                raise ValueError(_("Description is required"))
 
             amount_str = self.query_one("#input-amount", Input).value.strip()
             try:
                 amount_val = float(amount_str)
             except ValueError:
-                raise ValueError("Le montant doit être un nombre")
+                raise ValueError(_("Amount must be a number"))
 
             category_select = self.query_one("#select-category", Select)
             if category_select.value == Select.BLANK:
-                raise ValueError("La catégorie est requise")
+                raise ValueError(_("Category is required"))
             try:
                 category = Category[str(category_select.value)]
             except KeyError:
-                raise ValueError("Catégorie invalide")
+                raise ValueError(_("Invalid category"))
 
             date_str = self.query_one("#input-date", Input).value.strip()
             try:
                 op_date = datetime.strptime(date_str, "%Y-%m-%d").date()
             except ValueError:
-                raise ValueError("La date doit être au format YYYY-MM-DD")
+                raise ValueError(_("Date must be in YYYY-MM-DD format"))
 
             is_periodic = self.query_one("#select-periodic", Select).value == "yes"
 
@@ -317,7 +318,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
                     if period_months <= 0:
                         raise ValueError()
                 except ValueError:
-                    raise ValueError("La période doit être un nombre entier positif")
+                    raise ValueError(_("Period must be a positive integer"))
 
             end_str = self.query_one("#input-end-date", Input).value.strip()
             end_date = None
@@ -325,7 +326,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
                 try:
                     end_date = datetime.strptime(end_str, "%Y-%m-%d").date()
                 except ValueError:
-                    raise ValueError("La date de fin doit être au format YYYY-MM-DD")
+                    raise ValueError(_("End date must be in YYYY-MM-DD format"))
 
             hints_str = self.query_one("#input-hints", Input).value.strip()
             hints = (
@@ -340,7 +341,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
                 if approx_days < 0:
                     raise ValueError()
             except ValueError:
-                raise ValueError("La tolérance date doit être un nombre entier positif")
+                raise ValueError(_("Date tolerance must be a positive integer"))
 
             approx_ratio_str = self.query_one(
                 "#input-approx-ratio", Input
@@ -350,7 +351,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
                 if approx_ratio < 0:
                     raise ValueError()
             except ValueError:
-                raise ValueError("La tolérance montant doit être un nombre positif")
+                raise ValueError(_("Amount must be a number"))
 
             # Build date range
             dr: SingleDay | RecurringDay

@@ -153,11 +153,11 @@ class TestBnpParibasBankAdapterCategories:
         ops_by_desc = {op.description: op for op in adapter.operations}
 
         # "Alimentation / Supermarché" -> normalized "alimentation / supermarche"
-        # matches keyword "alimentation" -> Courses
+        # matches keyword "alimentation" -> GROCERIES
         assert ops_by_desc["CARREFOUR MARKET"].category == Category.GROCERIES
 
         # "Revenus / Salaire" -> normalized "revenus / salaire"
-        # matches keyword "salaire" -> Salaire
+        # matches keyword "salaire" -> SALARY
         assert ops_by_desc["VIREMENT SALAIRE"].category == Category.SALARY
 
         # "Transports / Transport en commun" -> matches "transport"

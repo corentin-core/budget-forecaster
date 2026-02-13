@@ -15,6 +15,7 @@ from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.i18n import _
 from budget_forecaster.services.operation.operation_link_service import (
     compute_match_score,
 )
@@ -145,7 +146,7 @@ class LinkTargetModal(
     }
     """
 
-    BINDINGS = [("escape", "cancel", "Annuler")]
+    BINDINGS = [("escape", "cancel", _("Cancel"))]
 
     def __init__(
         self,
@@ -251,10 +252,10 @@ class LinkTargetModal(
 
     def _build_header_text(self) -> str:
         """Build the header row text."""
-        score = "Score".ljust(COL_SCORE)
-        desc = "Description".ljust(COL_DESCRIPTION)
-        amount = "Montant".rjust(COL_AMOUNT)
-        category = "Catégorie".ljust(COL_CATEGORY)
+        score = _("Score").ljust(COL_SCORE)
+        desc = _("Description").ljust(COL_DESCRIPTION)
+        amount = _("Amount").rjust(COL_AMOUNT)
+        category = _("Category").ljust(COL_CATEGORY)
         return f"{score}{desc}{amount}  {category}"
 
     def _truncate(self, text: str, max_length: int) -> str:
@@ -270,9 +271,9 @@ class LinkTargetModal(
 
         # Build title based on operation count
         if (op_count := len(self._operations)) == 1:
-            title = "Lier l'opération"
+            title = _("Link operation")
         else:
-            title = f"Lier {op_count} opérations"
+            title = _("Link {} operations").format(op_count)
 
         with Vertical(id="modal-container"):
             yield Static(title, id="modal-title")
@@ -280,9 +281,9 @@ class LinkTargetModal(
             # Operations panel - show list of operations like CategoryModal
             with Vertical(id="op-info"):
                 panel_title = (
-                    "Opération à lier"
+                    _("Operation to link")
                     if op_count == 1
-                    else f"{op_count} opérations à lier"
+                    else _("{} operations to link").format(op_count)
                 )
                 yield Static(panel_title, classes="panel-title")
 
@@ -306,7 +307,7 @@ class LinkTargetModal(
 
                 if op_count > 8:
                     yield Static(
-                        f"... et {op_count - 8} autre(s)",
+                        _("... and {} other(s)").format(op_count - 8),
                         classes="op-date",
                     )
 
@@ -315,14 +316,16 @@ class LinkTargetModal(
             current_link_class = "" if show_current_link else "hidden"
             with Horizontal(id="current-link-row", classes=current_link_class):
                 link_name = self._get_current_link_name()
-                yield Static(f"🔗 Lié à: {link_name}", id="current-link-text")
+                yield Static(
+                    _("🔗 Linked to: {}").format(link_name), id="current-link-text"
+                )
 
             # Type selector
             with Horizontal(id="type-select-row"):
                 yield Select(
                     [
-                        ("Opérations planifiées", "planned"),
-                        ("Budgets", "budget"),
+                        (_("Planned operations"), "planned"),
+                        (_("Budgets"), "budget"),
                     ],
                     value=self._current_type,
                     id="type-select",
@@ -347,14 +350,14 @@ class LinkTargetModal(
             )
             with Horizontal(id="buttons-row"):
                 yield Button(
-                    "Supprimer le lien",
+                    _("Unlink"),
                     id="btn-unlink",
                     variant="error",
                     classes=unlink_class,
                 )
                 yield Static("", id="buttons-spacer")
-                yield Button("Annuler", id="btn-cancel", variant="default")
-                yield Button("Suivant", id="btn-next", variant="primary")
+                yield Button(_("Cancel"), id="btn-cancel", variant="default")
+                yield Button(_("Select"), id="btn-next", variant="primary")
 
     def on_mount(self) -> None:
         """Highlight the currently linked target if any."""
@@ -414,7 +417,7 @@ class LinkTargetModal(
                 score=score,
                 description=planned_op.description,
                 amount=planned_op.amount,
-                category=planned_op.category.value,
+                category=planned_op.category.display_name,
             )
             options.append(Option(label, id=f"planned_{planned_op.id}"))
 
@@ -439,7 +442,7 @@ class LinkTargetModal(
                 score=score,
                 description=budget.description,
                 amount=budget.amount,
-                category=budget.category.value,
+                category=budget.category.display_name,
             )
             options.append(Option(label, id=f"budget_{budget.id}"))
 
@@ -528,7 +531,7 @@ class LinkTargetModal(
             if self._selected_target:
                 self.dismiss(self._selected_target)
             else:
-                self.notify("Veuillez sélectionner une cible", severity="warning")
+                self.notify(_("Please select a target"), severity="warning")
 
     def action_cancel(self) -> None:
         """Cancel selection."""

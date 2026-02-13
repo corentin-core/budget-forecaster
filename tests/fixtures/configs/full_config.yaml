@@ -1,3 +1,4 @@
+language: fr
 database_path: ./budget.db
 account_name: Full Account
 account_currency: USD

@@ -16,6 +16,7 @@ from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.date_range import DateRange, RecurringDateRange
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.i18n import _
 
 
 class BudgetEditModal(ModalScreen[Budget | None]):
@@ -76,7 +77,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
     }
     """
 
-    BINDINGS = [("escape", "cancel", "Annuler")]
+    BINDINGS = [("escape", "cancel", _("Cancel"))]
 
     def __init__(self, budget: Budget | None = None, **kwargs: Any) -> None:
         """Initialize the modal.
@@ -90,7 +91,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
 
     def compose(self) -> ComposeResult:
         """Create the modal layout."""
-        title = "Nouveau budget" if self._is_new else "Modifier le budget"
+        title = _("New budget") if self._is_new else _("Edit budget")
 
         with Vertical(id="modal-container"):
             yield Static(title, id="modal-title")
@@ -98,7 +99,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
             with VerticalScroll(id="form-scroll"):
                 # Description
                 with Horizontal(classes="form-row"):
-                    yield Label("Description:", classes="form-label")
+                    yield Label(_("Description:"), classes="form-label")
                     yield Input(
                         value=self._budget.description if self._budget else "",
                         id="input-description",
@@ -107,7 +108,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
 
                 # Amount
                 with Horizontal(classes="form-row"):
-                    yield Label("Montant:", classes="form-label")
+                    yield Label(_("Amount:"), classes="form-label")
                     yield Input(
                         value=str(self._budget.amount) if self._budget else "-100",
                         id="input-amount",
@@ -116,10 +117,10 @@ class BudgetEditModal(ModalScreen[Budget | None]):
 
                 # Category
                 with Horizontal(classes="form-row"):
-                    yield Label("Catégorie:", classes="form-label")
+                    yield Label(_("Category:"), classes="form-label")
                     categories = [
-                        (cat.value, cat.name)
-                        for cat in sorted(Category, key=lambda c: c.value)
+                        (cat.display_name, cat.name)
+                        for cat in sorted(Category, key=lambda c: c.display_name)
                     ]
                     current = (
                         self._budget.category.name
@@ -135,7 +136,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
 
                 # Start date
                 with Horizontal(classes="form-row"):
-                    yield Label("Date début:", classes="form-label")
+                    yield Label(_("Start date:"), classes="form-label")
                     start = (
                         self._budget.date_range.start_date
                         if self._budget
@@ -150,7 +151,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
 
                 # Duration (months)
                 with Horizontal(classes="form-row"):
-                    yield Label("Durée (mois):", classes="form-label")
+                    yield Label(_("Duration (months):"), classes="form-label")
                     duration = self._get_duration_months()
                     yield Input(
                         value=str(duration),
@@ -160,35 +161,35 @@ class BudgetEditModal(ModalScreen[Budget | None]):
 
                 # Periodic checkbox and period
                 with Horizontal(classes="form-row"):
-                    yield Label("Récurrent:", classes="form-label")
+                    yield Label(_("Recurring:"), classes="form-label")
                     is_periodic = self._budget and isinstance(
                         self._budget.date_range, RecurringDateRange
                     )
                     yield Select(
-                        [("Non", "no"), ("Oui", "yes")],
+                        [(_("No"), "no"), (_("Yes"), "yes")],
                         value="yes" if is_periodic else "no",
                         id="select-periodic",
                         classes="form-input",
                     )
 
                 with Horizontal(classes="form-row"):
-                    yield Label("Période (mois):", classes="form-label")
+                    yield Label(_("Period (months):"), classes="form-label")
                     period = self._get_period_months()
                     yield Input(
                         value=str(period) if period else "",
                         id="input-period",
-                        placeholder="Laisser vide si non récurrent",
+                        placeholder=_("Leave empty if not recurring"),
                         classes="form-input",
                     )
 
                 # End date (for periodic)
                 with Horizontal(classes="form-row"):
-                    yield Label("Date fin:", classes="form-label")
+                    yield Label(_("End date:"), classes="form-label")
                     end_date = self._get_end_date()
                     yield Input(
                         value=end_date.strftime("%Y-%m-%d") if end_date else "",
                         id="input-end-date",
-                        placeholder="Laisser vide pour indéfini",
+                        placeholder=_("Leave empty for indefinite"),
                         classes="form-input",
                     )
 
@@ -196,8 +197,8 @@ class BudgetEditModal(ModalScreen[Budget | None]):
 
             # Buttons
             with Horizontal(id="buttons-row"):
-                yield Button("Annuler", id="btn-cancel", variant="default")
-                yield Button("Enregistrer", id="btn-save", variant="primary")
+                yield Button(_("Cancel"), id="btn-cancel", variant="default")
+                yield Button(_("Save"), id="btn-save", variant="primary")
 
     def _get_duration_months(self) -> int:
         """Get the duration in months from the current budget."""
@@ -242,27 +243,27 @@ class BudgetEditModal(ModalScreen[Budget | None]):
             # Get values
             description = self.query_one("#input-description", Input).value.strip()
             if not description:
-                raise ValueError("La description est requise")
+                raise ValueError(_("Description is required"))
 
             amount_str = self.query_one("#input-amount", Input).value.strip()
             try:
                 amount_val = float(amount_str)
             except ValueError:
-                raise ValueError("Le montant doit être un nombre")
+                raise ValueError(_("Amount must be a number"))
 
             category_select = self.query_one("#select-category", Select)
             if category_select.value == Select.BLANK:
-                raise ValueError("La catégorie est requise")
+                raise ValueError(_("Category is required"))
             try:
                 category = Category[str(category_select.value)]
             except KeyError:
-                raise ValueError("Catégorie invalide")
+                raise ValueError(_("Invalid category"))
 
             start_str = self.query_one("#input-start-date", Input).value.strip()
             try:
                 start_date = datetime.strptime(start_str, "%Y-%m-%d").date()
             except ValueError:
-                raise ValueError("La date de début doit être au format YYYY-MM-DD")
+                raise ValueError(_("Start date must be in YYYY-MM-DD format"))
 
             duration_str = self.query_one("#input-duration", Input).value.strip()
             try:
@@ -270,7 +271,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
                 if duration_months <= 0:
                     raise ValueError()
             except ValueError:
-                raise ValueError("La durée doit être un nombre entier positif")
+                raise ValueError(_("Duration must be a positive integer"))
 
             is_periodic = self.query_one("#select-periodic", Select).value == "yes"
 
@@ -282,7 +283,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
                     if period_months <= 0:
                         raise ValueError()
                 except ValueError:
-                    raise ValueError("La période doit être un nombre entier positif")
+                    raise ValueError(_("Period must be a positive integer"))
 
             end_str = self.query_one("#input-end-date", Input).value.strip()
             end_date = None
@@ -290,7 +291,7 @@ class BudgetEditModal(ModalScreen[Budget | None]):
                 try:
                     end_date = datetime.strptime(end_str, "%Y-%m-%d").date()
                 except ValueError:
-                    raise ValueError("La date de fin doit être au format YYYY-MM-DD")
+                    raise ValueError(_("End date must be in YYYY-MM-DD format"))
 
             # Build date range
             inner_range = DateRange(start_date, relativedelta(months=duration_months))

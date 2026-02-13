@@ -8,6 +8,7 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Static
 
 from budget_forecaster.core.types import Category
+from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.operation.operation_service import OperationFilter
 
@@ -146,13 +147,13 @@ class DashboardScreen(Container):
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="stats-row"):
-            yield StatCard("Solde actuel", id="balance-card")
-            yield StatCard("Opérations ce mois", id="month-ops-card")
-            yield StatCard("Dépenses ce mois", id="month-expenses-card")
-            yield StatCard("Non catégorisées", id="uncategorized-card")
+            yield StatCard(_("Current balance"), id="balance-card")
+            yield StatCard(_("Operations this month"), id="month-ops-card")
+            yield StatCard(_("Expenses this month"), id="month-expenses-card")
+            yield StatCard(_("Uncategorized"), id="uncategorized-card")
 
         with Vertical(id="categories-section"):
-            yield Static("Dépenses par catégorie (ce mois)", id="categories-title")
+            yield Static(_("Expenses by category (this month)"), id="categories-title")
             yield Vertical(id="categories-list")
 
     def set_app_service(self, service: ApplicationService) -> None:
@@ -227,5 +228,5 @@ class DashboardScreen(Container):
 
         for cat, amount in sorted_categories[:15]:  # Top 15 expenses
             if cat not in (Category.OTHER, Category.UNCATEGORIZED) or amount != 0:
-                row = CategoryRow(cat.value, amount, max_expense)
+                row = CategoryRow(cat.display_name, amount, max_expense)
                 categories_list.mount(row)

@@ -11,6 +11,7 @@ from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, DataTable, Input, Static
 
 from budget_forecaster.exceptions import AccountNotLoadedError, BudgetForecasterError
+from budget_forecaster.i18n import _
 from budget_forecaster.services.account.account_analysis_renderer import (
     AccountAnalysisRendererExcel,
 )
@@ -112,33 +113,33 @@ class ForecastWidget(Vertical):
     def compose(self) -> ComposeResult:
         with Horizontal(id="forecast-header"):
             with Horizontal(id="date-inputs"):
-                yield Static("Du", classes="date-label")
+                yield Static(_("From"), classes="date-label")
                 yield Input(
                     value=self._start_date.isoformat(),
                     placeholder="YYYY-MM-DD",
                     id="start-date-input",
                     classes="date-input",
                 )
-                yield Static("au", classes="date-label")
+                yield Static(_("to"), classes="date-label")
                 yield Input(
                     value=self._end_date.isoformat(),
                     placeholder="YYYY-MM-DD",
                     id="end-date-input",
                     classes="date-input",
                 )
-            yield Button("Calculer", id="btn-compute", variant="primary")
-            yield Button("Exporter Excel", id="btn-export", variant="default")
+            yield Button(_("Calculate"), id="btn-compute", variant="primary")
+            yield Button(_("Export Excel"), id="btn-export", variant="default")
 
         yield Static("", id="forecast-status")
 
         with Vertical(id="balance-section"):
-            yield Static("Évolution du solde", classes="section-title")
+            yield Static(_("Balance evolution"), classes="section-title")
             yield Static("", id="balance-chart")
 
         with Vertical(id="tables-container"):
-            yield Static("Budget par catégorie", classes="section-title")
+            yield Static(_("Budget by category"), classes="section-title")
             yield Static(
-                "R = Réel | A = Ajusté | P = Prévu",
+                _("R = Real | A = Adjusted | P = Planned"),
                 id="table-legend",
             )
             yield DataTable(id="budget-table")
@@ -166,20 +167,22 @@ class ForecastWidget(Vertical):
         status.remove_class("status-ok", "status-warning", "status-error")
 
         if self._app_service is None:
-            status.update("Service non initialisé")
+            status.update(_("Service not initialized"))
             status.add_class("status-error")
             return
 
         self.query_one("#btn-compute", Button).disabled = False
 
         if self._app_service.report is None:
-            status.update("Prêt - Cliquez sur 'Calculer' pour générer les prévisions")
+            status.update(_("Ready - Click 'Calculate' to generate forecasts"))
             status.add_class("status-ok")
             self.query_one("#btn-export", Button).disabled = True
         else:
             report = self._app_service.report
             status.update(
-                f"Rapport calculé du {report.start_date} " f"au {report.end_date}"
+                _("Report calculated from {} to {}").format(
+                    report.start_date, report.end_date
+                )
             )
             status.add_class("status-ok")
             self.query_one("#btn-export", Button).disabled = False
@@ -205,15 +208,11 @@ class ForecastWidget(Vertical):
             start_date = date.fromisoformat(start_input.value.strip())
             end_date = date.fromisoformat(end_input.value.strip())
         except ValueError:
-            self.app.notify(
-                "Format de date invalide (utilisez YYYY-MM-DD)", severity="error"
-            )
+            self.app.notify(_("Invalid date format (use YYYY-MM-DD)"), severity="error")
             return None
 
         if start_date >= end_date:
-            self.app.notify(
-                "La date de début doit être avant la date de fin", severity="error"
-            )
+            self.app.notify(_("Start date must be before end date"), severity="error")
             return None
 
         return start_date, end_date
@@ -234,10 +233,10 @@ class ForecastWidget(Vertical):
         btn_export = self.query_one("#btn-export", Button)
         status = self.query_one("#forecast-status", Static)
 
-        btn.label = "Calcul en cours..."
+        btn.label = _("Calculating...")
         btn.disabled = True
         btn_export.disabled = True
-        status.update("Calcul des prévisions en cours...")
+        status.update(_("Calculating forecasts..."))
         status.add_class("computing")
 
         # Use call_after_refresh to allow UI to update before blocking computation
@@ -252,22 +251,22 @@ class ForecastWidget(Vertical):
             if self._app_service is not None:
                 self._app_service.compute_report(start_date, end_date)
             self._refresh_display()
-            self.app.notify("Prévisions calculées")
+            self.app.notify(_("Forecasts calculated"))
         except AccountNotLoadedError as e:
             logger.error("No account loaded: %s", e)
             self.app.notify(f"{e}", severity="error")
             self._update_status()
         except BudgetForecasterError as e:
             logger.error("Error computing forecast: %s", e)
-            self.app.notify(f"Erreur: {e}", severity="error")
+            self.app.notify(_("Error: {}").format(e), severity="error")
             self._update_status()
         except Exception:  # pylint: disable=broad-except
             logger.exception("Unexpected error computing forecast")
-            self.app.notify("Une erreur inattendue est survenue", severity="error")
+            self.app.notify(_("An unexpected error occurred"), severity="error")
             self._update_status()
         finally:
             # Restore button state
-            btn.label = "Calculer"
+            btn.label = _("Calculate")
             btn.disabled = False
             status.remove_class("computing")
 
@@ -284,7 +283,7 @@ class ForecastWidget(Vertical):
 
         chart = self.query_one("#balance-chart", Static)
         if not (balance_data := self._app_service.get_balance_evolution_summary()):
-            chart.update("Aucune donnée")
+            chart.update(_("No data"))
             return
 
         # Create a simple ASCII chart
@@ -296,9 +295,9 @@ class ForecastWidget(Vertical):
     ) -> list[str]:
         """Render a simple ASCII line chart with axes."""
         if not data:
-            return ["Aucune donnée"]
+            return [_("No data")]
 
-        values = [v for _, v in data]
+        values = [v for _d, v in data]
         raw_min = min(values)
         raw_max = max(values)
 
@@ -325,7 +324,7 @@ class ForecastWidget(Vertical):
 
             threshold = y_value
             line_chars = []
-            for _, val in display_data:
+            for _d, val in display_data:
                 if val >= threshold:
                     line_chars.append("█")
                 elif val >= threshold - (val_range / height / 2):
@@ -354,7 +353,7 @@ class ForecastWidget(Vertical):
 
         return lines
 
-    def _update_budget_table(self) -> None:
+    def _update_budget_table(self) -> None:  # pylint: disable=too-many-locals
         """Update the budget forecast table with multi-columns per month."""
         if self._app_service is None or self._app_service.report is None:
             return
@@ -369,17 +368,17 @@ class ForecastWidget(Vertical):
             return
 
         # Add category column
-        table.add_column("Catégorie", key="category")
+        table.add_column(_("Category"), key="category")
 
         # Build column structure from DataFrame columns
-        # Columns are (month, type) tuples where type is "Réel", "Prévu", or "Ajusté"
+        # Columns are (month, type) tuples where type is "Actual", "Forecast", or "Adjusted"
         columns_info: list[tuple] = []  # (month, type, column_key, column_label)
 
         for col in df.columns:
             month = col[0]  # pandas Timestamp
-            col_type = str(col[1])  # "Réel", "Prévu", or "Ajusté"
+            col_type = str(col[1])  # "Actual", "Forecast", or "Adjusted"
             month_str = month.strftime("%Y-%m")  # type: ignore[attr-defined]
-            type_abbrev = {"Réel": "R", "Prévu": "P", "Ajusté": "A"}.get(
+            type_abbrev = {"Actual": "R", "Forecast": "P", "Adjusted": "A"}.get(
                 col_type, col_type[0]
             )
             col_key = f"{month_str}_{type_abbrev}"
@@ -387,17 +386,17 @@ class ForecastWidget(Vertical):
             columns_info.append((month, col_type, col_key, col_label))
 
         # Sort columns by month then by type order (R, A, P)
-        type_order = {"Réel": 0, "Ajusté": 1, "Prévu": 2}
+        type_order = {"Actual": 0, "Adjusted": 1, "Forecast": 2}
         columns_info.sort(key=lambda x: (x[0], type_order.get(x[1], 3)))
 
         # Add columns to table
-        for _, _, col_key, col_label in columns_info:
+        for _m, _t, col_key, col_label in columns_info:
             table.add_column(col_label, key=col_key)
 
         # Add rows
         for category in df.index:
             row_values = [str(category)]
-            for month, col_type, _, _ in columns_info:
+            for month, col_type, _k, _l in columns_info:
                 try:
                     if (value := df.loc[category, (month, col_type)]) != 0:
                         row_values.append(f"{int(value):,}")
@@ -411,7 +410,7 @@ class ForecastWidget(Vertical):
     def _export_to_excel(self) -> None:
         """Export the forecast to Excel."""
         if self._app_service is None or self._app_service.report is None:
-            self.app.notify("Aucun rapport à exporter", severity="warning")
+            self.app.notify(_("No report to export"), severity="warning")
             return
 
         report = self._app_service.report
@@ -421,10 +420,10 @@ class ForecastWidget(Vertical):
             with AccountAnalysisRendererExcel(output_path) as renderer:
                 renderer(report)
             logger.info("Exported forecast to %s", output_path)
-            self.app.notify(f"Exporté vers {output_path}")
+            self.app.notify(_("Exported to {}").format(output_path))
         except BudgetForecasterError as e:
             logger.error("Error exporting forecast: %s", e)
-            self.app.notify(f"Erreur d'export: {e}", severity="error")
+            self.app.notify(_("Export error: {}").format(e), severity="error")
         except Exception:  # pylint: disable=broad-except
             logger.exception("Unexpected error exporting forecast")
-            self.app.notify("Une erreur inattendue est survenue", severity="error")
+            self.app.notify(_("An unexpected error occurred"), severity="error")

@@ -196,7 +196,7 @@ class TestOperationRangeErrors:
             DateRange(date(2023, 1, 1), relativedelta(days=30)),
         )
         assert repr(op) == (
-            "2023-01-01 - 2023-01-30 - Courses - Grocery Shopping - 100 EUR"
+            "2023-01-01 - 2023-01-30 - groceries - Grocery Shopping - 100 EUR"
         )
 
     @pytest.fixture

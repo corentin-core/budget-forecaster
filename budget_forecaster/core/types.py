@@ -3,6 +3,8 @@ import enum
 from datetime import date
 from typing import Callable, NamedTuple
 
+from budget_forecaster.i18n import _
+
 OperationId = int
 """Unique identifier for a historic operation."""
 
@@ -28,8 +30,8 @@ TargetName = str
 class LinkType(enum.StrEnum):
     """Type of link target."""
 
-    PLANNED_OPERATION = "planned_operation"
-    BUDGET = "budget"
+    PLANNED_OPERATION = enum.auto()
+    BUDGET = enum.auto()
 
 
 class MatcherKey(NamedTuple):
@@ -69,65 +71,74 @@ class ImportStats(NamedTuple):
 
 
 class Category(enum.StrEnum):
-    """A category is a group of transactions."""
+    """A category is a group of transactions.
+
+    The enum *value* is a language-neutral key used for persistence.
+    Use :attr:`display_name` for the user-facing translated label.
+    """
 
     # Uncategorized (default for imports)
-    UNCATEGORIZED = "Non catégorisé"
+    UNCATEGORIZED = enum.auto()
 
     # Income
-    SALARY = "Salaire"
-    TAX_CREDIT = "Crédit d'impot"
-    BENEFITS = "Allocations"
+    SALARY = enum.auto()
+    TAX_CREDIT = enum.auto()
+    BENEFITS = enum.auto()
 
     # Housing
-    HOUSE_LOAN = "Prêt maison"
-    WORKS_LOAN = "Prêt travaux"
-    RENT = "Loyer"
-    LOAN_INSURANCE = "Assurance prêt"
-    HOUSE_WORKS = "Travaux"
-    FURNITURE = "Mobilier, electromenager, deco."
+    HOUSE_LOAN = enum.auto()
+    WORKS_LOAN = enum.auto()
+    RENT = enum.auto()
+    LOAN_INSURANCE = enum.auto()
+    HOUSE_WORKS = enum.auto()
+    FURNITURE = enum.auto()
 
     # Investments
-    SAVINGS = "Epargne"
+    SAVINGS = enum.auto()
 
     # Insurance
-    CAR_INSURANCE = "Assurance auto"
-    HOUSE_INSURANCE = "Assurance habitation"
-    OTHER_INSURANCE = "Autre assurance"
+    CAR_INSURANCE = enum.auto()
+    HOUSE_INSURANCE = enum.auto()
+    OTHER_INSURANCE = enum.auto()
 
     # Children
-    CHILDCARE = "Enfants"
-    CHILD_SUPPORT = "Pension alimentaire"
+    CHILDCARE = enum.auto()
+    CHILD_SUPPORT = enum.auto()
 
     # Leisure
-    ENTERTAINMENT = "Divertissement"
-    LEISURE = "Loisirs"
-    HOLIDAYS = "Voyages, vacances"
+    ENTERTAINMENT = enum.auto()
+    LEISURE = enum.auto()
+    HOLIDAYS = enum.auto()
 
     # Utilities
-    ELECTRICITY = "Electricité"
-    WATER = "Eau"
-    INTERNET = "Internet"
-    PHONE = "Téléphone"
+    ELECTRICITY = enum.auto()
+    WATER = enum.auto()
+    INTERNET = enum.auto()
+    PHONE = enum.auto()
 
     # Daily life
-    GROCERIES = "Courses"
-    CLOTHING = "Habillement"
-    HEALTH_CARE = "Santé"
-    CARE = "Coiffeur, cosmétique, soins"
-    PUBLIC_TRANSPORT = "Transports publics"
-    CAR_FUEL = "Carburant"
-    PARKING = "Stationnement"
-    TOLL = "Péage"
-    CAR_MAINTENANCE = "Entretien automobile"
-    CAR_LOAN = "Crédit auto"
-    GIFTS = "Cadeaux"
+    GROCERIES = enum.auto()
+    CLOTHING = enum.auto()
+    HEALTH_CARE = enum.auto()
+    CARE = enum.auto()
+    PUBLIC_TRANSPORT = enum.auto()
+    CAR_FUEL = enum.auto()
+    PARKING = enum.auto()
+    TOLL = enum.auto()
+    CAR_MAINTENANCE = enum.auto()
+    CAR_LOAN = enum.auto()
+    GIFTS = enum.auto()
 
     # Professional
-    PROFESSIONAL_EXPENSES = "Frais professionnels"
+    PROFESSIONAL_EXPENSES = enum.auto()
 
     # Other
-    OTHER = "Autre"
-    CHARITY = "Dons"
-    BANK_FEES = "Commissions bancaires"
-    TAXES = "Impôts, taxes"
+    OTHER = enum.auto()
+    CHARITY = enum.auto()
+    BANK_FEES = enum.auto()
+    TAXES = enum.auto()
+
+    @property
+    def display_name(self) -> str:
+        """Return the translated display name for this category."""
+        return _(self.name.replace("_", " ").title())

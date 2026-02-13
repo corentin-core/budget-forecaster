@@ -10,6 +10,7 @@ from textual.widgets.option_list import Option
 
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.i18n import _
 
 
 class CategoryModal(ModalScreen[Category | None]):
@@ -100,7 +101,7 @@ class CategoryModal(ModalScreen[Category | None]):
     }
     """
 
-    BINDINGS = [("escape", "cancel", "Annuler")]
+    BINDINGS = [("escape", "cancel", _("Cancel"))]
 
     def __init__(
         self,
@@ -121,9 +122,9 @@ class CategoryModal(ModalScreen[Category | None]):
             with Vertical(id="ops-panel"):
                 count = len(self._operations)
                 title = (
-                    "Opération à catégoriser"
+                    _("Operation to categorize")
                     if count == 1
-                    else f"{count} opérations à catégoriser"
+                    else _("{} operations to categorize").format(count)
                 )
                 yield Static(title, classes="panel-title")
 
@@ -147,14 +148,14 @@ class CategoryModal(ModalScreen[Category | None]):
 
                 if count > 8:
                     yield Static(
-                        f"... et {count - 8} autre(s)",
+                        _("... and {} other(s)").format(count - 8),
                         classes="op-date",
                     )
 
             # Similar operations panel (based on first operation)
             if self._similar_operations:
                 with Vertical(id="similar-panel"):
-                    yield Static("Opérations similaires", classes="panel-title")
+                    yield Static(_("Similar operations"), classes="panel-title")
                     for similar_op in self._similar_operations[:5]:
                         with Horizontal(classes="similar-row"):
                             yield Static(
@@ -162,24 +163,24 @@ class CategoryModal(ModalScreen[Category | None]):
                                 classes="similar-desc",
                             )
                             yield Static(
-                                f"→ {similar_op.category.value}",
+                                f"→ {similar_op.category.display_name}",
                                 classes="similar-cat",
                             )
 
             # Suggestion hint
             if self._suggested_category:
                 yield Static(
-                    f"Suggestion: {self._suggested_category.value}",
+                    _("Suggestion: {}").format(self._suggested_category.display_name),
                     id="suggestion-hint",
                 )
 
             # Category list
-            categories = sorted(Category, key=lambda c: c.value)
+            categories = sorted(Category, key=lambda c: c.display_name)
             options = []
             for cat in categories:
-                label = cat.value
+                label = cat.display_name
                 if cat == self._suggested_category:
-                    label = f"★ {label} (suggestion)"
+                    label = _("★ {} (suggestion)").format(label)
                 options.append(Option(label, id=cat.name))
             yield OptionList(*options, id="category-list")
 
@@ -188,7 +189,7 @@ class CategoryModal(ModalScreen[Category | None]):
         if self._suggested_category is None:
             return
 
-        categories = sorted(Category, key=lambda c: c.value)
+        categories = sorted(Category, key=lambda c: c.display_name)
         try:
             index = categories.index(self._suggested_category)
             option_list = self.query_one("#category-list", OptionList)

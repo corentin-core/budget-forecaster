@@ -30,6 +30,7 @@ from budget_forecaster.infrastructure.persistence.persistent_account import (
     PersistentAccount,
 )
 from budget_forecaster.infrastructure.persistence.sqlite_repository import (
+    _CATEGORY_MIGRATION_MAP,
     SCHEMA_V1,
     SCHEMA_V2,
     SCHEMA_V3,
@@ -645,18 +646,18 @@ class TestSchemaMigration:
         conn.execute(
             "INSERT INTO operations (unique_id, account_id, description, category, "
             "date, amount, currency) "
-            "VALUES (1, 1, 'Test op', 'Courses', '2026-01-28T00:00:00', -50.0, 'EUR')"
+            "VALUES (1, 1, 'Test op', 'groceries', '2026-01-28T00:00:00', -50.0, 'EUR')"
         )
         conn.execute(
             "INSERT INTO planned_operations (description, amount, currency, category, "
             "start_date, end_date) "
-            "VALUES ('Loyer', -800.0, 'EUR', 'Logement', '2025-01-01T00:00:00', "
+            "VALUES ('Loyer', -800.0, 'EUR', 'rent', '2025-01-01T00:00:00', "
             "'2026-12-31T00:00:00')"
         )
         conn.execute(
             "INSERT INTO budgets (description, amount, currency, category, start_date, "
             "end_date) "
-            "VALUES ('Courses', -400.0, 'EUR', 'Courses', '2025-01-01T00:00:00', "
+            "VALUES ('Courses', -400.0, 'EUR', 'groceries', '2025-01-01T00:00:00', "
             "'2026-12-31T00:00:00')"
         )
         conn.execute(
@@ -677,3 +678,35 @@ class TestSchemaMigration:
             links = repository.get_all_links()
             assert len(links) == 1
             assert links[0].iteration_date == date(2026, 1, 1)
+
+    @pytest.mark.parametrize(
+        ("french_value", "expected_key"),
+        list(_CATEGORY_MIGRATION_MAP.items()),
+        ids=list(_CATEGORY_MIGRATION_MAP.values()),
+    )
+    def test_migration_v4_to_v5_converts_french_categories(
+        self, temp_db_path: Path, french_value: str, expected_key: str
+    ) -> None:
+        """Test that migration v5 converts each French category to its English key."""
+        conn = sqlite3.connect(temp_db_path)
+        conn.executescript(SCHEMA_V1)
+        conn.executescript(SCHEMA_V2)
+        conn.executescript(SCHEMA_V3)
+        conn.execute("INSERT INTO schema_version (version) VALUES (4)")
+        conn.execute("INSERT INTO aggregated_accounts (name) VALUES ('Test')")
+        conn.execute(
+            "INSERT INTO accounts (aggregated_account_id, name, balance, currency, "
+            "balance_date) VALUES (1, 'Compte', 1000.0, 'EUR', '2026-01-15')"
+        )
+        conn.execute(
+            "INSERT INTO operations (unique_id, account_id, description, category, "
+            "date, amount, currency) "
+            "VALUES (1, 1, 'Test op', ?, '2026-01-10', -85.0, 'EUR')",
+            (french_value,),
+        )
+        conn.commit()
+        conn.close()
+
+        with SqliteRepository(temp_db_path) as repository:
+            accounts = repository.get_all_accounts()
+            assert accounts[0].operations[0].category == Category(expected_key)
