@@ -210,6 +210,14 @@ significantly better than grep/glob for symbol-based searches.
 Use Grep/Glob only for pattern searches in non-code files or when searching for strings
 that aren't symbols.
 
+**Worktree limitation**: Serena operates on the **activated project** (main repo), not
+on git worktrees.
+
+- **Read/search tools** (find_symbol, get_symbols_overview, search_for_pattern): Safe to
+  use — the base code is shared
+- **Edit tools** (replace_symbol_body, insert_after_symbol): **Write to the main repo**,
+  not the worktree. Use Edit/Write with absolute worktree paths instead.
+
 ### Coherence with Existing Codebase
 
 When using internal modules, check how they're used in related code.
