@@ -338,24 +338,8 @@ Cleanup Draft
 
 ## Testing Guidelines
 
-When specifying tests in the design:
-
-- **Test application logic, not Python built-ins** - Don't specify tests for StrEnum
-  values, NamedTuple iteration, dataclass field access, etc. These test Python, not your
-  code.
-- **Focus on behavior** - Test CRUD operations, business rules, edge cases, error
-  handling.
-
-```markdown
-# BAD - testing Python features
-
-- [ ] Test that `LinkType.BUDGET == "budget"`
-- [ ] Test that OperationLink is iterable
-
-# GOOD - testing application logic
-
-- [ ] Test that duplicate links raise IntegrityError
-- [ ] Test that `delete_automatic_links` preserves manual links
-```
+When specifying tests in the design, follow `.claude/rules/testing.md`. Key rule: test
+application logic and behavior, not Python built-ins (StrEnum values, NamedTuple
+iteration, etc.).
 
 $ARGUMENTS

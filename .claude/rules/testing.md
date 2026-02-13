@@ -158,7 +158,3 @@ Benefits:
 - Catches event handling bugs
 - No mocking of internals
 - Documents actual user interactions
-
----
-
-For high-level testing principles, see `CLAUDE.md`.

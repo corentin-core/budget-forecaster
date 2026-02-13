@@ -165,7 +165,3 @@ if TYPE_CHECKING:
 
 - Forward references within the same module (self-referential types)
 - Avoiding heavy imports that are only needed for type hints (e.g., pandas, numpy)
-
----
-
-For complete guidelines, see `CLAUDE.md`.

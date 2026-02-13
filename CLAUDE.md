@@ -65,23 +65,8 @@ See `.claude/rules/python-quality.md` for detailed patterns and examples.
 - **Check the design before implementing** - Read linked issues (`Related to #X`) to
   understand the full feature design. Don't add methods not specified in the design.
 
-- **Prefer domain objects over primitives** - Use `tuple[OperationLink, ...]` instead of
-  `dict[OperationId, IterationDate]`. Domain objects are more expressive and avoid
-  transformations.
-
-- **Single source of truth** - Don't maintain two representations of the same data
-  (e.g., a tuple AND an index dict). Pick one and derive the other if needed.
-
-- **Immutability by default** - Prefer immutable objects when the design allows. If an
-  object receives data at construction and doesn't need mutation methods, don't add
-  them.
-
-- **Simplify method signatures** - Accept domain objects directly
-  (`target: PlannedOperation | Budget`) rather than their decomposed parts
-  (`target_type, target_id, matcher`).
-
-- **Avoid redundant computations** - If you compute something in a loop, store it in the
-  result structure rather than recomputing it later.
+See `.claude/rules/python-quality.md` for detailed patterns (domain objects over
+primitives, single source of truth, immutability, etc.).
 
 ## Data files (not versioned)
 
@@ -100,24 +85,13 @@ See `.claude/rules/python-quality.md` for detailed patterns and examples.
 
 ## Git workflow
 
-- **NEVER commit directly to main** - always create a feature branch and submit a PR
-- **Never use `git add -A` or `git add .`** - always stage files explicitly
-
-See `.claude/rules/git-conventions.md` for branch naming, commit message format, and
-detailed workflow.
+See `.claude/rules/git-conventions.md` for branch naming, commit messages, worktrees,
+and merge workflow.
 
 ## PR review workflow
 
-When addressing PR review comments:
-
-- **Always reply inline** to each comment using
-  `gh api repos/{owner}/{repo}/pulls/{pr}/comments/{id}/replies -X POST -f body="..."`
-- **Never post global comments** summarizing changes - each comment deserves its own
-  inline response
-- **Prefix replies with `🤖 Claude:`** to distinguish AI-generated responses from user
-  comments (since both appear under the same GitHub account)
-- Reference commit hashes and issue numbers in replies (e.g., "🤖 Claude: ✅ Fixed in
-  commit abc123" or "🤖 Claude: 📝 Issue created: #42")
+See `.claude/commands/handle-pr-comments.md` for the full PR comment handling workflow
+(inline replies, `🤖 Claude:` prefix, commit references).
 
 ## Creating GitHub issues
 
@@ -127,7 +101,7 @@ All issues must be created in **English** with the following structure:
 
 1. **Labels** (add with `gh issue edit {id} --add-label "label"`):
 
-   - Priority: `P0-critical`, `P1-high`, `P2-medium`, `P3-low`
+   - Priority: `priority:high`, `priority:medium`, `priority:low`
    - Theme: `enhancement`, `bug`, `refactor`, `documentation`, `testing`
 
 2. **Issue body structure**:
@@ -176,18 +150,13 @@ Currently all amounts are hardcoded in EUR.
 - Related to #36 (import filtering)
 " | grep -oE '[0-9]+$')
 
-gh issue edit $ISSUE_NUM --add-label "enhancement" --add-label "P2-medium"
+gh issue edit $ISSUE_NUM --add-label "enhancement" --add-label "priority:medium"
 ```
 
 ## Testing Principles
 
-**Test the feature, not just the code.** Unit tests alone are not sufficient.
-
-- **End-to-end tests are required** for every feature
-- **Use fixtures** for expected outputs (`tests/fixtures/`)
-- **Validate actual output**, not just existence
-
-See `.claude/rules/testing.md` for detailed patterns and examples.
+See `.claude/rules/testing.md` for the full testing strategy (two-tier testing,
+fixtures, validate actual output).
 
 ## Workflow Automation
 
@@ -202,10 +171,10 @@ See `.claude/rules/testing.md` for detailed patterns and examples.
 **Prefer MCP Serena tools** for code navigation and exploration. Performance is
 significantly better than grep/glob for symbol-based searches.
 
-- `jet_brains_find_symbol` - Find symbol definitions by name
-- `jet_brains_find_referencing_symbols` - Find all usages of a symbol
-- `jet_brains_get_symbols_overview` - Get file structure overview
-- `jet_brains_type_hierarchy` - Explore class hierarchies
+- `find_symbol` - Find symbol definitions by name
+- `find_referencing_symbols` - Find all usages of a symbol
+- `get_symbols_overview` - Get file structure overview
+- `search_for_pattern` - Flexible regex search across files
 
 Use Grep/Glob only for pattern searches in non-code files or when searching for strings
 that aren't symbols.
@@ -235,54 +204,5 @@ grep -r "-> list\[" --include="*.py"
 
 ## META - Self-Improvement System
 
-This section teaches Claude how to learn from mistakes and write effective rules.
-
-### When You Make a Mistake
-
-If the user says **"Reflect on this mistake"**, follow this process:
-
-1. **Reflect** - Analyze what went wrong using available context
-2. **Abstract** - Extract the general pattern from the specific instance
-3. **Generalize** - Create a reusable rule that prevents this class of errors
-4. **Document** - Write the rule to `.claude/rules/` or update CLAUDE.md
-
-### How to Write Effective Rules
-
-| Principle                   | Description                                                      |
-| --------------------------- | ---------------------------------------------------------------- |
-| **Absolute directives**     | Start with "NEVER" or "ALWAYS" when the rule has no exceptions   |
-| **Lead with why**           | Explain the problem (1-3 bullets) before the solution            |
-| **Be concrete**             | Include actual code examples from the budget-forecaster codebase |
-| **One point per example**   | Don't combine multiple lessons in one code block                 |
-| **Bullets over paragraphs** | Keep explanations concise and scannable                          |
-
-### Rule Format Template
-
-````markdown
-## Rule Name
-
-**Why**: [1-3 bullet points explaining the problem this rule prevents]
-
-**Rule**: ALWAYS/NEVER [specific instruction]
-
-```python
-# BAD - [brief explanation]
-[code example]
-
-# GOOD - [brief explanation]
-[code example]
-```
-````
-
-### Anti-Bloat Rules
-
-- NEVER add warning sections to obvious rules
-- NEVER show bad examples for trivial mistakes
-- NEVER use paragraphs when bullets suffice
-- NEVER add generic examples - use real project code
-
-### When NOT to Create a Rule
-
-- One-off mistakes that won't recur
-- Mistakes already covered by existing rules (reinforce, don't duplicate)
-- Style preferences without clear justification
+See `.claude/rules/auto-introspection.md` for the self-improvement workflow (triggered
+when the user points out mistakes, proposes config updates).
