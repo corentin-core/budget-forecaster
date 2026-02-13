@@ -47,6 +47,10 @@ nav:
       - Forecast Calculation: quality/forecast-calculation.md
       - Split Operations: quality/split-operations.md
 
+plugins:
+  - search
+  - glightbox
+
 markdown_extensions:
   - pymdownx.superfences:
       custom_fences:
