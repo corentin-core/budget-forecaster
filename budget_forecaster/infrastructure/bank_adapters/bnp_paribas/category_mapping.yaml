@@ -3,7 +3,7 @@
 # How it works:
 # - Each keyword is searched in the BNP category (case-insensitive, accent-insensitive)
 # - If multiple keywords match, the longest one wins (more specific)
-# - If no keyword matches, the category falls back to "other" with a warning
+# - If no keyword matches, the category falls back to "uncategorized" with a warning
 #
 # To add a new keyword:
 # 1. Check the warning message for unmapped categories
