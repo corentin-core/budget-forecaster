@@ -1,6 +1,7 @@
 # Budget Forecaster
 
 [![CI](https://github.com/corentin-core/budget-forecaster/actions/workflows/ci.yml/badge.svg)](https://github.com/corentin-core/budget-forecaster/actions/workflows/ci.yml)
+[![Docs](https://github.com/corentin-core/budget-forecaster/actions/workflows/docs.yml/badge.svg)](https://corentin-core.github.io/budget-forecaster/)
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)
 ![mypy strict](https://img.shields.io/badge/mypy-strict-blue)
 
@@ -98,7 +99,8 @@ See [docs/dev/architecture.md](docs/dev/architecture.md) for the full layer diag
 
 ## Documentation
 
-See [docs/README.md](docs/README.md) for the full documentation index, including:
+Browse the full documentation at
+[corentin-core.github.io/budget-forecaster](https://corentin-core.github.io/budget-forecaster/):
 
 - **User guides** — Configuration, forecast, operations, TUI usage
 - **Developer docs** — Architecture, data models, persistence, contributing
