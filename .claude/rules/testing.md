@@ -76,20 +76,27 @@ def test_categorize(label: str, expected: Category):
     assert categorize(label) == expected
 ```
 
-**Assert on structures, not item by item**:
+**Assert on whole objects, not individual attributes**:
+
+NamedTuples and dataclasses support structural equality. Always compare the full object
+rather than checking attributes one by one. This catches unexpected changes in any
+field.
 
 ```python
-# BAD - verbose
-assert operations[0].amount == Decimal("100")
-assert operations[0].label == "Test"
-assert operations[1].amount == Decimal("200")
+# BAD - checks individual attributes, misses unexpected changes in other fields
+assert stats.new_operations == 1
+assert stats.duplicates_skipped == 0
+assert len(agg.accounts) == 2
 
-# GOOD - compare entire structure
-assert operations == (
-    Operation(amount=Decimal("100"), label="Test"),
-    Operation(amount=Decimal("200"), label="Other"),
-)
+# GOOD - compare entire objects
+assert stats == ImportStats(total_in_file=1, new_operations=1, duplicates_skipped=0)
+expected = Account(name="Swile", balance=500.0, currency="EUR",
+                   balance_date=date(2025, 1, 15), operations=(new_op,))
+assert agg.accounts[1] == expected
 ```
+
+This applies to all NamedTuples and dataclasses: `ImportStats`, `Account`,
+`UpdateResult`, `HistoricOperation`, etc.
 
 **Don't test language guarantees**: No need to test that NamedTuple is immutable, etc.
 
