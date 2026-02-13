@@ -172,9 +172,6 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         self._config = Config()
         self._config.parse(self._config_path)
 
-        # Setup i18n before any translated strings are accessed
-        setup_i18n(self._config.language)
-
         # Setup logging from config
         self._config.setup_logging()
         logger.info("Starting Budget Forecaster TUI")
@@ -807,5 +804,10 @@ def run_app(config_path: Path) -> None:
     Args:
         config_path: Path to the configuration file.
     """
+    # Parse config early so i18n is available before Textual composes widgets
+    config = Config()
+    config.parse(config_path)
+    setup_i18n(config.language)
+
     app = BudgetApp(config_path=config_path)
     app.run()
