@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from budget_forecaster.core.types import Category
 from budget_forecaster.services.account.account_analysis_renderer import (
     AccountAnalysisRendererExcel,
 )
@@ -24,7 +25,7 @@ def sample_report() -> AccountAnalysisReport:
     # Operations DataFrame: indexed by date, with Category, Description, Amount
     operations = pd.DataFrame(
         {
-            "Category": ["groceries", "salary", "entertainment"],
+            "Category": [Category.GROCERIES, Category.SALARY, Category.ENTERTAINMENT],
             "Description": ["CARREFOUR", "VIREMENT SALAIRE", "CINEMA"],
             "Amount": [-85.20, 2500.00, -15.00],
         },
@@ -34,15 +35,17 @@ def sample_report() -> AccountAnalysisReport:
         ),
     )
 
-    # Forecast DataFrame: indexed by description, columns for forecast data
+    # Forecast DataFrame: indexed by Category, columns for forecast data
     forecast = pd.DataFrame(
         {
-            "Description": ["rent", "salary"],
+            "Description": ["Monthly rent", "Monthly salary"],
             "Amount": [-800.0, 2500.0],
             "Start date": [date(2025, 1, 1), date(2025, 1, 1)],
             "End date": [date(2025, 3, 31), date(2025, 3, 31)],
-        }
-    ).set_index("Description")
+            "Frequency": ["1 Month", "1 Month"],
+        },
+        index=pd.Index([Category.RENT, Category.SALARY], name="Category"),
+    )
 
     # Balance evolution per day: DatetimeIndex with "Balance" column
     date_range = pd.date_range(start_date, end_date, freq="D")
@@ -58,7 +61,7 @@ def sample_report() -> AccountAnalysisReport:
             ("Jan 25", "Forecast"): [-800.0, -100.0],
             ("Jan 25", "Actual"): [-800.0, -85.20],
         },
-        index=["rent", "groceries"],
+        index=[Category.RENT, Category.GROCERIES],
     )
     budget_forecast.columns = pd.MultiIndex.from_tuples(budget_forecast.columns)
 
@@ -68,7 +71,7 @@ def sample_report() -> AccountAnalysisReport:
             "Total": [-800.0, -100.0, 2500.0],
             "Monthly average": [-800.0, -100.0, 2500.0],
         },
-        index=["rent", "groceries", "salary"],
+        index=[Category.RENT, Category.GROCERIES, Category.SALARY],
     )
 
     return AccountAnalysisReport(
@@ -143,8 +146,8 @@ class TestAccountAnalysisRendererExcel:
             output_path, sheet_name="Forecast source", index_col=0
         )
         assert len(forecast_df) == 2
-        assert "rent" in forecast_df.index
-        assert "salary" in forecast_df.index
+        assert "Rent" in forecast_df.index
+        assert "Salary" in forecast_df.index
 
     def test_balance_evolution_sheet_data(
         self, sample_report: AccountAnalysisReport, tmp_path: Path
@@ -175,7 +178,7 @@ class TestAccountAnalysisRendererExcel:
             output_path, sheet_name="Expense statistics", index_col=0
         )
         assert "Total" in stats_df.columns
-        assert "rent" in stats_df.index
+        assert "Rent" in stats_df.index
 
     def test_budget_forecast_sheet_data(
         self, sample_report: AccountAnalysisReport, tmp_path: Path
@@ -194,8 +197,8 @@ class TestAccountAnalysisRendererExcel:
             header=[0, 1],
         )
         assert len(forecast_df) == 2
-        assert "rent" in forecast_df.index
-        assert "groceries" in forecast_df.index
+        assert "Rent" in forecast_df.index
+        assert "Groceries" in forecast_df.index
 
     def test_render_with_empty_operations(self, tmp_path: Path) -> None:
         """Test rendering with empty DataFrames doesn't crash."""
@@ -208,8 +211,14 @@ class TestAccountAnalysisRendererExcel:
                 index=pd.Index([], dtype="object", name="Date"),
             ),
             forecast=pd.DataFrame(
-                columns=["Amount", "Start date", "End date"],
-            ).rename_axis("Description"),
+                columns=[
+                    "Description",
+                    "Amount",
+                    "Start date",
+                    "End date",
+                    "Frequency",
+                ],
+            ).rename_axis("Category"),
             balance_evolution_per_day=pd.DataFrame(
                 {"Balance": [1000.0]},
                 index=pd.date_range("2025-01-01", periods=1, freq="D"),

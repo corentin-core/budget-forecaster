@@ -857,6 +857,33 @@ msgstr "Solde"
 msgid "Margin"
 msgstr "Marge"
 
+msgid "Min. Balance"
+msgstr "Solde min."
+
+msgid "Total"
+msgstr "Total"
+
+msgid "Monthly average"
+msgstr "Moyenne mensuelle"
+
+msgid "Actual"
+msgstr "Réel"
+
+msgid "Forecast"
+msgstr "Prévu"
+
+msgid "Adjusted"
+msgstr "Ajusté"
+
+msgid "Start date"
+msgstr "Date de début"
+
+msgid "End date"
+msgstr "Date de fin"
+
+msgid "Frequency"
+msgstr "Périodicité"
+
 # ============================================================
 # Misc
 # ============================================================
