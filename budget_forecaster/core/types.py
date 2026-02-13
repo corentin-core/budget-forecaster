@@ -141,4 +141,4 @@ class Category(enum.StrEnum):
     @property
     def display_name(self) -> str:
         """Return the translated display name for this category."""
-        return _(self.value)
+        return _(self.name.replace("_", " ").title())

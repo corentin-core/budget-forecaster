@@ -20,115 +20,115 @@ msgstr ""
 # Category display names
 # ============================================================
 
-msgid "uncategorized"
+msgid "Uncategorized"
 msgstr "Non catégorisé"
 
-msgid "salary"
+msgid "Salary"
 msgstr "Salaire"
 
-msgid "tax_credit"
+msgid "Tax Credit"
 msgstr "Crédit d'impôt"
 
-msgid "benefits"
+msgid "Benefits"
 msgstr "Allocations"
 
-msgid "house_loan"
+msgid "House Loan"
 msgstr "Prêt maison"
 
-msgid "works_loan"
+msgid "Works Loan"
 msgstr "Prêt travaux"
 
-msgid "car_loan"
+msgid "Car Loan"
 msgstr "Crédit auto"
 
-msgid "rent"
+msgid "Rent"
 msgstr "Loyer"
 
-msgid "house_works"
+msgid "House Works"
 msgstr "Travaux"
 
-msgid "furniture"
+msgid "Furniture"
 msgstr "Mobilier, électroménager, déco."
 
-msgid "savings"
+msgid "Savings"
 msgstr "Épargne"
 
-msgid "car_insurance"
+msgid "Car Insurance"
 msgstr "Assurance véhicule"
 
-msgid "house_insurance"
+msgid "House Insurance"
 msgstr "Assurance maison"
 
-msgid "loan_insurance"
+msgid "Loan Insurance"
 msgstr "Assurance emprunt"
 
-msgid "other_insurance"
+msgid "Other Insurance"
 msgstr "Autre assurance"
 
-msgid "car_fuel"
+msgid "Car Fuel"
 msgstr "Carburant"
 
-msgid "car_maintenance"
+msgid "Car Maintenance"
 msgstr "Entretien véhicule"
 
-msgid "parking"
+msgid "Parking"
 msgstr "Parking"
 
-msgid "toll"
+msgid "Toll"
 msgstr "Péage"
 
-msgid "public_transport"
+msgid "Public Transport"
 msgstr "Transport en commun"
 
-msgid "phone"
+msgid "Phone"
 msgstr "Téléphone"
 
-msgid "internet"
+msgid "Internet"
 msgstr "Internet"
 
-msgid "electricity"
+msgid "Electricity"
 msgstr "Électricité"
 
-msgid "water"
+msgid "Water"
 msgstr "Eau"
 
-msgid "groceries"
+msgid "Groceries"
 msgstr "Alimentation"
 
-msgid "entertainment"
+msgid "Entertainment"
 msgstr "Loisirs"
 
-msgid "leisure"
+msgid "Leisure"
 msgstr "Détente"
 
-msgid "clothing"
+msgid "Clothing"
 msgstr "Habillement"
 
-msgid "holidays"
+msgid "Holidays"
 msgstr "Vacances"
 
-msgid "care"
+msgid "Care"
 msgstr "Soins"
 
-msgid "health_care"
+msgid "Health Care"
 msgstr "Santé"
 
-msgid "childcare"
+msgid "Childcare"
 msgstr "Garde d'enfant"
 
-msgid "child_support"
+msgid "Child Support"
 msgstr "Aide parentale"
 
-msgid "gifts"
+msgid "Gifts"
 msgstr "Cadeaux"
 
-msgid "charity"
+msgid "Charity"
 msgstr "Don"
 
-msgid "bank_fees"
+msgid "Bank Fees"
 msgstr "Frais bancaires"
 
-msgid "other"
+msgid "Other"
 msgstr "Autre"
 
 msgid "planned_operation"
@@ -137,10 +137,10 @@ msgstr "Opération prévue"
 msgid "budget"
 msgstr "Budget"
 
-msgid "professional_expenses"
+msgid "Professional Expenses"
 msgstr "Frais professionnels"
 
-msgid "taxes"
+msgid "Taxes"
 msgstr "Impôts"
 
 # ============================================================
@@ -700,9 +700,6 @@ msgstr "Veuillez entrer un chemin"
 
 msgid "Search..."
 msgstr "Rechercher..."
-
-msgid "Uncategorized"
-msgstr "Non catégorisé"
 
 # ============================================================
 # Widget - Operation table

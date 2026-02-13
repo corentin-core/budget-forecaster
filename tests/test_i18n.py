@@ -10,14 +10,14 @@ class TestI18n:
         """Without setup, _() returns the original English string."""
         setup_i18n("en")
         assert _("Dashboard") == "Dashboard"
-        assert _("salary") == "salary"
+        assert _("Salary") == "Salary"
 
     def test_french_translation(self) -> None:
         """After setup_i18n('fr'), _() returns French translations."""
         setup_i18n("fr")
         assert _("Dashboard") == "Tableau de bord"
-        assert _("salary") == "Salaire"
-        assert _("groceries") == "Alimentation"
+        assert _("Salary") == "Salaire"
+        assert _("Groceries") == "Alimentation"
         assert _("Balance evolution") == "Évolution du solde"
         # Restore to English for other tests
         setup_i18n("en")
@@ -26,7 +26,7 @@ class TestI18n:
         """An unknown language code falls back to English (no-op)."""
         setup_i18n("de")
         assert _("Dashboard") == "Dashboard"
-        assert _("salary") == "salary"
+        assert _("Salary") == "Salary"
         # Restore
         setup_i18n("en")
 
