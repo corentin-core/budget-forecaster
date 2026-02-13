@@ -126,7 +126,7 @@ class TestSplitOperationModalDisplay:
             # Access the Static widget's update value
             info_desc = modal.query_one("#info-description", Static)
             # The renderable is the text content
-            assert "Salary" in str(info_desc.content)
+            assert str(info_desc.content) == "Salary"
 
     async def test_displays_budget_info(self) -> None:
         """Verify modal shows Budget description and details."""
@@ -139,7 +139,7 @@ class TestSplitOperationModalDisplay:
             modal = app.screen
             assert isinstance(modal, SplitOperationModal)
             info_desc = modal.query_one("#info-description", Static)
-            assert "Monthly groceries" in str(info_desc.content)
+            assert str(info_desc.content) == "Monthly groceries"
 
     async def test_duration_field_visible_for_budget(self) -> None:
         """Verify duration field is visible for Budget."""
@@ -209,7 +209,7 @@ class TestSplitOperationModalValidation:
             # Modal should still be open and show error
             assert not app.modal_dismissed
             error_msg = modal.query_one("#error-message", Static)
-            assert "YYYY-MM-DD" in str(error_msg.content)
+            assert str(error_msg.content) == "Date must be in YYYY-MM-DD format"
 
     async def test_date_before_start_shows_error(self) -> None:
         """Verify error is shown when split date is before operation start."""
@@ -231,7 +231,7 @@ class TestSplitOperationModalValidation:
 
             assert not app.modal_dismissed
             error_msg = modal.query_one("#error-message", Static)
-            assert "after" in str(error_msg.content)
+            assert str(error_msg.content) == "Date must be after first iteration"
 
     async def test_invalid_amount_shows_error(self) -> None:
         """Verify error is shown for invalid amount."""
@@ -253,7 +253,7 @@ class TestSplitOperationModalValidation:
 
             assert not app.modal_dismissed
             error_msg = modal.query_one("#error-message", Static)
-            assert "number" in str(error_msg.content)
+            assert str(error_msg.content) == "Amount must be a number"
 
     async def test_invalid_duration_shows_error_for_budget(self) -> None:
         """Verify error is shown for invalid duration in budget."""
@@ -279,7 +279,7 @@ class TestSplitOperationModalValidation:
 
             assert not app.modal_dismissed
             error_msg = modal.query_one("#error-message", Static)
-            assert "duration" in str(error_msg.content).lower()
+            assert str(error_msg.content) == "Duration must be a positive integer"
 
 
 class TestSplitOperationModalSubmission:

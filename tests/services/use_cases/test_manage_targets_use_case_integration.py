@@ -11,6 +11,7 @@ from budget_forecaster.core.date_range import RecurringDay
 from budget_forecaster.core.types import Category, LinkType
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.exceptions import PlannedOperationNotFoundError
 from budget_forecaster.infrastructure.persistence.persistent_account import (
@@ -105,15 +106,27 @@ class TestManageTargetsIntegration:
         # Verify the planned operation is persisted with an ID
         assert result.id is not None
         persisted = repository.get_planned_operation_by_id(result.id)
-        assert persisted.description == "Rent"
-        assert persisted.amount == -800.0
+        expected = PlannedOperation(
+            record_id=result.id,
+            description="Rent",
+            amount=Amount(-800.0),
+            category=Category.RENT,
+            date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
+        )
+        assert persisted == expected
 
         # Verify heuristic links were created for matching operations
         link_op1 = repository.get_link_for_operation(1)
         assert link_op1 is not None
-        assert link_op1.target_type == LinkType.PLANNED_OPERATION
-        assert link_op1.target_id == result.id
-        assert link_op1.is_manual is False
+        assert link_op1 == OperationLink(
+            operation_unique_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=result.id,
+            iteration_date=date(2025, 1, 1),
+            is_manual=False,
+            notes=None,
+            link_id=link_op1.link_id,
+        )
 
     def test_delete_removes_operation_and_links(
         self,

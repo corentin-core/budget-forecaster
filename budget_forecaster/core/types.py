@@ -30,8 +30,8 @@ TargetName = str
 class LinkType(enum.StrEnum):
     """Type of link target."""
 
-    PLANNED_OPERATION = "planned_operation"
-    BUDGET = "budget"
+    PLANNED_OPERATION = enum.auto()
+    BUDGET = enum.auto()
 
 
 class MatcherKey(NamedTuple):
@@ -78,65 +78,65 @@ class Category(enum.StrEnum):
     """
 
     # Uncategorized (default for imports)
-    UNCATEGORIZED = "uncategorized"
+    UNCATEGORIZED = enum.auto()
 
     # Income
-    SALARY = "salary"
-    TAX_CREDIT = "tax_credit"
-    BENEFITS = "benefits"
+    SALARY = enum.auto()
+    TAX_CREDIT = enum.auto()
+    BENEFITS = enum.auto()
 
     # Housing
-    HOUSE_LOAN = "house_loan"
-    WORKS_LOAN = "works_loan"
-    RENT = "rent"
-    LOAN_INSURANCE = "loan_insurance"
-    HOUSE_WORKS = "house_works"
-    FURNITURE = "furniture"
+    HOUSE_LOAN = enum.auto()
+    WORKS_LOAN = enum.auto()
+    RENT = enum.auto()
+    LOAN_INSURANCE = enum.auto()
+    HOUSE_WORKS = enum.auto()
+    FURNITURE = enum.auto()
 
     # Investments
-    SAVINGS = "savings"
+    SAVINGS = enum.auto()
 
     # Insurance
-    CAR_INSURANCE = "car_insurance"
-    HOUSE_INSURANCE = "house_insurance"
-    OTHER_INSURANCE = "other_insurance"
+    CAR_INSURANCE = enum.auto()
+    HOUSE_INSURANCE = enum.auto()
+    OTHER_INSURANCE = enum.auto()
 
     # Children
-    CHILDCARE = "childcare"
-    CHILD_SUPPORT = "child_support"
+    CHILDCARE = enum.auto()
+    CHILD_SUPPORT = enum.auto()
 
     # Leisure
-    ENTERTAINMENT = "entertainment"
-    LEISURE = "leisure"
-    HOLIDAYS = "holidays"
+    ENTERTAINMENT = enum.auto()
+    LEISURE = enum.auto()
+    HOLIDAYS = enum.auto()
 
     # Utilities
-    ELECTRICITY = "electricity"
-    WATER = "water"
-    INTERNET = "internet"
-    PHONE = "phone"
+    ELECTRICITY = enum.auto()
+    WATER = enum.auto()
+    INTERNET = enum.auto()
+    PHONE = enum.auto()
 
     # Daily life
-    GROCERIES = "groceries"
-    CLOTHING = "clothing"
-    HEALTH_CARE = "health_care"
-    CARE = "care"
-    PUBLIC_TRANSPORT = "public_transport"
-    CAR_FUEL = "car_fuel"
-    PARKING = "parking"
-    TOLL = "toll"
-    CAR_MAINTENANCE = "car_maintenance"
-    CAR_LOAN = "car_loan"
-    GIFTS = "gifts"
+    GROCERIES = enum.auto()
+    CLOTHING = enum.auto()
+    HEALTH_CARE = enum.auto()
+    CARE = enum.auto()
+    PUBLIC_TRANSPORT = enum.auto()
+    CAR_FUEL = enum.auto()
+    PARKING = enum.auto()
+    TOLL = enum.auto()
+    CAR_MAINTENANCE = enum.auto()
+    CAR_LOAN = enum.auto()
+    GIFTS = enum.auto()
 
     # Professional
-    PROFESSIONAL_EXPENSES = "professional_expenses"
+    PROFESSIONAL_EXPENSES = enum.auto()
 
     # Other
-    OTHER = "other"
-    CHARITY = "charity"
-    BANK_FEES = "bank_fees"
-    TAXES = "taxes"
+    OTHER = enum.auto()
+    CHARITY = enum.auto()
+    BANK_FEES = enum.auto()
+    TAXES = enum.auto()
 
     @property
     def display_name(self) -> str:

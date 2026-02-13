@@ -30,6 +30,7 @@ from budget_forecaster.infrastructure.persistence.persistent_account import (
     PersistentAccount,
 )
 from budget_forecaster.infrastructure.persistence.sqlite_repository import (
+    _CATEGORY_MIGRATION_MAP,
     SCHEMA_V1,
     SCHEMA_V2,
     SCHEMA_V3,
@@ -678,10 +679,15 @@ class TestSchemaMigration:
             assert len(links) == 1
             assert links[0].iteration_date == date(2026, 1, 1)
 
+    @pytest.mark.parametrize(
+        ("french_value", "expected_key"),
+        list(_CATEGORY_MIGRATION_MAP.items()),
+        ids=list(_CATEGORY_MIGRATION_MAP.values()),
+    )
     def test_migration_v4_to_v5_converts_french_categories(
-        self, temp_db_path: Path
+        self, temp_db_path: Path, french_value: str, expected_key: str
     ) -> None:
-        """Test that migration v5 converts French category values to English keys."""
+        """Test that migration v5 converts each French category to its English key."""
         conn = sqlite3.connect(temp_db_path)
         conn.executescript(SCHEMA_V1)
         conn.executescript(SCHEMA_V2)
@@ -695,29 +701,12 @@ class TestSchemaMigration:
         conn.execute(
             "INSERT INTO operations (unique_id, account_id, description, category, "
             "date, amount, currency) "
-            "VALUES (1, 1, 'Supermarché', 'Courses', '2026-01-10', -85.0, 'EUR')"
-        )
-        conn.execute(
-            "INSERT INTO planned_operations (description, amount, currency, category, "
-            "start_date, end_date) "
-            "VALUES ('Loyer mensuel', -800.0, 'EUR', 'Loyer', '2025-01-01', "
-            "'2026-12-31')"
-        )
-        conn.execute(
-            "INSERT INTO budgets (description, amount, currency, category, start_date, "
-            "end_date) "
-            "VALUES ('Budget courses', -400.0, 'EUR', 'Courses', '2025-01-01', "
-            "'2026-12-31')"
+            "VALUES (1, 1, 'Test op', ?, '2026-01-10', -85.0, 'EUR')",
+            (french_value,),
         )
         conn.commit()
         conn.close()
 
         with SqliteRepository(temp_db_path) as repository:
             accounts = repository.get_all_accounts()
-            assert accounts[0].operations[0].category == Category.GROCERIES
-
-            planned_ops = repository.get_all_planned_operations()
-            assert planned_ops[0].category == Category.RENT
-
-            budgets = repository.get_all_budgets()
-            assert budgets[0].category == Category.GROCERIES
+            assert accounts[0].operations[0].category == Category(expected_key)
