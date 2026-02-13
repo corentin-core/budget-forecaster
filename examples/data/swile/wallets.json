@@ -1,0 +1,19 @@
+{
+  "wallets": [
+    {
+      "id": "wallet-demo-001",
+      "type": "meal_voucher",
+      "label": "Titres-resto",
+      "balance": {
+        "value": 87.5,
+        "currency": {
+          "iso3": "EUR",
+          "symbol": "€",
+          "title": "Euro"
+        }
+      },
+      "isActivated": true
+    }
+  ],
+  "hasClaimableWallet": false
+}

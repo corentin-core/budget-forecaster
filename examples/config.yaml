@@ -1,0 +1,6 @@
+database_path: ./demo.db
+account_name: BNP Compte Courant
+account_currency: EUR
+inbox_path: ./data
+backup:
+  enabled: false
