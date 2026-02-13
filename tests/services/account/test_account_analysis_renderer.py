@@ -28,7 +28,7 @@ def sample_report() -> AccountAnalysisReport:
             "Description": ["CARREFOUR", "VIREMENT SALAIRE", "CINEMA"],
             "Montant": [-85.20, 2500.00, -15.00],
         },
-        index=pd.DatetimeIndex(
+        index=pd.Index(
             [date(2025, 1, 10), date(2025, 1, 11), date(2025, 1, 12)],
             name="Date",
         ),
@@ -202,7 +202,7 @@ class TestAccountAnalysisRendererExcel:
             end_date=date(2025, 3, 31),
             operations=pd.DataFrame(
                 columns=["Catégorie", "Description", "Montant"],
-                index=pd.DatetimeIndex([], name="Date"),
+                index=pd.Index([], dtype="object", name="Date"),
             ),
             forecast=pd.DataFrame(
                 columns=["Montant", "Date début", "Date fin"],
