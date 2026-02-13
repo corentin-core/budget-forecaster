@@ -158,4 +158,4 @@ parsing (BNP, Swile), configuration, and rendering.
 - [Forecast](forecast.md) - Forecast structure, actualization algorithm
 - [Account](account.md) - Account management, balance projection, bank import
 - [Persistence](persistence.md) - Repository interfaces, service layer
-- [Configuration](configuration.md) - YAML config, logging, backup settings
+- [Configuration](../user/configuration.md) - YAML config, logging, backup settings
