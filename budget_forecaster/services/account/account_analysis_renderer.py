@@ -105,11 +105,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
     def _add_operations(self, operations: pd.DataFrame) -> None:
         sheet_name = "Opérations"
 
-        # hack: we can't set multiple date formats in the same workbook
-        # convert datetime to date to avoid the datetime format
         operations_reformatted = operations.copy()
-        idx = operations_reformatted.index
-        operations_reformatted.index = idx.date  # type: ignore[attr-defined]
         operations_reformatted.index.name = "Date"
         operations_reformatted = operations_reformatted.sort_index(ascending=False)
 
