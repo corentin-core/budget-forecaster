@@ -13,6 +13,7 @@ Guides for end-users explaining how to use features.
 | [Operation Links](user/operation-links.md)                      | Linking operations to forecasts          |
 | [TUI Operations](user/tui-operations.md)                        | Multi-selection, categorization, linking |
 | [TUI Planned Operations & Budgets](user/tui-planned-budgets.md) | Viewing, editing, splitting forecasts    |
+| [Configuration](user/configuration.md)                          | YAML config, logging, backup settings    |
 
 ### Developer Documentation
 
@@ -26,7 +27,6 @@ Technical documentation for developers: architecture, data flows, APIs.
 | [Account](dev/account.md)                                         | Account management, balance projection       |
 | [Planned Operations & Budgets](dev/planned-operations-budgets.md) | Split functionality, management operations   |
 | [Persistence](dev/persistence.md)                                 | Repository interfaces, service layer         |
-| [Configuration](dev/configuration.md)                             | YAML config, logging, backup settings        |
 | [Contributing](dev/contributing.md)                               | Dev setup, conventions, testing              |
 
 ### Quality Documentation
@@ -48,7 +48,8 @@ docs/
 │   ├── forecast.md
 │   ├── operation-links.md
 │   ├── tui-operations.md
-│   └── tui-planned-budgets.md
+│   ├── tui-planned-budgets.md
+│   └── configuration.md
 ├── dev/                         # Developer documentation
 │   ├── architecture.md
 │   ├── operations.md
@@ -56,7 +57,6 @@ docs/
 │   ├── account.md
 │   ├── planned-operations-budgets.md
 │   ├── persistence.md
-│   ├── configuration.md
 │   └── contributing.md
 └── quality/                     # Test scenarios
     ├── forecast-calculation.md
