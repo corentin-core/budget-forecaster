@@ -8,3 +8,4 @@ venv
 !examples/demo.db
 agent-os/
 implementation-progress.md
+site/

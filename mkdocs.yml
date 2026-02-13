@@ -1,0 +1,63 @@
+site_name: Budget Forecaster
+site_url: https://corentin-core.github.io/budget-forecaster/
+repo_url: https://github.com/corentin-core/budget-forecaster
+repo_name: corentin-core/budget-forecaster
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - content.code.copy
+
+nav:
+  - Home: index.md
+  - User Guide:
+      - Configuration: user/configuration.md
+      - Backup: user/backup.md
+      - Forecast: user/forecast.md
+      - Operation Links: user/operation-links.md
+      - TUI Operations: user/tui-operations.md
+      - TUI Planned Operations & Budgets: user/tui-planned-budgets.md
+  - Developer:
+      - Architecture: dev/architecture.md
+      - Operations: dev/operations.md
+      - Forecast: dev/forecast.md
+      - Account: dev/account.md
+      - Planned Operations & Budgets: dev/planned-operations-budgets.md
+      - Persistence: dev/persistence.md
+      - Contributing: dev/contributing.md
+  - Quality:
+      - Operation Links: quality/operation-links.md
+      - Forecast Calculation: quality/forecast-calculation.md
+      - Split Operations: quality/split-operations.md
+
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - tables
