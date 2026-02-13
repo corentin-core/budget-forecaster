@@ -26,92 +26,43 @@ graph TB
 
     subgraph Services
         AS[ApplicationService]
-        subgraph services/use_cases
-            IUC[ImportUseCase]
-            CUC[CategorizeUseCase]
-            MTUC[ManageTargetsUseCase]
-            MLUC[ManageLinksUseCase]
-            CFUC[ComputeForecastUseCase]
-            MC[MatcherCache]
-        end
-        subgraph services/forecast
-            FS[ForecastService]
-            FA[ForecastActualizer]
-        end
-        subgraph services/account
-            AF[AccountForecaster]
-            AN[AccountAnalyzer]
-            RND[AccountAnalysisRenderer]
-        end
-        subgraph services/operation
-            OS[OperationService]
-            OLS[OperationLinkService]
-            OM[OperationMatcher]
-            OC[categorize_operations]
+        UC[Use Cases]
+        subgraph Lower-level services
+            FS[Forecast]
+            ACCS[Account]
+            OPS[Operation]
         end
         IS[ImportService]
     end
 
     subgraph Domain
-        subgraph domain/account
-            AC[Account]
-            AA[AggregatedAccount]
-        end
-
-        subgraph domain/operation
-            HO[HistoricOperation]
-            PO[PlannedOperation]
-            BU[Budget]
-            OL[OperationLink]
-        end
-
-        subgraph domain/forecast
-            FC[Forecast]
-        end
+        ACC[Account / AggregatedAccount]
+        OP[HistoricOperation / PlannedOperation / Budget]
+        OL[OperationLink]
+        FC[Forecast]
     end
 
     subgraph Core
-        AM[Amount]
-        TR[DateRange]
-        CAT[Category]
+        AM[Amount / DateRange / Category]
     end
 
     subgraph Infrastructure
-        subgraph infrastructure/bank_adapters
-            BA[BnpAdapter / SwileAdapter]
-        end
-        subgraph infrastructure/persistence
-            SR[SqliteRepository]
-        end
-        CFG[Config]
-        BK[BackupService]
+        BA[Bank Adapters]
+        SR[SqliteRepository]
+        CFG[Config / Backup]
     end
 
     TUI --> AS
     CLI --> AS
-    AS --> IUC
-    AS --> CUC
-    AS --> MTUC
-    AS --> MLUC
-    AS --> CFUC
-    IUC --> IS
-    IUC --> OLS
-    IUC --> MC
-    CUC --> OS
-    CUC --> OLS
-    CUC --> MC
-    MTUC --> FS
-    MTUC --> OLS
-    MTUC --> MC
-    MLUC --> OLS
-    CFUC --> FS
-    CFUC --> OLS
-    MC --> FS
-    FS --> FA
-    FS --> AN
+    AS --> UC
+    UC --> FS
+    UC --> OPS
+    UC --> IS
+    FS --> ACCS
     IS --> BA
-    AN --> AF
-    RND --> AN
+    Services --> Domain
+    Domain --> Core
+    Services --> Infrastructure
 ```
 
 Budget Forecaster is a personal finance application that imports bank statements,
