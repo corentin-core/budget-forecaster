@@ -144,16 +144,27 @@ class AggregatedAccount:
             else:
                 updated_accounts.append(current_account)
 
-        self._accounts = tuple(updated_accounts)
-
-        # If no matching account was found, return stats for all operations as new
+        # If no matching account was found, create a new one
         if stats is None:
+            balance_date = account.balance_date or max(
+                op.operation_date for op in account.operations
+            )
+            new_account = Account(
+                name=account.name,
+                balance=account.balance or 0.0,
+                currency=account.currency,
+                balance_date=balance_date,
+                operations=account.operations,
+            )
+            updated_accounts.append(new_account)
             total = len(account.operations)
             stats = ImportStats(
                 total_in_file=total,
                 new_operations=total,
                 duplicates_skipped=0,
             )
+
+        self._accounts = tuple(updated_accounts)
 
         return stats
 

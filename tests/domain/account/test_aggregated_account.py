@@ -5,7 +5,7 @@ from datetime import date
 import pytest
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.types import Category
+from budget_forecaster.core.types import Category, ImportStats
 from budget_forecaster.domain.account.account import Account, AccountParameters
 from budget_forecaster.domain.account.aggregated_account import AggregatedAccount
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
@@ -186,11 +186,13 @@ class TestUpsertAccount:
 
         stats = agg.upsert_account(new_params)
 
-        assert stats.new_operations == 1
-        assert len(agg.accounts[0].operations) == 2
+        assert stats == ImportStats(
+            total_in_file=1, new_operations=1, duplicates_skipped=0
+        )
+        assert agg.accounts[0].operations == (op, new_op)
 
     def test_upsert_new_account(self) -> None:
-        """Upserting a non-existing account name returns all as new."""
+        """Upserting a non-existing account name creates it with all operations."""
         account = _make_account(name="BNP")
         agg = AggregatedAccount("All", [account])
 
@@ -205,9 +207,81 @@ class TestUpsertAccount:
 
         stats = agg.upsert_account(new_params)
 
-        assert stats.new_operations == 1
-        assert stats.total_in_file == 1
-        assert stats.duplicates_skipped == 0
+        assert stats == ImportStats(
+            total_in_file=1, new_operations=1, duplicates_skipped=0
+        )
+        # Regression: account must actually be created with its operations
+        assert len(agg.accounts) == 2
+        expected_swile = Account(
+            name="Swile",
+            balance=500.0,
+            currency="EUR",
+            balance_date=date(2025, 1, 15),
+            operations=(new_op,),
+        )
+        assert agg.accounts[1] == expected_swile
+
+    def test_upsert_on_empty_aggregated_account(self) -> None:
+        """Upserting into an aggregated account with no sub-accounts creates one."""
+        agg = AggregatedAccount("All", [])
+
+        new_op = _make_operation(1, "SALARY", 3000.0, date(2025, 1, 28))
+        new_params = AccountParameters(
+            name="bnp",
+            balance=3000.0,
+            currency="EUR",
+            balance_date=date(2025, 1, 29),
+            operations=(new_op,),
+        )
+
+        stats = agg.upsert_account(new_params)
+
+        assert stats == ImportStats(
+            total_in_file=1, new_operations=1, duplicates_skipped=0
+        )
+        expected = Account(
+            name="bnp",
+            balance=3000.0,
+            currency="EUR",
+            balance_date=date(2025, 1, 29),
+            operations=(new_op,),
+        )
+        assert agg.accounts == (expected,)
+
+    def test_upsert_new_account_then_update(self) -> None:
+        """First import creates the account, second import deduplicates."""
+        agg = AggregatedAccount("All", [])
+
+        # First import — creates the account
+        op1 = _make_operation(1, "RENT", -950.0, date(2025, 1, 5))
+        params1 = AccountParameters(
+            name="bnp",
+            balance=1000.0,
+            currency="EUR",
+            balance_date=date(2025, 1, 10),
+            operations=(op1,),
+        )
+        stats1 = agg.upsert_account(params1)
+        assert stats1 == ImportStats(
+            total_in_file=1, new_operations=1, duplicates_skipped=0
+        )
+        assert len(agg.accounts) == 1
+
+        # Second import — same operation + one new
+        op2 = _make_operation(2, "INTERNET", -35.0, date(2025, 1, 8))
+        params2 = AccountParameters(
+            name="bnp",
+            balance=965.0,
+            currency="EUR",
+            balance_date=date(2025, 1, 15),
+            operations=(op1, op2),
+        )
+        stats2 = agg.upsert_account(params2)
+        assert stats2 == ImportStats(
+            total_in_file=2, new_operations=1, duplicates_skipped=1
+        )
+        assert len(agg.accounts) == 1
+        assert agg.accounts[0].operations == (op1, op2)
 
 
 class TestReplaceOperation:
