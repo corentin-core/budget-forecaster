@@ -9,3 +9,7 @@ venv
 agent-os/
 implementation-progress.md
 site/
+.coverage
+coverage.xml
+.serena/
+*.xlsx
