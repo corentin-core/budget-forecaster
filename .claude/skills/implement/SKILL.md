@@ -160,26 +160,8 @@ This prevents wasting time on code that will be rejected during review.
 
 ### Phase 1.5: Create Worktree
 
-**ALWAYS use a git worktree** to isolate work from the main working directory.
-
-```bash
-# From the main repo directory
-git worktree add ../budget-forecaster-<number> -b issue/<number>-<kebab-case-description> origin/main
-```
-
-Convention: worktree path is `../budget-forecaster-<issue-number>`.
-
-From this point, **all work happens in the worktree directory**:
-
-```bash
-cd ../budget-forecaster-<number>
-```
-
-The virtual environment is shared from the main worktree:
-
-```bash
-source ../budget-forecaster/budget-forecaster-venv/bin/activate
-```
+Create a git worktree following `.claude/rules/git-conventions.md` (worktree creation,
+venv activation from worktree).
 
 ---
 
@@ -253,20 +235,8 @@ For each file:
 
 #### 3.3 Test implementation (CRITICAL)
 
-Tests must validate actual behavior, not just existence:
-
-```python
-# Insufficient
-def test_export():
-    exporter.export(data, "output.csv")
-    assert Path("output.csv").exists()
-
-# Sufficient - validates actual content
-def test_export():
-    exporter.export(data, "output.csv")
-    expected = Path("tests/fixtures/expected.csv").read_text()
-    assert Path("output.csv").read_text() == expected
-```
+Follow `.claude/rules/testing.md` for test patterns (validate actual behavior, fixtures,
+parametrize, assert on whole objects).
 
 ---
 
@@ -282,17 +252,11 @@ Before committing, validate against these checklists:
 
 #### 4.2 Code conventions
 
-- [ ] Type hints on all functions
-- [ ] Tuple returns (not lists)
-- [ ] Private attributes by default
-- [ ] No circular imports
+Follow `.claude/rules/python-quality.md` checklist.
 
 #### 4.3 Testing adequacy
 
-- [ ] Unit tests for new logic
-- [ ] Integration test for the complete flow
-- [ ] Tests validate actual behavior (not just existence)
-- [ ] Fixtures for generated outputs
+Follow `.claude/rules/testing.md` checklist.
 
 #### 4.4 Run quality checks
 
