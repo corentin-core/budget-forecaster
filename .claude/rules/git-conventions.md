@@ -4,18 +4,21 @@
 
 **BEFORE committing changes**, you MUST:
 
-1. **Run tests** to verify your changes don't break existing functionality
-2. **Run linters** (pre-commit or project-specific) to ensure code quality
+1. **Run linters** to ensure code quality
+2. **Run tests** to verify your changes don't break existing functionality
 
 ```bash
-# Run tests first
+# Run linters first
+source budget-forecaster-venv/bin/activate && pre-commit run --all-files
+
+# Then run tests
 pytest tests/
 
 # Then commit (pre-commit hooks will run automatically)
 git add <files> && git commit -m "message"
 ```
 
-Never commit without running tests first, even for "simple" changes.
+Never commit without running linters and tests first, even for "simple" changes.
 
 ## Virtual Environment Activation
 

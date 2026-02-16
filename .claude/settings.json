@@ -72,7 +72,9 @@
       "Bash(git push origin main:*)",
       "Bash(git push origin master:*)",
       "Bash(rm -rf:*)",
-      "Bash(rm -r:*)"
+      "Bash(rm -r:*)",
+      "Bash(gh api:* -X DELETE:*)",
+      "Bash(gh api:* --method DELETE:*)"
     ]
   }
 }
