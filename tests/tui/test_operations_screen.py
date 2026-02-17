@@ -10,6 +10,7 @@ from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.services.operation.operation_service import OperationFilter
 from budget_forecaster.tui.screens.operations import OperationsScreen
 from budget_forecaster.tui.widgets.operation_table import OperationTable
 
@@ -44,7 +45,9 @@ def _make_app_service(operations: tuple[HistoricOperation, ...]) -> Mock:
     """Create a mock ApplicationService returning given operations."""
     service = Mock(spec=ApplicationService)
 
-    def get_operations(filter_=None):  # type: ignore[no-untyped-def]
+    def get_operations(
+        filter_: OperationFilter | None = None,
+    ) -> tuple[HistoricOperation, ...]:
         if filter_ is None:
             return operations
         return tuple(op for op in operations if filter_.matches(op))
