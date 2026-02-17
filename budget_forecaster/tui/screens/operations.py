@@ -3,12 +3,11 @@
 from typing import Any
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Select, Static
+from textual.widgets import Button, Static
 
 from budget_forecaster.core.types import (
-    Category,
     LinkType,
     MatcherKey,
     OperationId,
@@ -20,6 +19,7 @@ from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.operation.operation_service import OperationFilter
 from budget_forecaster.tui.messages import DataRefreshRequested, SaveRequested
 from budget_forecaster.tui.widgets.category_select import CategorySelect
+from budget_forecaster.tui.widgets.filter_bar import FilterBar
 from budget_forecaster.tui.widgets.operation_table import OperationTable
 
 
@@ -222,30 +222,12 @@ class OperationsScreen(Container):
         height: 100%;
     }
 
-    #filter-bar {
-        height: auto;
-        dock: top;
-        padding: 0 1;
-    }
-
-    #filter-bar Input {
-        width: 30;
-    }
-
-    #filter-bar Select {
-        width: 25;
-    }
-
-    #filter-bar Button {
-        margin-left: 1;
-    }
-
-    #operations-table {
+    OperationsScreen #operations-table {
         width: 100%;
         height: 1fr;
     }
 
-    #status-bar {
+    OperationsScreen #status-bar {
         height: 1;
         dock: bottom;
         background: $surface;
@@ -257,26 +239,11 @@ class OperationsScreen(Container):
         super().__init__(**kwargs)
         self._app_service: ApplicationService | None = None
         self._current_filter = OperationFilter()
+        self._total_count: int = 0
 
     def compose(self) -> ComposeResult:
-        # Filter bar
-        with Horizontal(id="filter-bar"):
-            yield Input(placeholder=_("Search..."), id="search-input")
-            yield Select[str](
-                [
-                    (cat.display_name, cat.name)
-                    for cat in sorted(Category, key=lambda c: c.display_name)
-                ],
-                prompt=_("Category"),
-                id="category-filter",
-                allow_blank=True,
-            )
-            yield Button(_("Filter"), id="btn-filter")
-            yield Button(_("Reset"), id="btn-reset")
-
-        # Table only - simplified layout
+        yield FilterBar(id="operations-filter-bar")
         yield OperationTable(id="operations-table")
-
         yield Static(_("0 operations"), id="status-bar")
 
     def set_app_service(self, service: ApplicationService) -> None:
@@ -284,16 +251,15 @@ class OperationsScreen(Container):
         self._app_service = service
         self._apply_filter()
 
-    def _apply_filter(self) -> None:
-        """Apply the current filter and refresh the table."""
-        if not self._app_service:
-            return
-
-        operations = self._app_service.get_operations(self._current_filter)
-
-        # Build links and targets lookup dicts
+    def _build_lookups(
+        self,
+    ) -> tuple[dict[OperationId, OperationLink], dict[MatcherKey, TargetName]]:
+        """Build links and targets lookup dicts."""
         links: dict[OperationId, OperationLink] = {}
         targets: dict[MatcherKey, TargetName] = {}
+
+        if not self._app_service:
+            return links, targets
 
         for link in self._app_service.get_all_links():
             links[link.operation_unique_id] = link
@@ -307,44 +273,42 @@ class OperationsScreen(Container):
                 key = MatcherKey(LinkType.BUDGET, budget.id)
                 targets[key] = budget.description
 
+        return links, targets
+
+    def _apply_filter(self) -> None:
+        """Apply the current filter and refresh the table."""
+        if not self._app_service:
+            return
+
+        all_operations = self._app_service.get_operations()
+        self._total_count = len(all_operations)
+
+        filtered_operations = self._app_service.get_operations(self._current_filter)
+        filtered_count = len(filtered_operations)
+
+        links, targets = self._build_lookups()
+
         table = self.query_one("#operations-table", OperationTable)
-        table.load_operations(operations, links, targets)
+        table.load_operations(filtered_operations, links, targets)
 
         status = self.query_one("#status-bar", Static)
-        status.update(_("{} operation(s)").format(len(operations)))
+        status.update(_("{} operation(s)").format(filtered_count))
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle button presses."""
-        if event.button.id == "btn-filter":
-            self._update_filter()
-        elif event.button.id == "btn-reset":
-            self._reset_filter()
+        filter_bar = self.query_one("#operations-filter-bar", FilterBar)
+        filter_bar.update_status(filtered_count, self._total_count)
 
-    def on_input_submitted(self, event: Input.Submitted) -> None:
-        """Handle Enter key in search input."""
-        if event.input.id == "search-input":
-            self._update_filter()
-
-    def _update_filter(self) -> None:
-        """Update the filter from UI inputs."""
-        search_input = self.query_one("#search-input", Input)
-        category_select = self.query_one("#category-filter", Select[str])
-
-        search_text = search_input.value.strip() or None
-        category = None
-        if category_select.value and category_select.value != Select.BLANK:
-            category = Category[str(category_select.value)]
-
+    def on_filter_bar_filter_changed(self, event: FilterBar.FilterChanged) -> None:
+        """Handle filter changes from the filter bar."""
+        event.stop()
         self._current_filter = OperationFilter(
-            search_text=search_text,
-            category=category,
+            search_text=event.search_text,
+            category=event.category,
         )
         self._apply_filter()
 
-    def _reset_filter(self) -> None:
-        """Reset all filters."""
-        self.query_one("#search-input", Input).value = ""
-        self.query_one("#category-filter", Select[str]).value = Select.BLANK
+    def on_filter_bar_filter_reset(self, event: FilterBar.FilterReset) -> None:
+        """Handle filter reset from the filter bar."""
+        event.stop()
         self._current_filter = OperationFilter()
         self._apply_filter()
 
@@ -352,4 +316,4 @@ class OperationsScreen(Container):
         self, event: OperationTable.OperationHighlighted
     ) -> None:
         """Show operation details when highlighted (not yet implemented)."""
-        _ = event  # Unused for now
+        _ = event
