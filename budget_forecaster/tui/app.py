@@ -60,6 +60,7 @@ from budget_forecaster.tui.modals import (
 from budget_forecaster.tui.screens.budgets import BudgetsWidget
 from budget_forecaster.tui.screens.forecast import ForecastWidget
 from budget_forecaster.tui.screens.imports import ImportWidget
+from budget_forecaster.tui.screens.operations import OperationsScreen
 from budget_forecaster.tui.screens.planned_operations import PlannedOperationsWidget
 from budget_forecaster.tui.widgets import OperationTable
 
@@ -251,7 +252,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
                     yield Static(_("Uncategorized: -"), id="stat-uncategorized")
                 yield OperationTable(id="dashboard-table")
             with TabPane(_("Operations"), id="operations"):
-                yield OperationTable(id="operations-table")
+                yield OperationsScreen(id="operations-screen")
             with TabPane(_("Import"), id="import"):
                 yield ImportWidget(id="import-widget")
             with TabPane(_("Forecasts"), id="forecast"):
@@ -321,9 +322,9 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         self.query_one("#dashboard-table", OperationTable).load_operations(
             recent_ops, links, targets
         )
-        self.query_one("#operations-table", OperationTable).load_operations(
-            self.app_service.get_operations(), links, targets
-        )
+        # Refresh operations screen (with its own filter bar)
+        operations_screen = self.query_one("#operations-screen", OperationsScreen)
+        operations_screen.set_app_service(self.app_service)
         # Refresh import widget
         import_widget = self.query_one("#import-widget", ImportWidget)
         import_widget.set_app_service(self.app_service)
