@@ -9,9 +9,11 @@ from textual.message import Message
 from textual.widgets import Button, DataTable, Static
 
 from budget_forecaster.core.date_range import RecurringDateRange
+from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.tui.widgets.filter_bar import FilterBar
 
 logger = logging.getLogger(__name__)
 
@@ -83,8 +85,11 @@ class BudgetsWidget(Vertical):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self._app_service: ApplicationService | None = None
-        self._budgets: tuple[Budget, ...] = ()
+        self._all_budgets: tuple[Budget, ...] = ()
+        self._filtered_budgets: tuple[Budget, ...] = ()
         self._selected_budget: Budget | None = None
+        self._search_text: str | None = None
+        self._filter_category: Category | None = None
 
     def compose(self) -> ComposeResult:
         """Create the widget layout."""
@@ -96,6 +101,7 @@ class BudgetsWidget(Vertical):
                 yield Button(_("Split"), id="btn-split-budget", variant="default")
                 yield Button(_("Delete"), id="btn-delete-budget", variant="error")
 
+        yield FilterBar(id="budgets-filter-bar")
         yield DataTable(id="budgets-table")
         yield Static("", id="budgets-status")
 
@@ -126,17 +132,42 @@ class BudgetsWidget(Vertical):
         if self._app_service is None:
             return
 
-        self._budgets = self._app_service.get_all_budgets()
+        self._all_budgets = self._app_service.get_all_budgets()
+        self._apply_filter()
+
+    def _apply_filter(self) -> None:
+        """Apply current filter criteria and refresh the table."""
+        self._filtered_budgets = self._filter_budgets(
+            self._all_budgets, self._search_text, self._filter_category
+        )
         self._populate_table()
         self._update_status()
         self._update_button_states()
 
+        filter_bar = self.query_one("#budgets-filter-bar", FilterBar)
+        filter_bar.update_status(len(self._filtered_budgets), len(self._all_budgets))
+
+    @staticmethod
+    def _filter_budgets(
+        budgets: tuple[Budget, ...],
+        search_text: str | None,
+        category: Category | None,
+    ) -> tuple[Budget, ...]:
+        """Filter budgets by search text and category."""
+        result = budgets
+        if search_text:
+            text_lower = search_text.lower()
+            result = tuple(b for b in result if text_lower in b.description.lower())
+        if category is not None:
+            result = tuple(b for b in result if b.category == category)
+        return result
+
     def _populate_table(self) -> None:
-        """Populate the data table with budgets."""
+        """Populate the data table with filtered budgets."""
         table = self.query_one("#budgets-table", DataTable)
         table.clear()
 
-        for budget in self._budgets:
+        for budget in self._filtered_budgets:
             time_range = budget.date_range
             start_date = time_range.start_date.strftime("%Y-%m-%d")
 
@@ -197,7 +228,7 @@ class BudgetsWidget(Vertical):
     def _update_status(self) -> None:
         """Update the status display."""
         status = self.query_one("#budgets-status", Static)
-        count = len(self._budgets)
+        count = len(self._filtered_budgets)
         status.update(_("{} budget(s) configured").format(count))
 
     def _update_button_states(self) -> None:
@@ -221,10 +252,24 @@ class BudgetsWidget(Vertical):
         else:
             budget_id = int(str(event.row_key.value))
             self._selected_budget = next(
-                (b for b in self._budgets if b.id == budget_id), None
+                (b for b in self._filtered_budgets if b.id == budget_id), None
             )
         self._update_button_states()
         self.post_message(self.BudgetSelected(self._selected_budget))
+
+    def on_filter_bar_filter_changed(self, event: FilterBar.FilterChanged) -> None:
+        """Handle filter changes from the filter bar."""
+        event.stop()
+        self._search_text = event.search_text
+        self._filter_category = event.category
+        self._apply_filter()
+
+    def on_filter_bar_filter_reset(self, event: FilterBar.FilterReset) -> None:
+        """Handle filter reset from the filter bar."""
+        event.stop()
+        self._search_text = None
+        self._filter_category = None
+        self._apply_filter()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
