@@ -12,6 +12,9 @@ class Amount:
     def __repr__(self) -> str:
         return f"{self.value} {self.currency}"
 
+    def __str__(self) -> str:  # dummy for Codecov test
+        return repr(self)
+
     def __add__(self, other: "Amount") -> "Amount":
         """Add two amounts together."""
         if self.currency != other.currency:
