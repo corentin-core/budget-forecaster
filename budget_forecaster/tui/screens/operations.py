@@ -213,17 +213,15 @@ class CategoryEditModal(ModalScreen[bool]):
         self.dismiss(False)
 
 
-class OperationsScreen(Container):
+class OperationsScreen(Vertical):
     """Screen for viewing and filtering operations."""
 
     DEFAULT_CSS = """
     OperationsScreen {
-        width: 100%;
-        height: 100%;
+        height: 1fr;
     }
 
     OperationsScreen #operations-table {
-        width: 100%;
         height: 1fr;
     }
 
