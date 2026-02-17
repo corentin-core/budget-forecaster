@@ -70,9 +70,7 @@ async def test_budget_table_shows_translated_category_names() -> None:
 
         table = app.query_one("#budget-table", DataTable)
 
-        # Extract the category column values (first cell of each row)
+        # Verify category column shows display names, not raw enum values
         displayed_categories = [table.get_row(row_key)[0] for row_key in table.rows]
-
-        for category in categories:
-            assert category.display_name in displayed_categories
-            assert str(category) not in displayed_categories
+        expected = [cat.display_name for cat in categories] + ["Total"]
+        assert displayed_categories == expected
