@@ -16,7 +16,9 @@ from budget_forecaster.services.operation.historic_operation_factory import (
     HistoricOperationFactory,
 )
 
-FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "swile"
+FIXTURE_ZIP = (
+    Path(__file__).parent.parent.parent / "fixtures" / "swile-export-2025-01-15.zip"
+)
 
 
 def _create_swile_zip(
@@ -43,16 +45,6 @@ def swile_adapter() -> SwileBankAdapter:
 def operation_factory() -> HistoricOperationFactory:
     """Create a HistoricOperationFactory instance."""
     return HistoricOperationFactory(last_operation_id=0)
-
-
-@pytest.fixture
-def fixture_zip(tmp_path: Path) -> Path:
-    """Create a zip from the existing JSON fixture files."""
-    zip_path = tmp_path / "swile-export-2025-01-15.zip"
-    with zipfile.ZipFile(zip_path, "w") as zf:
-        zf.write(FIXTURES_DIR / "operations.json", "operations.json")
-        zf.write(FIXTURES_DIR / "wallets.json", "wallets.json")
-    return zip_path
 
 
 class TestSwileBankAdapterMatch:
@@ -90,10 +82,9 @@ class TestSwileBankAdapterLoad:
         self,
         swile_adapter: SwileBankAdapter,
         operation_factory: HistoricOperationFactory,
-        fixture_zip: Path,
     ) -> None:
         """Test loading a valid Swile export."""
-        swile_adapter.load_bank_export(fixture_zip, operation_factory)
+        swile_adapter.load_bank_export(FIXTURE_ZIP, operation_factory)
 
         # Check balance is extracted correctly
         assert swile_adapter.balance == 125.50
@@ -111,10 +102,9 @@ class TestSwileBankAdapterLoad:
         self,
         swile_adapter: SwileBankAdapter,
         operation_factory: HistoricOperationFactory,
-        fixture_zip: Path,
     ) -> None:
         """Test that export date is the max operation date."""
-        swile_adapter.load_bank_export(fixture_zip, operation_factory)
+        swile_adapter.load_bank_export(FIXTURE_ZIP, operation_factory)
 
         # The latest transaction is op-003 on 2025-01-16
         assert swile_adapter.export_date == date(2025, 1, 16)
@@ -123,10 +113,9 @@ class TestSwileBankAdapterLoad:
         self,
         swile_adapter: SwileBankAdapter,
         operation_factory: HistoricOperationFactory,
-        fixture_zip: Path,
     ) -> None:
         """Test that operation amounts are correctly converted from centimes."""
-        swile_adapter.load_bank_export(fixture_zip, operation_factory)
+        swile_adapter.load_bank_export(FIXTURE_ZIP, operation_factory)
 
         amounts = sorted([op.amount for op in swile_adapter.operations])
         # Expected amounts (in euros): -25.00, -25.00, -15.00, -8.00, +189.00
@@ -136,10 +125,9 @@ class TestSwileBankAdapterLoad:
         self,
         swile_adapter: SwileBankAdapter,
         operation_factory: HistoricOperationFactory,
-        fixture_zip: Path,
     ) -> None:
         """Test that operation descriptions are extracted from operation name."""
-        swile_adapter.load_bank_export(fixture_zip, operation_factory)
+        swile_adapter.load_bank_export(FIXTURE_ZIP, operation_factory)
 
         descriptions = {op.description for op in swile_adapter.operations}
         expected = {
@@ -155,10 +143,9 @@ class TestSwileBankAdapterLoad:
         self,
         swile_adapter: SwileBankAdapter,
         operation_factory: HistoricOperationFactory,
-        fixture_zip: Path,
     ) -> None:
         """Test that all operations are categorized as UNCATEGORIZED."""
-        swile_adapter.load_bank_export(fixture_zip, operation_factory)
+        swile_adapter.load_bank_export(FIXTURE_ZIP, operation_factory)
 
         for operation in swile_adapter.operations:
             assert operation.category == Category.UNCATEGORIZED
@@ -167,10 +154,9 @@ class TestSwileBankAdapterLoad:
         self,
         swile_adapter: SwileBankAdapter,
         operation_factory: HistoricOperationFactory,
-        fixture_zip: Path,
     ) -> None:
         """Test that operation currency is correctly extracted."""
-        swile_adapter.load_bank_export(fixture_zip, operation_factory)
+        swile_adapter.load_bank_export(FIXTURE_ZIP, operation_factory)
 
         for operation in swile_adapter.operations:
             assert operation.currency == "EUR"
@@ -179,10 +165,9 @@ class TestSwileBankAdapterLoad:
         self,
         swile_adapter: SwileBankAdapter,
         operation_factory: HistoricOperationFactory,
-        fixture_zip: Path,
     ) -> None:
         """Test that DECLINED transactions are skipped."""
-        swile_adapter.load_bank_export(fixture_zip, operation_factory)
+        swile_adapter.load_bank_export(FIXTURE_ZIP, operation_factory)
 
         descriptions = {op.description for op in swile_adapter.operations}
         assert "Marchand Echec" not in descriptions
@@ -191,10 +176,9 @@ class TestSwileBankAdapterLoad:
         self,
         swile_adapter: SwileBankAdapter,
         operation_factory: HistoricOperationFactory,
-        fixture_zip: Path,
     ) -> None:
         """Test that non-meal voucher payment methods are skipped."""
-        swile_adapter.load_bank_export(fixture_zip, operation_factory)
+        swile_adapter.load_bank_export(FIXTURE_ZIP, operation_factory)
 
         # op-006 has 2 transactions: meal voucher (-25€) and credit card (-5€)
         # Only the meal voucher one should be counted
