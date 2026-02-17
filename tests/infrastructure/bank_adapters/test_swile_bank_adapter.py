@@ -1,6 +1,7 @@
 """Tests for the Swile bank adapter."""
 
 import json
+import zipfile
 from datetime import date
 from pathlib import Path
 
@@ -18,6 +19,20 @@ from budget_forecaster.services.operation.historic_operation_factory import (
 FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures" / "swile"
 
 
+def _create_swile_zip(
+    path: Path,
+    operations: object,
+    wallets: object,
+    filename: str = "swile-export-2025-01-15.zip",
+) -> Path:
+    """Create a Swile export zip from operations and wallets data."""
+    zip_path = path / filename
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("operations.json", json.dumps(operations))
+        zf.writestr("wallets.json", json.dumps(wallets))
+    return zip_path
+
+
 @pytest.fixture
 def swile_adapter() -> SwileBankAdapter:
     """Create a SwileBankAdapter instance."""
@@ -30,33 +45,41 @@ def operation_factory() -> HistoricOperationFactory:
     return HistoricOperationFactory(last_operation_id=0)
 
 
+@pytest.fixture
+def fixture_zip(tmp_path: Path) -> Path:
+    """Create a zip from the existing JSON fixture files."""
+    zip_path = tmp_path / "swile-export-2025-01-15.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.write(FIXTURES_DIR / "operations.json", "operations.json")
+        zf.write(FIXTURES_DIR / "wallets.json", "wallets.json")
+    return zip_path
+
+
 class TestSwileBankAdapterMatch:
     """Tests for the match class method."""
 
-    def test_match_valid_directory(self, tmp_path: Path) -> None:
-        """Test that match returns True for a valid Swile export directory."""
-        (tmp_path / "operations.json").write_text("{}")
-        (tmp_path / "wallets.json").write_text("{}")
+    def test_match_valid_zip(self, tmp_path: Path) -> None:
+        """Test that match returns True for a valid swile-export-YYYY-MM-DD.zip."""
+        zip_path = tmp_path / "swile-export-2025-01-15.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("operations.json", "{}")
+        assert SwileBankAdapter.match(zip_path) is True
 
-        assert SwileBankAdapter.match(tmp_path) is True
+    def test_match_wrong_filename_pattern(self, tmp_path: Path) -> None:
+        """Test that match returns False for a zip with wrong naming."""
+        zip_path = tmp_path / "export-swile.zip"
+        with zipfile.ZipFile(zip_path, "w") as zf:
+            zf.writestr("operations.json", "{}")
+        assert SwileBankAdapter.match(zip_path) is False
 
-    def test_match_missing_operations_file(self, tmp_path: Path) -> None:
-        """Test that match returns False when operations.json is missing."""
-        (tmp_path / "wallets.json").write_text("{}")
-
+    def test_match_directory(self, tmp_path: Path) -> None:
+        """Test that match returns False for a directory."""
         assert SwileBankAdapter.match(tmp_path) is False
 
-    def test_match_missing_wallets_file(self, tmp_path: Path) -> None:
-        """Test that match returns False when wallets.json is missing."""
-        (tmp_path / "operations.json").write_text("{}")
-
-        assert SwileBankAdapter.match(tmp_path) is False
-
-    def test_match_not_a_directory(self, tmp_path: Path) -> None:
-        """Test that match returns False for a file instead of directory."""
-        file_path = tmp_path / "not_a_directory.json"
+    def test_match_non_zip_file(self, tmp_path: Path) -> None:
+        """Test that match returns False for a non-zip file."""
+        file_path = tmp_path / "swile-export-2025-01-15.json"
         file_path.write_text("{}")
-
         assert SwileBankAdapter.match(file_path) is False
 
 
@@ -67,9 +90,10 @@ class TestSwileBankAdapterLoad:
         self,
         swile_adapter: SwileBankAdapter,
         operation_factory: HistoricOperationFactory,
+        fixture_zip: Path,
     ) -> None:
         """Test loading a valid Swile export."""
-        swile_adapter.load_bank_export(FIXTURES_DIR, operation_factory)
+        swile_adapter.load_bank_export(fixture_zip, operation_factory)
 
         # Check balance is extracted correctly
         assert swile_adapter.balance == 125.50
@@ -87,9 +111,10 @@ class TestSwileBankAdapterLoad:
         self,
         swile_adapter: SwileBankAdapter,
         operation_factory: HistoricOperationFactory,
+        fixture_zip: Path,
     ) -> None:
         """Test that export date is the max operation date."""
-        swile_adapter.load_bank_export(FIXTURES_DIR, operation_factory)
+        swile_adapter.load_bank_export(fixture_zip, operation_factory)
 
         # The latest transaction is op-003 on 2025-01-16
         assert swile_adapter.export_date == date(2025, 1, 16)
@@ -98,9 +123,10 @@ class TestSwileBankAdapterLoad:
         self,
         swile_adapter: SwileBankAdapter,
         operation_factory: HistoricOperationFactory,
+        fixture_zip: Path,
     ) -> None:
         """Test that operation amounts are correctly converted from centimes."""
-        swile_adapter.load_bank_export(FIXTURES_DIR, operation_factory)
+        swile_adapter.load_bank_export(fixture_zip, operation_factory)
 
         amounts = sorted([op.amount for op in swile_adapter.operations])
         # Expected amounts (in euros): -25.00, -25.00, -15.00, -8.00, +189.00
@@ -110,9 +136,10 @@ class TestSwileBankAdapterLoad:
         self,
         swile_adapter: SwileBankAdapter,
         operation_factory: HistoricOperationFactory,
+        fixture_zip: Path,
     ) -> None:
         """Test that operation descriptions are extracted from operation name."""
-        swile_adapter.load_bank_export(FIXTURES_DIR, operation_factory)
+        swile_adapter.load_bank_export(fixture_zip, operation_factory)
 
         descriptions = {op.description for op in swile_adapter.operations}
         expected = {
@@ -128,9 +155,10 @@ class TestSwileBankAdapterLoad:
         self,
         swile_adapter: SwileBankAdapter,
         operation_factory: HistoricOperationFactory,
+        fixture_zip: Path,
     ) -> None:
         """Test that all operations are categorized as UNCATEGORIZED."""
-        swile_adapter.load_bank_export(FIXTURES_DIR, operation_factory)
+        swile_adapter.load_bank_export(fixture_zip, operation_factory)
 
         for operation in swile_adapter.operations:
             assert operation.category == Category.UNCATEGORIZED
@@ -139,9 +167,10 @@ class TestSwileBankAdapterLoad:
         self,
         swile_adapter: SwileBankAdapter,
         operation_factory: HistoricOperationFactory,
+        fixture_zip: Path,
     ) -> None:
         """Test that operation currency is correctly extracted."""
-        swile_adapter.load_bank_export(FIXTURES_DIR, operation_factory)
+        swile_adapter.load_bank_export(fixture_zip, operation_factory)
 
         for operation in swile_adapter.operations:
             assert operation.currency == "EUR"
@@ -150,9 +179,10 @@ class TestSwileBankAdapterLoad:
         self,
         swile_adapter: SwileBankAdapter,
         operation_factory: HistoricOperationFactory,
+        fixture_zip: Path,
     ) -> None:
         """Test that DECLINED transactions are skipped."""
-        swile_adapter.load_bank_export(FIXTURES_DIR, operation_factory)
+        swile_adapter.load_bank_export(fixture_zip, operation_factory)
 
         descriptions = {op.description for op in swile_adapter.operations}
         assert "Marchand Echec" not in descriptions
@@ -161,9 +191,10 @@ class TestSwileBankAdapterLoad:
         self,
         swile_adapter: SwileBankAdapter,
         operation_factory: HistoricOperationFactory,
+        fixture_zip: Path,
     ) -> None:
         """Test that non-meal voucher payment methods are skipped."""
-        swile_adapter.load_bank_export(FIXTURES_DIR, operation_factory)
+        swile_adapter.load_bank_export(fixture_zip, operation_factory)
 
         # op-006 has 2 transactions: meal voucher (-25€) and credit card (-5€)
         # Only the meal voucher one should be counted
@@ -179,17 +210,15 @@ class TestSwileBankAdapterLoad:
         operation_factory: HistoricOperationFactory,
         tmp_path: Path,
     ) -> None:
-        """Test that loading with no valid transactions raises ValueError."""
+        """Test that loading with no valid transactions raises an error."""
         operations = {"items_count": 0, "has_more": False, "items": []}
         wallets = {"wallets": [{"type": "meal_voucher", "balance": {"value": 100.0}}]}
-
-        (tmp_path / "operations.json").write_text(json.dumps(operations))
-        (tmp_path / "wallets.json").write_text(json.dumps(wallets))
+        zip_path = _create_swile_zip(tmp_path, operations, wallets)
 
         with pytest.raises(
             InvalidExportDataError, match="No meal voucher transactions found"
         ):
-            swile_adapter.load_bank_export(tmp_path, operation_factory)
+            swile_adapter.load_bank_export(zip_path, operation_factory)
 
     def test_load_invalid_balance_type_raises_error(
         self,
@@ -197,7 +226,7 @@ class TestSwileBankAdapterLoad:
         operation_factory: HistoricOperationFactory,
         tmp_path: Path,
     ) -> None:
-        """Test that invalid balance type raises ValueError."""
+        """Test that invalid balance type raises an error."""
         operations = {
             "items": [
                 {
@@ -216,14 +245,12 @@ class TestSwileBankAdapterLoad:
         wallets = {
             "wallets": [{"type": "meal_voucher", "balance": {"value": "invalid"}}]
         }
-
-        (tmp_path / "operations.json").write_text(json.dumps(operations))
-        (tmp_path / "wallets.json").write_text(json.dumps(wallets))
+        zip_path = _create_swile_zip(tmp_path, operations, wallets)
 
         with pytest.raises(
             InvalidExportDataError, match="balance field should be a float"
         ):
-            swile_adapter.load_bank_export(tmp_path, operation_factory)
+            swile_adapter.load_bank_export(zip_path, operation_factory)
 
 
 class TestSwileBankAdapterInit:

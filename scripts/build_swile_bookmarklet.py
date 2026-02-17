@@ -152,17 +152,12 @@ def generate_html(bookmarklet_code: str) -> str:
 
     <div class="step">
         <span class="step-number">4</span>
-        Deux fichiers sont telecharges : <code>operations.json</code> et <code>wallets.json</code>
+        Un fichier <code>swile-export-YYYY-MM-DD.zip</code> est telecharge
     </div>
 
     <h2>Import dans budget-forecaster</h2>
-    <p>Deplace les fichiers dans le dossier <code>swile/</code> puis :</p>
-    <pre><code>python -m budget_forecaster.main -c config.yaml load swile/</code></pre>
-
-    <div class="warning">
-        <strong>Astuce :</strong> Configure Firefox pour telecharger directement dans <code>swile/</code>
-        (Parametres &gt; Fichiers et applications &gt; Enregistrer les fichiers dans...)
-    </div>
+    <p>Deplace le fichier zip dans ton dossier d'import puis :</p>
+    <pre><code>python -m budget_forecaster.main -c config.yaml load swile-export-2025-01-15.zip</code></pre>
 </body>
 </html>
 """

@@ -19,8 +19,8 @@ python -m budget_forecaster.main -c config.yaml
   planned operations, budgets, and operation links
 - **data/bnp-export-demo.xls** — Anonymized BNP bank export for January 2026 (new data
   to import)
-- **data/swile/** — Anonymized Swile meal voucher export for January 2026 (new data to
-  import)
+- **data/swile-export-2026-01-15.zip** — Anonymized Swile meal voucher export for
+  January 2026 (new data to import)
 - **config.yaml** — Configuration pointing to the demo database and import files
 
 ## Scenario
