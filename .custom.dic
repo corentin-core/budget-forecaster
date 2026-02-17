@@ -13,6 +13,7 @@ bool
 budgetinterface
 cancelled
 cli
+codecov
 commun
 config
 conn
@@ -32,6 +33,7 @@ dicts
 dir
 edf
 enum
+gettext
 historicoperation
 impl
 iterable
