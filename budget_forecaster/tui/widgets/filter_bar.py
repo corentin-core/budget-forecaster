@@ -1,9 +1,11 @@
 """Reusable filter bar widget for data tables."""
 
+from datetime import date
 from typing import Any
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal
+from textual.containers import Horizontal, Vertical
+from textual.css.query import NoMatches
 from textual.message import Message
 from textual.widgets import Button, Input, Select, Static
 
@@ -11,11 +13,15 @@ from budget_forecaster.core.types import Category
 from budget_forecaster.i18n import _
 
 
-class FilterBar(Horizontal):
+class FilterBar(Vertical):
     """Reusable filter bar with search and category filter.
 
     Posts :class:`FilterChanged` when the user applies filters
     and :class:`FilterReset` when filters are cleared.
+
+    Args:
+        show_date_range: Show date from/to inputs.
+        show_amount_range: Show min/max amount inputs.
     """
 
     DEFAULT_CSS = """
@@ -25,7 +31,15 @@ class FilterBar(Horizontal):
         margin-bottom: 1;
     }
 
+    FilterBar Horizontal {
+        height: auto;
+    }
+
     FilterBar Input {
+        width: 20;
+    }
+
+    FilterBar #filter-search {
         width: 30;
     }
 
@@ -42,6 +56,22 @@ class FilterBar(Horizontal):
         content-align: center middle;
         color: $text-muted;
     }
+
+    FilterBar .range-label {
+        width: auto;
+        padding: 1 1 0 0;
+        color: $text-muted;
+    }
+
+    FilterBar #filter-date-from,
+    FilterBar #filter-date-to {
+        width: 16;
+    }
+
+    FilterBar #filter-amount-min,
+    FilterBar #filter-amount-max {
+        width: 14;
+    }
     """
 
     class FilterChanged(Message):
@@ -51,32 +81,73 @@ class FilterBar(Horizontal):
             self,
             search_text: str | None,
             category: Category | None,
+            *,
+            date_range: tuple[date | None, date | None] = (None, None),
+            amount_range: tuple[float | None, float | None] = (None, None),
         ) -> None:
             super().__init__()
             self.search_text = search_text
             self.category = category
+            self.date_from = date_range[0]
+            self.date_to = date_range[1]
+            self.min_amount = amount_range[0]
+            self.max_amount = amount_range[1]
 
     class FilterReset(Message):
         """Posted when all filters are cleared."""
 
-    def __init__(self, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        show_date_range: bool = False,
+        show_amount_range: bool = False,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
+        self._show_date_range = show_date_range
+        self._show_amount_range = show_amount_range
 
     def compose(self) -> ComposeResult:
         """Create the filter bar layout."""
-        yield Input(placeholder=_("Search..."), id="filter-search")
-        yield Select[str](
-            [
-                (cat.display_name, cat.name)
-                for cat in sorted(Category, key=lambda c: c.display_name)
-            ],
-            prompt=_("Category"),
-            id="filter-category",
-            allow_blank=True,
-        )
-        yield Button(_("Filter"), id="filter-apply")
-        yield Button(_("Reset"), id="filter-reset", variant="default")
-        yield Static("", id="filter-status", classes="filter-status")
+        with Horizontal(id="filter-row-main"):
+            yield Input(placeholder=_("Search..."), id="filter-search")
+            yield Select[str](
+                [
+                    (cat.display_name, cat.name)
+                    for cat in sorted(Category, key=lambda c: c.display_name)
+                ],
+                prompt=_("Category"),
+                id="filter-category",
+                allow_blank=True,
+            )
+            yield Button(_("Filter"), id="filter-apply")
+            yield Button(_("Reset"), id="filter-reset", variant="default")
+            yield Static("", id="filter-status", classes="filter-status")
+
+        if self._show_date_range or self._show_amount_range:
+            with Horizontal(id="filter-row-range"):
+                if self._show_date_range:
+                    yield Static(_("From"), classes="range-label")
+                    yield Input(
+                        placeholder="YYYY-MM-DD",
+                        id="filter-date-from",
+                    )
+                    yield Static(_("To"), classes="range-label")
+                    yield Input(
+                        placeholder="YYYY-MM-DD",
+                        id="filter-date-to",
+                    )
+                if self._show_amount_range:
+                    yield Static(_("Min"), classes="range-label")
+                    yield Input(
+                        placeholder=_("Amount"),
+                        id="filter-amount-min",
+                    )
+                    yield Static(_("Max"), classes="range-label")
+                    yield Input(
+                        placeholder=_("Amount"),
+                        id="filter-amount-max",
+                    )
 
     @property
     def search_text(self) -> str | None:
@@ -92,10 +163,66 @@ class FilterBar(Horizontal):
             return Category[str(select.value)]
         return None
 
+    @property
+    def date_from(self) -> date | None:
+        """Return the 'from' date, or None if empty/invalid."""
+        return self._parse_date_input("filter-date-from")
+
+    @property
+    def date_to(self) -> date | None:
+        """Return the 'to' date, or None if empty/invalid."""
+        return self._parse_date_input("filter-date-to")
+
+    @property
+    def min_amount(self) -> float | None:
+        """Return the minimum amount, or None if empty/invalid."""
+        return self._parse_float_input("filter-amount-min")
+
+    @property
+    def max_amount(self) -> float | None:
+        """Return the maximum amount, or None if empty/invalid."""
+        return self._parse_float_input("filter-amount-max")
+
+    def _parse_date_input(self, input_id: str) -> date | None:
+        """Parse a date from an input widget, returning None if missing or invalid."""
+        try:
+            value = self.query_one(f"#{input_id}", Input).value.strip()
+        except NoMatches:
+            return None
+        if not value:
+            return None
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            return None
+
+    def _parse_float_input(self, input_id: str) -> float | None:
+        """Parse a float from an input widget, returning None if missing or invalid."""
+        try:
+            value = self.query_one(f"#{input_id}", Input).value.strip()
+        except NoMatches:
+            return None
+        if not value:
+            return None
+        try:
+            return float(value)
+        except ValueError:
+            return None
+
     def reset(self) -> None:
         """Clear all filter inputs and post FilterReset."""
         self.query_one("#filter-search", Input).value = ""
         self.query_one("#filter-category", Select).value = Select.BLANK
+        for input_id in (
+            "filter-date-from",
+            "filter-date-to",
+            "filter-amount-min",
+            "filter-amount-max",
+        ):
+            try:
+                self.query_one(f"#{input_id}", Input).value = ""
+            except NoMatches:
+                pass
         self._update_status(0, 0)
         self.post_message(self.FilterReset())
 
@@ -128,8 +255,8 @@ class FilterBar(Horizontal):
             self.reset()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        """Handle Enter key in search input."""
-        if event.input.id == "filter-search":
+        """Handle Enter key in any filter input."""
+        if event.input.id and event.input.id.startswith("filter-"):
             event.stop()
             self._apply()
 
@@ -139,5 +266,7 @@ class FilterBar(Horizontal):
             self.FilterChanged(
                 search_text=self.search_text,
                 category=self.category,
+                date_range=(self.date_from, self.date_to),
+                amount_range=(self.min_amount, self.max_amount),
             )
         )
