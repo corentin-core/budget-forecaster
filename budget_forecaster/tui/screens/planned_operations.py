@@ -9,9 +9,11 @@ from textual.message import Message
 from textual.widgets import Button, DataTable, Static
 
 from budget_forecaster.core.date_range import RecurringDay
+from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.tui.widgets.filter_bar import FilterBar
 
 logger = logging.getLogger(__name__)
 
@@ -83,8 +85,11 @@ class PlannedOperationsWidget(Vertical):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self._app_service: ApplicationService | None = None
-        self._operations: tuple[PlannedOperation, ...] = ()
+        self._all_operations: tuple[PlannedOperation, ...] = ()
+        self._filtered_operations: tuple[PlannedOperation, ...] = ()
         self._selected_operation: PlannedOperation | None = None
+        self._search_text: str | None = None
+        self._filter_category: Category | None = None
 
     def compose(self) -> ComposeResult:
         """Create the widget layout."""
@@ -96,6 +101,7 @@ class PlannedOperationsWidget(Vertical):
                 yield Button(_("Split"), id="btn-split-op", variant="default")
                 yield Button(_("Delete"), id="btn-delete-op", variant="error")
 
+        yield FilterBar(id="planned-ops-filter-bar")
         yield DataTable(id="planned-ops-table")
         yield Static("", id="planned-ops-status")
 
@@ -126,17 +132,44 @@ class PlannedOperationsWidget(Vertical):
         if self._app_service is None:
             return
 
-        self._operations = self._app_service.get_all_planned_operations()
+        self._all_operations = self._app_service.get_all_planned_operations()
+        self._apply_filter()
+
+    def _apply_filter(self) -> None:
+        """Apply current filter criteria and refresh the table."""
+        self._filtered_operations = self._filter_operations(
+            self._all_operations, self._search_text, self._filter_category
+        )
         self._populate_table()
         self._update_status()
         self._update_button_states()
 
+        filter_bar = self.query_one("#planned-ops-filter-bar", FilterBar)
+        filter_bar.update_status(
+            len(self._filtered_operations), len(self._all_operations)
+        )
+
+    @staticmethod
+    def _filter_operations(
+        operations: tuple[PlannedOperation, ...],
+        search_text: str | None,
+        category: Category | None,
+    ) -> tuple[PlannedOperation, ...]:
+        """Filter planned operations by search text and category."""
+        result = operations
+        if search_text:
+            text_lower = search_text.lower()
+            result = tuple(op for op in result if text_lower in op.description.lower())
+        if category is not None:
+            result = tuple(op for op in result if op.category == category)
+        return result
+
     def _populate_table(self) -> None:
-        """Populate the data table with planned operations."""
+        """Populate the data table with filtered planned operations."""
         table = self.query_one("#planned-ops-table", DataTable)
         table.clear()
 
-        for op in self._operations:
+        for op in self._filtered_operations:
             time_range = op.date_range
             start_date = time_range.start_date.strftime("%Y-%m-%d")
 
@@ -188,7 +221,7 @@ class PlannedOperationsWidget(Vertical):
     def _update_status(self) -> None:
         """Update the status display."""
         status = self.query_one("#planned-ops-status", Static)
-        count = len(self._operations)
+        count = len(self._filtered_operations)
         status.update(_("{} planned operation(s)").format(count))
 
     def _update_button_states(self) -> None:
@@ -212,10 +245,24 @@ class PlannedOperationsWidget(Vertical):
         else:
             op_id = int(str(event.row_key.value))
             self._selected_operation = next(
-                (op for op in self._operations if op.id == op_id), None
+                (op for op in self._filtered_operations if op.id == op_id), None
             )
         self._update_button_states()
         self.post_message(self.OperationSelected(self._selected_operation))
+
+    def on_filter_bar_filter_changed(self, event: FilterBar.FilterChanged) -> None:
+        """Handle filter changes from the filter bar."""
+        event.stop()
+        self._search_text = event.search_text
+        self._filter_category = event.category
+        self._apply_filter()
+
+    def on_filter_bar_filter_reset(self, event: FilterBar.FilterReset) -> None:
+        """Handle filter reset from the filter bar."""
+        event.stop()
+        self._search_text = None
+        self._filter_category = None
+        self._apply_filter()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
