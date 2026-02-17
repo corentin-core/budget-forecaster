@@ -3,6 +3,12 @@ database_path: ~/.local/share/budget-forecaster/budget.db
 account_name: "Main Account"
 account_currency: EUR
 # inbox_path: ~/Downloads  # Auto-detected if omitted (uses xdg-user-dir)
+# Optional - Filter imported files by filename patterns
+# inbox_include_patterns:
+#   - "export_*.xls"
+#   - "swile-export-*.zip"
+# inbox_exclude_patterns:
+#   - "*template*"
 backup:
   enabled: true
   max_backups: 5

@@ -1,5 +1,7 @@
 """Module for the Swile bank adapter"""
 import json
+import re
+import zipfile
 from datetime import datetime
 from pathlib import Path
 
@@ -11,6 +13,8 @@ from budget_forecaster.services.operation.historic_operation_factory import (
     HistoricOperationFactory,
 )
 
+_SWILE_ZIP_PATTERN = re.compile(r"^swile-export-\d{4}-\d{2}-\d{2}\.zip$")
+
 
 class SwileBankAdapter(BankAdapterBase):
     """Adapter for the Swile Meal-Vouchers account"""
@@ -21,16 +25,13 @@ class SwileBankAdapter(BankAdapterBase):
     def load_bank_export(
         self, bank_export: Path, operation_factory: HistoricOperationFactory
     ) -> None:
+        """Load export from a swile-export-YYYY-MM-DD.zip archive.
+
+        The zip must contain operations.json and wallets.json at the root level.
         """
-        Load export from operations.json and wallets.json files retrieved from swile website
-        The path must be a folder containing these two files
-        """
-        operations_json = json.loads(
-            (bank_export / "operations.json").read_text(encoding="utf-8")
-        )
-        wallets_json = json.loads(
-            (bank_export / "wallets.json").read_text(encoding="utf-8")
-        )
+        with zipfile.ZipFile(bank_export, "r") as zf:
+            operations_json = json.loads(zf.read("operations.json"))
+            wallets_json = json.loads(zf.read("wallets.json"))
 
         for wallet in wallets_json["wallets"]:
             if wallet["type"] == "meal_voucher":
@@ -76,8 +77,8 @@ class SwileBankAdapter(BankAdapterBase):
 
     @classmethod
     def match(cls, bank_export: Path) -> bool:
+        """Return True if the path is a swile-export-YYYY-MM-DD.zip file."""
         return (
-            bank_export.is_dir()
-            and (bank_export / "operations.json").is_file()
-            and (bank_export / "wallets.json").is_file()
+            bank_export.is_file()
+            and _SWILE_ZIP_PATTERN.match(bank_export.name) is not None
         )
