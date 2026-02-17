@@ -33,6 +33,7 @@ dicts
 dir
 edf
 enum
+enums
 gettext
 historicoperation
 impl

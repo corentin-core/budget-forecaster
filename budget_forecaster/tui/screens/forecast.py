@@ -10,6 +10,7 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Button, DataTable, Input, Static
 
+from budget_forecaster.core.types import Category
 from budget_forecaster.exceptions import AccountNotLoadedError, BudgetForecasterError
 from budget_forecaster.i18n import _
 from budget_forecaster.services.account.account_analysis_renderer import (
@@ -395,7 +396,11 @@ class ForecastWidget(Vertical):
 
         # Add rows
         for category in df.index:
-            row_values = [str(category)]
+            row_values = [
+                category.display_name
+                if isinstance(category, Category)
+                else str(category)
+            ]
             for month, col_type, _k, _l in columns_info:
                 try:
                     if (value := df.loc[category, (month, col_type)]) != 0:
