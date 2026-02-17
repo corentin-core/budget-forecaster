@@ -60,10 +60,10 @@ def generate_html(bookmarklet_code: str) -> str:
     escaped_code = html.escape(bookmarklet_code, quote=True)
 
     return f"""<!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Swile Export - Installation du bookmarklet</title>
+    <title>Swile Export - Bookmarklet Installation</title>
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -124,39 +124,39 @@ def generate_html(bookmarklet_code: str) -> str:
 </head>
 <body>
     <h1>Swile Export</h1>
-    <p>Exporte tes operations Swile en un clic.</p>
+    <p>Export your Swile operations in one click.</p>
 
     <h2>Installation</h2>
-    <p>Glisse ce bouton dans ta barre de favoris :</p>
+    <p>Drag this button to your bookmarks bar:</p>
 
     <a class="bookmarklet" href="{escaped_code}">Swile Export</a>
 
-    <p><small>(Si tu ne vois pas ta barre de favoris : <code>Ctrl+Shift+B</code>)</small></p>
+    <p><small>(If your bookmarks bar is hidden: <code>Ctrl+Shift+B</code>)</small></p>
 
-    <h2>Utilisation</h2>
+    <h2>Usage</h2>
 
     <div class="step">
         <span class="step-number">1</span>
-        Connecte-toi sur <a href="https://team.swile.co" target="_blank">team.swile.co</a>
+        Log in to <a href="https://team.swile.co" target="_blank">team.swile.co</a>
     </div>
 
     <div class="step">
         <span class="step-number">2</span>
-        Clique sur le bookmarklet "Swile Export" dans ta barre de favoris
+        Click the "Swile Export" bookmarklet in your bookmarks bar
     </div>
 
     <div class="step">
         <span class="step-number">3</span>
-        Attends la fin de l'export (notification en haut a droite)
+        Wait for the export to finish (notification in the top right corner)
     </div>
 
     <div class="step">
         <span class="step-number">4</span>
-        Un fichier <code>swile-export-YYYY-MM-DD.zip</code> est telecharge
+        A <code>swile-export-YYYY-MM-DD.zip</code> file is downloaded
     </div>
 
-    <h2>Import dans budget-forecaster</h2>
-    <p>Deplace le fichier zip dans ton dossier d'import puis :</p>
+    <h2>Import into budget-forecaster</h2>
+    <p>Move the zip file to your import folder, then:</p>
     <pre><code>python -m budget_forecaster.main -c config.yaml load swile-export-2025-01-15.zip</code></pre>
 </body>
 </html>
