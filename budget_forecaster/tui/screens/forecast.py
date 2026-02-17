@@ -395,7 +395,11 @@ class ForecastWidget(Vertical):
 
         # Add rows
         for category in df.index:
-            row_values = [str(category)]
+            row_values = [
+                category.display_name
+                if hasattr(category, "display_name")
+                else str(category)
+            ]
             for month, col_type, _k, _l in columns_info:
                 try:
                     if (value := df.loc[category, (month, col_type)]) != 0:
