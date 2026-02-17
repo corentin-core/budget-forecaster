@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/corentin-core/budget-forecaster/actions/workflows/ci.yml/badge.svg)](https://github.com/corentin-core/budget-forecaster/actions/workflows/ci.yml)
 [![Docs](https://github.com/corentin-core/budget-forecaster/actions/workflows/docs.yml/badge.svg)](https://corentin-core.github.io/budget-forecaster/)
+[![codecov](https://codecov.io/gh/corentin-core/budget-forecaster/graph/badge.svg)](https://codecov.io/gh/corentin-core/budget-forecaster)
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)
 ![mypy strict](https://img.shields.io/badge/mypy-strict-blue)
 
