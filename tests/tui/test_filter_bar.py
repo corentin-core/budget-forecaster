@@ -22,9 +22,8 @@ class FilterBarTestApp(App[None]):
         """Track FilterChanged events."""
         self.filter_changed_events.append(event)
 
-    def on_filter_bar_filter_reset(self, event: FilterBar.FilterReset) -> None:
+    def on_filter_bar_filter_reset(self, _event: FilterBar.FilterReset) -> None:
         """Track FilterReset events."""
-        _ = event
         self.filter_reset_count += 1
 
 

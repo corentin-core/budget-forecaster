@@ -96,7 +96,7 @@ class FilterBar(Horizontal):
         """Clear all filter inputs and post FilterReset."""
         self.query_one("#filter-search", Input).value = ""
         self.query_one("#filter-category", Select).value = Select.BLANK
-        self._update_status(0, 0)
+        self.update_status(0, 0)
         self.post_message(self.FilterReset())
 
     def update_status(self, filtered: int, total: int) -> None:
@@ -106,10 +106,6 @@ class FilterBar(Horizontal):
             filtered: Number of items after filtering.
             total: Total number of items before filtering.
         """
-        self._update_status(filtered, total)
-
-    def _update_status(self, filtered: int, total: int) -> None:
-        """Update the status label."""
         status = self.query_one("#filter-status", Static)
         if total in (filtered, 0):
             status.update("")
