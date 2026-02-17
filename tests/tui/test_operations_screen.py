@@ -146,6 +146,4 @@ class TestOperationsScreenIntegration:
             await pilot.click("#filter-apply")
 
             status = app.query_one("#filter-status", Static)
-            rendered = str(status.render())
-            assert "2" in rendered
-            assert "5" in rendered
+            assert str(status.render()) == "2 / 5"

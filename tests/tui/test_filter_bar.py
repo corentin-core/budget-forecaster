@@ -124,9 +124,7 @@ class TestFilterBarIntegration:
             filter_bar.update_status(42, 459)
 
             status = app.query_one("#filter-status", Static)
-            rendered = str(status.render())
-            assert "42" in rendered
-            assert "459" in rendered
+            assert str(status.render()) == "42 / 459"
 
     async def test_update_status_empty_when_equal(self) -> None:
         """update_status shows nothing when filtered equals total."""
