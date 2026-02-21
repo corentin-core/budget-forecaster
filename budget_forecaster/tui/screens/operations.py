@@ -240,7 +240,11 @@ class OperationsScreen(Vertical):
         self._total_count: int = 0
 
     def compose(self) -> ComposeResult:
-        yield FilterBar(id="operations-filter-bar")
+        yield FilterBar(
+            show_date_range=True,
+            show_amount_range=True,
+            id="operations-filter-bar",
+        )
         yield OperationTable(id="operations-table")
         yield Static(_("0 operations"), id="status-bar")
 
@@ -301,6 +305,10 @@ class OperationsScreen(Vertical):
         self._current_filter = OperationFilter(
             search_text=event.search_text,
             category=event.category,
+            date_from=event.date_from,
+            date_to=event.date_to,
+            min_amount=event.min_amount,
+            max_amount=event.max_amount,
         )
         self._apply_filter()
 

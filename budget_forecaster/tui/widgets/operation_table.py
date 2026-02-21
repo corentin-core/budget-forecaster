@@ -324,6 +324,11 @@ class OperationTable(DataTable[str]):  # pylint: disable=too-many-instance-attri
         self._update_row_style(op_id)
 
     @property
+    def operations(self) -> tuple[HistoricOperation, ...]:
+        """Get the operations currently displayed in the table."""
+        return tuple(self._operations.values())
+
+    @property
     def operation_count(self) -> int:
         """Get the number of operations in the table."""
         return len(self._operations)
