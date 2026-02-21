@@ -122,6 +122,11 @@ class BudgetsWidget(Vertical):
         )
         self._update_button_states()
 
+    @property
+    def budgets(self) -> tuple[Budget, ...]:
+        """Get the currently displayed (filtered) budgets."""
+        return self._filtered_budgets
+
     def set_app_service(self, service: ApplicationService) -> None:
         """Set the application service and refresh data."""
         self._app_service = service

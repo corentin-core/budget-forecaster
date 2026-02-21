@@ -85,9 +85,9 @@ class TestBudgetsWidgetFiltering:
             app.query_one("#filter-search", Input).value = "courses"
             await pilot.click("#filter-apply")
 
-            table = app.query_one("#budgets-table", DataTable)
-            # "Courses alimentaires" and "Courses marche bio"
-            assert table.row_count == 2
+            widget = app.query_one(BudgetsWidget)
+            descriptions = {b.description for b in widget.budgets}
+            assert descriptions == {"Courses alimentaires", "Courses marche bio"}
 
     async def test_filter_by_category(self) -> None:
         """Filtering by category shows only matching budgets."""
@@ -96,8 +96,9 @@ class TestBudgetsWidgetFiltering:
             app.query_one("#filter-category", Select).value = Category.GROCERIES.name
             await pilot.click("#filter-apply")
 
-            table = app.query_one("#budgets-table", DataTable)
-            assert table.row_count == 2
+            widget = app.query_one(BudgetsWidget)
+            descriptions = {b.description for b in widget.budgets}
+            assert descriptions == {"Courses alimentaires", "Courses marche bio"}
 
     async def test_combined_filters(self) -> None:
         """Combining search text and category narrows results further."""
@@ -107,8 +108,9 @@ class TestBudgetsWidgetFiltering:
             app.query_one("#filter-category", Select).value = Category.GROCERIES.name
             await pilot.click("#filter-apply")
 
-            table = app.query_one("#budgets-table", DataTable)
-            assert table.row_count == 1
+            widget = app.query_one(BudgetsWidget)
+            descriptions = {b.description for b in widget.budgets}
+            assert descriptions == {"Courses marche bio"}
 
     async def test_reset_restores_all_budgets(self) -> None:
         """Resetting filters shows all budgets again."""
@@ -138,9 +140,7 @@ class TestBudgetsWidgetFiltering:
             await pilot.click("#filter-apply")
 
             status = app.query_one("#filter-status", Static)
-            rendered = str(status.render())
-            assert "2" in rendered
-            assert "5" in rendered
+            assert str(status.render()) == "2 / 5"
 
     async def test_no_date_or_amount_range_inputs(self) -> None:
         """FilterBar in budgets does not show date/amount range inputs."""
@@ -159,8 +159,9 @@ class TestBudgetsWidgetFiltering:
             app.query_one("#filter-search", Input).value = "EDF"
             await pilot.click("#filter-apply")
 
-            table = app.query_one("#budgets-table", DataTable)
-            assert table.row_count == 1
+            widget = app.query_one(BudgetsWidget)
+            descriptions = {b.description for b in widget.budgets}
+            assert descriptions == {"Electricite EDF"}
 
     async def test_no_match_shows_empty_table(self) -> None:
         """A search with no matches shows an empty table."""
