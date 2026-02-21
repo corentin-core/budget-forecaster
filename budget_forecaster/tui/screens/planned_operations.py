@@ -122,6 +122,11 @@ class PlannedOperationsWidget(Vertical):
         )
         self._update_button_states()
 
+    @property
+    def planned_operations(self) -> tuple[PlannedOperation, ...]:
+        """Get the currently displayed (filtered) planned operations."""
+        return self._filtered_operations
+
     def set_app_service(self, service: ApplicationService) -> None:
         """Set the application service and refresh data."""
         self._app_service = service

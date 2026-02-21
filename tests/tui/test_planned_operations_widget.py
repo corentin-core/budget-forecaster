@@ -89,9 +89,9 @@ class TestPlannedOperationsWidgetFiltering:
             app.query_one("#filter-search", Input).value = "loyer"
             await pilot.click("#filter-apply")
 
-            table = app.query_one("#planned-ops-table", DataTable)
-            # "Loyer mensuel" and "Loyer parking"
-            assert table.row_count == 2
+            widget = app.query_one(PlannedOperationsWidget)
+            descriptions = {op.description for op in widget.planned_operations}
+            assert descriptions == {"Loyer mensuel", "Loyer parking"}
 
     async def test_filter_by_category(self) -> None:
         """Filtering by category shows only matching operations."""
@@ -100,8 +100,9 @@ class TestPlannedOperationsWidgetFiltering:
             app.query_one("#filter-category", Select).value = Category.RENT.name
             await pilot.click("#filter-apply")
 
-            table = app.query_one("#planned-ops-table", DataTable)
-            assert table.row_count == 2
+            widget = app.query_one(PlannedOperationsWidget)
+            descriptions = {op.description for op in widget.planned_operations}
+            assert descriptions == {"Loyer mensuel", "Loyer parking"}
 
     async def test_combined_filters(self) -> None:
         """Combining search text and category narrows results further."""
@@ -111,8 +112,9 @@ class TestPlannedOperationsWidgetFiltering:
             app.query_one("#filter-category", Select).value = Category.RENT.name
             await pilot.click("#filter-apply")
 
-            table = app.query_one("#planned-ops-table", DataTable)
-            assert table.row_count == 1
+            widget = app.query_one(PlannedOperationsWidget)
+            descriptions = {op.description for op in widget.planned_operations}
+            assert descriptions == {"Loyer parking"}
 
     async def test_reset_restores_all_operations(self) -> None:
         """Resetting filters shows all operations again."""
@@ -121,18 +123,18 @@ class TestPlannedOperationsWidgetFiltering:
             app.query_one("#filter-search", Input).value = "loyer"
             await pilot.click("#filter-apply")
 
-            table = app.query_one("#planned-ops-table", DataTable)
-            assert table.row_count == 2
+            widget = app.query_one(PlannedOperationsWidget)
+            assert len(widget.planned_operations) == 2
 
             await pilot.click("#filter-reset")
-            assert table.row_count == 5
+            assert len(widget.planned_operations) == 5
 
     async def test_status_shows_count(self) -> None:
         """Status bar shows the number of planned operations."""
         app = PlannedOpsWidgetTestApp()
         async with app.run_test():
             status = app.query_one("#planned-ops-status", Static)
-            assert "5" in str(status.render())
+            assert str(status.render()) == "5 planned operation(s)"
 
     async def test_filter_bar_shows_filtered_count(self) -> None:
         """Filter bar status shows filtered vs total count."""
@@ -142,9 +144,7 @@ class TestPlannedOperationsWidgetFiltering:
             await pilot.click("#filter-apply")
 
             status = app.query_one("#filter-status", Static)
-            rendered = str(status.render())
-            assert "2" in rendered
-            assert "5" in rendered
+            assert str(status.render()) == "2 / 5"
 
     async def test_no_date_or_amount_range_inputs(self) -> None:
         """FilterBar in planned ops does not show date/amount range inputs."""
@@ -163,8 +163,9 @@ class TestPlannedOperationsWidgetFiltering:
             app.query_one("#filter-search", Input).value = "EDF"
             await pilot.click("#filter-apply")
 
-            table = app.query_one("#planned-ops-table", DataTable)
-            assert table.row_count == 1
+            widget = app.query_one(PlannedOperationsWidget)
+            descriptions = {op.description for op in widget.planned_operations}
+            assert descriptions == {"Electricite EDF"}
 
     async def test_no_match_shows_empty_table(self) -> None:
         """A search with no matches shows an empty table."""
