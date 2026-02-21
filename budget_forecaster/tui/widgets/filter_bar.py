@@ -1,7 +1,8 @@
 """Reusable filter bar widget for data tables."""
 
+import logging
 from datetime import date
-from typing import Any
+from typing import Any, NamedTuple
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
@@ -11,6 +12,22 @@ from textual.widgets import Button, Input, Select, Static
 
 from budget_forecaster.core.types import Category
 from budget_forecaster.i18n import _
+
+logger = logging.getLogger(__name__)
+
+
+class DateRange(NamedTuple):
+    """Date range filter values."""
+
+    date_from: date | None = None
+    date_to: date | None = None
+
+
+class AmountRange(NamedTuple):
+    """Amount range filter values."""
+
+    min_amount: float | None = None
+    max_amount: float | None = None
 
 
 class FilterBar(Vertical):
@@ -82,16 +99,16 @@ class FilterBar(Vertical):
             search_text: str | None,
             category: Category | None,
             *,
-            date_range: tuple[date | None, date | None] = (None, None),
-            amount_range: tuple[float | None, float | None] = (None, None),
+            date_range: DateRange = DateRange(),
+            amount_range: AmountRange = AmountRange(),
         ) -> None:
             super().__init__()
             self.search_text = search_text
             self.category = category
-            self.date_from = date_range[0]
-            self.date_to = date_range[1]
-            self.min_amount = amount_range[0]
-            self.max_amount = amount_range[1]
+            self.date_from = date_range.date_from
+            self.date_to = date_range.date_to
+            self.min_amount = amount_range.min_amount
+            self.max_amount = amount_range.max_amount
 
     class FilterReset(Message):
         """Posted when all filters are cleared."""
@@ -194,6 +211,7 @@ class FilterBar(Vertical):
         try:
             return date.fromisoformat(value)
         except ValueError:
+            logger.debug("Invalid date value in %s: %r", input_id, value)
             return None
 
     def _parse_float_input(self, input_id: str) -> float | None:
@@ -207,6 +225,7 @@ class FilterBar(Vertical):
         try:
             return float(value)
         except ValueError:
+            logger.debug("Invalid amount value in %s: %r", input_id, value)
             return None
 
     def reset(self) -> None:
@@ -262,7 +281,7 @@ class FilterBar(Vertical):
             self.FilterChanged(
                 search_text=self.search_text,
                 category=self.category,
-                date_range=(self.date_from, self.date_to),
-                amount_range=(self.min_amount, self.max_amount),
+                date_range=DateRange(self.date_from, self.date_to),
+                amount_range=AmountRange(self.min_amount, self.max_amount),
             )
         )

@@ -104,7 +104,8 @@ class TestOperationsScreenIntegration:
             await pilot.click("#filter-apply")
 
             table = app.query_one(OperationTable)
-            assert table.operation_count == 2
+            descriptions = {op.description for op in table.operations}
+            assert descriptions == {"CARREFOUR MARKET", "CARREFOUR EXPRESS"}
 
     async def test_filter_by_category(self) -> None:
         """Filtering by category shows only matching operations."""
@@ -114,7 +115,8 @@ class TestOperationsScreenIntegration:
             await pilot.click("#filter-apply")
 
             table = app.query_one(OperationTable)
-            assert table.operation_count == 2
+            descriptions = {op.description for op in table.operations}
+            assert descriptions == {"CARREFOUR MARKET", "CARREFOUR EXPRESS"}
 
     async def test_combined_filters(self) -> None:
         """Combining search text and category narrows results further."""
@@ -125,7 +127,8 @@ class TestOperationsScreenIntegration:
             await pilot.click("#filter-apply")
 
             table = app.query_one(OperationTable)
-            assert table.operation_count == 1
+            descriptions = {op.description for op in table.operations}
+            assert descriptions == {"CARREFOUR EXPRESS"}
 
     async def test_reset_restores_all_operations(self) -> None:
         """Resetting filters shows all operations again."""
@@ -167,9 +170,12 @@ class TestOperationsScreenIntegration:
             await pilot.click("#filter-apply")
 
             table = app.query_one(OperationTable)
-            # Only ops on or after 2025-02-01: SNCF (02/05), CARREFOUR EXPRESS (03/20),
-            # RESTAURANT (04/01)
-            assert table.operation_count == 3
+            descriptions = {op.description for op in table.operations}
+            assert descriptions == {
+                "SNCF VOYAGE",
+                "CARREFOUR EXPRESS",
+                "RESTAURANT LE BISTRO",
+            }
 
     async def test_filter_by_date_to(self) -> None:
         """Filtering by date_to excludes later operations."""
@@ -179,8 +185,8 @@ class TestOperationsScreenIntegration:
             await pilot.click("#filter-apply")
 
             table = app.query_one(OperationTable)
-            # Only ops on or before 2025-01-31: CARREFOUR MARKET (01/10), EDF (01/25)
-            assert table.operation_count == 2
+            descriptions = {op.description for op in table.operations}
+            assert descriptions == {"CARREFOUR MARKET", "EDF FACTURE"}
 
     async def test_filter_by_date_range(self) -> None:
         """Filtering by date range shows operations within the range."""
@@ -191,8 +197,8 @@ class TestOperationsScreenIntegration:
             await pilot.click("#filter-apply")
 
             table = app.query_one(OperationTable)
-            # SNCF (02/05) and CARREFOUR EXPRESS (03/20)
-            assert table.operation_count == 2
+            descriptions = {op.description for op in table.operations}
+            assert descriptions == {"SNCF VOYAGE", "CARREFOUR EXPRESS"}
 
     async def test_filter_by_min_amount(self) -> None:
         """Filtering by min_amount excludes smaller amounts."""
@@ -202,8 +208,12 @@ class TestOperationsScreenIntegration:
             await pilot.click("#filter-apply")
 
             table = app.query_one(OperationTable)
-            # Amounts >= -50: SNCF (-45), CARREFOUR EXPRESS (-12.50), RESTAURANT (-32)
-            assert table.operation_count == 3
+            descriptions = {op.description for op in table.operations}
+            assert descriptions == {
+                "SNCF VOYAGE",
+                "CARREFOUR EXPRESS",
+                "RESTAURANT LE BISTRO",
+            }
 
     async def test_filter_by_max_amount(self) -> None:
         """Filtering by max_amount excludes larger amounts."""
@@ -213,8 +223,8 @@ class TestOperationsScreenIntegration:
             await pilot.click("#filter-apply")
 
             table = app.query_one(OperationTable)
-            # Amounts <= -80: CARREFOUR MARKET (-85.20), EDF (-95)
-            assert table.operation_count == 2
+            descriptions = {op.description for op in table.operations}
+            assert descriptions == {"CARREFOUR MARKET", "EDF FACTURE"}
 
     async def test_filter_by_amount_range(self) -> None:
         """Filtering by amount range narrows results."""
@@ -225,8 +235,8 @@ class TestOperationsScreenIntegration:
             await pilot.click("#filter-apply")
 
             table = app.query_one(OperationTable)
-            # Amounts between -90 and -40: CARREFOUR MARKET (-85.20), SNCF (-45)
-            assert table.operation_count == 2
+            descriptions = {op.description for op in table.operations}
+            assert descriptions == {"CARREFOUR MARKET", "SNCF VOYAGE"}
 
     async def test_combined_all_filters(self) -> None:
         """Combining search, category, date, and amount filters."""
@@ -238,8 +248,8 @@ class TestOperationsScreenIntegration:
             await pilot.click("#filter-apply")
 
             table = app.query_one(OperationTable)
-            # Only CARREFOUR EXPRESS (03/20, GROCERIES)
-            assert table.operation_count == 1
+            descriptions = {op.description for op in table.operations}
+            assert descriptions == {"CARREFOUR EXPRESS"}
 
     async def test_invalid_date_ignored(self) -> None:
         """Invalid date values are ignored (treated as no filter)."""
