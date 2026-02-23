@@ -32,6 +32,7 @@ nav:
       - Backup: user/backup.md
       - Forecast: user/forecast.md
       - Operation Links: user/operation-links.md
+      - TUI Dashboard: user/tui-dashboard.md
       - TUI Operations: user/tui-operations.md
       - TUI Planned Operations & Budgets: user/tui-planned-budgets.md
   - Developer:

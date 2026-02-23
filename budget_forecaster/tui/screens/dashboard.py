@@ -3,13 +3,17 @@
 from datetime import date
 from typing import Any
 
+from dateutil.relativedelta import relativedelta
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Horizontal, Vertical
 from textual.widgets import Static
 
 from budget_forecaster.core.types import Category
 from budget_forecaster.i18n import _
-from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.services.application_service import (
+    ApplicationService,
+    UpcomingIteration,
+)
 from budget_forecaster.services.operation.operation_service import OperationFilter
 
 
@@ -110,13 +114,118 @@ class CategoryRow(Horizontal):
         yield Static(progress_bar, classes="cat-bar")
 
 
-class DashboardScreen(Container):
+def format_period(period: relativedelta | None) -> str:
+    """Format a relativedelta period for display."""
+    if period is None:
+        return "-"
+    if period.years:
+        return _("{} yr.").format(period.years)
+    if period.months:
+        return _("{} mo.").format(period.months)
+    if period.weeks:
+        return _("{} wk.").format(period.weeks)
+    if period.days:
+        return _("{} d.").format(period.days)
+    return "-"
+
+
+class UpcomingHeaderRow(Horizontal):
+    """Header row for the upcoming operations list."""
+
+    DEFAULT_CSS = """
+    UpcomingHeaderRow {
+        height: 1;
+        width: 100%;
+        text-style: bold;
+        color: $text-muted;
+    }
+
+    UpcomingHeaderRow .upcoming-date {
+        width: 12;
+    }
+
+    UpcomingHeaderRow .upcoming-description {
+        width: 1fr;
+    }
+
+    UpcomingHeaderRow .upcoming-amount {
+        width: 15;
+        text-align: right;
+    }
+
+    UpcomingHeaderRow .upcoming-period {
+        width: 10;
+        text-align: right;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        yield Static(_("Date"), classes="upcoming-date")
+        yield Static(_("Description"), classes="upcoming-description")
+        yield Static(_("Amount"), classes="upcoming-amount")
+        yield Static(_("Period"), classes="upcoming-period")
+
+
+class UpcomingOperationRow(Horizontal):
+    """A row showing an upcoming planned operation."""
+
+    DEFAULT_CSS = """
+    UpcomingOperationRow {
+        height: 1;
+        width: 100%;
+    }
+
+    UpcomingOperationRow .upcoming-date {
+        width: 12;
+    }
+
+    UpcomingOperationRow .upcoming-description {
+        width: 1fr;
+    }
+
+    UpcomingOperationRow .upcoming-amount {
+        width: 15;
+        text-align: right;
+    }
+
+    UpcomingOperationRow .upcoming-amount-negative {
+        color: $error;
+    }
+
+    UpcomingOperationRow .upcoming-amount-positive {
+        color: $success;
+    }
+
+    UpcomingOperationRow .upcoming-period {
+        width: 10;
+        text-align: right;
+    }
+    """
+
+    def __init__(self, iteration: UpcomingIteration, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._iteration = iteration
+
+    def compose(self) -> ComposeResult:
+        it = self._iteration
+        yield Static(it.iteration_date.strftime("%b %d"), classes="upcoming-date")
+        yield Static(it.description, classes="upcoming-description")
+        amount_class = (
+            "upcoming-amount upcoming-amount-negative"
+            if it.amount < 0
+            else "upcoming-amount upcoming-amount-positive"
+        )
+        yield Static(f"{it.amount:+.2f} {it.currency}", classes=amount_class)
+        yield Static(format_period(it.period), classes="upcoming-period")
+
+
+class DashboardScreen(Vertical):
     """Dashboard screen showing account summary and statistics."""
 
     DEFAULT_CSS = """
     DashboardScreen {
         width: 100%;
-        height: 100%;
+        height: 1fr;
     }
 
     #stats-row {
@@ -139,6 +248,25 @@ class DashboardScreen(Container):
         height: 1fr;
         overflow-y: auto;
     }
+
+    #upcoming-section {
+        height: auto;
+        max-height: 12;
+        border: solid $primary;
+        padding: 1;
+        margin-top: 1;
+    }
+
+    #upcoming-title {
+        text-style: bold;
+        margin-bottom: 1;
+    }
+
+    #upcoming-list {
+        height: auto;
+        max-height: 8;
+        overflow-y: auto;
+    }
     """
 
     def __init__(self, **kwargs: Any) -> None:
@@ -156,6 +284,13 @@ class DashboardScreen(Container):
             yield Static(_("Expenses by category (this month)"), id="categories-title")
             yield Vertical(id="categories-list")
 
+        with Vertical(id="upcoming-section"):
+            yield Static(
+                _("Upcoming planned operations (next 30 days)"),
+                id="upcoming-title",
+            )
+            yield Vertical(id="upcoming-list")
+
     def set_app_service(self, service: ApplicationService) -> None:
         """Set the application service and refresh.
 
@@ -165,6 +300,7 @@ class DashboardScreen(Container):
         self._app_service = service
         self._update_stats()
         self._update_categories()
+        self._update_upcoming()
 
     def _update_stats(self) -> None:
         """Update the statistics cards."""
@@ -230,3 +366,20 @@ class DashboardScreen(Container):
             if cat not in (Category.OTHER, Category.UNCATEGORIZED) or amount != 0:
                 row = CategoryRow(cat.display_name, amount, max_expense)
                 categories_list.mount(row)
+
+    def _update_upcoming(self) -> None:
+        """Update the upcoming planned operations section."""
+        if not self._app_service:
+            return
+
+        iterations = self._app_service.get_upcoming_planned_iterations()
+
+        upcoming_list = self.query_one("#upcoming-list", Vertical)
+        upcoming_list.remove_children()
+
+        if not iterations:
+            upcoming_list.mount(Static(_("No upcoming planned operations")))
+            return
+
+        for iteration in iterations:
+            upcoming_list.mount(UpcomingOperationRow(iteration))

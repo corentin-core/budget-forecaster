@@ -7,7 +7,7 @@ from typing import Any
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal
+from textual.containers import Horizontal, Vertical
 from textual.css.query import NoMatches
 from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
@@ -58,6 +58,11 @@ from budget_forecaster.tui.modals import (
     SplitResult,
 )
 from budget_forecaster.tui.screens.budgets import BudgetsWidget
+from budget_forecaster.tui.screens.dashboard import (
+    CategoryRow,
+    UpcomingHeaderRow,
+    UpcomingOperationRow,
+)
 from budget_forecaster.tui.screens.forecast import ForecastWidget
 from budget_forecaster.tui.screens.imports import ImportWidget
 from budget_forecaster.tui.screens.operations import OperationsScreen
@@ -98,9 +103,47 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         margin-bottom: 1;
     }
 
+    #dashboard-content {
+        height: 1fr;
+    }
+
     OperationTable {
         height: 1fr;
         max-height: 100%;
+    }
+
+    #upcoming-section {
+        height: 10;
+        border: solid $primary;
+        padding: 1;
+        margin-bottom: 1;
+    }
+
+    #upcoming-title {
+        text-style: bold;
+        margin-bottom: 1;
+    }
+
+    #upcoming-list {
+        height: 1fr;
+        overflow-y: auto;
+    }
+
+    #categories-section {
+        height: 12;
+        border: solid $primary;
+        padding: 1;
+        margin-bottom: 1;
+    }
+
+    #categories-title {
+        text-style: bold;
+        margin-bottom: 1;
+    }
+
+    #categories-list {
+        height: 1fr;
+        overflow-y: auto;
     }
 
     #import-header {
@@ -245,12 +288,25 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         yield Header()
         with TabbedContent(initial="dashboard"):
             with TabPane(_("Dashboard"), id="dashboard"):
-                # Simple stats display
-                with Horizontal(id="stats-row"):
-                    yield Static(_("Balance: -"), id="stat-balance")
-                    yield Static(_("Operations this month: -"), id="stat-month-ops")
-                    yield Static(_("Uncategorized: -"), id="stat-uncategorized")
-                yield OperationTable(id="dashboard-table")
+                with Vertical(id="dashboard-content"):
+                    # Simple stats display
+                    with Horizontal(id="stats-row"):
+                        yield Static(_("Balance: -"), id="stat-balance")
+                        yield Static(_("Operations this month: -"), id="stat-month-ops")
+                        yield Static(_("Uncategorized: -"), id="stat-uncategorized")
+                    with Vertical(id="upcoming-section"):
+                        yield Static(
+                            _("Upcoming planned operations (next 30 days)"),
+                            id="upcoming-title",
+                        )
+                        yield Vertical(id="upcoming-list")
+                    with Vertical(id="categories-section"):
+                        yield Static(
+                            _("Expenses by category (this month)"),
+                            id="categories-title",
+                        )
+                        yield Vertical(id="categories-list")
+                    yield OperationTable(id="dashboard-table")
             with TabPane(_("Operations"), id="operations"):
                 yield OperationsScreen(id="operations-screen")
             with TabPane(_("Import"), id="import"):
@@ -322,6 +378,11 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         self.query_one("#dashboard-table", OperationTable).load_operations(
             recent_ops, links, targets
         )
+
+        # Update dashboard sub-sections
+        self._update_upcoming()
+        self._update_categories()
+
         # Refresh operations screen (with its own filter bar)
         operations_screen = self.query_one("#operations-screen", OperationsScreen)
         operations_screen.set_app_service(self.app_service)
@@ -342,6 +403,33 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             "#planned-ops-widget", PlannedOperationsWidget
         )
         planned_ops_widget.set_app_service(self.app_service)
+
+    def _update_upcoming(self) -> None:
+        """Update the upcoming planned operations section."""
+        iterations = self.app_service.get_upcoming_planned_iterations()
+        upcoming_list = self.query_one("#upcoming-list", Vertical)
+        upcoming_list.remove_children()
+        if not iterations:
+            upcoming_list.mount(Static(_("No upcoming planned operations")))
+        else:
+            upcoming_list.mount(UpcomingHeaderRow())
+            for iteration in iterations:
+                upcoming_list.mount(UpcomingOperationRow(iteration))
+
+    def _update_categories(self) -> None:
+        """Update the expenses by category section."""
+        now = date.today()
+        month_start = date(now.year, now.month, 1)
+        month_filter = OperationFilter(date_from=month_start)
+        totals = self.app_service.get_category_totals(month_filter)
+        expense_totals = {cat: amt for cat, amt in totals.items() if amt < 0}
+        sorted_categories = sorted(expense_totals.items(), key=lambda x: x[1])
+        max_expense = abs(min(expense_totals.values())) if expense_totals else 0
+
+        categories_list = self.query_one("#categories-list", Vertical)
+        categories_list.remove_children()
+        for cat, amount in sorted_categories[:10]:
+            categories_list.mount(CategoryRow(cat.display_name, amount, max_expense))
 
     def action_refresh_data(self) -> None:
         """Refresh data from the database."""

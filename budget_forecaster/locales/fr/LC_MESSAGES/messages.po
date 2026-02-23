@@ -202,6 +202,12 @@ msgstr "Dépenses ce mois"
 msgid "Expenses by category (this month)"
 msgstr "Dépenses par catégorie (ce mois)"
 
+msgid "Upcoming planned operations (next 30 days)"
+msgstr "Opérations prévues à venir (30 prochains jours)"
+
+msgid "No upcoming planned operations"
+msgstr "Aucune opération prévue à venir"
+
 msgid "Currently: {} {}"
 msgstr "Actuellement : {} {}"
 

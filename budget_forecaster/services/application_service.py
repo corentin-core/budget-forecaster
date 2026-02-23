@@ -6,12 +6,14 @@ while providing direct access to read-only service methods.
 """
 
 import logging
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
+from typing import NamedTuple
 
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
+from budget_forecaster.core.date_range import RecurringDay
 from budget_forecaster.core.types import (
     BudgetId,
     Category,
@@ -60,6 +62,57 @@ from budget_forecaster.services.use_cases import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class UpcomingIteration(NamedTuple):
+    """A single upcoming iteration of a planned operation."""
+
+    iteration_date: date
+    description: str
+    amount: float
+    currency: str
+    period: relativedelta | None
+
+
+def get_upcoming_iterations(
+    planned_operations: tuple[PlannedOperation, ...],
+    reference_date: date,
+    horizon_days: int = 30,
+) -> tuple[UpcomingIteration, ...]:
+    """Get upcoming iterations from planned operations within a time horizon.
+
+    Args:
+        planned_operations: All planned operations.
+        reference_date: The date to compute from (typically today).
+        horizon_days: Number of days ahead to look.
+
+    Returns:
+        Upcoming iterations sorted by date ascending.
+    """
+    cutoff = reference_date + timedelta(days=horizon_days)
+    iterations: list[UpcomingIteration] = []
+
+    for op in planned_operations:
+        period = (
+            op.date_range.period if isinstance(op.date_range, RecurringDay) else None
+        )
+        for date_range in op.date_range.iterate_over_date_ranges(
+            from_date=reference_date
+        ):
+            if date_range.start_date > cutoff:
+                break
+            if date_range.start_date >= reference_date:
+                iterations.append(
+                    UpcomingIteration(
+                        iteration_date=date_range.start_date,
+                        description=op.description,
+                        amount=op.amount,
+                        currency=op.currency,
+                        period=period,
+                    )
+                )
+
+    return tuple(sorted(iterations, key=lambda it: it.iteration_date))
 
 
 class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
@@ -257,6 +310,20 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         """Get all planned operations sorted alphabetically by description."""
         operations = self._forecast_service.get_all_planned_operations()
         return tuple(sorted(operations, key=lambda op: op.description.lower()))
+
+    def get_upcoming_planned_iterations(
+        self, horizon_days: int = 30
+    ) -> tuple[UpcomingIteration, ...]:
+        """Get upcoming iterations of planned operations within a time horizon.
+
+        Args:
+            horizon_days: Number of days ahead to look.
+
+        Returns:
+            Upcoming iterations sorted by date ascending.
+        """
+        planned_ops = self.get_all_planned_operations()
+        return get_upcoming_iterations(planned_ops, date.today(), horizon_days)
 
     def get_all_budgets(self) -> tuple[Budget, ...]:
         """Get all budgets sorted alphabetically by description."""
