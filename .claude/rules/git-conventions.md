@@ -62,6 +62,29 @@ Cleanup after merge:
 git worktree remove ../budget-forecaster-42
 ```
 
+## Worktree + Editable Install
+
+**The package is installed in editable mode (`pip install -e`).** The editable finder
+maps `budget_forecaster` to the **main repo** directory, NOT the worktree.
+
+When running `python3 budget_forecaster/main.py` from a worktree, Python sets
+`sys.path[0]` to the script's directory (`budget_forecaster/`), can't find the package
+there, and falls through to the editable install — which loads code from the **main
+repo**.
+
+**Rule**: ALWAYS use `PYTHONPATH=.` when running the app from a worktree:
+
+```bash
+# BAD - loads code from the main repo, not the worktree!
+python3 budget_forecaster/main.py
+
+# GOOD - forces Python to find the package in the current directory first
+PYTHONPATH=. python3 -m budget_forecaster.main
+```
+
+**When testing worktree changes**, always verify the correct code is loaded before
+debugging layout or behavior issues.
+
 ## Branch Naming
 
 Format: `issue/<number>-<kebab-case-description>` or `feature/<number>-<description>`
@@ -111,11 +134,21 @@ After creating a PR:
 2. Wait for the user to review the code and CI checks
 3. Only merge when the user explicitly says to merge
 
+**Before merging**, wait for CI checks (codecov) to pass:
+
+```bash
+# Check CI status
+gh pr checks 123 --watch
+
+# Then merge
+gh pr merge 123 --squash
 ```
-# BAD - merging without asking
+
+```
+# BAD - merging without waiting for CI
 gh pr merge 123 --squash
 
-# GOOD - ask first, wait for approval
+# GOOD - ask first, wait for CI + approval
 "PR #123 created. Let me know when you want me to merge it."
 ```
 
