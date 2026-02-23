@@ -37,6 +37,18 @@ from budget_forecaster.services.operation.operation_link_service import (
 )
 
 
+class _AccountStub:
+    """Minimal AccountInterface stub for unit tests."""
+
+    def __init__(self, account: Account) -> None:
+        self._account = account
+
+    @property
+    def account(self) -> Account:
+        """Return the account."""
+        return self._account
+
+
 @pytest.fixture(name="mock_account")
 def mock_account_fixture() -> Account:
     """Create a mock account."""
@@ -47,6 +59,12 @@ def mock_account_fixture() -> Account:
         balance_date=date(2025, 1, 20),
         operations=(),
     )
+
+
+@pytest.fixture(name="account_provider")
+def account_provider_fixture(mock_account: Account) -> _AccountStub:
+    """Create an AccountInterface stub wrapping the mock account."""
+    return _AccountStub(mock_account)
 
 
 @pytest.fixture(name="temp_db_path")
@@ -72,12 +90,12 @@ def operation_link_service_fixture(
 
 @pytest.fixture(name="service")
 def service_fixture(
-    mock_account: Account,
+    account_provider: _AccountStub,
     repository: RepositoryInterface,
 ) -> ForecastService:
     """Create a ForecastService with mock data."""
     return ForecastService(
-        account=mock_account,
+        account_provider=account_provider,
         repository=repository,
     )
 
@@ -116,7 +134,7 @@ class TestLoadForecast:
         repository.upsert_budget(budget)
 
         service = ForecastService(
-            account=mock_account,
+            account_provider=_AccountStub(mock_account),
             repository=repository,
         )
         forecast = service.load_forecast()
@@ -141,7 +159,7 @@ class TestLoadForecast:
         repository.upsert_planned_operation(op)
 
         service = ForecastService(
-            account=mock_account,
+            account_provider=_AccountStub(mock_account),
             repository=repository,
         )
         forecast = service.load_forecast()
@@ -160,7 +178,7 @@ class TestReloadForecast:
     ) -> None:
         """reload_forecast invalidates cached forecast."""
         service = ForecastService(
-            account=mock_account,
+            account_provider=_AccountStub(mock_account),
             repository=repository,
         )
 

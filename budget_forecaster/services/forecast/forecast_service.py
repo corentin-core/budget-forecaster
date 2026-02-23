@@ -7,7 +7,7 @@ from typing import Any, TypedDict
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.types import BudgetId, PlannedOperationId
-from budget_forecaster.domain.account.account import Account
+from budget_forecaster.domain.account.account_interface import AccountInterface
 from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.operation_link import OperationLink
@@ -48,16 +48,16 @@ class ForecastService:
 
     def __init__(
         self,
-        account: Account,
+        account_provider: AccountInterface,
         repository: RepositoryInterface,
     ) -> None:
         """Initialize the forecast service.
 
         Args:
-            account: The account to forecast.
+            account_provider: Provider for the account to forecast.
             repository: Repository for data persistence.
         """
-        self._account = account
+        self._account_provider = account_provider
         self._repository = repository
         self._forecast: Forecast | None = None
         self._report: AccountAnalysisReport | None = None
@@ -217,7 +217,9 @@ class ForecastService:
 
         logger.info("Computing forecast report from %s to %s", start_date, end_date)
 
-        analyzer = AccountAnalyzer(self._account, forecast, operation_links)
+        analyzer = AccountAnalyzer(
+            self._account_provider.account, forecast, operation_links
+        )
         self._report = analyzer.compute_report(start_date, end_date)
 
         return self._report

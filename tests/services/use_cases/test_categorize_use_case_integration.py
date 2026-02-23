@@ -73,7 +73,7 @@ def use_case_fixture(
     repository: SqliteRepository,
 ) -> CategorizeUseCase:
     """Create a CategorizeUseCase with real dependencies."""
-    forecast_service = ForecastService(persistent_account.account, repository)
+    forecast_service = ForecastService(persistent_account, repository)
     return CategorizeUseCase(
         OperationService(persistent_account),
         OperationLinkService(repository),
