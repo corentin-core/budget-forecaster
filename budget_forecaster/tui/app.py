@@ -113,15 +113,15 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
 
     #dashboard-content OperationTable {
         height: 1fr;
+        max-height: initial;
     }
 
     #upcoming-section {
+        dock: bottom;
         height: auto;
-        min-height: 5;
         max-height: 12;
         border: solid $primary;
         padding: 1;
-        margin-top: 1;
     }
 
     #upcoming-title {
