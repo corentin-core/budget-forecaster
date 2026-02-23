@@ -111,17 +111,11 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         max-height: 100%;
     }
 
-    #dashboard-content OperationTable {
-        height: 1fr;
-        max-height: initial;
-    }
-
     #upcoming-section {
-        dock: bottom;
-        height: auto;
-        max-height: 12;
+        height: 10;
         border: solid $primary;
         padding: 1;
+        margin-bottom: 1;
     }
 
     #upcoming-title {
@@ -130,8 +124,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
     }
 
     #upcoming-list {
-        height: auto;
-        max-height: 8;
+        height: 1fr;
         overflow-y: auto;
     }
 
@@ -283,13 +276,13 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
                         yield Static(_("Balance: -"), id="stat-balance")
                         yield Static(_("Operations this month: -"), id="stat-month-ops")
                         yield Static(_("Uncategorized: -"), id="stat-uncategorized")
-                    yield OperationTable(id="dashboard-table")
                     with Vertical(id="upcoming-section"):
                         yield Static(
                             _("Upcoming planned operations (next 30 days)"),
                             id="upcoming-title",
                         )
                         yield Vertical(id="upcoming-list")
+                    yield OperationTable(id="dashboard-table")
             with TabPane(_("Operations"), id="operations"):
                 yield OperationsScreen(id="operations-screen")
             with TabPane(_("Import"), id="import"):
