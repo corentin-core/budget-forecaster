@@ -134,11 +134,21 @@ After creating a PR:
 2. Wait for the user to review the code and CI checks
 3. Only merge when the user explicitly says to merge
 
+**Before merging**, wait for CI checks (codecov) to pass:
+
+```bash
+# Check CI status
+gh pr checks 123 --watch
+
+# Then merge
+gh pr merge 123 --squash
 ```
-# BAD - merging without asking
+
+```
+# BAD - merging without waiting for CI
 gh pr merge 123 --squash
 
-# GOOD - ask first, wait for approval
+# GOOD - ask first, wait for CI + approval
 "PR #123 created. Let me know when you want me to merge it."
 ```
 
