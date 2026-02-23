@@ -13,7 +13,7 @@ from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.tui.screens.budgets import BudgetsWidget
-from budget_forecaster.tui.widgets.filter_bar import FilterBar
+from budget_forecaster.tui.widgets.filter_bar import FilterBar, StatusFilter
 
 
 def _make_budget(
@@ -43,6 +43,26 @@ SAMPLE_BUDGETS = (
     _make_budget(4, "Restaurants et sorties", -200.00, Category.LEISURE),
     _make_budget(5, "Courses marche bio", -150.00, Category.GROCERIES),
 )
+
+
+def _make_expired_budget(
+    record_id: int,
+    description: str,
+    amount: float,
+    category: Category,
+) -> Budget:
+    """Create a test budget that is already expired."""
+    return Budget(
+        record_id=record_id,
+        description=description,
+        amount=Amount(amount, "EUR"),
+        category=category,
+        date_range=RecurringDateRange(
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
+            relativedelta(months=1),
+            date(2024, 12, 31),
+        ),
+    )
 
 
 def _make_app_service(budgets: tuple[Budget, ...]) -> Mock:
@@ -172,3 +192,20 @@ class TestBudgetsWidgetFiltering:
 
             table = app.query_one("#budgets-table", DataTable)
             assert table.row_count == 0
+
+    async def test_expired_filter_shows_only_expired(self) -> None:
+        """Expired status filter shows only expired budgets."""
+        mixed_budgets = (
+            _make_budget(1, "Active budget", -100.0, Category.GROCERIES),
+            _make_expired_budget(2, "Expired budget", -200.0, Category.ELECTRICITY),
+        )
+        app = BudgetsWidgetTestApp(budgets=mixed_budgets)
+        async with app.run_test(size=(160, 48)) as pilot:
+            app.query_one(
+                "#filter-status-select", Select
+            ).value = StatusFilter.EXPIRED.value
+            await pilot.click("#filter-apply")
+
+            widget = app.query_one(BudgetsWidget)
+            descriptions = {b.description for b in widget.budgets}
+            assert descriptions == {"Expired budget"}

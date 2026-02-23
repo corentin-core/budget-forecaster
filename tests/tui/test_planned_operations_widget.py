@@ -13,7 +13,7 @@ from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.tui.screens.planned_operations import PlannedOperationsWidget
-from budget_forecaster.tui.widgets.filter_bar import FilterBar
+from budget_forecaster.tui.widgets.filter_bar import FilterBar, StatusFilter
 
 
 def _make_planned_operation(
@@ -43,6 +43,26 @@ SAMPLE_OPERATIONS = (
     _make_planned_operation(4, "Salaire net", 2500.00, Category.SALARY),
     _make_planned_operation(5, "Loyer parking", -60.00, Category.RENT),
 )
+
+
+def _make_expired_operation(
+    record_id: int,
+    description: str,
+    amount: float,
+    category: Category,
+) -> PlannedOperation:
+    """Create a test planned operation that is already expired."""
+    return PlannedOperation(
+        record_id=record_id,
+        description=description,
+        amount=Amount(amount, "EUR"),
+        category=category,
+        date_range=RecurringDay(
+            date(2023, 1, 1),
+            relativedelta(months=1),
+            date(2024, 12, 31),
+        ),
+    )
 
 
 def _make_app_service(
@@ -176,3 +196,20 @@ class TestPlannedOperationsWidgetFiltering:
 
             table = app.query_one("#planned-ops-table", DataTable)
             assert table.row_count == 0
+
+    async def test_expired_filter_shows_only_expired(self) -> None:
+        """Expired status filter shows only expired operations."""
+        mixed_ops = (
+            _make_planned_operation(1, "Active op", -100.0, Category.RENT),
+            _make_expired_operation(2, "Expired op", -200.0, Category.ELECTRICITY),
+        )
+        app = PlannedOpsWidgetTestApp(operations=mixed_ops)
+        async with app.run_test(size=(160, 48)) as pilot:
+            app.query_one(
+                "#filter-status-select", Select
+            ).value = StatusFilter.EXPIRED.value
+            await pilot.click("#filter-apply")
+
+            widget = app.query_one(PlannedOperationsWidget)
+            descriptions = {op.description for op in widget.planned_operations}
+            assert descriptions == {"Expired op"}
