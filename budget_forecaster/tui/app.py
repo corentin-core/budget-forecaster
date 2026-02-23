@@ -62,7 +62,6 @@ from budget_forecaster.tui.screens.dashboard import (
     CategoryRow,
     UpcomingHeaderRow,
     UpcomingOperationRow,
-    get_upcoming_iterations,
 )
 from budget_forecaster.tui.screens.forecast import ForecastWidget
 from budget_forecaster.tui.screens.imports import ImportWidget
@@ -407,8 +406,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
 
     def _update_upcoming(self) -> None:
         """Update the upcoming planned operations section."""
-        planned_ops = self.app_service.get_all_planned_operations()
-        iterations = get_upcoming_iterations(planned_ops, date.today())
+        iterations = self.app_service.get_upcoming_planned_iterations()
         upcoming_list = self.query_one("#upcoming-list", Vertical)
         upcoming_list.remove_children()
         if not iterations:

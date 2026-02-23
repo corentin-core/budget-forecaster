@@ -9,11 +9,11 @@ from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.date_range import RecurringDay, SingleDay
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
-from budget_forecaster.tui.screens.dashboard import (
+from budget_forecaster.services.application_service import (
     UpcomingIteration,
-    format_period,
     get_upcoming_iterations,
 )
+from budget_forecaster.tui.screens.dashboard import format_period
 
 
 def _make_recurring_op(

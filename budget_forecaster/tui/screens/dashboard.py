@@ -1,18 +1,19 @@
 """Dashboard screen showing account summary."""
 
-from datetime import date, timedelta
-from typing import Any, NamedTuple
+from datetime import date
+from typing import Any
 
 from dateutil.relativedelta import relativedelta
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Static
 
-from budget_forecaster.core.date_range import RecurringDay
 from budget_forecaster.core.types import Category
-from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.i18n import _
-from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.services.application_service import (
+    ApplicationService,
+    UpcomingIteration,
+)
 from budget_forecaster.services.operation.operation_service import OperationFilter
 
 
@@ -111,57 +112,6 @@ class CategoryRow(Horizontal):
         else:
             progress_bar = ""
         yield Static(progress_bar, classes="cat-bar")
-
-
-class UpcomingIteration(NamedTuple):
-    """A single upcoming iteration of a planned operation."""
-
-    iteration_date: date
-    description: str
-    amount: float
-    currency: str
-    period: relativedelta | None
-
-
-def get_upcoming_iterations(
-    planned_operations: tuple[PlannedOperation, ...],
-    reference_date: date,
-    horizon_days: int = 30,
-) -> tuple[UpcomingIteration, ...]:
-    """Get upcoming iterations from planned operations within a time horizon.
-
-    Args:
-        planned_operations: All planned operations.
-        reference_date: The date to compute from (typically today).
-        horizon_days: Number of days ahead to look.
-
-    Returns:
-        Upcoming iterations sorted by date ascending.
-    """
-    cutoff = reference_date + timedelta(days=horizon_days)
-    iterations: list[UpcomingIteration] = []
-
-    for op in planned_operations:
-        period = (
-            op.date_range.period if isinstance(op.date_range, RecurringDay) else None
-        )
-        for date_range in op.date_range.iterate_over_date_ranges(
-            from_date=reference_date
-        ):
-            if date_range.start_date > cutoff:
-                break
-            if date_range.start_date >= reference_date:
-                iterations.append(
-                    UpcomingIteration(
-                        iteration_date=date_range.start_date,
-                        description=op.description,
-                        amount=op.amount,
-                        currency=op.currency,
-                        period=period,
-                    )
-                )
-
-    return tuple(sorted(iterations, key=lambda it: it.iteration_date))
 
 
 def format_period(period: relativedelta | None) -> str:
@@ -422,8 +372,7 @@ class DashboardScreen(Vertical):
         if not self._app_service:
             return
 
-        planned_ops = self._app_service.get_all_planned_operations()
-        iterations = get_upcoming_iterations(planned_ops, date.today())
+        iterations = self._app_service.get_upcoming_planned_iterations()
 
         upcoming_list = self.query_one("#upcoming-list", Vertical)
         upcoming_list.remove_children()
