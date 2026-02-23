@@ -41,14 +41,7 @@ class StatusFilter(enum.Enum):
     @property
     def display_name(self) -> str:
         """Return the localized display name."""
-        return _STATUS_DISPLAY_NAMES[self]
-
-
-_STATUS_DISPLAY_NAMES: dict[StatusFilter, str] = {
-    StatusFilter.ACTIVE: _("Active"),
-    StatusFilter.EXPIRED: _("Expired"),
-    StatusFilter.ALL: _("All"),
-}
+        return _(self.value.title())
 
 
 class FilterBar(Vertical):
