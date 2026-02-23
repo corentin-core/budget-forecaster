@@ -1,13 +1,16 @@
 """Dashboard screen showing account summary."""
 
-from datetime import date
-from typing import Any
+from datetime import date, timedelta
+from typing import Any, NamedTuple
 
+from dateutil.relativedelta import relativedelta
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Horizontal, Vertical
 from textual.widgets import Static
 
+from budget_forecaster.core.date_range import RecurringDay
 from budget_forecaster.core.types import Category
+from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.operation.operation_service import OperationFilter
@@ -110,13 +113,132 @@ class CategoryRow(Horizontal):
         yield Static(progress_bar, classes="cat-bar")
 
 
-class DashboardScreen(Container):
+class UpcomingIteration(NamedTuple):
+    """A single upcoming iteration of a planned operation."""
+
+    iteration_date: date
+    description: str
+    amount: float
+    currency: str
+    period: relativedelta | None
+
+
+def get_upcoming_iterations(
+    planned_operations: tuple[PlannedOperation, ...],
+    reference_date: date,
+    horizon_days: int = 30,
+) -> tuple[UpcomingIteration, ...]:
+    """Get upcoming iterations from planned operations within a time horizon.
+
+    Args:
+        planned_operations: All planned operations.
+        reference_date: The date to compute from (typically today).
+        horizon_days: Number of days ahead to look.
+
+    Returns:
+        Upcoming iterations sorted by date ascending.
+    """
+    cutoff = reference_date + timedelta(days=horizon_days)
+    iterations: list[UpcomingIteration] = []
+
+    for op in planned_operations:
+        period = (
+            op.date_range.period if isinstance(op.date_range, RecurringDay) else None
+        )
+        for date_range in op.date_range.iterate_over_date_ranges(
+            from_date=reference_date
+        ):
+            if date_range.start_date > cutoff:
+                break
+            if date_range.start_date >= reference_date:
+                iterations.append(
+                    UpcomingIteration(
+                        iteration_date=date_range.start_date,
+                        description=op.description,
+                        amount=op.amount,
+                        currency=op.currency,
+                        period=period,
+                    )
+                )
+
+    return tuple(sorted(iterations, key=lambda it: it.iteration_date))
+
+
+def format_period(period: relativedelta | None) -> str:
+    """Format a relativedelta period for display."""
+    if period is None:
+        return "-"
+    if period.years:
+        return _("{} yr.").format(period.years)
+    if period.months:
+        return _("{} mo.").format(period.months)
+    if period.weeks:
+        return _("{} wk.").format(period.weeks)
+    if period.days:
+        return _("{} d.").format(period.days)
+    return "-"
+
+
+class UpcomingOperationRow(Horizontal):
+    """A row showing an upcoming planned operation."""
+
+    DEFAULT_CSS = """
+    UpcomingOperationRow {
+        height: 1;
+        width: 100%;
+    }
+
+    UpcomingOperationRow .upcoming-date {
+        width: 12;
+    }
+
+    UpcomingOperationRow .upcoming-description {
+        width: 1fr;
+    }
+
+    UpcomingOperationRow .upcoming-amount {
+        width: 15;
+        text-align: right;
+    }
+
+    UpcomingOperationRow .upcoming-amount-negative {
+        color: $error;
+    }
+
+    UpcomingOperationRow .upcoming-amount-positive {
+        color: $success;
+    }
+
+    UpcomingOperationRow .upcoming-period {
+        width: 10;
+        text-align: right;
+    }
+    """
+
+    def __init__(self, iteration: UpcomingIteration, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._iteration = iteration
+
+    def compose(self) -> ComposeResult:
+        it = self._iteration
+        yield Static(it.iteration_date.strftime("%b %d"), classes="upcoming-date")
+        yield Static(it.description, classes="upcoming-description")
+        amount_class = (
+            "upcoming-amount upcoming-amount-negative"
+            if it.amount < 0
+            else "upcoming-amount upcoming-amount-positive"
+        )
+        yield Static(f"{it.amount:+.2f} {it.currency}", classes=amount_class)
+        yield Static(format_period(it.period), classes="upcoming-period")
+
+
+class DashboardScreen(Vertical):
     """Dashboard screen showing account summary and statistics."""
 
     DEFAULT_CSS = """
     DashboardScreen {
         width: 100%;
-        height: 100%;
+        height: 1fr;
     }
 
     #stats-row {
@@ -139,6 +261,25 @@ class DashboardScreen(Container):
         height: 1fr;
         overflow-y: auto;
     }
+
+    #upcoming-section {
+        height: auto;
+        max-height: 12;
+        border: solid $primary;
+        padding: 1;
+        margin-top: 1;
+    }
+
+    #upcoming-title {
+        text-style: bold;
+        margin-bottom: 1;
+    }
+
+    #upcoming-list {
+        height: auto;
+        max-height: 8;
+        overflow-y: auto;
+    }
     """
 
     def __init__(self, **kwargs: Any) -> None:
@@ -156,6 +297,13 @@ class DashboardScreen(Container):
             yield Static(_("Expenses by category (this month)"), id="categories-title")
             yield Vertical(id="categories-list")
 
+        with Vertical(id="upcoming-section"):
+            yield Static(
+                _("Upcoming planned operations (next 30 days)"),
+                id="upcoming-title",
+            )
+            yield Vertical(id="upcoming-list")
+
     def set_app_service(self, service: ApplicationService) -> None:
         """Set the application service and refresh.
 
@@ -165,6 +313,7 @@ class DashboardScreen(Container):
         self._app_service = service
         self._update_stats()
         self._update_categories()
+        self._update_upcoming()
 
     def _update_stats(self) -> None:
         """Update the statistics cards."""
@@ -230,3 +379,21 @@ class DashboardScreen(Container):
             if cat not in (Category.OTHER, Category.UNCATEGORIZED) or amount != 0:
                 row = CategoryRow(cat.display_name, amount, max_expense)
                 categories_list.mount(row)
+
+    def _update_upcoming(self) -> None:
+        """Update the upcoming planned operations section."""
+        if not self._app_service:
+            return
+
+        planned_ops = self._app_service.get_all_planned_operations()
+        iterations = get_upcoming_iterations(planned_ops, date.today())
+
+        upcoming_list = self.query_one("#upcoming-list", Vertical)
+        upcoming_list.remove_children()
+
+        if not iterations:
+            upcoming_list.mount(Static(_("No upcoming planned operations")))
+            return
+
+        for iteration in iterations:
+            upcoming_list.mount(UpcomingOperationRow(iteration))
