@@ -907,7 +907,7 @@ msgid "every {} months"
 msgstr "tous les {} mois"
 
 # ============================================================
-# Archive / Status filter
+# Status filter
 # ============================================================
 
 msgid "Active"
@@ -916,20 +916,5 @@ msgstr "Actif"
 msgid "Expired"
 msgstr "Expiré"
 
-msgid "Archived"
-msgstr "Archivé"
-
 msgid "All"
 msgstr "Tout"
-
-msgid "Archive"
-msgstr "Archiver"
-
-msgid "Unarchive"
-msgstr "Désarchiver"
-
-msgid "Archive all expired"
-msgstr "Archiver tous les expirés"
-
-msgid "Archive/Unarchive"
-msgstr "Archiver/Désarchiver"

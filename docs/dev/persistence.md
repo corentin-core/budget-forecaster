@@ -85,7 +85,6 @@ erDiagram
         text description_hints
         int approximation_date_days
         real approximation_amount_ratio
-        int is_archived
     }
 
     budgets {
@@ -98,7 +97,6 @@ erDiagram
         int period_value
         text period_unit
         timestamp end_date
-        int is_archived
     }
 
     operation_links {

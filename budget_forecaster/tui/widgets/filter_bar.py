@@ -32,11 +32,10 @@ class AmountRange(NamedTuple):
 
 
 class StatusFilter(enum.Enum):
-    """Status filter options for items that can be archived/expired."""
+    """Status filter options for items that can be expired."""
 
     ACTIVE = "active"
     EXPIRED = "expired"
-    ARCHIVED = "archived"
     ALL = "all"
 
     @property
@@ -48,7 +47,6 @@ class StatusFilter(enum.Enum):
 _STATUS_DISPLAY_NAMES: dict[StatusFilter, str] = {
     StatusFilter.ACTIVE: _("Active"),
     StatusFilter.EXPIRED: _("Expired"),
-    StatusFilter.ARCHIVED: _("Archived"),
     StatusFilter.ALL: _("All"),
 }
 
@@ -62,7 +60,7 @@ class FilterBar(Vertical):
     Args:
         show_date_range: Show date from/to inputs.
         show_amount_range: Show min/max amount inputs.
-        show_status_filter: Show status filter (Active/Expired/Archived/All).
+        show_status_filter: Show status filter (Active/Expired/All).
     """
 
     DEFAULT_CSS = """

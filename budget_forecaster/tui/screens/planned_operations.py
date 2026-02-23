@@ -4,7 +4,6 @@ import logging
 from datetime import date
 
 from textual.app import ComposeResult
-from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.message import Message
 from textual.widgets import Button, DataTable, Static
@@ -58,22 +57,7 @@ class PlannedOperationsWidget(Vertical):
         width: 1fr;
     }
 
-    PlannedOperationsWidget .archived-row {
-        color: $text-muted;
-    }
-
-    PlannedOperationsWidget #btn-archive-all-expired {
-        display: none;
-    }
-
-    PlannedOperationsWidget #btn-archive-all-expired.visible {
-        display: block;
-    }
     """
-
-    BINDINGS = [
-        Binding("a", "toggle_archive", _("Archive/Unarchive")),
-    ]
 
     class OperationSelected(Message):
         """Message sent when a planned operation is selected."""
@@ -121,18 +105,12 @@ class PlannedOperationsWidget(Vertical):
                 yield Button(_("Add"), id="btn-add-op", variant="primary")
                 yield Button(_("Edit"), id="btn-edit-op", variant="default")
                 yield Button(_("Split"), id="btn-split-op", variant="default")
-                yield Button(_("Archive"), id="btn-archive-op", variant="default")
                 yield Button(_("Delete"), id="btn-delete-op", variant="error")
 
         yield FilterBar(id="planned-ops-filter-bar", show_status_filter=True)
         yield DataTable(id="planned-ops-table")
         with Horizontal(id="planned-ops-status-bar"):
             yield Static("", id="planned-ops-status")
-            yield Button(
-                _("Archive all expired"),
-                id="btn-archive-all-expired",
-                variant="warning",
-            )
 
     def on_mount(self) -> None:
         """Initialize the widget after mounting."""
@@ -199,19 +177,9 @@ class PlannedOperationsWidget(Vertical):
 
         # Apply status filter
         if status_filter == StatusFilter.ACTIVE:
-            result = tuple(
-                op
-                for op in result
-                if not op.is_archived and not op.date_range.is_expired(today)
-            )
+            result = tuple(op for op in result if not op.date_range.is_expired(today))
         elif status_filter == StatusFilter.EXPIRED:
-            result = tuple(
-                op
-                for op in result
-                if not op.is_archived and op.date_range.is_expired(today)
-            )
-        elif status_filter == StatusFilter.ARCHIVED:
-            result = tuple(op for op in result if op.is_archived)
+            result = tuple(op for op in result if op.date_range.is_expired(today))
         # StatusFilter.ALL: no status filtering
 
         if search_text:
@@ -286,15 +254,6 @@ class PlannedOperationsWidget(Vertical):
         has_selection = self._selected_operation is not None
         self.query_one("#btn-edit-op", Button).disabled = not has_selection
         self.query_one("#btn-delete-op", Button).disabled = not has_selection
-        self.query_one("#btn-archive-op", Button).disabled = not has_selection
-
-        # Update archive button label based on current selection
-        if has_selection and self._selected_operation is not None:
-            archive_btn = self.query_one("#btn-archive-op", Button)
-            if self._selected_operation.is_archived:
-                archive_btn.label = _("Unarchive")
-            else:
-                archive_btn.label = _("Archive")
 
         # Split is only available for periodic operations
         can_split = (
@@ -303,13 +262,6 @@ class PlannedOperationsWidget(Vertical):
             and isinstance(self._selected_operation.date_range, RecurringDay)
         )
         self.query_one("#btn-split-op", Button).disabled = not can_split
-
-        # Show "Archive all expired" only in Expired filter mode
-        archive_all_btn = self.query_one("#btn-archive-all-expired", Button)
-        if self._status_filter == StatusFilter.EXPIRED:
-            archive_all_btn.add_class("visible")
-        else:
-            archive_all_btn.remove_class("visible")
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle row selection in the data table."""
@@ -353,43 +305,8 @@ class PlannedOperationsWidget(Vertical):
                 self.post_message(
                     self.OperationSplitRequested(self._selected_operation)
                 )
-        elif event.button.id == "btn-archive-op":
-            if self._selected_operation:
-                self._toggle_archive(self._selected_operation)
-        elif event.button.id == "btn-archive-all-expired":
-            self._archive_all_expired()
         elif event.button.id == "btn-delete-op":
             if self._selected_operation:
                 self.post_message(
                     self.OperationDeleteRequested(self._selected_operation)
                 )
-
-    def action_toggle_archive(self) -> None:
-        """Toggle archive status of the selected operation (keyboard shortcut)."""
-        if self._selected_operation:
-            self._toggle_archive(self._selected_operation)
-
-    def _toggle_archive(self, operation: PlannedOperation) -> None:
-        """Toggle archive status of a planned operation."""
-        if self._app_service is None:
-            return
-        updated = operation.replace(is_archived=not operation.is_archived)
-        self._app_service.update_planned_operation(updated)
-        self._selected_operation = None
-        self.refresh_data()
-
-    def _archive_all_expired(self) -> None:
-        """Archive all currently visible expired operations."""
-        if self._app_service is None:
-            return
-        today = date.today()
-        archived_count = 0
-        for op in self._all_operations:
-            if not op.is_archived and op.date_range.is_expired(today):
-                updated = op.replace(is_archived=True)
-                self._app_service.update_planned_operation(updated)
-                archived_count += 1
-        if archived_count > 0:
-            logger.info("Archived %d expired planned operations", archived_count)
-            self._selected_operation = None
-            self.refresh_data()
