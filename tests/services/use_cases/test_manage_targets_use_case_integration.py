@@ -75,7 +75,7 @@ def use_case_fixture(
     repository: SqliteRepository,
 ) -> ManageTargetsUseCase:
     """Create a ManageTargetsUseCase with real dependencies."""
-    forecast_service = ForecastService(persistent_account.account, repository)
+    forecast_service = ForecastService(persistent_account, repository)
     return ManageTargetsUseCase(
         forecast_service,
         persistent_account,
