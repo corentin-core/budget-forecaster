@@ -179,6 +179,43 @@ def format_period(period: relativedelta | None) -> str:
     return "-"
 
 
+class UpcomingHeaderRow(Horizontal):
+    """Header row for the upcoming operations list."""
+
+    DEFAULT_CSS = """
+    UpcomingHeaderRow {
+        height: 1;
+        width: 100%;
+        text-style: bold;
+        color: $text-muted;
+    }
+
+    UpcomingHeaderRow .upcoming-date {
+        width: 12;
+    }
+
+    UpcomingHeaderRow .upcoming-description {
+        width: 1fr;
+    }
+
+    UpcomingHeaderRow .upcoming-amount {
+        width: 15;
+        text-align: right;
+    }
+
+    UpcomingHeaderRow .upcoming-period {
+        width: 10;
+        text-align: right;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        yield Static(_("Date"), classes="upcoming-date")
+        yield Static(_("Description"), classes="upcoming-description")
+        yield Static(_("Amount"), classes="upcoming-amount")
+        yield Static(_("Period"), classes="upcoming-period")
+
+
 class UpcomingOperationRow(Horizontal):
     """A row showing an upcoming planned operation."""
 

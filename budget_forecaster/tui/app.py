@@ -59,6 +59,8 @@ from budget_forecaster.tui.modals import (
 )
 from budget_forecaster.tui.screens.budgets import BudgetsWidget
 from budget_forecaster.tui.screens.dashboard import (
+    CategoryRow,
+    UpcomingHeaderRow,
     UpcomingOperationRow,
     get_upcoming_iterations,
 )
@@ -124,6 +126,23 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
     }
 
     #upcoming-list {
+        height: 1fr;
+        overflow-y: auto;
+    }
+
+    #categories-section {
+        height: 12;
+        border: solid $primary;
+        padding: 1;
+        margin-bottom: 1;
+    }
+
+    #categories-title {
+        text-style: bold;
+        margin-bottom: 1;
+    }
+
+    #categories-list {
         height: 1fr;
         overflow-y: auto;
     }
@@ -282,6 +301,12 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
                             id="upcoming-title",
                         )
                         yield Vertical(id="upcoming-list")
+                    with Vertical(id="categories-section"):
+                        yield Static(
+                            _("Expenses by category (this month)"),
+                            id="categories-title",
+                        )
+                        yield Vertical(id="categories-list")
                     yield OperationTable(id="dashboard-table")
             with TabPane(_("Operations"), id="operations"):
                 yield OperationsScreen(id="operations-screen")
@@ -355,16 +380,9 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             recent_ops, links, targets
         )
 
-        # Update upcoming planned operations
-        planned_ops = self.app_service.get_all_planned_operations()
-        iterations = get_upcoming_iterations(planned_ops, date.today())
-        upcoming_list = self.query_one("#upcoming-list", Vertical)
-        upcoming_list.remove_children()
-        if not iterations:
-            upcoming_list.mount(Static(_("No upcoming planned operations")))
-        else:
-            for iteration in iterations:
-                upcoming_list.mount(UpcomingOperationRow(iteration))
+        # Update dashboard sub-sections
+        self._update_upcoming()
+        self._update_categories()
 
         # Refresh operations screen (with its own filter bar)
         operations_screen = self.query_one("#operations-screen", OperationsScreen)
@@ -386,6 +404,34 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             "#planned-ops-widget", PlannedOperationsWidget
         )
         planned_ops_widget.set_app_service(self.app_service)
+
+    def _update_upcoming(self) -> None:
+        """Update the upcoming planned operations section."""
+        planned_ops = self.app_service.get_all_planned_operations()
+        iterations = get_upcoming_iterations(planned_ops, date.today())
+        upcoming_list = self.query_one("#upcoming-list", Vertical)
+        upcoming_list.remove_children()
+        if not iterations:
+            upcoming_list.mount(Static(_("No upcoming planned operations")))
+        else:
+            upcoming_list.mount(UpcomingHeaderRow())
+            for iteration in iterations:
+                upcoming_list.mount(UpcomingOperationRow(iteration))
+
+    def _update_categories(self) -> None:
+        """Update the expenses by category section."""
+        now = date.today()
+        month_start = date(now.year, now.month, 1)
+        month_filter = OperationFilter(date_from=month_start)
+        totals = self.app_service.get_category_totals(month_filter)
+        expense_totals = {cat: amt for cat, amt in totals.items() if amt < 0}
+        sorted_categories = sorted(expense_totals.items(), key=lambda x: x[1])
+        max_expense = abs(min(expense_totals.values())) if expense_totals else 0
+
+        categories_list = self.query_one("#categories-list", Vertical)
+        categories_list.remove_children()
+        for cat, amount in sorted_categories[:10]:
+            categories_list.mount(CategoryRow(cat.display_name, amount, max_expense))
 
     def action_refresh_data(self) -> None:
         """Refresh data from the database."""
