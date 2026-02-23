@@ -102,9 +102,17 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         margin-bottom: 1;
     }
 
+    #dashboard-content {
+        height: 1fr;
+    }
+
     OperationTable {
         height: 1fr;
         max-height: 100%;
+    }
+
+    #dashboard-content OperationTable {
+        height: 1fr;
     }
 
     #upcoming-section {
@@ -268,18 +276,19 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         yield Header()
         with TabbedContent(initial="dashboard"):
             with TabPane(_("Dashboard"), id="dashboard"):
-                # Simple stats display
-                with Horizontal(id="stats-row"):
-                    yield Static(_("Balance: -"), id="stat-balance")
-                    yield Static(_("Operations this month: -"), id="stat-month-ops")
-                    yield Static(_("Uncategorized: -"), id="stat-uncategorized")
-                yield OperationTable(id="dashboard-table")
-                with Vertical(id="upcoming-section"):
-                    yield Static(
-                        _("Upcoming planned operations (next 30 days)"),
-                        id="upcoming-title",
-                    )
-                    yield Vertical(id="upcoming-list")
+                with Vertical(id="dashboard-content"):
+                    # Simple stats display
+                    with Horizontal(id="stats-row"):
+                        yield Static(_("Balance: -"), id="stat-balance")
+                        yield Static(_("Operations this month: -"), id="stat-month-ops")
+                        yield Static(_("Uncategorized: -"), id="stat-uncategorized")
+                    yield OperationTable(id="dashboard-table")
+                    with Vertical(id="upcoming-section"):
+                        yield Static(
+                            _("Upcoming planned operations (next 30 days)"),
+                            id="upcoming-title",
+                        )
+                        yield Vertical(id="upcoming-list")
             with TabPane(_("Operations"), id="operations"):
                 yield OperationsScreen(id="operations-screen")
             with TabPane(_("Import"), id="import"):
