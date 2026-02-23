@@ -7,7 +7,7 @@ from typing import Any
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal
+from textual.containers import Horizontal, Vertical
 from textual.css.query import NoMatches
 from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
@@ -58,6 +58,10 @@ from budget_forecaster.tui.modals import (
     SplitResult,
 )
 from budget_forecaster.tui.screens.budgets import BudgetsWidget
+from budget_forecaster.tui.screens.dashboard import (
+    UpcomingOperationRow,
+    get_upcoming_iterations,
+)
 from budget_forecaster.tui.screens.forecast import ForecastWidget
 from budget_forecaster.tui.screens.imports import ImportWidget
 from budget_forecaster.tui.screens.operations import OperationsScreen
@@ -101,6 +105,25 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
     OperationTable {
         height: 1fr;
         max-height: 100%;
+    }
+
+    #upcoming-section {
+        height: auto;
+        max-height: 12;
+        border: solid $primary;
+        padding: 1;
+        margin-top: 1;
+    }
+
+    #upcoming-title {
+        text-style: bold;
+        margin-bottom: 1;
+    }
+
+    #upcoming-list {
+        height: auto;
+        max-height: 8;
+        overflow-y: auto;
     }
 
     #import-header {
@@ -251,6 +274,12 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
                     yield Static(_("Operations this month: -"), id="stat-month-ops")
                     yield Static(_("Uncategorized: -"), id="stat-uncategorized")
                 yield OperationTable(id="dashboard-table")
+                with Vertical(id="upcoming-section"):
+                    yield Static(
+                        _("Upcoming planned operations (next 30 days)"),
+                        id="upcoming-title",
+                    )
+                    yield Vertical(id="upcoming-list")
             with TabPane(_("Operations"), id="operations"):
                 yield OperationsScreen(id="operations-screen")
             with TabPane(_("Import"), id="import"):
@@ -322,6 +351,18 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         self.query_one("#dashboard-table", OperationTable).load_operations(
             recent_ops, links, targets
         )
+
+        # Update upcoming planned operations
+        planned_ops = self.app_service.get_all_planned_operations()
+        iterations = get_upcoming_iterations(planned_ops, date.today())
+        upcoming_list = self.query_one("#upcoming-list", Vertical)
+        upcoming_list.remove_children()
+        if not iterations:
+            upcoming_list.mount(Static(_("No upcoming planned operations")))
+        else:
+            for iteration in iterations:
+                upcoming_list.mount(UpcomingOperationRow(iteration))
+
         # Refresh operations screen (with its own filter bar)
         operations_screen = self.query_one("#operations-screen", OperationsScreen)
         operations_screen.set_app_service(self.app_service)
