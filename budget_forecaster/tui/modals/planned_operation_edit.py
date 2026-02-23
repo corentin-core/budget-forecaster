@@ -356,9 +356,12 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
             # Build date range
             dr: SingleDay | RecurringDay
             if is_periodic and period_months:
+                period = relativedelta(months=period_months)
+                if end_date is not None and end_date < op_date + period:
+                    raise ValueError(_("End date must allow at least two iterations"))
                 dr = RecurringDay(
                     op_date,
-                    relativedelta(months=period_months),
+                    period,
                     end_date,
                 )
             else:
