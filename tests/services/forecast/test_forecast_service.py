@@ -445,24 +445,21 @@ class TestComputeReport:
         assert first_account.operations == ()
 
         # Simulate categorization: update the account with a new operation
-        updated_account = account_provider.account._replace(
-            operations=(
-                HistoricOperation(
-                    unique_id=1,
-                    description="Supermarket",
-                    amount=Amount(-50.0, "EUR"),
-                    category=Category.GROCERIES,
-                    operation_date=date(2025, 1, 15),
-                ),
-            ),
+        operation = HistoricOperation(
+            unique_id=1,
+            description="Supermarket",
+            amount=Amount(-50.0, "EUR"),
+            category=Category.GROCERIES,
+            operation_date=date(2025, 1, 15),
         )
-        account_provider.account = updated_account
+        account_provider.account = account_provider.account._replace(
+            operations=(operation,),
+        )
 
         # Second compute — should see the updated account
         service.compute_report()
         second_account = mock_analyzer_class.call_args[0][0]
-        assert len(second_account.operations) == 1
-        assert second_account.operations[0].category == Category.GROCERIES
+        assert second_account.operations == (operation,)
 
 
 class TestGetBalanceEvolutionSummary:
