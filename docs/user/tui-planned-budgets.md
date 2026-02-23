@@ -16,39 +16,58 @@ Both are accessible via the **Configuration** tab.
 ## Planned Operations Table
 
 ```
-┌───────────────────────────────────────────────────────────────────────────────────────┐
-│ Opérations planifiées                       [Ajouter] [Modifier] [Scinder] [Supprimer]│
-├────┬─────────────────────┬──────────┬────────────┬────────────┬───────────┬───────────┤
-│ ID │ Description         │ Montant  │ Catégorie  │ Date       │ Période   │ Fin       │
-├────┼─────────────────────┼──────────┼────────────┼────────────┼───────────┼───────────┤
-│ 1  │ Salaire             │ 2500.00€ │ Salaire    │ 2025-01-28 │ 1 mois    │ -         │
-│►2  │ Loyer               │ -800.00€ │ Loyer      │ 2025-01-05 │ 1 mois    │ -         │
-│ 3  │ Électricité         │  -95.00€ │ Électricité│ 2025-01-15 │ 1 mois    │ -         │
-└────┴─────────────────────┴──────────┴────────────┴────────────┴───────────┴───────────┘
-1 opération(s) planifiée(s)
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Opérations planifiées              [Ajouter] [Modifier] [Scinder] [Archiver] [Supprimer]        │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ [Search...        ] [Category  v] [Active  v]  [Filter] [Reset]                                 │
+├────┬─────────────────────┬──────────┬────────────┬────────────┬───────────┬───────────┬─────────┤
+│ ID │ Description         │ Montant  │ Catégorie  │ Date       │ Période   │ Fin       │ Mots-cl.│
+├────┼─────────────────────┼──────────┼────────────┼────────────┼───────────┼───────────┼─────────┤
+│ 1  │ Salaire             │ 2500.00€ │ Salaire    │ 2025-01-28 │ 1 mois    │ -         │ VIRT    │
+│►2  │ Loyer               │ -800.00€ │ Loyer      │ 2025-01-05 │ 1 mois    │ -         │ LOYER   │
+│ 3  │ Électricité         │  -95.00€ │ Électricité│ 2025-01-15 │ 1 mois    │ -         │ EDF     │
+└────┴─────────────────────┴──────────┴────────────┴────────────┴───────────┴───────────┴─────────┘
+3 opération(s) planifiée(s)
 ```
 
 ### Actions
 
-| Button    | Description                                 |
-| --------- | ------------------------------------------- |
-| Ajouter   | Create a new planned operation              |
-| Modifier  | Edit the selected operation                 |
-| Scinder   | Split operation from a date (periodic only) |
-| Supprimer | Delete the selected operation               |
+| Button    | Description                                         |
+| --------- | --------------------------------------------------- |
+| Ajouter   | Create a new planned operation                      |
+| Modifier  | Edit the selected operation                         |
+| Scinder   | Split operation from a date (periodic only)         |
+| Archiver  | Archive/unarchive the selected operation (also `a`) |
+| Supprimer | Delete the selected operation                       |
+
+### Status Filter
+
+The status dropdown lets you filter operations by their state:
+
+| Status   | Description                                    |
+| -------- | ---------------------------------------------- |
+| Active   | Current operations (not expired, not archived) |
+| Expired  | Operations whose end date has passed           |
+| Archived | Manually archived operations                   |
+| All      | All operations regardless of status            |
+
+When viewing **Expired** operations, an **Archive all expired** button appears in the
+status bar, allowing you to archive all expired operations in one click.
 
 ## Budgets Table
 
 ```
-┌───────────────────────────────────────────────────────────────────────────────────────┐
-│ Budgets                                     [Ajouter] [Modifier] [Scinder] [Supprimer]│
-├────┬─────────────────────┬──────────┬────────────┬────────────┬───────────┬───────────┤
-│ ID │ Description         │ Montant  │ Catégorie  │ Début      │ Durée     │ Période   │
-├────┼─────────────────────┼──────────┼────────────┼────────────┼───────────┼───────────┤
-│ 1  │ Courses mensuelles  │ -400.00€ │ Courses    │ 2025-01-01 │ 1 mois    │ 1 mois    │
-│►2  │ Carburant           │ -150.00€ │ Carburant  │ 2025-01-01 │ 1 mois    │ 1 mois    │
-│ 3  │ Loisirs             │ -200.00€ │ Loisirs    │ 2025-01-01 │ 3 mois    │ 3 mois    │
-└────┴─────────────────────┴──────────┴────────────┴────────────┴───────────┴───────────┘
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Budgets                                [Ajouter] [Modifier] [Scinder] [Archiver] [Supprimer]    │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ [Search...        ] [Category  v] [Active  v]  [Filter] [Reset]                                 │
+├────┬─────────────────────┬──────────┬────────────┬────────────┬───────────┬───────────┬─────────┤
+│ ID │ Description         │ Montant  │ Catégorie  │ Début      │ Durée     │ Période   │ Fin     │
+├────┼─────────────────────┼──────────┼────────────┼────────────┼───────────┼───────────┼─────────┤
+│ 1  │ Courses mensuelles  │ -400.00€ │ Courses    │ 2025-01-01 │ 1 mois    │ 1 mois    │ -       │
+│►2  │ Carburant           │ -150.00€ │ Carburant  │ 2025-01-01 │ 1 mois    │ 1 mois    │ -       │
+│ 3  │ Loisirs             │ -200.00€ │ Loisirs    │ 2025-01-01 │ 3 mois    │ 3 mois    │ -       │
+└────┴─────────────────────┴──────────┴────────────┴────────────┴───────────┴───────────┴─────────┘
 3 budget(s) configuré(s)
 ```
 
@@ -141,6 +160,36 @@ For budgets, an additional **Durée** field is displayed:
 | `Enter`  | Validate and apply split     |
 | `Escape` | Cancel and close modal       |
 | `Tab`    | Navigate between form fields |
+
+## Archiving Operations and Budgets
+
+Over time, planned operations and budgets expire (their end date passes). The archive
+feature lets you hide these expired items to keep the list clean while preserving them
+for historical reference.
+
+### Archiving a Single Item
+
+1. Select the item in the table
+2. Click **Archiver** or press `a`
+3. The item moves to the Archived status
+
+### Bulk Archiving Expired Items
+
+1. Set the status filter to **Expired**
+2. Click **Archive all expired** in the status bar
+3. All expired items are archived at once
+
+### Viewing Archived Items
+
+Use the status filter dropdown to switch to **Archived** view. From there, you can
+**Unarchive** items by selecting them and pressing `a` or clicking the **Unarchive**
+button.
+
+### Keyboard Shortcuts (Archive)
+
+| Key | Action                              |
+| --- | ----------------------------------- |
+| `a` | Archive/unarchive the selected item |
 
 ## Tips
 

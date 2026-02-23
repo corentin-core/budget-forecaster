@@ -4,6 +4,7 @@ import logging
 from datetime import date
 
 from textual.app import ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.message import Message
 from textual.widgets import Button, DataTable, Static
@@ -13,7 +14,7 @@ from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
-from budget_forecaster.tui.widgets.filter_bar import FilterBar
+from budget_forecaster.tui.widgets.filter_bar import FilterBar, StatusFilter
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +49,31 @@ class BudgetsWidget(Vertical):
         height: 1fr;
     }
 
-    BudgetsWidget #budgets-status {
-        height: 1;
+    BudgetsWidget #budgets-status-bar {
+        height: auto;
         padding: 0 1;
     }
+
+    BudgetsWidget #budgets-status {
+        width: 1fr;
+    }
+
+    BudgetsWidget .archived-row {
+        color: $text-muted;
+    }
+
+    BudgetsWidget #btn-archive-all-expired-budgets {
+        display: none;
+    }
+
+    BudgetsWidget #btn-archive-all-expired-budgets.visible {
+        display: block;
+    }
     """
+
+    BINDINGS = [
+        Binding("a", "toggle_archive", _("Archive/Unarchive")),
+    ]
 
     class BudgetSelected(Message):
         """Message sent when a budget is selected."""
@@ -90,6 +111,7 @@ class BudgetsWidget(Vertical):
         self._selected_budget: Budget | None = None
         self._search_text: str | None = None
         self._filter_category: Category | None = None
+        self._status_filter: StatusFilter = StatusFilter.ACTIVE
 
     def compose(self) -> ComposeResult:
         """Create the widget layout."""
@@ -99,11 +121,18 @@ class BudgetsWidget(Vertical):
                 yield Button(_("Add"), id="btn-add-budget", variant="primary")
                 yield Button(_("Edit"), id="btn-edit-budget", variant="default")
                 yield Button(_("Split"), id="btn-split-budget", variant="default")
+                yield Button(_("Archive"), id="btn-archive-budget", variant="default")
                 yield Button(_("Delete"), id="btn-delete-budget", variant="error")
 
-        yield FilterBar(id="budgets-filter-bar")
+        yield FilterBar(id="budgets-filter-bar", show_status_filter=True)
         yield DataTable(id="budgets-table")
-        yield Static("", id="budgets-status")
+        with Horizontal(id="budgets-status-bar"):
+            yield Static("", id="budgets-status")
+            yield Button(
+                _("Archive all expired"),
+                id="btn-archive-all-expired-budgets",
+                variant="warning",
+            )
 
     def on_mount(self) -> None:
         """Initialize the widget after mounting."""
@@ -143,7 +172,10 @@ class BudgetsWidget(Vertical):
     def _apply_filter(self) -> None:
         """Apply current filter criteria and refresh the table."""
         self._filtered_budgets = self._filter_budgets(
-            self._all_budgets, self._search_text, self._filter_category
+            self._all_budgets,
+            self._search_text,
+            self._filter_category,
+            self._status_filter,
         )
         self._populate_table()
         self._update_status()
@@ -157,9 +189,29 @@ class BudgetsWidget(Vertical):
         budgets: tuple[Budget, ...],
         search_text: str | None,
         category: Category | None,
+        status_filter: StatusFilter = StatusFilter.ACTIVE,
     ) -> tuple[Budget, ...]:
-        """Filter budgets by search text and category."""
-        result = budgets
+        """Filter budgets by search text, category, and status."""
+        today = date.today()
+        result: tuple[Budget, ...] = budgets
+
+        # Apply status filter
+        if status_filter == StatusFilter.ACTIVE:
+            result = tuple(
+                b
+                for b in result
+                if not b.is_archived and not b.date_range.is_expired(today)
+            )
+        elif status_filter == StatusFilter.EXPIRED:
+            result = tuple(
+                b
+                for b in result
+                if not b.is_archived and b.date_range.is_expired(today)
+            )
+        elif status_filter == StatusFilter.ARCHIVED:
+            result = tuple(b for b in result if b.is_archived)
+        # StatusFilter.ALL: no status filtering
+
         if search_text:
             text_lower = search_text.lower()
             result = tuple(b for b in result if text_lower in b.description.lower())
@@ -241,6 +293,15 @@ class BudgetsWidget(Vertical):
         has_selection = self._selected_budget is not None
         self.query_one("#btn-edit-budget", Button).disabled = not has_selection
         self.query_one("#btn-delete-budget", Button).disabled = not has_selection
+        self.query_one("#btn-archive-budget", Button).disabled = not has_selection
+
+        # Update archive button label based on current selection
+        if has_selection and self._selected_budget is not None:
+            archive_btn = self.query_one("#btn-archive-budget", Button)
+            if self._selected_budget.is_archived:
+                archive_btn.label = _("Unarchive")
+            else:
+                archive_btn.label = _("Archive")
 
         # Split is only available for periodic budgets
         can_split = (
@@ -249,6 +310,13 @@ class BudgetsWidget(Vertical):
             and isinstance(self._selected_budget.date_range, RecurringDateRange)
         )
         self.query_one("#btn-split-budget", Button).disabled = not can_split
+
+        # Show "Archive all expired" only in Expired filter mode
+        archive_all_btn = self.query_one("#btn-archive-all-expired-budgets", Button)
+        if self._status_filter == StatusFilter.EXPIRED:
+            archive_all_btn.add_class("visible")
+        else:
+            archive_all_btn.remove_class("visible")
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         """Handle row selection in the data table."""
@@ -267,6 +335,7 @@ class BudgetsWidget(Vertical):
         event.stop()
         self._search_text = event.search_text
         self._filter_category = event.category
+        self._status_filter = event.status_filter
         self._apply_filter()
 
     def on_filter_bar_filter_reset(self, event: FilterBar.FilterReset) -> None:
@@ -274,6 +343,7 @@ class BudgetsWidget(Vertical):
         event.stop()
         self._search_text = None
         self._filter_category = None
+        self._status_filter = StatusFilter.ACTIVE
         self._apply_filter()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -288,6 +358,41 @@ class BudgetsWidget(Vertical):
                 self._selected_budget.date_range, RecurringDateRange
             ):
                 self.post_message(self.BudgetSplitRequested(self._selected_budget))
+        elif event.button.id == "btn-archive-budget":
+            if self._selected_budget:
+                self._toggle_archive(self._selected_budget)
+        elif event.button.id == "btn-archive-all-expired-budgets":
+            self._archive_all_expired()
         elif event.button.id == "btn-delete-budget":
             if self._selected_budget:
                 self.post_message(self.BudgetDeleteRequested(self._selected_budget))
+
+    def action_toggle_archive(self) -> None:
+        """Toggle archive status of the selected budget (keyboard shortcut)."""
+        if self._selected_budget:
+            self._toggle_archive(self._selected_budget)
+
+    def _toggle_archive(self, budget: Budget) -> None:
+        """Toggle archive status of a budget."""
+        if self._app_service is None:
+            return
+        updated = budget.replace(is_archived=not budget.is_archived)
+        self._app_service.update_budget(updated)
+        self._selected_budget = None
+        self.refresh_data()
+
+    def _archive_all_expired(self) -> None:
+        """Archive all currently visible expired budgets."""
+        if self._app_service is None:
+            return
+        today = date.today()
+        archived_count = 0
+        for budget in self._all_budgets:
+            if not budget.is_archived and budget.date_range.is_expired(today):
+                updated = budget.replace(is_archived=True)
+                self._app_service.update_budget(updated)
+                archived_count += 1
+        if archived_count > 0:
+            logger.info("Archived %d expired budgets", archived_count)
+            self._selected_budget = None
+            self.refresh_data()

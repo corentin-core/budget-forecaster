@@ -1,7 +1,7 @@
 [MASTER]
 py-version=3.11
 load-plugins=pylint_pytest
-max-args=6
+max-args=7
 max-positional-arguments=6
 
 [MESSAGES CONTROL]

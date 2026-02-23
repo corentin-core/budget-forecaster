@@ -31,7 +31,7 @@ def _make_budget(
         date_range=RecurringDateRange(
             DateRange(date(2025, 1, 1), relativedelta(months=1)),
             relativedelta(months=1),
-            date(2025, 12, 31),
+            date(2030, 12, 31),
         ),
     )
 
@@ -74,14 +74,14 @@ class TestBudgetsWidgetFiltering:
     async def test_all_budgets_shown_initially(self) -> None:
         """All budgets are displayed when no filter is applied."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test():
+        async with app.run_test(size=(160, 48)):
             table = app.query_one("#budgets-table", DataTable)
             assert table.row_count == 5
 
     async def test_filter_by_search_text(self) -> None:
         """Filtering by search text shows only matching budgets."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "courses"
             await pilot.click("#filter-apply")
 
@@ -92,7 +92,7 @@ class TestBudgetsWidgetFiltering:
     async def test_filter_by_category(self) -> None:
         """Filtering by category shows only matching budgets."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-category", Select).value = Category.GROCERIES.name
             await pilot.click("#filter-apply")
 
@@ -103,7 +103,7 @@ class TestBudgetsWidgetFiltering:
     async def test_combined_filters(self) -> None:
         """Combining search text and category narrows results further."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "bio"
             app.query_one("#filter-category", Select).value = Category.GROCERIES.name
             await pilot.click("#filter-apply")
@@ -115,7 +115,7 @@ class TestBudgetsWidgetFiltering:
     async def test_reset_restores_all_budgets(self) -> None:
         """Resetting filters shows all budgets again."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "courses"
             await pilot.click("#filter-apply")
 
@@ -128,14 +128,14 @@ class TestBudgetsWidgetFiltering:
     async def test_status_shows_count(self) -> None:
         """Status bar shows the number of budgets."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test():
+        async with app.run_test(size=(160, 48)):
             status = app.query_one("#budgets-status", Static)
             assert "5" in str(status.render())
 
     async def test_filter_bar_shows_filtered_count(self) -> None:
         """Filter bar status shows filtered vs total count."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "courses"
             await pilot.click("#filter-apply")
 
@@ -145,7 +145,7 @@ class TestBudgetsWidgetFiltering:
     async def test_no_date_or_amount_range_inputs(self) -> None:
         """FilterBar in budgets does not show date/amount range inputs."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test():
+        async with app.run_test(size=(160, 48)):
             filter_bar = app.query_one(FilterBar)
             assert filter_bar.date_from is None
             assert filter_bar.date_to is None
@@ -155,7 +155,7 @@ class TestBudgetsWidgetFiltering:
     async def test_search_case_insensitive(self) -> None:
         """Search text is case-insensitive."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "EDF"
             await pilot.click("#filter-apply")
 
@@ -166,7 +166,7 @@ class TestBudgetsWidgetFiltering:
     async def test_no_match_shows_empty_table(self) -> None:
         """A search with no matches shows an empty table."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "zzz-no-match"
             await pilot.click("#filter-apply")
 

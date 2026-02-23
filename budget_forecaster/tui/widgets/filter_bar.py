@@ -1,5 +1,6 @@
 """Reusable filter bar widget for data tables."""
 
+import enum
 import logging
 from datetime import date
 from typing import Any, NamedTuple
@@ -30,6 +31,28 @@ class AmountRange(NamedTuple):
     max_amount: float | None = None
 
 
+class StatusFilter(enum.Enum):
+    """Status filter options for items that can be archived/expired."""
+
+    ACTIVE = "active"
+    EXPIRED = "expired"
+    ARCHIVED = "archived"
+    ALL = "all"
+
+    @property
+    def display_name(self) -> str:
+        """Return the localized display name."""
+        return _STATUS_DISPLAY_NAMES[self]
+
+
+_STATUS_DISPLAY_NAMES: dict[StatusFilter, str] = {
+    StatusFilter.ACTIVE: _("Active"),
+    StatusFilter.EXPIRED: _("Expired"),
+    StatusFilter.ARCHIVED: _("Archived"),
+    StatusFilter.ALL: _("All"),
+}
+
+
 class FilterBar(Vertical):
     """Reusable filter bar with search and category filter.
 
@@ -39,6 +62,7 @@ class FilterBar(Vertical):
     Args:
         show_date_range: Show date from/to inputs.
         show_amount_range: Show min/max amount inputs.
+        show_status_filter: Show status filter (Active/Expired/Archived/All).
     """
 
     DEFAULT_CSS = """
@@ -101,6 +125,7 @@ class FilterBar(Vertical):
             *,
             date_range: DateRange = DateRange(),
             amount_range: AmountRange = AmountRange(),
+            status_filter: StatusFilter = StatusFilter.ACTIVE,
         ) -> None:
             super().__init__()
             self.search_text = search_text
@@ -109,6 +134,7 @@ class FilterBar(Vertical):
             self.date_to = date_range.date_to
             self.min_amount = amount_range.min_amount
             self.max_amount = amount_range.max_amount
+            self.status_filter = status_filter
 
     class FilterReset(Message):
         """Posted when all filters are cleared."""
@@ -118,11 +144,13 @@ class FilterBar(Vertical):
         *,
         show_date_range: bool = False,
         show_amount_range: bool = False,
+        show_status_filter: bool = False,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self._show_date_range = show_date_range
         self._show_amount_range = show_amount_range
+        self._show_status_filter = show_status_filter
 
     def compose(self) -> ComposeResult:
         """Create the filter bar layout."""
@@ -137,6 +165,13 @@ class FilterBar(Vertical):
                 id="filter-category",
                 allow_blank=True,
             )
+            if self._show_status_filter:
+                yield Select[str](
+                    [(status.display_name, status.value) for status in StatusFilter],
+                    value=StatusFilter.ACTIVE.value,
+                    id="filter-status-select",
+                    allow_blank=False,
+                )
             yield Button(_("Filter"), id="filter-apply")
             yield Button(_("Reset"), id="filter-reset", variant="default")
             yield Static("", id="filter-status", classes="filter-status")
@@ -179,6 +214,17 @@ class FilterBar(Vertical):
         if select.value and select.value != Select.BLANK:
             return Category[str(select.value)]
         return None
+
+    @property
+    def status_filter(self) -> StatusFilter:
+        """Return the selected status filter, or ACTIVE if not shown."""
+        try:
+            select: Select[str] = self.query_one("#filter-status-select", Select)
+            if select.value and select.value != Select.BLANK:
+                return StatusFilter(str(select.value))
+        except NoMatches:
+            pass
+        return StatusFilter.ACTIVE
 
     @property
     def date_from(self) -> date | None:
@@ -232,6 +278,12 @@ class FilterBar(Vertical):
         """Clear all filter inputs and post FilterReset."""
         self.query_one("#filter-search", Input).value = ""
         self.query_one("#filter-category", Select).value = Select.BLANK
+        try:
+            self.query_one(
+                "#filter-status-select", Select
+            ).value = StatusFilter.ACTIVE.value
+        except NoMatches:
+            pass
         for input_id in (
             "filter-date-from",
             "filter-date-to",
@@ -283,5 +335,6 @@ class FilterBar(Vertical):
                 category=self.category,
                 date_range=DateRange(self.date_from, self.date_to),
                 amount_range=AmountRange(self.min_amount, self.max_amount),
+                status_filter=self.status_filter,
             )
         )

@@ -31,7 +31,7 @@ def _make_planned_operation(
         date_range=RecurringDay(
             date(2025, 1, 1),
             relativedelta(months=1),
-            date(2025, 12, 31),
+            date(2030, 12, 31),
         ),
     )
 
@@ -78,14 +78,14 @@ class TestPlannedOperationsWidgetFiltering:
     async def test_all_operations_shown_initially(self) -> None:
         """All planned operations are displayed when no filter is applied."""
         app = PlannedOpsWidgetTestApp()
-        async with app.run_test():
+        async with app.run_test(size=(160, 48)):
             table = app.query_one("#planned-ops-table", DataTable)
             assert table.row_count == 5
 
     async def test_filter_by_search_text(self) -> None:
         """Filtering by search text shows only matching operations."""
         app = PlannedOpsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "loyer"
             await pilot.click("#filter-apply")
 
@@ -96,7 +96,7 @@ class TestPlannedOperationsWidgetFiltering:
     async def test_filter_by_category(self) -> None:
         """Filtering by category shows only matching operations."""
         app = PlannedOpsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-category", Select).value = Category.RENT.name
             await pilot.click("#filter-apply")
 
@@ -107,7 +107,7 @@ class TestPlannedOperationsWidgetFiltering:
     async def test_combined_filters(self) -> None:
         """Combining search text and category narrows results further."""
         app = PlannedOpsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "parking"
             app.query_one("#filter-category", Select).value = Category.RENT.name
             await pilot.click("#filter-apply")
@@ -119,7 +119,7 @@ class TestPlannedOperationsWidgetFiltering:
     async def test_reset_restores_all_operations(self) -> None:
         """Resetting filters shows all operations again."""
         app = PlannedOpsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "loyer"
             await pilot.click("#filter-apply")
 
@@ -132,14 +132,14 @@ class TestPlannedOperationsWidgetFiltering:
     async def test_status_shows_count(self) -> None:
         """Status bar shows the number of planned operations."""
         app = PlannedOpsWidgetTestApp()
-        async with app.run_test():
+        async with app.run_test(size=(160, 48)):
             status = app.query_one("#planned-ops-status", Static)
             assert str(status.render()) == "5 planned operation(s)"
 
     async def test_filter_bar_shows_filtered_count(self) -> None:
         """Filter bar status shows filtered vs total count."""
         app = PlannedOpsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "loyer"
             await pilot.click("#filter-apply")
 
@@ -149,7 +149,7 @@ class TestPlannedOperationsWidgetFiltering:
     async def test_no_date_or_amount_range_inputs(self) -> None:
         """FilterBar in planned ops does not show date/amount range inputs."""
         app = PlannedOpsWidgetTestApp()
-        async with app.run_test():
+        async with app.run_test(size=(160, 48)):
             filter_bar = app.query_one(FilterBar)
             assert filter_bar.date_from is None
             assert filter_bar.date_to is None
@@ -159,7 +159,7 @@ class TestPlannedOperationsWidgetFiltering:
     async def test_search_case_insensitive(self) -> None:
         """Search text is case-insensitive."""
         app = PlannedOpsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "EDF"
             await pilot.click("#filter-apply")
 
@@ -170,7 +170,7 @@ class TestPlannedOperationsWidgetFiltering:
     async def test_no_match_shows_empty_table(self) -> None:
         """A search with no matches shows an empty table."""
         app = PlannedOpsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "zzz-no-match"
             await pilot.click("#filter-apply")
 

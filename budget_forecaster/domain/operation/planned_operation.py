@@ -30,6 +30,8 @@ class PlannedOperation(OperationRange):
         amount: Amount,
         category: Category,
         date_range: DateRangeInterface,
+        *,
+        is_archived: bool = False,
     ):
         if not isinstance(date_range, (SingleDay, RecurringDay)):
             raise TypeError(
@@ -43,12 +45,18 @@ class PlannedOperation(OperationRange):
             date_range=date_range,
         )
         self._id = record_id
+        self._is_archived = is_archived
         self._operation_matcher = OperationMatcher(operation_range=self)
 
     @property
     def id(self) -> PlannedOperationId | None:
         """The database ID of the planned operation. None if not persisted yet."""
         return self._id
+
+    @property
+    def is_archived(self) -> bool:
+        """Whether this planned operation is archived."""
+        return self._is_archived
 
     @property
     def matcher(self) -> OperationMatcher:
@@ -116,10 +124,14 @@ class PlannedOperation(OperationRange):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, PlannedOperation):
             return NotImplemented
-        return self._id == other._id and super().__eq__(other)
+        return (
+            self._id == other._id
+            and self._is_archived == other._is_archived
+            and super().__eq__(other)
+        )
 
     def __hash__(self) -> int:
-        return hash((self._id, super().__hash__()))
+        return hash((self._id, self._is_archived, super().__hash__()))
 
     def replace(self, **kwargs: Any) -> "PlannedOperation":
         """Return a new instance of the planned operation with the given parameters replaced."""
@@ -141,12 +153,16 @@ class PlannedOperation(OperationRange):
                 f"date_range must be SingleDay or RecurringDay, "
                 f"got {type(new_date_range)}"
             )
+        new_is_archived = kwargs.get("is_archived", self.is_archived)
+        if not isinstance(new_is_archived, bool):
+            raise TypeError(f"is_archived must be bool, got {type(new_is_archived)}")
         return PlannedOperation(
             record_id=new_id,
             description=new_description,
             amount=new_amount,
             category=new_category,
             date_range=new_date_range,
+            is_archived=new_is_archived,
         ).set_matcher_params(
             description_hints=self.matcher.description_hints,
             approximation_date_range=self.matcher.approximation_date_range,

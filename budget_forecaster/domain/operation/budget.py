@@ -26,9 +26,12 @@ class Budget(OperationRange):
         amount: Amount,
         category: Category,
         date_range: DateRangeInterface,
+        *,
+        is_archived: bool = False,
     ):
         super().__init__(description, amount, category, date_range)
         self._id = record_id
+        self._is_archived = is_archived
         self._operation_matcher = OperationMatcher(operation_range=self)
         # Only operations strictly in the budget date range will be considered
         # However they can have any amount
@@ -40,6 +43,11 @@ class Budget(OperationRange):
     def id(self) -> BudgetId | None:
         """The database ID of the budget. None if not persisted yet."""
         return self._id
+
+    @property
+    def is_archived(self) -> bool:
+        """Whether this budget is archived."""
+        return self._is_archived
 
     @property
     def matcher(self) -> OperationMatcher:
@@ -117,10 +125,14 @@ class Budget(OperationRange):
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Budget):
             return NotImplemented
-        return self._id == other._id and super().__eq__(other)
+        return (
+            self._id == other._id
+            and self._is_archived == other._is_archived
+            and super().__eq__(other)
+        )
 
     def __hash__(self) -> int:
-        return hash((self._id, super().__hash__()))
+        return hash((self._id, self._is_archived, super().__hash__()))
 
     def replace(self, **kwargs: Any) -> "Budget":
         """Return a new instance of the budget with the given parameters replaced."""
@@ -141,12 +153,16 @@ class Budget(OperationRange):
             raise TypeError(
                 f"date_range must be DateRangeInterface, got {type(new_date_range)}"
             )
+        new_is_archived = kwargs.get("is_archived", self.is_archived)
+        if not isinstance(new_is_archived, bool):
+            raise TypeError(f"is_archived must be bool, got {type(new_is_archived)}")
         return Budget(
             record_id=new_id,
             description=new_description,
             amount=new_amount,
             category=new_category,
             date_range=new_date_range,
+            is_archived=new_is_archived,
         ).set_matcher_params(
             description_hints=self.matcher.description_hints,
             approximation_date_range=self.matcher.approximation_date_range,

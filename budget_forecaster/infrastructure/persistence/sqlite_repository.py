@@ -39,7 +39,7 @@ from budget_forecaster.infrastructure.persistence.repository_interface import (
 logger = logging.getLogger(__name__)
 
 # Current schema version
-CURRENT_SCHEMA_VERSION = 5
+CURRENT_SCHEMA_VERSION = 6
 
 # Base schema (version 0 -> 1)
 SCHEMA_V1 = """
@@ -207,6 +207,18 @@ def _migrate_v5(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _migrate_v6(conn: sqlite3.Connection) -> None:
+    """Add is_archived column to planned_operations and budgets."""
+    conn.execute(
+        "ALTER TABLE planned_operations "
+        "ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0"
+    )
+    conn.execute(
+        "ALTER TABLE budgets ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0"
+    )
+    conn.commit()
+
+
 class SqliteRepository(RepositoryInterface):
     """Repository for persisting account data in SQLite."""
 
@@ -218,6 +230,7 @@ class SqliteRepository(RepositoryInterface):
         3: (2, SCHEMA_V3),
         4: (3, SCHEMA_V4),
         5: (4, _migrate_v5),
+        6: (5, _migrate_v6),
     }
 
     def __init__(self, db_path: Path) -> None:
@@ -485,7 +498,8 @@ class SqliteRepository(RepositoryInterface):
         conn = self._get_connection()
         cursor = conn.execute(
             """SELECT id, description, amount, currency, category, start_date,
-               duration_value, duration_unit, period_value, period_unit, end_date
+               duration_value, duration_unit, period_value, period_unit,
+               end_date, is_archived
                FROM budgets ORDER BY start_date"""
         )
         return tuple(self._row_to_budget(row) for row in cursor.fetchall())
@@ -495,7 +509,8 @@ class SqliteRepository(RepositoryInterface):
         conn = self._get_connection()
         cursor = conn.execute(
             """SELECT id, description, amount, currency, category, start_date,
-               duration_value, duration_unit, period_value, period_unit, end_date
+               duration_value, duration_unit, period_value, period_unit,
+               end_date, is_archived
                FROM budgets WHERE id = ?""",
             (budget_id,),
         )
@@ -513,7 +528,7 @@ class SqliteRepository(RepositoryInterface):
             conn.execute(
                 """UPDATE budgets SET description = ?, amount = ?, currency = ?,
                    category = ?, start_date = ?, duration_value = ?, duration_unit = ?,
-                   period_value = ?, period_unit = ?, end_date = ?
+                   period_value = ?, period_unit = ?, end_date = ?, is_archived = ?
                    WHERE id = ?""",
                 (
                     budget.description,
@@ -526,6 +541,7 @@ class SqliteRepository(RepositoryInterface):
                     date_range_data["period_value"],
                     date_range_data["period_unit"],
                     date_range_data["end_date"],
+                    int(budget.is_archived),
                     budget.id,
                 ),
             )
@@ -535,8 +551,8 @@ class SqliteRepository(RepositoryInterface):
         cursor = conn.execute(
             """INSERT INTO budgets (description, amount, currency, category,
                start_date, duration_value, duration_unit, period_value,
-               period_unit, end_date)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               period_unit, end_date, is_archived)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 budget.description,
                 budget.amount,
@@ -548,6 +564,7 @@ class SqliteRepository(RepositoryInterface):
                 date_range_data["period_value"],
                 date_range_data["period_unit"],
                 date_range_data["end_date"],
+                int(budget.is_archived),
             ),
         )
         conn.commit()
@@ -577,6 +594,7 @@ class SqliteRepository(RepositoryInterface):
             amount=Amount(row["amount"], row["currency"]),
             category=Category(row["category"]),
             date_range=dr,
+            is_archived=bool(row["is_archived"]),
         )
 
     # Planned Operation methods
@@ -587,7 +605,7 @@ class SqliteRepository(RepositoryInterface):
         cursor = conn.execute(
             """SELECT id, description, amount, currency, category, start_date,
                period_value, period_unit, end_date, description_hints,
-               approximation_date_days, approximation_amount_ratio
+               approximation_date_days, approximation_amount_ratio, is_archived
                FROM planned_operations ORDER BY start_date"""
         )
         return tuple(self._row_to_planned_operation(row) for row in cursor.fetchall())
@@ -598,7 +616,7 @@ class SqliteRepository(RepositoryInterface):
         cursor = conn.execute(
             """SELECT id, description, amount, currency, category, start_date,
                period_value, period_unit, end_date, description_hints,
-               approximation_date_days, approximation_amount_ratio
+               approximation_date_days, approximation_amount_ratio, is_archived
                FROM planned_operations WHERE id = ?""",
             (op_id,),
         )
@@ -623,7 +641,8 @@ class SqliteRepository(RepositoryInterface):
                 """UPDATE planned_operations SET description = ?, amount = ?,
                    currency = ?, category = ?, start_date = ?, period_value = ?,
                    period_unit = ?, end_date = ?, description_hints = ?,
-                   approximation_date_days = ?, approximation_amount_ratio = ?
+                   approximation_date_days = ?, approximation_amount_ratio = ?,
+                   is_archived = ?
                    WHERE id = ?""",
                 (
                     op.description,
@@ -637,6 +656,7 @@ class SqliteRepository(RepositoryInterface):
                     hints,
                     approx_days,
                     op.matcher.approximation_amount_ratio,
+                    int(op.is_archived),
                     op.id,
                 ),
             )
@@ -646,8 +666,9 @@ class SqliteRepository(RepositoryInterface):
         cursor = conn.execute(
             """INSERT INTO planned_operations (description, amount, currency,
                category, start_date, period_value, period_unit, end_date,
-               description_hints, approximation_date_days, approximation_amount_ratio)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               description_hints, approximation_date_days,
+               approximation_amount_ratio, is_archived)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 op.description,
                 op.amount,
@@ -660,6 +681,7 @@ class SqliteRepository(RepositoryInterface):
                 hints,
                 approx_days,
                 op.matcher.approximation_amount_ratio,
+                int(op.is_archived),
             ),
         )
         conn.commit()
@@ -696,6 +718,7 @@ class SqliteRepository(RepositoryInterface):
             amount=Amount(row["amount"], row["currency"]),
             category=Category(row["category"]),
             date_range=dr,
+            is_archived=bool(row["is_archived"]),
         )
         op.set_matcher_params(
             description_hints=hints,

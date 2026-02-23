@@ -90,3 +90,32 @@ flowchart LR
   Splits a Budget (includes duration parameter)
 
 ApplicationService delegates these calls to ManageTargetsUseCase.
+
+## Archiving
+
+Planned operations and budgets can be archived to hide them from the default view while
+preserving them for historical reference (e.g., comparing actual vs planned in reports).
+
+### Domain Model
+
+Both `PlannedOperation` and `Budget` include an `is_archived: bool` field (defaults to
+`False`). Archiving is a simple toggle using `replace(is_archived=True/False)` followed
+by an update through `ApplicationService`.
+
+### Status Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Active
+    Active --> Expired: end date passes
+    Active --> Archived: user archives
+    Expired --> Archived: user archives
+    Archived --> Active: user unarchives (if not expired)
+    Archived --> Expired: user unarchives (if expired)
+```
+
+### TUI Integration
+
+The `FilterBar` provides a status dropdown with four values: Active, Expired, Archived,
+All. The status filter determines which items are displayed in the table. A bulk
+"Archive all expired" action is available when viewing expired items.
