@@ -20,9 +20,9 @@ The dashboard is composed of four sections, from top to bottom:
 ├────────────────────────┴─────────────────────────┴──────────────────────────┤
 │ Upcoming planned operations (next 30 days)                                  │
 │ Date       Description                  Amount           Period             │
-│ Mar 01     Rent                         -800.00 EUR      1 mo.             │
-│ Mar 05     Electricity                   -95.00 EUR      1 mo.             │
-│ Mar 15     Insurance                    -120.00 EUR      1 mo.             │
+│ Mar 01     Rent                         -800.00 EUR      1 mo.              │
+│ Mar 05     Electricity                   -95.00 EUR      1 mo.              │
+│ Mar 15     Insurance                    -120.00 EUR      1 mo.              │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ Expenses by category (this month)                                           │
 │ Rent                            -800.00 €   ████████████████████            │
