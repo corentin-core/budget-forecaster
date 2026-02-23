@@ -61,7 +61,7 @@ def use_case_fixture(
 ) -> ImportUseCase:
     """Create an ImportUseCase with real dependencies."""
     import_service = ImportService(persistent_account, tmp_path / "inbox")
-    forecast_service = ForecastService(persistent_account.account, repository)
+    forecast_service = ForecastService(persistent_account, repository)
     operation_link_service = OperationLinkService(repository)
     matcher_cache = MatcherCache(forecast_service)
     return ImportUseCase(
@@ -130,7 +130,7 @@ def test_first_import_on_empty_db_creates_account(
     persistent_account = PersistentAccount(repository)
 
     import_service = ImportService(persistent_account, tmp_path / "inbox")
-    forecast_service = ForecastService(persistent_account.account, repository)
+    forecast_service = ForecastService(persistent_account, repository)
     operation_link_service = OperationLinkService(repository)
     matcher_cache = MatcherCache(forecast_service)
     use_case = ImportUseCase(

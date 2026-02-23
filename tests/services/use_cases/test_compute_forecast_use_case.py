@@ -28,6 +28,18 @@ from budget_forecaster.services.use_cases.compute_forecast_use_case import (
 )
 
 
+class _AccountStub:
+    """Minimal AccountInterface stub for unit tests."""
+
+    def __init__(self, account: Account) -> None:
+        self._account = account
+
+    @property
+    def account(self) -> Account:
+        """Return the account."""
+        return self._account
+
+
 @pytest.fixture(name="mock_forecast_service")
 def mock_forecast_service_fixture() -> MagicMock:
     """Create a mock forecast service."""
@@ -152,7 +164,7 @@ class TestComputeReportIntegration:
         mock_link_repo = MagicMock()
         mock_link_repo.get_all_links.return_value = (link,)
 
-        forecast_service = ForecastService(account, mock_repo)
+        forecast_service = ForecastService(_AccountStub(account), mock_repo)
         link_service = OperationLinkService(mock_link_repo)
         use_case = ComputeForecastUseCase(forecast_service, link_service)
 

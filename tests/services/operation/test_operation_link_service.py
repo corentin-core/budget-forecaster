@@ -429,12 +429,11 @@ class TestApplicationServiceLinkIntegration:
     ) -> ApplicationService:
         """Create ApplicationService with all dependencies."""
         repository = populated_persistent_account.repository
-        account = populated_persistent_account.account
 
         operation_service = OperationService(populated_persistent_account)
         operation_link_service = OperationLinkService(repository)
         import_service = ImportService(populated_persistent_account, Path("/tmp/inbox"))
-        forecast_service = ForecastService(account, repository)
+        forecast_service = ForecastService(populated_persistent_account, repository)
 
         return ApplicationService(
             persistent_account=populated_persistent_account,

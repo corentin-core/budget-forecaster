@@ -298,9 +298,12 @@ class BudgetEditModal(ModalScreen[Budget | None]):
 
             dr: DateRange | RecurringDateRange
             if is_periodic and period_months:
+                period = relativedelta(months=period_months)
+                if end_date is not None and end_date < start_date + period:
+                    raise ValueError(_("End date must allow at least two iterations"))
                 dr = RecurringDateRange(
                     inner_range,
-                    relativedelta(months=period_months),
+                    period,
                     end_date,
                 )
             else:
