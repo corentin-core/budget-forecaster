@@ -19,10 +19,10 @@ The dashboard is composed of four sections, from top to bottom:
 │ Balance: 1,234.56 EUR  │ Operations this month: 7│ Uncategorized: 3         │
 ├────────────────────────┴─────────────────────────┴──────────────────────────┤
 │ Upcoming planned operations (next 30 days)                                  │
-│ Date         Description                     Amount          Period         │
-│ Mar 01       Rent                           -800.00 EUR      1 mo.         │
-│ Mar 05       Electricity                     -95.00 EUR      1 mo.         │
-│ Mar 15       Insurance                      -120.00 EUR      1 mo.         │
+│ Date       Description                  Amount           Period             │
+│ Mar 01     Rent                         -800.00 EUR      1 mo.             │
+│ Mar 05     Electricity                   -95.00 EUR      1 mo.             │
+│ Mar 15     Insurance                    -120.00 EUR      1 mo.             │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │ Expenses by category (this month)                                           │
 │ Rent                            -800.00 €   ████████████████████            │
