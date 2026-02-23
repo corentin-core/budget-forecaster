@@ -117,6 +117,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
 
     #upcoming-section {
         height: auto;
+        min-height: 5;
         max-height: 12;
         border: solid $primary;
         padding: 1;
