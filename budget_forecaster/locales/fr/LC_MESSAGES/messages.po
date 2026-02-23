@@ -154,7 +154,7 @@ msgid "Operations"
 msgstr "Opérations"
 
 msgid "Planned ops"
-msgstr "Prévisions"
+msgstr "Opérations prévues"
 
 msgid "Budgets"
 msgstr "Budgets"
