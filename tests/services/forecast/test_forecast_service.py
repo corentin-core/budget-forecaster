@@ -16,6 +16,7 @@ from budget_forecaster.core.date_range import DateRange, SingleDay
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.exceptions import (
     BudgetNotFoundError,
@@ -38,7 +39,7 @@ from budget_forecaster.services.operation.operation_link_service import (
 
 
 class _AccountStub:
-    """Minimal AccountInterface stub for unit tests."""
+    """Mutable AccountInterface stub for unit tests."""
 
     def __init__(self, account: Account) -> None:
         self._account = account
@@ -47,6 +48,10 @@ class _AccountStub:
     def account(self) -> Account:
         """Return the account."""
         return self._account
+
+    @account.setter
+    def account(self, value: Account) -> None:
+        self._account = value
 
 
 @pytest.fixture(name="mock_account")
@@ -412,6 +417,52 @@ class TestComputeReport:
         call_args = mock_analyzer.compute_report.call_args
         assert call_args[0][0] == start
         assert call_args[0][1] == end
+
+    @patch("budget_forecaster.services.forecast.forecast_service.AccountAnalyzer")
+    def test_uses_current_account_not_stale_snapshot(
+        self,
+        mock_analyzer_class: MagicMock,
+        account_provider: _AccountStub,
+        repository: RepositoryInterface,
+    ) -> None:
+        """Regression: compute_report reads the current account, not a stale snapshot.
+
+        Previously ForecastService stored an Account snapshot at init time.
+        After categorizing operations, the snapshot was stale and the forecast
+        showed outdated categories (e.g. uncategorized for already-categorized ops).
+        """
+        mock_analyzer = MagicMock()
+        mock_analyzer_class.return_value = mock_analyzer
+
+        service = ForecastService(
+            account_provider=account_provider,
+            repository=repository,
+        )
+
+        # First compute — account has no operations
+        service.compute_report()
+        first_account = mock_analyzer_class.call_args[0][0]
+        assert first_account.operations == ()
+
+        # Simulate categorization: update the account with a new operation
+        updated_account = account_provider.account._replace(
+            operations=(
+                HistoricOperation(
+                    unique_id=1,
+                    description="Supermarket",
+                    amount=Amount(-50.0, "EUR"),
+                    category=Category.GROCERIES,
+                    operation_date=date(2025, 1, 15),
+                ),
+            ),
+        )
+        account_provider.account = updated_account
+
+        # Second compute — should see the updated account
+        service.compute_report()
+        second_account = mock_analyzer_class.call_args[0][0]
+        assert len(second_account.operations) == 1
+        assert second_account.operations[0].category == Category.GROCERIES
 
 
 class TestGetBalanceEvolutionSummary:
