@@ -485,8 +485,7 @@ class SqliteRepository(RepositoryInterface):
         conn = self._get_connection()
         cursor = conn.execute(
             """SELECT id, description, amount, currency, category, start_date,
-               duration_value, duration_unit, period_value, period_unit,
-               end_date
+               duration_value, duration_unit, period_value, period_unit, end_date
                FROM budgets ORDER BY start_date"""
         )
         return tuple(self._row_to_budget(row) for row in cursor.fetchall())
@@ -496,8 +495,7 @@ class SqliteRepository(RepositoryInterface):
         conn = self._get_connection()
         cursor = conn.execute(
             """SELECT id, description, amount, currency, category, start_date,
-               duration_value, duration_unit, period_value, period_unit,
-               end_date
+               duration_value, duration_unit, period_value, period_unit, end_date
                FROM budgets WHERE id = ?""",
             (budget_id,),
         )
@@ -648,8 +646,7 @@ class SqliteRepository(RepositoryInterface):
         cursor = conn.execute(
             """INSERT INTO planned_operations (description, amount, currency,
                category, start_date, period_value, period_unit, end_date,
-               description_hints, approximation_date_days,
-               approximation_amount_ratio)
+               description_hints, approximation_date_days, approximation_amount_ratio)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 op.description,

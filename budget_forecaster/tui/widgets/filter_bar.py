@@ -31,7 +31,7 @@ class AmountRange(NamedTuple):
     max_amount: float | None = None
 
 
-class StatusFilter(enum.Enum):
+class StatusFilter(enum.StrEnum):
     """Status filter options for items that can be expired."""
 
     ACTIVE = "active"
