@@ -90,3 +90,9 @@ flowchart LR
   Splits a Budget (includes duration parameter)
 
 ApplicationService delegates these calls to ManageTargetsUseCase.
+
+## Status Filtering
+
+The `FilterBar` provides a status dropdown with three values: Active, Expired, All.
+Active items are those whose date range has not yet expired; expired items have an end
+date in the past. The status filter determines which items are displayed in the table.

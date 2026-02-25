@@ -16,16 +16,18 @@ Both are accessible via the **Configuration** tab.
 ## Planned Operations Table
 
 ```
-┌───────────────────────────────────────────────────────────────────────────────────────┐
-│ Opérations planifiées                       [Ajouter] [Modifier] [Scinder] [Supprimer]│
-├────┬─────────────────────┬──────────┬────────────┬────────────┬───────────┬───────────┤
-│ ID │ Description         │ Montant  │ Catégorie  │ Date       │ Période   │ Fin       │
-├────┼─────────────────────┼──────────┼────────────┼────────────┼───────────┼───────────┤
-│ 1  │ Salaire             │ 2500.00€ │ Salaire    │ 2025-01-28 │ 1 mois    │ -         │
-│►2  │ Loyer               │ -800.00€ │ Loyer      │ 2025-01-05 │ 1 mois    │ -         │
-│ 3  │ Électricité         │  -95.00€ │ Électricité│ 2025-01-15 │ 1 mois    │ -         │
-└────┴─────────────────────┴──────────┴────────────┴────────────┴───────────┴───────────┘
-1 opération(s) planifiée(s)
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Opérations planifiées              [Ajouter] [Modifier] [Scinder] [Supprimer]                   │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ [Search...        ] [Category  v] [Active  v]  [Filter] [Reset]                                 │
+├────┬─────────────────────┬──────────┬────────────┬────────────┬───────────┬───────────┬─────────┤
+│ ID │ Description         │ Montant  │ Catégorie  │ Date       │ Période   │ Fin       │ Mots-cl.│
+├────┼─────────────────────┼──────────┼────────────┼────────────┼───────────┼───────────┼─────────┤
+│ 1  │ Salaire             │ 2500.00€ │ Salaire    │ 2025-01-28 │ 1 mois    │ -         │ VIRT    │
+│►2  │ Loyer               │ -800.00€ │ Loyer      │ 2025-01-05 │ 1 mois    │ -         │ LOYER   │
+│ 3  │ Électricité         │  -95.00€ │ Électricité│ 2025-01-15 │ 1 mois    │ -         │ EDF     │
+└────┴─────────────────────┴──────────┴────────────┴────────────┴───────────┴───────────┴─────────┘
+3 opération(s) planifiée(s)
 ```
 
 ### Actions
@@ -37,18 +39,30 @@ Both are accessible via the **Configuration** tab.
 | Scinder   | Split operation from a date (periodic only) |
 | Supprimer | Delete the selected operation               |
 
+### Status Filter
+
+The status dropdown lets you filter operations by their state:
+
+| Status  | Description                          |
+| ------- | ------------------------------------ |
+| Active  | Current operations (not expired)     |
+| Expired | Operations whose end date has passed |
+| All     | All operations regardless of status  |
+
 ## Budgets Table
 
 ```
-┌───────────────────────────────────────────────────────────────────────────────────────┐
-│ Budgets                                     [Ajouter] [Modifier] [Scinder] [Supprimer]│
-├────┬─────────────────────┬──────────┬────────────┬────────────┬───────────┬───────────┤
-│ ID │ Description         │ Montant  │ Catégorie  │ Début      │ Durée     │ Période   │
-├────┼─────────────────────┼──────────┼────────────┼────────────┼───────────┼───────────┤
-│ 1  │ Courses mensuelles  │ -400.00€ │ Courses    │ 2025-01-01 │ 1 mois    │ 1 mois    │
-│►2  │ Carburant           │ -150.00€ │ Carburant  │ 2025-01-01 │ 1 mois    │ 1 mois    │
-│ 3  │ Loisirs             │ -200.00€ │ Loisirs    │ 2025-01-01 │ 3 mois    │ 3 mois    │
-└────┴─────────────────────┴──────────┴────────────┴────────────┴───────────┴───────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ Budgets                                [Ajouter] [Modifier] [Scinder] [Supprimer]               │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ [Search...        ] [Category  v] [Active  v]  [Filter] [Reset]                                 │
+├────┬─────────────────────┬──────────┬────────────┬────────────┬───────────┬───────────┬─────────┤
+│ ID │ Description         │ Montant  │ Catégorie  │ Début      │ Durée     │ Période   │ Fin     │
+├────┼─────────────────────┼──────────┼────────────┼────────────┼───────────┼───────────┼─────────┤
+│ 1  │ Courses mensuelles  │ -400.00€ │ Courses    │ 2025-01-01 │ 1 mois    │ 1 mois    │ -       │
+│►2  │ Carburant           │ -150.00€ │ Carburant  │ 2025-01-01 │ 1 mois    │ 1 mois    │ -       │
+│ 3  │ Loisirs             │ -200.00€ │ Loisirs    │ 2025-01-01 │ 3 mois    │ 3 mois    │ -       │
+└────┴─────────────────────┴──────────┴────────────┴────────────┴───────────┴───────────┴─────────┘
 3 budget(s) configuré(s)
 ```
 

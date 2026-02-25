@@ -905,3 +905,16 @@ msgstr "... et {} autre(s)"
 
 msgid "every {} months"
 msgstr "tous les {} mois"
+
+# ============================================================
+# Status filter
+# ============================================================
+
+msgid "Active"
+msgstr "Actif"
+
+msgid "Expired"
+msgstr "Expiré"
+
+msgid "All"
+msgstr "Tout"

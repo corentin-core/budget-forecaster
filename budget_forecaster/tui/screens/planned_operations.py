@@ -13,7 +13,7 @@ from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
-from budget_forecaster.tui.widgets.filter_bar import FilterBar
+from budget_forecaster.tui.widgets.filter_bar import FilterBar, StatusFilter
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +48,15 @@ class PlannedOperationsWidget(Vertical):
         height: 1fr;
     }
 
-    PlannedOperationsWidget #planned-ops-status {
-        height: 1;
+    PlannedOperationsWidget #planned-ops-status-bar {
+        height: auto;
         padding: 0 1;
     }
+
+    PlannedOperationsWidget #planned-ops-status {
+        width: 1fr;
+    }
+
     """
 
     class OperationSelected(Message):
@@ -90,6 +95,7 @@ class PlannedOperationsWidget(Vertical):
         self._selected_operation: PlannedOperation | None = None
         self._search_text: str | None = None
         self._filter_category: Category | None = None
+        self._status_filter: StatusFilter = StatusFilter.ACTIVE
 
     def compose(self) -> ComposeResult:
         """Create the widget layout."""
@@ -101,9 +107,10 @@ class PlannedOperationsWidget(Vertical):
                 yield Button(_("Split"), id="btn-split-op", variant="default")
                 yield Button(_("Delete"), id="btn-delete-op", variant="error")
 
-        yield FilterBar(id="planned-ops-filter-bar")
+        yield FilterBar(id="planned-ops-filter-bar", show_status_filter=True)
         yield DataTable(id="planned-ops-table")
-        yield Static("", id="planned-ops-status")
+        with Horizontal(id="planned-ops-status-bar"):
+            yield Static("", id="planned-ops-status")
 
     def on_mount(self) -> None:
         """Initialize the widget after mounting."""
@@ -143,7 +150,10 @@ class PlannedOperationsWidget(Vertical):
     def _apply_filter(self) -> None:
         """Apply current filter criteria and refresh the table."""
         self._filtered_operations = self._filter_operations(
-            self._all_operations, self._search_text, self._filter_category
+            self._all_operations,
+            self._search_text,
+            self._filter_category,
+            self._status_filter,
         )
         self._populate_table()
         self._update_status()
@@ -159,9 +169,19 @@ class PlannedOperationsWidget(Vertical):
         operations: tuple[PlannedOperation, ...],
         search_text: str | None,
         category: Category | None,
+        status_filter: StatusFilter = StatusFilter.ACTIVE,
     ) -> tuple[PlannedOperation, ...]:
-        """Filter planned operations by search text and category."""
-        result = operations
+        """Filter planned operations by search text, category, and status."""
+        today = date.today()
+        result: tuple[PlannedOperation, ...] = operations
+
+        # Apply status filter
+        if status_filter == StatusFilter.ACTIVE:
+            result = tuple(op for op in result if not op.date_range.is_expired(today))
+        elif status_filter == StatusFilter.EXPIRED:
+            result = tuple(op for op in result if op.date_range.is_expired(today))
+        # StatusFilter.ALL: no status filtering
+
         if search_text:
             text_lower = search_text.lower()
             result = tuple(op for op in result if text_lower in op.description.lower())
@@ -260,6 +280,7 @@ class PlannedOperationsWidget(Vertical):
         event.stop()
         self._search_text = event.search_text
         self._filter_category = event.category
+        self._status_filter = event.status_filter
         self._apply_filter()
 
     def on_filter_bar_filter_reset(self, event: FilterBar.FilterReset) -> None:
@@ -267,6 +288,7 @@ class PlannedOperationsWidget(Vertical):
         event.stop()
         self._search_text = None
         self._filter_category = None
+        self._status_filter = StatusFilter.ACTIVE
         self._apply_filter()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:

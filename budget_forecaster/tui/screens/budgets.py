@@ -13,7 +13,7 @@ from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
-from budget_forecaster.tui.widgets.filter_bar import FilterBar
+from budget_forecaster.tui.widgets.filter_bar import FilterBar, StatusFilter
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +48,15 @@ class BudgetsWidget(Vertical):
         height: 1fr;
     }
 
-    BudgetsWidget #budgets-status {
-        height: 1;
+    BudgetsWidget #budgets-status-bar {
+        height: auto;
         padding: 0 1;
     }
+
+    BudgetsWidget #budgets-status {
+        width: 1fr;
+    }
+
     """
 
     class BudgetSelected(Message):
@@ -90,6 +95,7 @@ class BudgetsWidget(Vertical):
         self._selected_budget: Budget | None = None
         self._search_text: str | None = None
         self._filter_category: Category | None = None
+        self._status_filter: StatusFilter = StatusFilter.ACTIVE
 
     def compose(self) -> ComposeResult:
         """Create the widget layout."""
@@ -101,9 +107,10 @@ class BudgetsWidget(Vertical):
                 yield Button(_("Split"), id="btn-split-budget", variant="default")
                 yield Button(_("Delete"), id="btn-delete-budget", variant="error")
 
-        yield FilterBar(id="budgets-filter-bar")
+        yield FilterBar(id="budgets-filter-bar", show_status_filter=True)
         yield DataTable(id="budgets-table")
-        yield Static("", id="budgets-status")
+        with Horizontal(id="budgets-status-bar"):
+            yield Static("", id="budgets-status")
 
     def on_mount(self) -> None:
         """Initialize the widget after mounting."""
@@ -143,7 +150,10 @@ class BudgetsWidget(Vertical):
     def _apply_filter(self) -> None:
         """Apply current filter criteria and refresh the table."""
         self._filtered_budgets = self._filter_budgets(
-            self._all_budgets, self._search_text, self._filter_category
+            self._all_budgets,
+            self._search_text,
+            self._filter_category,
+            self._status_filter,
         )
         self._populate_table()
         self._update_status()
@@ -157,9 +167,19 @@ class BudgetsWidget(Vertical):
         budgets: tuple[Budget, ...],
         search_text: str | None,
         category: Category | None,
+        status_filter: StatusFilter = StatusFilter.ACTIVE,
     ) -> tuple[Budget, ...]:
-        """Filter budgets by search text and category."""
-        result = budgets
+        """Filter budgets by search text, category, and status."""
+        today = date.today()
+        result: tuple[Budget, ...] = budgets
+
+        # Apply status filter
+        if status_filter == StatusFilter.ACTIVE:
+            result = tuple(b for b in result if not b.date_range.is_expired(today))
+        elif status_filter == StatusFilter.EXPIRED:
+            result = tuple(b for b in result if b.date_range.is_expired(today))
+        # StatusFilter.ALL: no status filtering
+
         if search_text:
             text_lower = search_text.lower()
             result = tuple(b for b in result if text_lower in b.description.lower())
@@ -267,6 +287,7 @@ class BudgetsWidget(Vertical):
         event.stop()
         self._search_text = event.search_text
         self._filter_category = event.category
+        self._status_filter = event.status_filter
         self._apply_filter()
 
     def on_filter_bar_filter_reset(self, event: FilterBar.FilterReset) -> None:
@@ -274,6 +295,7 @@ class BudgetsWidget(Vertical):
         event.stop()
         self._search_text = None
         self._filter_category = None
+        self._status_filter = StatusFilter.ACTIVE
         self._apply_filter()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:

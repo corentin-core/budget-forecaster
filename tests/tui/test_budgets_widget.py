@@ -13,7 +13,7 @@ from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.tui.screens.budgets import BudgetsWidget
-from budget_forecaster.tui.widgets.filter_bar import FilterBar
+from budget_forecaster.tui.widgets.filter_bar import FilterBar, StatusFilter
 
 
 def _make_budget(
@@ -31,7 +31,7 @@ def _make_budget(
         date_range=RecurringDateRange(
             DateRange(date(2025, 1, 1), relativedelta(months=1)),
             relativedelta(months=1),
-            date(2025, 12, 31),
+            date(2030, 12, 31),
         ),
     )
 
@@ -43,6 +43,26 @@ SAMPLE_BUDGETS = (
     _make_budget(4, "Restaurants et sorties", -200.00, Category.LEISURE),
     _make_budget(5, "Courses marche bio", -150.00, Category.GROCERIES),
 )
+
+
+def _make_expired_budget(
+    record_id: int,
+    description: str,
+    amount: float,
+    category: Category,
+) -> Budget:
+    """Create a test budget that is already expired."""
+    return Budget(
+        record_id=record_id,
+        description=description,
+        amount=Amount(amount, "EUR"),
+        category=category,
+        date_range=RecurringDateRange(
+            DateRange(date(2023, 1, 1), relativedelta(months=1)),
+            relativedelta(months=1),
+            date(2024, 12, 31),
+        ),
+    )
 
 
 def _make_app_service(budgets: tuple[Budget, ...]) -> Mock:
@@ -74,14 +94,14 @@ class TestBudgetsWidgetFiltering:
     async def test_all_budgets_shown_initially(self) -> None:
         """All budgets are displayed when no filter is applied."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test():
+        async with app.run_test(size=(160, 48)):
             table = app.query_one("#budgets-table", DataTable)
             assert table.row_count == 5
 
     async def test_filter_by_search_text(self) -> None:
         """Filtering by search text shows only matching budgets."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "courses"
             await pilot.click("#filter-apply")
 
@@ -92,7 +112,7 @@ class TestBudgetsWidgetFiltering:
     async def test_filter_by_category(self) -> None:
         """Filtering by category shows only matching budgets."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-category", Select).value = Category.GROCERIES.name
             await pilot.click("#filter-apply")
 
@@ -103,7 +123,7 @@ class TestBudgetsWidgetFiltering:
     async def test_combined_filters(self) -> None:
         """Combining search text and category narrows results further."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "bio"
             app.query_one("#filter-category", Select).value = Category.GROCERIES.name
             await pilot.click("#filter-apply")
@@ -115,7 +135,7 @@ class TestBudgetsWidgetFiltering:
     async def test_reset_restores_all_budgets(self) -> None:
         """Resetting filters shows all budgets again."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "courses"
             await pilot.click("#filter-apply")
 
@@ -128,14 +148,14 @@ class TestBudgetsWidgetFiltering:
     async def test_status_shows_count(self) -> None:
         """Status bar shows the number of budgets."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test():
+        async with app.run_test(size=(160, 48)):
             status = app.query_one("#budgets-status", Static)
             assert "5" in str(status.render())
 
     async def test_filter_bar_shows_filtered_count(self) -> None:
         """Filter bar status shows filtered vs total count."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "courses"
             await pilot.click("#filter-apply")
 
@@ -145,7 +165,7 @@ class TestBudgetsWidgetFiltering:
     async def test_no_date_or_amount_range_inputs(self) -> None:
         """FilterBar in budgets does not show date/amount range inputs."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test():
+        async with app.run_test(size=(160, 48)):
             filter_bar = app.query_one(FilterBar)
             assert filter_bar.date_from is None
             assert filter_bar.date_to is None
@@ -155,7 +175,7 @@ class TestBudgetsWidgetFiltering:
     async def test_search_case_insensitive(self) -> None:
         """Search text is case-insensitive."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "EDF"
             await pilot.click("#filter-apply")
 
@@ -166,9 +186,26 @@ class TestBudgetsWidgetFiltering:
     async def test_no_match_shows_empty_table(self) -> None:
         """A search with no matches shows an empty table."""
         app = BudgetsWidgetTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(160, 48)) as pilot:
             app.query_one("#filter-search", Input).value = "zzz-no-match"
             await pilot.click("#filter-apply")
 
             table = app.query_one("#budgets-table", DataTable)
             assert table.row_count == 0
+
+    async def test_expired_filter_shows_only_expired(self) -> None:
+        """Expired status filter shows only expired budgets."""
+        mixed_budgets = (
+            _make_budget(1, "Active budget", -100.0, Category.GROCERIES),
+            _make_expired_budget(2, "Expired budget", -200.0, Category.ELECTRICITY),
+        )
+        app = BudgetsWidgetTestApp(budgets=mixed_budgets)
+        async with app.run_test(size=(160, 48)) as pilot:
+            app.query_one(
+                "#filter-status-select", Select
+            ).value = StatusFilter.EXPIRED.value
+            await pilot.click("#filter-apply")
+
+            widget = app.query_one(BudgetsWidget)
+            descriptions = {b.description for b in widget.budgets}
+            assert descriptions == {"Expired budget"}
