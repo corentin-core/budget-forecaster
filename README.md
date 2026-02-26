@@ -20,6 +20,7 @@ connections, but none could forecast my balance the way I needed, and their budg
 management was too limited.
 
 So I built my own.
+[Read the full story on my blog.](https://corentin-core.github.io/posts/budget-forecaster/)
 
 ## Features
 
