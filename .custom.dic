@@ -35,6 +35,7 @@ dir
 edf
 enum
 enums
+forecasted
 gettext
 historicoperation
 impl
@@ -89,6 +90,7 @@ trimestriel
 tui
 ui
 uncategorized
+unforecasted
 unicode
 unlink
 unlinked

@@ -263,13 +263,21 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
     def _add_expenses_forecast(self, expenses_forecast: pd.DataFrame) -> None:
         sheet_name = _("Expense forecast")
 
+        # Filter to main columns only (exclude PlannedOps/PlannedBudgets detail)
+        export_columns = [
+            col
+            for col in expenses_forecast.columns
+            if col[1] in ("Planned", "Actual", "Projected")
+        ]
+        expenses_forecast = expenses_forecast[export_columns]
+
         expenses_forecast = expenses_forecast.mask(expenses_forecast.eq(0))
         # Translate for export: column sub-headers and category index
         if not expenses_forecast.empty:
             col_tr = {
                 "Actual": _("Actual"),
-                "Forecast": _("Forecast"),
-                "Adjusted": _("Adjusted"),
+                "Planned": _("Planned"),
+                "Projected": _("Projected"),
             }
             export_df = self._translate_category_index(expenses_forecast)
             export_df.columns = pd.MultiIndex.from_tuples(
@@ -282,19 +290,19 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         worksheet.autofit()
         worksheet.set_column(1, 21, 12, self._money_format)
 
-        # compare "Forecast" and "Actual" columns
-        # and highlight the cells where the "Actual" value is lower than the "Forecast" value
+        # Compare "Planned" and "Actual" columns and highlight overspend
         date_to_header_column: dict[str, dict[str, int]] = {}
         for i, col_tuple in enumerate(expenses_forecast.columns):
-            col_date, header = col_tuple[0], col_tuple[1]
-            date_to_header_column.setdefault(col_date, {}).setdefault(header, i)
+            date_to_header_column.setdefault(col_tuple[0], {}).setdefault(
+                col_tuple[1], i
+            )
 
         for _date_key, header_to_column in date_to_header_column.items():
-            if "Forecast" not in header_to_column or "Actual" not in header_to_column:
+            if "Planned" not in header_to_column or "Actual" not in header_to_column:
                 continue
 
             real_column_letter = chr(ord("B") + header_to_column["Actual"])
-            forecast_column_letter = chr(ord("B") + header_to_column["Forecast"])
+            forecast_column_letter = chr(ord("B") + header_to_column["Planned"])
             worksheet.conditional_format(
                 f"{real_column_letter}2:{real_column_letter}{len(expenses_forecast)}",
                 {

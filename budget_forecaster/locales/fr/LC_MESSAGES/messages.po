@@ -943,3 +943,37 @@ msgstr "Au"
 
 msgid "Exporting..."
 msgstr "Export en cours..."
+
+# ============================================================
+# Review tab
+# ============================================================
+
+msgid "Previous month"
+msgstr "Mois précédent"
+
+msgid "Next month"
+msgstr "Mois suivant"
+
+msgid "Planned"
+msgstr "Prévu"
+
+msgid "Projected"
+msgstr "Projeté"
+
+msgid "Remaining"
+msgstr "Restant"
+
+msgid "Consumption"
+msgstr "Consommation"
+
+msgid "Forecasted"
+msgstr "Prévisionnel"
+
+msgid "Unforecasted"
+msgstr "Non prévisionnel"
+
+msgid "TOTAL"
+msgstr "TOTAL"
+
+msgid "No planned operations or budgets for this month"
+msgstr "Aucune opération prévue ou budget pour ce mois"

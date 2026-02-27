@@ -514,17 +514,17 @@ class TestGetMonthlySummary:
     ) -> None:
         """get_monthly_summary returns correctly typed MonthlySummary list."""
 
-        # Create mock budget forecast DataFrame
+        # Create mock budget forecast DataFrame with enriched columns
         month = pd.Timestamp("2025-01-01")
         columns = pd.MultiIndex.from_tuples(
             [
+                (month, "Planned"),
                 (month, "Actual"),
-                (month, "Forecast"),
-                (month, "Adjusted"),
+                (month, "Projected"),
             ]
         )
         df = pd.DataFrame(
-            [[100, 150, 120], [200, 250, 220]],
+            [[-150, -100, -120], [-250, -200, -220]],
             index=["groceries", "entertainment"],
             columns=columns,
         )
@@ -540,14 +540,14 @@ class TestGetMonthlySummary:
         result = service.get_monthly_summary()
 
         assert len(result) > 0
-        # Check structure matches MonthlySummary
         for summary in result:
             assert "month" in summary
             assert "categories" in summary
             for cat_budget in summary["categories"].values():
-                assert "real" in cat_budget
-                assert "predicted" in cat_budget
-                assert "actualized" in cat_budget
+                assert "planned" in cat_budget
+                assert "actual" in cat_budget
+                assert "projected" in cat_budget
+                assert "is_income" in cat_budget
 
 
 class TestGetCategoryStatistics:
@@ -595,17 +595,22 @@ class TestTypedDicts:
 
     def test_category_budget_structure(self) -> None:
         """CategoryBudget has correct structure."""
-        budget = CategoryBudget(real=100.0, predicted=150.0, actualized=120.0)
-        assert budget["real"] == 100.0
-        assert budget["predicted"] == 150.0
-        assert budget["actualized"] == 120.0
+        budget = CategoryBudget(
+            planned=150.0, actual=100.0, projected=120.0, is_income=False
+        )
+        assert budget["planned"] == 150.0
+        assert budget["actual"] == 100.0
+        assert budget["projected"] == 120.0
+        assert budget["is_income"] is False
 
     def test_monthly_summary_structure(self) -> None:
         """MonthlySummary has correct structure."""
 
         month = pd.Timestamp("2025-01-01")
         categories = {
-            "groceries": CategoryBudget(real=100.0, predicted=150.0, actualized=120.0)
+            "groceries": CategoryBudget(
+                planned=150.0, actual=100.0, projected=120.0, is_income=False
+            )
         }
         summary = MonthlySummary(month=month, categories=categories)
         assert summary["month"] == month
