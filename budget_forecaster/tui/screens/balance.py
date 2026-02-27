@@ -153,7 +153,12 @@ class BalanceWidget(Vertical):
             chart.update(_("No data"))
             return
 
-        chart_lines = self._render_ascii_chart(balance_data)
+        # Use available widget dimensions (minus border/padding)
+        chart_height = max(8, chart.content_size.height - 2)  # -2 for axis + date line
+        chart_width = max(20, chart.content_size.width - 15)  # -15 for Y-axis labels
+        chart_lines = self._render_ascii_chart(
+            balance_data, width=chart_width, height=chart_height
+        )
         chart.update("\n".join(chart_lines))
 
     def _render_ascii_chart(  # pylint: disable=too-many-locals
@@ -176,8 +181,7 @@ class BalanceWidget(Vertical):
         y_label_width = 12
 
         # Sample data to fit width
-        target_width = min(width, 60)
-        step = max(1, len(data) // target_width)
+        step = max(1, len(data) // width)
         display_data = [data[i] for i in range(0, len(data), step)]
 
         lines = []
