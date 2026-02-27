@@ -99,8 +99,10 @@ class ReviewWidget(Vertical):
     """
 
     BINDINGS = [
-        Binding("left", "previous_month", _("Previous month"), show=False),
-        Binding("right", "next_month", _("Next month"), show=False),
+        Binding(
+            "left", "previous_month", _("Previous month"), show=False, priority=True
+        ),
+        Binding("right", "next_month", _("Next month"), show=False, priority=True),
     ]
 
     def __init__(self, **kwargs: Any) -> None:
@@ -111,7 +113,7 @@ class ReviewWidget(Vertical):
 
     def compose(self) -> ComposeResult:
         yield Static("", id="review-nav")
-        yield DataTable(id="review-table")
+        yield DataTable(id="review-table", cursor_type="row")
         yield Static("", id="review-status")
 
     def set_app_service(self, service: ApplicationService) -> None:
