@@ -69,6 +69,27 @@ def _direction_indicator(is_income: bool) -> str:
     return "\u2191" if is_income else "\u2193"
 
 
+class _ReviewTable(DataTable):
+    """DataTable that redirects Left/Right to parent for month navigation."""
+
+    BINDINGS = [
+        Binding("left", "navigate_previous_month", show=False),
+        Binding("right", "navigate_next_month", show=False),
+    ]
+
+    def action_navigate_previous_month(self) -> None:
+        """Forward to parent for month navigation."""
+        parent = self.parent
+        if parent is not None and hasattr(parent, "action_previous_month"):
+            parent.action_previous_month()
+
+    def action_navigate_next_month(self) -> None:
+        """Forward to parent for month navigation."""
+        parent = self.parent
+        if parent is not None and hasattr(parent, "action_next_month"):
+            parent.action_next_month()
+
+
 class ReviewWidget(Vertical):
     """Review tab: per-category planned vs actual for one month."""
 
@@ -99,10 +120,8 @@ class ReviewWidget(Vertical):
     """
 
     BINDINGS = [
-        Binding(
-            "left", "previous_month", _("Previous month"), show=False, priority=True
-        ),
-        Binding("right", "next_month", _("Next month"), show=False, priority=True),
+        Binding("left", "previous_month", _("Previous month"), show=False),
+        Binding("right", "next_month", _("Next month"), show=False),
     ]
 
     def __init__(self, **kwargs: Any) -> None:
@@ -113,7 +132,7 @@ class ReviewWidget(Vertical):
 
     def compose(self) -> ComposeResult:
         yield Static("", id="review-nav")
-        yield DataTable(id="review-table", cursor_type="row")
+        yield _ReviewTable(id="review-table", cursor_type="row")
         yield Static("", id="review-status")
 
     def set_app_service(self, service: ApplicationService) -> None:
