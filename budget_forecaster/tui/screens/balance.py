@@ -223,6 +223,11 @@ class BalanceWidget(Vertical):
 
         return lines
 
+    def on_resize(self) -> None:
+        """Re-render chart when widget is resized."""
+        if self._app_service is not None and self._app_service.report is not None:
+            self._update_balance_chart()
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle export button press."""
         if event.button.id == "btn-export":
