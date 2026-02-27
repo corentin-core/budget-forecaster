@@ -918,3 +918,28 @@ msgstr "Expiré"
 
 msgid "All"
 msgstr "Tout"
+
+# ============================================================
+# Balance tab & Export modal
+# ============================================================
+
+msgid "Export"
+msgstr "Exporter"
+
+msgid "Computing..."
+msgstr "Calcul en cours..."
+
+msgid "Report: {} to {}"
+msgstr "Rapport : {} à {}"
+
+msgid "Monthly review — coming in a future update"
+msgstr "Revue mensuelle — disponible dans une mise à jour future"
+
+msgid "Export forecast to Excel"
+msgstr "Exporter la prévision en Excel"
+
+msgid "To"
+msgstr "Au"
+
+msgid "Exporting..."
+msgstr "Export en cours..."

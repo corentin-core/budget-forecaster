@@ -57,16 +57,17 @@ from budget_forecaster.tui.modals import (
     SplitOperationModal,
     SplitResult,
 )
+from budget_forecaster.tui.screens.balance import BalanceWidget
 from budget_forecaster.tui.screens.budgets import BudgetsWidget
 from budget_forecaster.tui.screens.dashboard import (
     CategoryRow,
     UpcomingHeaderRow,
     UpcomingOperationRow,
 )
-from budget_forecaster.tui.screens.forecast import ForecastWidget
 from budget_forecaster.tui.screens.imports import ImportWidget
 from budget_forecaster.tui.screens.operations import OperationsScreen
 from budget_forecaster.tui.screens.planned_operations import PlannedOperationsWidget
+from budget_forecaster.tui.screens.review import ReviewWidget
 from budget_forecaster.tui.widgets import OperationTable
 
 # Logger instance (configured via Config.setup_logging)
@@ -311,8 +312,10 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
                 yield OperationsScreen(id="operations-screen")
             with TabPane(_("Import"), id="import"):
                 yield ImportWidget(id="import-widget")
-            with TabPane(_("Forecasts"), id="forecast"):
-                yield ForecastWidget(id="forecast-widget")
+            with TabPane(_("Balance"), id="balance"):
+                yield BalanceWidget(id="balance-widget")
+            with TabPane(_("Review"), id="review"):
+                yield ReviewWidget(id="review-widget")
             with TabPane(_("Budgets"), id="budgets"):
                 yield BudgetsWidget(id="budgets-widget")
             with TabPane(_("Planned ops"), id="planned-ops"):
@@ -390,9 +393,11 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         import_widget = self.query_one("#import-widget", ImportWidget)
         import_widget.set_app_service(self.app_service)
 
-        # Refresh forecast widget
-        forecast_widget = self.query_one("#forecast-widget", ForecastWidget)
-        forecast_widget.set_app_service(self.app_service)
+        # Refresh balance and review widgets
+        balance_widget = self.query_one("#balance-widget", BalanceWidget)
+        balance_widget.set_app_service(self.app_service)
+        review_widget = self.query_one("#review-widget", ReviewWidget)
+        review_widget.set_app_service(self.app_service)
 
         # Refresh budgets widget
         budgets_widget = self.query_one("#budgets-widget", BudgetsWidget)
@@ -430,6 +435,16 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         categories_list.remove_children()
         for cat, amount in sorted_categories[:10]:
             categories_list.mount(CategoryRow(cat.display_name, amount, max_expense))
+
+    def on_tabbed_content_tab_activated(
+        self, event: TabbedContent.TabActivated
+    ) -> None:
+        """Auto-compute forecast when Balance or Review tab becomes active."""
+        tab_id = event.pane.id
+        if tab_id == "balance":
+            self.query_one("#balance-widget", BalanceWidget).compute_and_display()
+        elif tab_id == "review":
+            self.query_one("#review-widget", ReviewWidget).compute_and_display()
 
     def action_refresh_data(self) -> None:
         """Refresh data from the database."""
@@ -730,8 +745,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         """Refresh budgets and forecast widgets."""
         budgets_widget = self.query_one("#budgets-widget", BudgetsWidget)
         budgets_widget.refresh_data()
-        forecast_widget = self.query_one("#forecast-widget", ForecastWidget)
-        forecast_widget.refresh_data()
+        self._refresh_forecast_widgets()
 
     # Planned operation event handlers
 
@@ -883,8 +897,12 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
             "#planned-ops-widget", PlannedOperationsWidget
         )
         planned_ops_widget.refresh_data()
-        forecast_widget = self.query_one("#forecast-widget", ForecastWidget)
-        forecast_widget.refresh_data()
+        self._refresh_forecast_widgets()
+
+    def _refresh_forecast_widgets(self) -> None:
+        """Refresh balance and review widgets (invalidate cache)."""
+        self.query_one("#balance-widget", BalanceWidget).refresh_data()
+        self.query_one("#review-widget", ReviewWidget).refresh_data()
 
 
 def run_app(config_path: Path) -> None:
