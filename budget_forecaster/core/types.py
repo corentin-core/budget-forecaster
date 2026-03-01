@@ -70,6 +70,35 @@ class ImportStats(NamedTuple):
     """Number of duplicate operations that were already in the database."""
 
 
+class BudgetColumn(enum.StrEnum):
+    """Column names for the per-category monthly budget forecast DataFrame.
+
+    TOTAL_PLANNED aggregates PLANNED_FROM_OPS and PLANNED_FROM_BUDGETS.
+    The two sub-columns track the source breakdown (visible in the detail modal).
+    """
+
+    TOTAL_PLANNED = "TotalPlanned"
+    """Total expected amount (planned operations + budgets)."""
+
+    PLANNED_FROM_OPS = "PlannedFromOps"
+    """Planned amount coming from PlannedOperation entries only."""
+
+    PLANNED_FROM_BUDGETS = "PlannedFromBudgets"
+    """Planned amount coming from Budget entries only."""
+
+    ACTUAL = "Actual"
+    """Realized operations amount (link-aware attribution)."""
+
+    PROJECTED = "Projected"
+    """Expected end-of-month total: Actual + not-yet-realized planned."""
+
+    UNREALIZED_INTERNAL = "_Unrealized"
+    """Internal accumulator for not-yet-realized planned amounts.
+
+    Used during computation only — removed before building the final DataFrame.
+    """
+
+
 class Category(enum.StrEnum):
     """A category is a group of transactions.
 

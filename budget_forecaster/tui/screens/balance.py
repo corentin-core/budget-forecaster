@@ -5,7 +5,7 @@ from datetime import date
 from typing import Any
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Center, Horizontal, Vertical
 from textual.widgets import Button, Static
 
 from budget_forecaster.exceptions import AccountNotLoadedError, BudgetForecasterError
@@ -39,8 +39,13 @@ class BalanceWidget(Vertical):
         margin-right: 1;
     }
 
+    BalanceWidget #balance-chart-center {
+        height: 1fr;
+    }
+
     BalanceWidget #balance-chart {
         height: 1fr;
+        width: 120;
         border: solid $primary;
         padding: 0 1;
     }
@@ -64,7 +69,8 @@ class BalanceWidget(Vertical):
         with Horizontal(id="balance-header"):
             yield Static(_("Balance evolution"), id="balance-title")
             yield Button(_("Export"), id="btn-export", variant="default")
-        yield Static("", id="balance-chart")
+        with Center(id="balance-chart-center"):
+            yield Static("", id="balance-chart")
         yield Static("", id="balance-status")
 
     def set_app_service(self, service: ApplicationService) -> None:

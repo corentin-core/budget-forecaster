@@ -943,3 +943,80 @@ msgstr "Au"
 
 msgid "Exporting..."
 msgstr "Export en cours..."
+
+# ============================================================
+# Month names
+# ============================================================
+
+msgid "January"
+msgstr "Janvier"
+
+msgid "February"
+msgstr "Février"
+
+msgid "March"
+msgstr "Mars"
+
+msgid "April"
+msgstr "Avril"
+
+msgid "May"
+msgstr "Mai"
+
+msgid "June"
+msgstr "Juin"
+
+msgid "July"
+msgstr "Juillet"
+
+msgid "August"
+msgstr "Août"
+
+msgid "September"
+msgstr "Septembre"
+
+msgid "October"
+msgstr "Octobre"
+
+msgid "November"
+msgstr "Novembre"
+
+msgid "December"
+msgstr "Décembre"
+
+# ============================================================
+# Review tab
+# ============================================================
+
+msgid "Review"
+msgstr "Revue"
+
+msgid "Previous month"
+msgstr "Mois précédent"
+
+msgid "Next month"
+msgstr "Mois suivant"
+
+msgid "Planned"
+msgstr "Prévu"
+
+msgid "Projected"
+msgstr "Projeté"
+
+msgid "Remaining"
+msgstr "Restant"
+
+msgid "Consumption"
+msgstr "Consommation"
+
+msgid "Forecasted"
+msgstr "Prévisionnel"
+
+msgid "Unforecasted"
+msgstr "Non prévisionnel"
+
+msgid "TOTAL"
+msgstr "TOTAL"
+
+msgid "No planned operations or budgets for this month"
+msgstr "Aucune opération prévue ou budget pour ce mois"

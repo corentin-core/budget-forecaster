@@ -12,11 +12,12 @@ from budget_forecaster.core.date_range import (
     RecurringDay,
     SingleDay,
 )
-from budget_forecaster.core.types import Category
+from budget_forecaster.core.types import Category, LinkType
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.services.account.account_analyzer import AccountAnalyzer
 
@@ -296,28 +297,179 @@ class TestComputeForecast:
 class TestComputeBudgetForecast:
     """Tests for compute_budget_forecast."""
 
-    def test_actual_and_forecast_columns(
+    def test_planned_actual_projected_columns(
         self,
         account: Account,
         planned_operations: tuple[PlannedOperation, ...],
         budgets: tuple[Budget, ...],
     ) -> None:
-        """Expenses per category and month have Actual, Forecast, and Adjusted columns."""
+        """Enriched DataFrame has Planned, Actual, Projected columns for all months."""
         analyzer = AccountAnalyzer(account, Forecast(planned_operations, budgets))
         df = analyzer.compute_budget_forecast(date(2023, 1, 1), date(2023, 5, 1))
+
+        # Actual (link-aware, but no links here → by operation_date)
         assert df.loc[str(Category.GROCERIES)]["2023-01-01"]["Actual"] == -50.0
         assert df.loc[str(Category.GROCERIES)]["2023-02-01"]["Actual"] == -30.0
-        # "Forecast" = raw forecast: budget (-300) + planned op (-20) = -320
-        assert df.loc[str(Category.GROCERIES)]["2023-03-01"]["Forecast"] == -320.0
-        assert df.loc[str(Category.CAR_FUEL)]["2023-03-01"]["Forecast"] == 0.0
-        assert df.loc[str(Category.OTHER)]["2023-03-01"]["Forecast"] == -50.0
-        # "Adjusted" = after actualization: planned op advanced to April
-        assert df.loc[str(Category.GROCERIES)]["2023-03-01"]["Adjusted"] == -300.0
-        assert df.loc[str(Category.CAR_FUEL)]["2023-03-01"]["Adjusted"] == 0.0
-        assert df.loc[str(Category.OTHER)]["2023-03-01"]["Adjusted"] == -50.0
-        assert df.loc[str(Category.GROCERIES)]["2023-04-01"]["Forecast"] == -320.0
-        assert df.loc[str(Category.CAR_FUEL)]["2023-04-01"]["Forecast"] == 0.0
-        assert df.loc[str(Category.OTHER)]["2023-04-01"]["Forecast"] == -250.0
+
+        # TotalPlanned: budget (-300) + planned op (-20) = -320
+        assert df.loc[str(Category.GROCERIES)]["2023-03-01"]["TotalPlanned"] == -320.0
+        assert df.loc[str(Category.OTHER)]["2023-03-01"]["TotalPlanned"] == -50.0
+        assert df.loc[str(Category.GROCERIES)]["2023-04-01"]["TotalPlanned"] == -320.0
+        assert df.loc[str(Category.OTHER)]["2023-04-01"]["TotalPlanned"] == -250.0
+
+        # Projected = Actual + not-yet-realized (no links → all planned is pending)
+        assert df.loc[str(Category.GROCERIES)]["2023-03-01"]["Projected"] == -320.0
+        assert df.loc[str(Category.OTHER)]["2023-03-01"]["Projected"] == -50.0
+
+        # Source distinction columns
+        assert (
+            df.loc[str(Category.GROCERIES)]["2023-03-01"]["PlannedFromBudgets"]
+            == -300.0
+        )
+        assert df.loc[str(Category.GROCERIES)]["2023-03-01"]["PlannedFromOps"] == -20.0
+
+    def test_link_aware_actual_attribution(self, account: Account) -> None:
+        """Operations linked to another month are attributed to the linked month."""
+        # Op in January, linked to March iteration
+        link = OperationLink(
+            operation_unique_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
+            iteration_date=date(2023, 3, 1),
+        )
+        planned_op = PlannedOperation(
+            record_id=1,
+            description="Monthly op",
+            amount=Amount(-50.0),
+            category=Category.GROCERIES,
+            date_range=RecurringDay(
+                date(2023, 1, 1),
+                period=relativedelta(months=1),
+            ),
+        )
+
+        analyzer = AccountAnalyzer(account, Forecast((planned_op,), ()), (link,))
+        df = analyzer.compute_budget_forecast(date(2023, 1, 1), date(2023, 4, 1))
+
+        jan = df.loc[str(Category.GROCERIES)]["2023-01-01"]
+        feb = df.loc[str(Category.GROCERIES)]["2023-02-01"]
+        march = df.loc[str(Category.GROCERIES)]["2023-03-01"]
+
+        # Op 1 (Jan 15, -50) is linked to March → attributed to March, not January
+        assert jan["Actual"] == 0.0
+        assert march["Actual"] == -50.0
+        # Op 2 (Feb 15, -30) has no link → stays in February
+        assert feb["Actual"] == -30.0
+
+        # March iteration is realized (linked) → not counted as unrealized
+        # TotalPlanned = -50 (monthly op), Projected = Actual + unrealized = -50 + 0
+        assert march["TotalPlanned"] == -50.0
+        assert march["Projected"] == -50.0
+
+        # January: no actual, iteration not realized → unrealized = -50
+        # Projected = 0 + (-50) = -50
+        assert jan["TotalPlanned"] == -50.0
+        assert jan["Projected"] == -50.0
+
+    def test_projected_with_realized_iteration(self, account: Account) -> None:
+        """Realized planned iterations are excluded from not-yet-realized amounts."""
+        planned_op = PlannedOperation(
+            record_id=1,
+            description="Monthly op",
+            amount=Amount(-100.0),
+            category=Category.GROCERIES,
+            date_range=RecurringDay(
+                date(2023, 1, 1),
+                period=relativedelta(months=1),
+            ),
+        )
+        # Link op 1 to March iteration → March iteration is realized
+        link = OperationLink(
+            operation_unique_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
+            iteration_date=date(2023, 3, 1),
+        )
+
+        analyzer = AccountAnalyzer(account, Forecast((planned_op,), ()), (link,))
+        df = analyzer.compute_budget_forecast(date(2023, 1, 1), date(2023, 4, 1))
+
+        # March: iteration is realized → not-yet-realized = 0
+        # Actual = -50 (op 1, linked to March), TotalPlanned = -100
+        # Projected = -50 + 0 = -50
+        march = df.loc[str(Category.GROCERIES)]["2023-03-01"]
+        assert march["TotalPlanned"] == -100.0
+        assert march["Actual"] == -50.0
+        assert march["Projected"] == -50.0
+
+        # April: iteration is NOT realized → not-yet-realized = -100
+        # Actual = 0, Projected = 0 + (-100) = -100
+        april = df.loc[str(Category.GROCERIES)]["2023-04-01"]
+        assert april["TotalPlanned"] == -100.0
+        assert april["Actual"] == 0.0
+        assert april["Projected"] == -100.0
+
+    def test_mixed_budget_and_planned_op_partial_realization(self) -> None:
+        """Budget + planned op on same category, planned op realized but not budget."""
+        # Account with one operation that will be linked to the planned op
+        operations = (
+            HistoricOperation(
+                unique_id=10,
+                description="Plumber visit",
+                amount=Amount(-100.0),
+                category=Category.HOUSE_WORKS,
+                operation_date=date(2023, 3, 15),
+            ),
+        )
+        mixed_account = Account(
+            name="Test",
+            balance=5000.0,
+            currency="EUR",
+            balance_date=date(2023, 4, 1),
+            operations=operations,
+        )
+
+        # Planned op: one-time plumber visit in March
+        planned_op = PlannedOperation(
+            record_id=1,
+            description="Plumber",
+            amount=Amount(-100.0),
+            category=Category.HOUSE_WORKS,
+            date_range=SingleDay(date(2023, 3, 15)),
+        )
+        # Budget: 200€/month for house works
+        budget = Budget(
+            record_id=2,
+            description="House works",
+            amount=Amount(-200.0),
+            category=Category.HOUSE_WORKS,
+            date_range=RecurringDay(date(2023, 1, 1), period=relativedelta(months=1)),
+        )
+
+        # Link the operation to the planned op (not the budget)
+        link = OperationLink(
+            operation_unique_id=10,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=1,
+            iteration_date=date(2023, 3, 15),
+        )
+
+        analyzer = AccountAnalyzer(
+            mixed_account, Forecast((planned_op,), (budget,)), (link,)
+        )
+        df = analyzer.compute_budget_forecast(date(2023, 3, 1), date(2023, 3, 31))
+
+        march = df.loc[str(Category.HOUSE_WORKS)]["2023-03-01"]
+        # TotalPlanned = planned op (-100) + budget (-200) = -300
+        assert march["TotalPlanned"] == -300.0
+        assert march["PlannedFromOps"] == -100.0
+        assert march["PlannedFromBudgets"] == -200.0
+        # Actual = -100 (the plumber operation)
+        assert march["Actual"] == -100.0
+        # Projected: planned op is realized (link exists), budget is not consumed
+        # not-yet-realized = 0 (planned op) + 200 (budget, no linked ops) = -200
+        # Projected = Actual (-100) + not-yet-realized (-200) = -300
+        assert march["Projected"] == -300.0
 
 
 class TestComputeBudgetStatistics:

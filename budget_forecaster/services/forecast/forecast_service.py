@@ -2,11 +2,12 @@
 
 import logging
 from datetime import date
-from typing import Any, TypedDict
+from typing import Any, SupportsFloat, TypedDict, cast
 
+import pandas as pd
 from dateutil.relativedelta import relativedelta
 
-from budget_forecaster.core.types import BudgetId, PlannedOperationId
+from budget_forecaster.core.types import BudgetColumn, BudgetId, PlannedOperationId
 from budget_forecaster.domain.account.account_interface import AccountInterface
 from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.budget import Budget
@@ -24,11 +25,12 @@ logger = logging.getLogger(__name__)
 
 
 class CategoryBudget(TypedDict):
-    """Budget values for a category."""
+    """Budget values for a category in a given month."""
 
-    real: float
-    predicted: float
-    actualized: float
+    planned: float
+    actual: float
+    projected: float
+    is_income: bool
 
 
 class MonthlySummary(TypedDict):
@@ -36,6 +38,15 @@ class MonthlySummary(TypedDict):
 
     month: Any  # pandas Timestamp
     categories: dict[str, CategoryBudget]
+
+
+def _df_value(
+    df: pd.DataFrame, month: Any, category: str, column: BudgetColumn
+) -> float:
+    """Get a value from the budget forecast DataFrame, defaulting to 0."""
+    if (month, column) in df.columns:
+        return float(cast(SupportsFloat, df.loc[category, (month, column)]))
+    return 0.0
 
 
 class ForecastService:
@@ -248,7 +259,7 @@ class ForecastService:
         ]
 
     def get_monthly_summary(self) -> list[MonthlySummary]:
-        """Get monthly budget summary.
+        """Get monthly budget summary with link-aware attribution.
 
         Returns:
             List of monthly summaries with category breakdowns.
@@ -259,7 +270,6 @@ class ForecastService:
         df = self._report.budget_forecast
         summaries: list[MonthlySummary] = []
 
-        # Get unique months from columns
         months = sorted({col[0] for col in df.columns})
 
         for month in months:
@@ -268,27 +278,20 @@ class ForecastService:
                 if category == "Total":
                     continue
 
-                real = (
-                    df.loc[category, (month, "Actual")]
-                    if (month, "Actual") in df.columns
-                    else 0
-                )
-                predicted = (
-                    df.loc[category, (month, "Forecast")]
-                    if (month, "Forecast") in df.columns
-                    else 0
-                )
-                actualized = (
-                    df.loc[category, (month, "Adjusted")]
-                    if (month, "Adjusted") in df.columns
-                    else 0
-                )
+                planned = _df_value(df, month, category, BudgetColumn.TOTAL_PLANNED)
+                actual = _df_value(df, month, category, BudgetColumn.ACTUAL)
+                projected = _df_value(df, month, category, BudgetColumn.PROJECTED)
 
-                if any((real != 0, predicted != 0, actualized != 0)):
+                if any((planned != 0, actual != 0, projected != 0)):
+                    # Determine income vs expense from the first non-zero value.
+                    # Priority matters: planned is user-defined (most reliable),
+                    # actual may include partial refunds, projected is derived.
+                    ref = planned or actual or projected
                     categories[str(category)] = CategoryBudget(
-                        real=float(real),
-                        predicted=float(predicted),
-                        actualized=float(actualized),
+                        planned=planned,
+                        actual=actual,
+                        projected=projected,
+                        is_income=ref > 0,
                     )
             summaries.append(MonthlySummary(month=month, categories=categories))
 

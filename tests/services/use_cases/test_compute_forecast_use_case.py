@@ -187,15 +187,21 @@ class TestComputeReportIntegration:
         assert str(Category.OTHER) in budget_forecast.index
         assert str(Category.GROCERIES) in budget_forecast.index
 
-        # The historic operation appears as "Actual" for March
+        # The historic operation appears as "Actual" for March (link-aware:
+        # op dated Mar 5, linked to Mar 1 iteration → stays in March)
         assert budget_forecast.loc[str(Category.OTHER)]["2025-03-01"]["Actual"] == -95.0
 
-        # The linked planned op is actualized: the March iteration is consumed
-        # by the link, so "Adjusted" reflects the actual amount from the link
-        march_actualized = budget_forecast.loc[str(Category.OTHER)]["2025-03-01"][
-            "Adjusted"
+        # Projected = Actual + unrealized planned.
+        # March iteration is realized (linked) → unrealized = 0.
+        # Projected = -95 + 0 = -95
+        march_projected = budget_forecast.loc[str(Category.OTHER)]["2025-03-01"][
+            "Projected"
         ]
-        # Without link, March planned op would be advanced (not executed).
-        # With link, it's recognized as actualized: the forecast shows the linked
-        # operation's actual amount (-95) instead of the planned amount (-100).
-        assert march_actualized == -95.0
+        assert march_projected == -95.0
+
+        # April iteration is NOT realized → unrealized = -100
+        # Projected = 0 + (-100) = -100
+        april_projected = budget_forecast.loc[str(Category.OTHER)]["2025-04-01"][
+            "Projected"
+        ]
+        assert april_projected == -100.0
