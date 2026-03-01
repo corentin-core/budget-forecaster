@@ -1020,3 +1020,22 @@ msgstr "TOTAL"
 
 msgid "No planned operations or budgets for this month"
 msgstr "Aucune opération prévue ou budget pour ce mois"
+
+# ============================================================
+# Category detail modal
+# ============================================================
+
+msgid "Planned sources"
+msgstr "Sources prévues"
+
+msgid "Total planned"
+msgstr "Total prévu"
+
+msgid "Total actual"
+msgstr "Total réalisé"
+
+msgid "No operations for this category"
+msgstr "Aucune opération pour cette catégorie"
+
+msgid "Error loading category detail"
+msgstr "Erreur lors du chargement du détail de la catégorie"
