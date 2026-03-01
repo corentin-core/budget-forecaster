@@ -1,5 +1,7 @@
 """Module to analyze account data for budget forecasting."""
 import itertools
+import logging
+from collections import defaultdict
 from datetime import date, timedelta
 from typing import NamedTuple
 
@@ -7,7 +9,14 @@ import pandas as pd
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.date_range import RecurringDateRange
-from budget_forecaster.core.types import Category, LinkType, OperationId
+from budget_forecaster.core.types import (
+    BudgetColumn,
+    BudgetId,
+    Category,
+    LinkType,
+    OperationId,
+    PlannedOperationId,
+)
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.operation_link import OperationLink
@@ -20,28 +29,32 @@ from budget_forecaster.services.operation.operations_categorizer import (
     categorize_operations,
 )
 
-# Type alias for budget data accumulator
-_BudgetData = dict[Category, dict[date, dict[str, float]]]
+logger = logging.getLogger(__name__)
+
+# Type aliases for the budget data accumulator
+_MonthColumns = dict[BudgetColumn, float]
+_CategoryMonths = dict[date, _MonthColumns]
+_BudgetData = dict[Category, _CategoryMonths]
 
 
 class _LinkIndexes(NamedTuple):
     """Indexes built from operation links for link-aware attribution."""
 
     op_to_linked_month: dict[OperationId, date]
-    realized_iterations: dict[int, set[date]]
-    budget_linked_amounts: dict[tuple[int, date], float]
+    realized_iterations: dict[PlannedOperationId, set[date]]
+    budget_linked_amounts: defaultdict[tuple[BudgetId, date], float]
 
 
 def _increment(
-    data: _BudgetData,
+    budget_data: _BudgetData,
     category: Category,
     month: date,
-    column: str,
+    column: BudgetColumn,
     amount: float,
 ) -> None:
     """Increment a value in the budget data accumulator."""
-    data.setdefault(category, {}).setdefault(month, {}).setdefault(column, 0.0)
-    data[category][month][column] += amount
+    budget_data.setdefault(category, {}).setdefault(month, {}).setdefault(column, 0.0)
+    budget_data[category][month][column] += amount
 
 
 class AccountAnalyzer:
@@ -192,24 +205,31 @@ class AccountAnalyzer:
         """Compute per-category monthly budget forecast with link-aware attribution.
 
         Produces a MultiIndex DataFrame with columns (month, column_name) where
-        column_name is one of: Planned, PlannedOps, PlannedBudgets, Actual, Projected.
+        column_name is a BudgetColumn value: TotalPlanned, PlannedFromOps,
+        PlannedFromBudgets, Actual, Projected.
         """
-        data: _BudgetData = {}
+        budget_data: _BudgetData = {}
         months = pd.date_range(
             start_date.replace(day=1), end_date.replace(day=1), freq="MS"
         )
         link_indexes = self._build_link_indexes()
-        self._fill_actual(data, start_date, end_date, link_indexes.op_to_linked_month)
-        self._fill_planned(data, months)
-        self._fill_projected(data, months, link_indexes)
-        self._finalize_projected(data)
-        return self._build_budget_forecast_df(data)
+        self._fill_actual(
+            budget_data, start_date, end_date, link_indexes.op_to_linked_month
+        )
+        self._fill_planned_operations(budget_data, months)
+        self._fill_planned_budgets(budget_data, months)
+        self._fill_unrealized_operations(budget_data, months, link_indexes)
+        self._fill_unrealized_budgets(budget_data, months, link_indexes)
+        self._finalize_projected(budget_data)
+        return self._build_budget_forecast_df(budget_data)
 
     def _build_link_indexes(self) -> _LinkIndexes:
         """Build indexes from operation links for link-aware attribution."""
         op_to_linked_month: dict[OperationId, date] = {}
-        realized_iterations: dict[int, set[date]] = {}
-        budget_linked_amounts: dict[tuple[int, date], float] = {}
+        realized_iterations: dict[PlannedOperationId, set[date]] = {}
+        budget_linked_amounts: defaultdict[tuple[BudgetId, date], float] = defaultdict(
+            float
+        )
         op_amounts = {op.unique_id: op.amount for op in self._account.operations}
 
         for link in self._operation_links:
@@ -222,11 +242,8 @@ class AccountAnalyzer:
                         link.iteration_date
                     )
                 case LinkType.BUDGET:
-                    key = (link.target_id, linked_month)
                     op_amount = op_amounts.get(link.operation_unique_id, 0.0)
-                    budget_linked_amounts[key] = (
-                        budget_linked_amounts.get(key, 0.0) + op_amount
-                    )
+                    budget_linked_amounts[link.target_id, linked_month] += op_amount
 
         return _LinkIndexes(
             op_to_linked_month, realized_iterations, budget_linked_amounts
@@ -234,7 +251,7 @@ class AccountAnalyzer:
 
     def _fill_actual(
         self,
-        data: _BudgetData,
+        budget_data: _BudgetData,
         start_date: date,
         end_date: date,
         op_to_linked_month: dict[OperationId, date],
@@ -249,10 +266,18 @@ class AccountAnalyzer:
             month = op_to_linked_month.get(
                 operation.unique_id, operation.operation_date.replace(day=1)
             )
-            _increment(data, operation.category, month, "Actual", operation.amount)
+            _increment(
+                budget_data,
+                operation.category,
+                month,
+                BudgetColumn.ACTUAL,
+                operation.amount,
+            )
 
-    def _fill_planned(self, data: _BudgetData, months: pd.DatetimeIndex) -> None:
-        """Fill Planned, PlannedOps and PlannedBudgets columns."""
+    def _fill_planned_operations(
+        self, budget_data: _BudgetData, months: pd.DatetimeIndex
+    ) -> None:
+        """Fill TotalPlanned and PlannedFromOps for planned operations."""
         for ts in months:
             month_start = ts.date()
             month_end = month_start + relativedelta(months=1) - timedelta(days=1)
@@ -260,32 +285,62 @@ class AccountAnalyzer:
             for planned_op in self._forecast.operations:
                 if amount := planned_op.amount_on_period(month_start, month_end):
                     _increment(
-                        data, planned_op.category, month_start, "Planned", amount
+                        budget_data,
+                        planned_op.category,
+                        month_start,
+                        BudgetColumn.TOTAL_PLANNED,
+                        amount,
                     )
                     _increment(
-                        data, planned_op.category, month_start, "PlannedOps", amount
+                        budget_data,
+                        planned_op.category,
+                        month_start,
+                        BudgetColumn.PLANNED_FROM_OPS,
+                        amount,
                     )
+
+    def _fill_planned_budgets(
+        self, budget_data: _BudgetData, months: pd.DatetimeIndex
+    ) -> None:
+        """Fill TotalPlanned and PlannedFromBudgets for budgets."""
+        for ts in months:
+            month_start = ts.date()
+            month_end = month_start + relativedelta(months=1) - timedelta(days=1)
 
             for budget in self._forecast.budgets:
                 if amount := budget.amount_on_period(month_start, month_end):
-                    _increment(data, budget.category, month_start, "Planned", amount)
                     _increment(
-                        data, budget.category, month_start, "PlannedBudgets", amount
+                        budget_data,
+                        budget.category,
+                        month_start,
+                        BudgetColumn.TOTAL_PLANNED,
+                        amount,
+                    )
+                    _increment(
+                        budget_data,
+                        budget.category,
+                        month_start,
+                        BudgetColumn.PLANNED_FROM_BUDGETS,
+                        amount,
                     )
 
-    def _fill_projected(
+    def _fill_unrealized_operations(
         self,
-        data: _BudgetData,
+        budget_data: _BudgetData,
         months: pd.DatetimeIndex,
         link_indexes: _LinkIndexes,
     ) -> None:
-        """Fill the Projected column with unrealized planned amounts."""
+        """Fill _UNREALIZED with not-yet-realized planned operation amounts."""
         for ts in months:
             month_start = ts.date()
             month_end = month_start + relativedelta(months=1) - timedelta(days=1)
 
             for planned_op in self._forecast.operations:
                 if planned_op.id is None:
+                    logger.warning(
+                        "Skipping planned operation '%s' with no database id",
+                        planned_op.description,
+                    )
                     continue
                 realized = link_indexes.realized_iterations.get(planned_op.id, set())
                 for date_range in planned_op.date_range.iterate_over_date_ranges():
@@ -295,52 +350,73 @@ class AccountAnalyzer:
                         break
                     if date_range.start_date not in realized:
                         _increment(
-                            data,
+                            budget_data,
                             planned_op.category,
                             month_start,
-                            "Projected",
+                            BudgetColumn.UNREALIZED_INTERNAL,
                             planned_op.amount,
                         )
+
+    def _fill_unrealized_budgets(
+        self,
+        budget_data: _BudgetData,
+        months: pd.DatetimeIndex,
+        link_indexes: _LinkIndexes,
+    ) -> None:
+        """Fill _UNREALIZED with not-yet-realized budget amounts."""
+        for ts in months:
+            month_start = ts.date()
+            month_end = month_start + relativedelta(months=1) - timedelta(days=1)
 
             for budget in self._forecast.budgets:
                 budget_amount = budget.amount_on_period(month_start, month_end)
                 if not budget_amount or budget.id is None:
                     continue
-                linked_sum = link_indexes.budget_linked_amounts.get(
-                    (budget.id, month_start), 0.0
+                consumed = abs(
+                    link_indexes.budget_linked_amounts[budget.id, month_start]
                 )
-                raw = max(0.0, abs(budget_amount) - abs(linked_sum))
-                if unrealized := -raw if budget_amount < 0 else raw:
+                remaining = max(0.0, abs(budget_amount) - consumed)
+                # Preserve the sign: expenses are negative, income is positive
+                if unrealized := -remaining if budget_amount < 0 else remaining:
                     _increment(
-                        data, budget.category, month_start, "Projected", unrealized
+                        budget_data,
+                        budget.category,
+                        month_start,
+                        BudgetColumn.UNREALIZED_INTERNAL,
+                        unrealized,
                     )
 
     @staticmethod
-    def _finalize_projected(data: _BudgetData) -> None:
-        """Add Actual to Projected so Projected = Actual + unrealized."""
-        for months_data in data.values():
-            for columns in months_data.values():
-                actual = columns.get("Actual", 0.0)
-                unrealized = columns.get("Projected", 0.0)
-                columns["Projected"] = actual + unrealized
+    def _finalize_projected(budget_data: _BudgetData) -> None:
+        """Compute Projected = Actual + _UNREALIZED, then drop _UNREALIZED."""
+        for category_months in budget_data.values():
+            for month_columns in category_months.values():
+                actual = month_columns.get(BudgetColumn.ACTUAL, 0.0)
+                unrealized = month_columns.pop(BudgetColumn.UNREALIZED_INTERNAL, 0.0)
+                month_columns[BudgetColumn.PROJECTED] = actual + unrealized
 
     @staticmethod
-    def _build_budget_forecast_df(data: _BudgetData) -> pd.DataFrame:
+    def _build_budget_forecast_df(budget_data: _BudgetData) -> pd.DataFrame:
         """Build the final MultiIndex DataFrame from accumulated data."""
         df = pd.DataFrame.from_dict(
             {
-                (category, month): columns
-                for category, months_data in data.items()
-                for month, columns in months_data.items()
+                (category, month): month_columns
+                for category, category_months in budget_data.items()
+                for month, month_columns in category_months.items()
             },
             orient="index",
         )
 
+        column_order = [
+            BudgetColumn.TOTAL_PLANNED,
+            BudgetColumn.PLANNED_FROM_OPS,
+            BudgetColumn.PLANNED_FROM_BUDGETS,
+            BudgetColumn.ACTUAL,
+            BudgetColumn.PROJECTED,
+        ]
+
         df.index = pd.MultiIndex.from_tuples(df.index, names=["Category", "Month"])
-        df = df.reindex(
-            columns=["Planned", "PlannedOps", "PlannedBudgets", "Actual", "Projected"],
-            fill_value=0,
-        )
+        df = df.reindex(columns=column_order, fill_value=0)
         df = df.unstack(level=-1).fillna(0)  # type: ignore[assignment]
         df.columns = df.columns.swaplevel(0, 1)  # type: ignore[attr-defined]
         df.sort_index(axis=1, level=0, inplace=True)

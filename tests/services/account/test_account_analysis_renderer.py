@@ -58,9 +58,9 @@ def sample_report() -> AccountAnalysisReport:
     # Budget forecast: MultiIndex columns (date, Planned/Actual/Projected)
     budget_forecast = pd.DataFrame(
         {
-            ("Jan 25", "Planned"): [-800.0, -100.0],
-            ("Jan 25", "PlannedOps"): [-800.0, 0.0],
-            ("Jan 25", "PlannedBudgets"): [0.0, -100.0],
+            ("Jan 25", "TotalPlanned"): [-800.0, -100.0],
+            ("Jan 25", "PlannedFromOps"): [-800.0, 0.0],
+            ("Jan 25", "PlannedFromBudgets"): [0.0, -100.0],
             ("Jan 25", "Actual"): [-800.0, -85.20],
             ("Jan 25", "Projected"): [-800.0, -100.0],
         },

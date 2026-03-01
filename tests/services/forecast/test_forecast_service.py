@@ -518,7 +518,7 @@ class TestGetMonthlySummary:
         month = pd.Timestamp("2025-01-01")
         columns = pd.MultiIndex.from_tuples(
             [
-                (month, "Planned"),
+                (month, "TotalPlanned"),
                 (month, "Actual"),
                 (month, "Projected"),
             ]

@@ -7,7 +7,7 @@ from typing import Any, SupportsFloat, TypedDict, cast
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 
-from budget_forecaster.core.types import BudgetId, PlannedOperationId
+from budget_forecaster.core.types import BudgetColumn, BudgetId, PlannedOperationId
 from budget_forecaster.domain.account.account_interface import AccountInterface
 from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.budget import Budget
@@ -40,7 +40,9 @@ class MonthlySummary(TypedDict):
     categories: dict[str, CategoryBudget]
 
 
-def _df_value(df: pd.DataFrame, month: Any, category: str, column: str) -> float:
+def _df_value(
+    df: pd.DataFrame, month: Any, category: str, column: BudgetColumn
+) -> float:
     """Get a value from the budget forecast DataFrame, defaulting to 0."""
     if (month, column) in df.columns:
         return float(cast(SupportsFloat, df.loc[category, (month, column)]))
@@ -276,12 +278,13 @@ class ForecastService:
                 if category == "Total":
                     continue
 
-                planned = _df_value(df, month, category, "Planned")
-                actual = _df_value(df, month, category, "Actual")
-                projected = _df_value(df, month, category, "Projected")
+                planned = _df_value(df, month, category, BudgetColumn.TOTAL_PLANNED)
+                actual = _df_value(df, month, category, BudgetColumn.ACTUAL)
+                projected = _df_value(df, month, category, BudgetColumn.PROJECTED)
 
                 if any((planned != 0, actual != 0, projected != 0)):
-                    # Determine direction from whichever value is non-zero
+                    # First non-zero value determines income vs expense sign.
+                    # Priority: planned (most reliable), then actual, then projected.
                     ref = planned or actual or projected
                     categories[str(category)] = CategoryBudget(
                         planned=planned,

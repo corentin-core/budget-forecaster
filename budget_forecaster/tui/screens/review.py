@@ -1,15 +1,17 @@
 """Review tab — monthly per-category planned vs actual review."""
 
+import enum
 import logging
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical
-from textual.widgets import DataTable, Static
+from textual.containers import Horizontal, Vertical
+from textual.widgets import Button, DataTable, Static
 
+from budget_forecaster.core.types import Category
 from budget_forecaster.exceptions import BudgetForecasterError
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
@@ -24,6 +26,14 @@ logger = logging.getLogger(__name__)
 _COL_CATEGORY = 20
 _COL_AMOUNT = 10
 _COL_CONSUMPTION = 16
+
+
+class _BarChar(enum.StrEnum):
+    """Characters used in the consumption progress bar."""
+
+    FILLED = "\u2593"
+    EMPTY = "\u2591"
+    OVER_BUDGET = "!"
 
 
 def _format_amount(value: float) -> Text:
@@ -54,40 +64,27 @@ def _render_consumption_bar(actual: float, planned: float) -> Text:
     pct_str = f"{ratio * 100:.0f}%"
 
     result = Text("[")
-    result.append("\u2593" * filled, style=style)
+    result.append(_BarChar.FILLED * filled, style=style)
     if is_over:
-        result.append("!", style="bold red")
+        result.append(_BarChar.OVER_BUDGET, style="bold red")
         empty = max(0, empty - 1)
-    result.append("\u2591" * empty)
+    result.append(_BarChar.EMPTY * empty)
     result.append("]")
     result.append(pct_str.rjust(4))
     return result
 
 
+def _translate_category(name: str) -> str:
+    """Translate a category identifier to its display name."""
+    try:
+        return Category(name).display_name
+    except ValueError:
+        return name
+
+
 def _direction_indicator(is_income: bool) -> str:
     """Return direction arrow for income/expense."""
     return "\u2191" if is_income else "\u2193"
-
-
-class _ReviewTable(DataTable):
-    """DataTable that redirects Left/Right to parent for month navigation."""
-
-    BINDINGS = [
-        Binding("left", "navigate_previous_month", show=False),
-        Binding("right", "navigate_next_month", show=False),
-    ]
-
-    def action_navigate_previous_month(self) -> None:
-        """Forward to parent for month navigation."""
-        parent = self.parent
-        if parent is not None and hasattr(parent, "action_previous_month"):
-            parent.action_previous_month()
-
-    def action_navigate_next_month(self) -> None:
-        """Forward to parent for month navigation."""
-        parent = self.parent
-        if parent is not None and hasattr(parent, "action_next_month"):
-            parent.action_next_month()
 
 
 class ReviewWidget(Vertical):
@@ -100,8 +97,24 @@ class ReviewWidget(Vertical):
 
     ReviewWidget #review-nav {
         height: 3;
+        align: center middle;
+    }
+
+    ReviewWidget #review-prev {
+        min-width: 5;
+        height: 3;
+    }
+
+    ReviewWidget #review-next {
+        min-width: 5;
+        height: 3;
+    }
+
+    ReviewWidget #review-month-label {
+        width: auto;
         content-align: center middle;
         text-style: bold;
+        padding: 0 2;
     }
 
     ReviewWidget #review-table {
@@ -120,8 +133,8 @@ class ReviewWidget(Vertical):
     """
 
     BINDINGS = [
-        Binding("left", "previous_month", _("Previous month"), show=False),
-        Binding("right", "next_month", _("Next month"), show=False),
+        Binding("comma", "previous_month", _("Previous month")),
+        Binding("semicolon", "next_month", _("Next month")),
     ]
 
     def __init__(self, **kwargs: Any) -> None:
@@ -131,13 +144,23 @@ class ReviewWidget(Vertical):
         self._current_index: int = 0
 
     def compose(self) -> ComposeResult:
-        yield Static("", id="review-nav")
-        yield _ReviewTable(id="review-table", cursor_type="row")
+        with Horizontal(id="review-nav"):
+            yield Button("\u25c0", id="review-prev")
+            yield Static("", id="review-month-label")
+            yield Button("\u25b6", id="review-next")
+        yield DataTable(id="review-table", cursor_type="row")
         yield Static("", id="review-status")
 
     def set_app_service(self, service: ApplicationService) -> None:
         """Set the application service."""
         self._app_service = service
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Handle navigation button clicks."""
+        if event.button.id == "review-prev":
+            self.action_previous_month()
+        elif event.button.id == "review-next":
+            self.action_next_month()
 
     def refresh_data(self) -> None:
         """Refresh data — invalidate cached report so next tab open recomputes."""
@@ -196,7 +219,7 @@ class ReviewWidget(Vertical):
         today_month = date.today().replace(day=1)
         for i, summary in enumerate(self._summaries):
             month = summary["month"]
-            month_date = month.date() if hasattr(month, "date") else month
+            month_date = month.date() if isinstance(month, datetime) else month
             if month_date.replace(day=1) >= today_month:
                 return i
         return len(self._summaries) - 1
@@ -212,13 +235,14 @@ class ReviewWidget(Vertical):
         month_date = month.date() if hasattr(month, "date") else month
 
         # Update navigation
-        nav = self.query_one("#review-nav", Static)
-        month_label = month_date.strftime("%B %Y").capitalize()
+        label = self.query_one("#review-month-label", Static)
+        month_label = f"{_(month_date.strftime('%B'))} {month_date.year}"
+        label.update(month_label)
+
         has_prev = self._current_index > 0
         has_next = self._current_index < len(self._summaries) - 1
-        prev_arrow = "\u25c0  " if has_prev else "   "
-        next_arrow = "  \u25b6" if has_next else ""
-        nav.update(f"{prev_arrow}{month_label}{next_arrow}")
+        self.query_one("#review-prev", Button).disabled = not has_prev
+        self.query_one("#review-next", Button).disabled = not has_next
 
         # Build table
         self._build_review_table(summary["categories"])
@@ -265,7 +289,7 @@ class ReviewWidget(Vertical):
             for cat_name, cat_data in forecasted:
                 direction = _direction_indicator(cat_data["is_income"])
                 table.add_row(
-                    Text(f"{direction} {cat_name}"),
+                    Text(f"{direction} {_translate_category(cat_name)}"),
                     _format_amount(cat_data["planned"]),
                     _format_amount(cat_data["actual"]),
                     _format_amount(cat_data["projected"]),
@@ -290,7 +314,7 @@ class ReviewWidget(Vertical):
                 direction = _direction_indicator(cat_data["is_income"])
                 actual_text = _format_amount(cat_data["actual"])
                 table.add_row(
-                    Text(f"{direction} {cat_name}"),
+                    Text(f"{direction} {_translate_category(cat_name)}"),
                     Text("-", justify="right"),
                     actual_text,
                     _format_amount(cat_data["projected"]),
@@ -330,8 +354,9 @@ class ReviewWidget(Vertical):
                 style="dim",
             )
         )
-        nav = self.query_one("#review-nav", Static)
-        nav.update("")
+        self.query_one("#review-month-label", Static).update("")
+        self.query_one("#review-prev", Button).disabled = True
+        self.query_one("#review-next", Button).disabled = True
 
     def action_previous_month(self) -> None:
         """Navigate to the previous month."""

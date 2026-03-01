@@ -6,11 +6,12 @@ import tempfile
 from datetime import date
 from pathlib import Path
 from types import TracebackType
+from typing import Any
 
 import pandas as pd
 from matplotlib import pyplot as plt
 
-from budget_forecaster.core.types import Category
+from budget_forecaster.core.types import BudgetColumn, Category
 from budget_forecaster.i18n import _
 from budget_forecaster.services.account.account_analysis_report import (
     AccountAnalysisReport,
@@ -263,21 +264,24 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
     def _add_expenses_forecast(self, expenses_forecast: pd.DataFrame) -> None:
         sheet_name = _("Expense forecast")
 
-        # Filter to main columns only (exclude PlannedOps/PlannedBudgets detail)
+        # Filter to main columns only (exclude source-breakdown detail)
+        main_columns = {
+            BudgetColumn.TOTAL_PLANNED,
+            BudgetColumn.ACTUAL,
+            BudgetColumn.PROJECTED,
+        }
         export_columns = [
-            col
-            for col in expenses_forecast.columns
-            if col[1] in ("Planned", "Actual", "Projected")
+            col for col in expenses_forecast.columns if col[1] in main_columns
         ]
         expenses_forecast = expenses_forecast[export_columns]
 
         expenses_forecast = expenses_forecast.mask(expenses_forecast.eq(0))
         # Translate for export: column sub-headers and category index
         if not expenses_forecast.empty:
-            col_tr = {
-                "Actual": _("Actual"),
-                "Planned": _("Planned"),
-                "Projected": _("Projected"),
+            col_tr: dict[str, str] = {
+                BudgetColumn.ACTUAL: _("Actual"),
+                BudgetColumn.TOTAL_PLANNED: _("Planned"),
+                BudgetColumn.PROJECTED: _("Projected"),
             }
             export_df = self._translate_category_index(expenses_forecast)
             export_df.columns = pd.MultiIndex.from_tuples(
@@ -290,31 +294,36 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         worksheet.autofit()
         worksheet.set_column(1, 21, 12, self._money_format)
 
-        # Compare "Planned" and "Actual" columns and highlight overspend
-        date_to_header_column: dict[str, dict[str, int]] = {}
-        for i, col_tuple in enumerate(expenses_forecast.columns):
-            date_to_header_column.setdefault(col_tuple[0], {}).setdefault(
-                col_tuple[1], i
-            )
+        self._highlight_overspend(expenses_forecast, worksheet)
+        worksheet.freeze_panes(0, 1)
 
-        for _date_key, header_to_column in date_to_header_column.items():
-            if "Planned" not in header_to_column or "Actual" not in header_to_column:
+    def _highlight_overspend(
+        self, expenses_forecast: pd.DataFrame, worksheet: Any
+    ) -> None:
+        """Add conditional formatting to highlight Actual < Planned (overspend)."""
+        month_to_column_index: dict[str, dict[str, int]] = {}
+        for i, col in enumerate(expenses_forecast.columns):
+            month_to_column_index.setdefault(col[0], {}).setdefault(col[1], i)
+
+        for _month, column_index in month_to_column_index.items():
+            if (
+                BudgetColumn.TOTAL_PLANNED not in column_index
+                or BudgetColumn.ACTUAL not in column_index
+            ):
                 continue
 
-            real_column_letter = chr(ord("B") + header_to_column["Actual"])
-            forecast_column_letter = chr(ord("B") + header_to_column["Planned"])
+            actual_letter = chr(ord("B") + column_index[BudgetColumn.ACTUAL])
+            planned_letter = chr(ord("B") + column_index[BudgetColumn.TOTAL_PLANNED])
             worksheet.conditional_format(
-                f"{real_column_letter}2:{real_column_letter}{len(expenses_forecast)}",
+                f"{actual_letter}2:{actual_letter}{len(expenses_forecast)}",
                 {
                     "type": "formula",
-                    "criteria": f"={real_column_letter}2<{forecast_column_letter}2",
+                    "criteria": f"={actual_letter}2<{planned_letter}2",
                     "format": self._writer.book.add_format(  # type: ignore[union-attr]
                         {"bg_color": "red"}
                     ),
                 },
             )
-
-        worksheet.freeze_panes(0, 1)
 
     def _add_expenses_statistics(self, expenses_statistics: pd.DataFrame) -> None:
         sheet_name = _("Expense statistics")
