@@ -67,11 +67,11 @@ class CategoryDetailModal(ModalScreen[None]):
     }
 
     CategoryDetailModal .source-desc {
-        width: 30;
+        width: 24;
     }
 
     CategoryDetailModal .source-period {
-        width: 20;
+        width: 26;
         color: $text-muted;
     }
 
@@ -209,7 +209,7 @@ class CategoryDetailModal(ModalScreen[None]):
         amount_class = "amount-positive" if source["amount"] > 0 else "amount-negative"
         with Horizontal(classes="source-row"):
             yield Static(tag_text, classes="source-tag")
-            yield Static(source["description"][:28], classes="source-desc")
+            yield Static(source["description"][:22], classes="source-desc")
             yield Static(source["periodicity"], classes="source-period")
             yield Static(
                 f"{source['amount']:+.2f}",

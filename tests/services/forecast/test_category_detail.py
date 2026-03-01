@@ -130,7 +130,7 @@ class TestFormatHelpers:
         assert _format_periodicity(op) == "one-time, 15th"
 
     def test_format_budget_periodicity_monthly(self) -> None:
-        """Monthly budget formats as 'amount/month'."""
+        """Monthly budget formats as 'amount/month (dates)'."""
         budget = Budget(
             record_id=1,
             description="Groceries",
@@ -138,10 +138,11 @@ class TestFormatHelpers:
             category=Category.GROCERIES,
             date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
         )
-        assert _format_budget_periodicity(budget) == "500/month"
+        result = _format_budget_periodicity(budget, date(2025, 2, 1), date(2025, 2, 28))
+        assert result == "500/month (01/02→28/02)"
 
     def test_format_budget_periodicity_yearly(self) -> None:
-        """Yearly budget formats as 'amount/year'."""
+        """Yearly budget formats as 'amount/year (dates)'."""
         budget = Budget(
             record_id=2,
             description="Insurance",
@@ -149,7 +150,10 @@ class TestFormatHelpers:
             category=Category.OTHER,
             date_range=RecurringDay(date(2025, 1, 1), relativedelta(years=1)),
         )
-        assert _format_budget_periodicity(budget) == "1,200/year"
+        result = _format_budget_periodicity(
+            budget, date(2025, 1, 1), date(2025, 12, 31)
+        )
+        assert result == "1,200/year (01/01→31/12)"
 
 
 class TestCrossMonthAnnotation:
@@ -246,7 +250,7 @@ class TestGetCategoryDetail:
         source = detail["planned_sources"][0]
         assert source["tag"] == "budget"
         assert source["description"] == "House works"
-        assert source["periodicity"] == "200/month"
+        assert source["periodicity"] == "200/month (01/02→28/02)"
 
     def test_mixed_budget_and_planned(self, repository: RepositoryInterface) -> None:
         """Category with both budget and planned op returns both sources."""

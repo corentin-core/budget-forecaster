@@ -89,43 +89,47 @@ def _df_value(
     return 0.0
 
 
+def _ordinal(day: int) -> str:
+    """Return the ordinal for a day number (translatable)."""
+    if day == 1:
+        return _("1st")
+    if 11 <= day <= 13:
+        return _("{n}th").format(n=day)
+    suffix_map = {1: _("{n}st"), 2: _("{n}nd"), 3: _("{n}rd")}
+    template = suffix_map.get(day % 10, _("{n}th"))
+    return template.format(n=day)
+
+
 def _format_periodicity(planned_op: PlannedOperation) -> str:
     """Format the periodicity of a planned operation for display."""
     date_range = planned_op.date_range
+    day = date_range.start_date.day
+    ordinal = _ordinal(day)
     if isinstance(date_range, RecurringDateRange):
         period = date_range.period
         if period == relativedelta(months=1):
-            period_label = _("monthly")
-        elif period == relativedelta(years=1):
-            period_label = _("yearly")
-        else:
-            period_label = _("every {}").format(period)
-        day = date_range.start_date.day
-        return f"{period_label}, {_ordinal(day)}"
-    # SingleDay = one-time
-    day = date_range.start_date.day
-    return _("one-time") + f", {_ordinal(day)}"
+            return _("monthly, {ordinal}").format(ordinal=ordinal)
+        if period == relativedelta(years=1):
+            return _("yearly, {ordinal}").format(ordinal=ordinal)
+        return _("every {period}, {ordinal}").format(period=period, ordinal=ordinal)
+    return _("one-time, {ordinal}").format(ordinal=ordinal)
 
 
-def _format_budget_periodicity(budget: Budget) -> str:
-    """Format the periodicity of a budget for display."""
+def _format_budget_periodicity(
+    budget: Budget, month_start: date, month_end: date
+) -> str:
+    """Format the periodicity of a budget for display, including iteration dates."""
+    amount_str = f"{abs(budget.amount):,.0f}"
+    dates = f"{month_start.strftime('%d/%m')}→{month_end.strftime('%d/%m')}"
     date_range = budget.date_range
     if isinstance(date_range, RecurringDateRange):
         period = date_range.period
         if period == relativedelta(months=1):
-            return f"{abs(budget.amount):,.0f}/" + _("month")
+            return f"{amount_str}/" + _("month") + f" ({dates})"
         if period == relativedelta(years=1):
-            return f"{abs(budget.amount):,.0f}/" + _("year")
-        return f"{abs(budget.amount):,.0f}/{period}"
-    return f"{abs(budget.amount):,.0f}"
-
-
-def _ordinal(day: int) -> str:
-    """Return the ordinal suffix for a day number (English)."""
-    if 11 <= day <= 13:
-        return f"{day}th"
-    suffix = {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
-    return f"{day}{suffix}"
+            return f"{amount_str}/" + _("year") + f" ({dates})"
+        return f"{amount_str}/{period} ({dates})"
+    return f"{amount_str} ({dates})"
 
 
 def _cross_month_annotation(
@@ -495,7 +499,9 @@ class ForecastService:
                 PlannedSourceDetail(
                     tag="budget",
                     description=budget.description,
-                    periodicity=_format_budget_periodicity(budget),
+                    periodicity=_format_budget_periodicity(
+                        budget, month_start, month_end
+                    ),
                     amount=amount,
                 )
             )

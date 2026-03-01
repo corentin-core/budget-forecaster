@@ -1040,22 +1040,43 @@ msgstr "Aucune opération pour cette catégorie"
 msgid "Error loading category detail"
 msgstr "Erreur lors du chargement du détail de la catégorie"
 
-#: budget_forecaster/services/forecast/forecast_service.py
-msgid "yearly"
-msgstr "annuel"
+#: budget_forecaster/services/forecast/forecast_service.py — ordinals
+msgid "1st"
+msgstr "1er"
 
-msgid "every {}"
-msgstr "tous les {}"
+msgid "{n}th"
+msgstr "{n}"
 
-msgid "one-time"
-msgstr "ponctuel"
+msgid "{n}st"
+msgstr "{n}"
 
+msgid "{n}nd"
+msgstr "{n}"
+
+msgid "{n}rd"
+msgstr "{n}"
+
+#: budget_forecaster/services/forecast/forecast_service.py — periodicity
+msgid "monthly, {ordinal}"
+msgstr "mensuel, le {ordinal}"
+
+msgid "yearly, {ordinal}"
+msgstr "annuel, le {ordinal}"
+
+msgid "every {period}, {ordinal}"
+msgstr "tous les {period}, le {ordinal}"
+
+msgid "one-time, {ordinal}"
+msgstr "ponctuel, le {ordinal}"
+
+#: budget_forecaster/services/forecast/forecast_service.py — budget periodicity
 msgid "month"
 msgstr "mois"
 
 msgid "year"
 msgstr "an"
 
+#: budget_forecaster/services/forecast/forecast_service.py — cross-month
 msgid "paid early (operation dated {})"
 msgstr "payé en avance (opération du {})"
 
