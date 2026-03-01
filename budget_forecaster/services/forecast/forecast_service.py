@@ -20,6 +20,7 @@ from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.i18n import _
 from budget_forecaster.infrastructure.persistence.repository_interface import (
     RepositoryInterface,
 )
@@ -94,16 +95,16 @@ def _format_periodicity(planned_op: PlannedOperation) -> str:
     if isinstance(date_range, RecurringDateRange):
         period = date_range.period
         if period == relativedelta(months=1):
-            period_label = "monthly"
+            period_label = _("monthly")
         elif period == relativedelta(years=1):
-            period_label = "yearly"
+            period_label = _("yearly")
         else:
-            period_label = f"every {period}"
+            period_label = _("every {}").format(period)
         day = date_range.start_date.day
         return f"{period_label}, {_ordinal(day)}"
     # SingleDay = one-time
     day = date_range.start_date.day
-    return f"one-time, {_ordinal(day)}"
+    return _("one-time") + f", {_ordinal(day)}"
 
 
 def _format_budget_periodicity(budget: Budget) -> str:
@@ -112,9 +113,9 @@ def _format_budget_periodicity(budget: Budget) -> str:
     if isinstance(date_range, RecurringDateRange):
         period = date_range.period
         if period == relativedelta(months=1):
-            return f"{abs(budget.amount):,.0f}/month"
+            return f"{abs(budget.amount):,.0f}/" + _("month")
         if period == relativedelta(years=1):
-            return f"{abs(budget.amount):,.0f}/year"
+            return f"{abs(budget.amount):,.0f}/" + _("year")
         return f"{abs(budget.amount):,.0f}/{period}"
     return f"{abs(budget.amount):,.0f}"
 
@@ -133,9 +134,10 @@ def _cross_month_annotation(
     """Build a cross-month annotation if the operation is from another month."""
     if month_start <= operation_date <= month_end:
         return ""
+    date_str = operation_date.strftime("%b %d")
     if operation_date < month_start:
-        return f"paid early (operation dated {operation_date.strftime('%b %d')})"
-    return f"paid late (operation dated {operation_date.strftime('%b %d')})"
+        return _("paid early (operation dated {})").format(date_str)
+    return _("paid late (operation dated {})").format(date_str)
 
 
 class ForecastService:

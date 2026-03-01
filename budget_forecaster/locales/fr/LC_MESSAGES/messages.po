@@ -1039,3 +1039,25 @@ msgstr "Aucune opération pour cette catégorie"
 
 msgid "Error loading category detail"
 msgstr "Erreur lors du chargement du détail de la catégorie"
+
+#: budget_forecaster/services/forecast/forecast_service.py
+msgid "yearly"
+msgstr "annuel"
+
+msgid "every {}"
+msgstr "tous les {}"
+
+msgid "one-time"
+msgstr "ponctuel"
+
+msgid "month"
+msgstr "mois"
+
+msgid "year"
+msgstr "an"
+
+msgid "paid early (operation dated {})"
+msgstr "payé en avance (opération du {})"
+
+msgid "paid late (operation dated {})"
+msgstr "payé en retard (opération du {})"
