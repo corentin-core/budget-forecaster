@@ -8,7 +8,7 @@ from typing import Any
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
+from textual.containers import Center, Horizontal, Vertical
 from textual.widgets import Button, DataTable, Static
 
 from budget_forecaster.core.types import Category
@@ -23,9 +23,9 @@ from budget_forecaster.services.forecast.forecast_service import (
 logger = logging.getLogger(__name__)
 
 # Column widths
-_COL_CATEGORY = 20
+_COL_CATEGORY = 30
 _COL_AMOUNT = 10
-_COL_CONSUMPTION = 16
+_COL_CONSUMPTION = 20
 
 
 class _BarChar(enum.StrEnum):
@@ -90,6 +90,10 @@ def _direction_indicator(is_income: bool) -> str:
 class ReviewWidget(Vertical):
     """Review tab: per-category planned vs actual for one month."""
 
+    # DataTable ignores width:auto and always fills its parent, so we must
+    # give it an explicit width and wrap it in a Center container.
+    _TABLE_WIDTH = _COL_CATEGORY + 4 * _COL_AMOUNT + _COL_CONSUMPTION + 6 * 2 + 2
+
     DEFAULT_CSS = """
     ReviewWidget {
         height: 1fr;
@@ -115,6 +119,10 @@ class ReviewWidget(Vertical):
         content-align: center middle;
         text-style: bold;
         padding: 0 2;
+    }
+
+    ReviewWidget #review-table-center {
+        height: 1fr;
     }
 
     ReviewWidget #review-table {
@@ -148,7 +156,8 @@ class ReviewWidget(Vertical):
             yield Button("\u25c0", id="review-prev")
             yield Static("", id="review-month-label")
             yield Button("\u25b6", id="review-next")
-        yield DataTable(id="review-table", cursor_type="row")
+        with Center(id="review-table-center"):
+            yield DataTable(id="review-table", cursor_type="row")
         yield Static("", id="review-status")
 
     def set_app_service(self, service: ApplicationService) -> None:
@@ -252,14 +261,16 @@ class ReviewWidget(Vertical):
         table = self.query_one("#review-table", DataTable)
         table.clear(columns=True)
 
-        table.add_columns(
-            _("Category"),
-            _("Planned"),
-            _("Actual"),
-            _("Projected"),
-            _("Remaining"),
-            _("Consumption"),
-        )
+        table.add_column(_("Category"), width=_COL_CATEGORY)
+        table.add_column(_("Planned"), width=_COL_AMOUNT)
+        table.add_column(_("Actual"), width=_COL_AMOUNT)
+        table.add_column(_("Projected"), width=_COL_AMOUNT)
+        table.add_column(_("Remaining"), width=_COL_AMOUNT)
+        table.add_column(_("Consumption"), width=_COL_CONSUMPTION)
+
+        # DataTable always expands to fill its parent; set an explicit width
+        # so the Center container can position it.
+        table.styles.width = self._TABLE_WIDTH
 
         # Separate forecasted vs unforecasted
         forecasted: list[tuple[str, CategoryBudget]] = []
