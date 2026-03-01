@@ -351,11 +351,25 @@ class TestComputeBudgetForecast:
         analyzer = AccountAnalyzer(account, Forecast((planned_op,), ()), (link,))
         df = analyzer.compute_budget_forecast(date(2023, 1, 1), date(2023, 4, 1))
 
+        jan = df.loc[str(Category.GROCERIES)]["2023-01-01"]
+        feb = df.loc[str(Category.GROCERIES)]["2023-02-01"]
+        march = df.loc[str(Category.GROCERIES)]["2023-03-01"]
+
         # Op 1 (Jan 15, -50) is linked to March → attributed to March, not January
-        assert df.loc[str(Category.GROCERIES)]["2023-01-01"]["Actual"] == 0.0
-        assert df.loc[str(Category.GROCERIES)]["2023-03-01"]["Actual"] == -50.0
+        assert jan["Actual"] == 0.0
+        assert march["Actual"] == -50.0
         # Op 2 (Feb 15, -30) has no link → stays in February
-        assert df.loc[str(Category.GROCERIES)]["2023-02-01"]["Actual"] == -30.0
+        assert feb["Actual"] == -30.0
+
+        # March iteration is realized (linked) → not counted as unrealized
+        # TotalPlanned = -50 (monthly op), Projected = Actual + unrealized = -50 + 0
+        assert march["TotalPlanned"] == -50.0
+        assert march["Projected"] == -50.0
+
+        # January: no actual, iteration not realized → unrealized = -50
+        # Projected = 0 + (-50) = -50
+        assert jan["TotalPlanned"] == -50.0
+        assert jan["Projected"] == -50.0
 
     def test_projected_with_realized_iteration(self, account: Account) -> None:
         """Realized planned iterations are excluded from not-yet-realized amounts."""

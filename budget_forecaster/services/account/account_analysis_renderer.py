@@ -303,7 +303,8 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         """Add conditional formatting to highlight Actual < Planned (overspend)."""
         month_to_column_index: dict[str, dict[str, int]] = {}
         for i, col in enumerate(expenses_forecast.columns):
-            month_to_column_index.setdefault(col[0], {}).setdefault(col[1], i)
+            month_label, col_name = col[0], col[1]
+            month_to_column_index.setdefault(month_label, {}).setdefault(col_name, i)
 
         for _month, column_index in month_to_column_index.items():
             if (

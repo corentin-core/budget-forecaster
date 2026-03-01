@@ -283,8 +283,9 @@ class ForecastService:
                 projected = _df_value(df, month, category, BudgetColumn.PROJECTED)
 
                 if any((planned != 0, actual != 0, projected != 0)):
-                    # First non-zero value determines income vs expense sign.
-                    # Priority: planned (most reliable), then actual, then projected.
+                    # Determine income vs expense from the first non-zero value.
+                    # Priority matters: planned is user-defined (most reliable),
+                    # actual may include partial refunds, projected is derived.
                     ref = planned or actual or projected
                     categories[str(category)] = CategoryBudget(
                         planned=planned,
