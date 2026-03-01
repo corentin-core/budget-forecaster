@@ -1,18 +1,26 @@
 """Service for forecast operations."""
 
 import logging
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, SupportsFloat, TypedDict, cast
 
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 
-from budget_forecaster.core.types import BudgetColumn, BudgetId, PlannedOperationId
+from budget_forecaster.core.date_range import RecurringDateRange
+from budget_forecaster.core.types import (
+    BudgetColumn,
+    BudgetId,
+    Category,
+    OperationId,
+    PlannedOperationId,
+)
 from budget_forecaster.domain.account.account_interface import AccountInterface
 from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.i18n import _
 from budget_forecaster.infrastructure.persistence.repository_interface import (
     RepositoryInterface,
 )
@@ -29,7 +37,7 @@ class CategoryBudget(TypedDict):
 
     planned: float
     actual: float
-    projected: float
+    forecast: float
     is_income: bool
 
 
@@ -40,6 +48,39 @@ class MonthlySummary(TypedDict):
     categories: dict[str, CategoryBudget]
 
 
+class PlannedSourceDetail(TypedDict):
+    """A single planned source for a category in a month."""
+
+    tag: str  # "budget" or "planned"
+    description: str
+    periodicity: str
+    amount: float
+    iteration_day: int
+
+
+class AttributedOperationDetail(TypedDict):
+    """An operation attributed to a category in a month (link-aware)."""
+
+    operation_date: date
+    description: str
+    amount: float
+    cross_month_annotation: str  # empty if same month
+
+
+class CategoryDetail(TypedDict):
+    """Full detail for a category in a given month."""
+
+    category: str
+    month: date
+    planned_sources: tuple[PlannedSourceDetail, ...]
+    operations: tuple[AttributedOperationDetail, ...]
+    total_planned: float
+    total_actual: float
+    forecast: float
+    remaining: float
+    is_income: bool
+
+
 def _df_value(
     df: pd.DataFrame, month: Any, category: str, column: BudgetColumn
 ) -> float:
@@ -47,6 +88,61 @@ def _df_value(
     if (month, column) in df.columns:
         return float(cast(SupportsFloat, df.loc[category, (month, column)]))
     return 0.0
+
+
+def _ordinal(day: int) -> str:
+    """Return the ordinal for a day number (translatable)."""
+    if day == 1:
+        return _("1st")
+    if 11 <= day <= 13:
+        return _("{n}th").format(n=day)
+    suffix_map = {1: _("{n}st"), 2: _("{n}nd"), 3: _("{n}rd")}
+    template = suffix_map.get(day % 10, _("{n}th"))
+    return template.format(n=day)
+
+
+def _format_periodicity(planned_op: PlannedOperation) -> str:
+    """Format the periodicity of a planned operation for display."""
+    date_range = planned_op.date_range
+    day = date_range.start_date.day
+    ordinal = _ordinal(day)
+    if isinstance(date_range, RecurringDateRange):
+        period = date_range.period
+        if period == relativedelta(months=1):
+            return _("monthly, {ordinal}").format(ordinal=ordinal)
+        if period == relativedelta(years=1):
+            return _("yearly, {ordinal}").format(ordinal=ordinal)
+        return _("every {period}, {ordinal}").format(period=period, ordinal=ordinal)
+    return _("one-time, {ordinal}").format(ordinal=ordinal)
+
+
+def _format_budget_periodicity(
+    budget: Budget, month_start: date, month_end: date
+) -> str:
+    """Format the periodicity of a budget for display, including iteration dates."""
+    amount_str = f"{abs(budget.amount):,.0f}"
+    dates = f"{month_start.strftime('%d/%m')}→{month_end.strftime('%d/%m')}"
+    date_range = budget.date_range
+    if isinstance(date_range, RecurringDateRange):
+        period = date_range.period
+        if period == relativedelta(months=1):
+            return f"{amount_str}/" + _("month") + f" ({dates})"
+        if period == relativedelta(years=1):
+            return f"{amount_str}/" + _("year") + f" ({dates})"
+        return f"{amount_str}/{period} ({dates})"
+    return f"{amount_str} ({dates})"
+
+
+def _cross_month_annotation(
+    operation_date: date, month_start: date, month_end: date
+) -> str:
+    """Build a cross-month annotation if the operation is from another month."""
+    if month_start <= operation_date <= month_end:
+        return ""
+    date_str = operation_date.strftime("%b %d")
+    if operation_date < month_start:
+        return _("paid early (operation dated {})").format(date_str)
+    return _("paid late (operation dated {})").format(date_str)
 
 
 class ForecastService:
@@ -280,7 +376,7 @@ class ForecastService:
 
                 planned = _df_value(df, month, category, BudgetColumn.TOTAL_PLANNED)
                 actual = _df_value(df, month, category, BudgetColumn.ACTUAL)
-                projected = _df_value(df, month, category, BudgetColumn.PROJECTED)
+                projected = _df_value(df, month, category, BudgetColumn.FORECAST)
 
                 if any((planned != 0, actual != 0, projected != 0)):
                     # Determine income vs expense from the first non-zero value.
@@ -290,7 +386,7 @@ class ForecastService:
                     categories[str(category)] = CategoryBudget(
                         planned=planned,
                         actual=actual,
-                        projected=projected,
+                        forecast=projected,
                         is_income=ref > 0,
                     )
             summaries.append(MonthlySummary(month=month, categories=categories))
@@ -311,3 +407,154 @@ class ForecastService:
             (str(cat), float(row["Total"]), float(row["Monthly average"]))
             for cat, row in df.iterrows()
         ]
+
+    def get_category_detail(
+        self,
+        category: str,
+        month: date,
+        operation_links: tuple[OperationLink, ...] = (),
+    ) -> CategoryDetail:
+        """Get detailed breakdown for a category in a given month.
+
+        Returns planned sources (budgets + planned operations) and attributed
+        operations (link-aware) for the category in the given month.
+
+        Args:
+            category: Category name.
+            month: First day of the month.
+            operation_links: Links for link-aware attribution.
+
+        Returns:
+            Full category detail for the modal drill-down.
+        """
+        forecast = self._forecast or self.load_forecast()
+        month_start = month.replace(day=1)
+        month_end = month_start + relativedelta(months=1) - timedelta(days=1)
+
+        cat = Category(category)
+        planned_sources = self._collect_planned_sources(
+            forecast, cat, month_start, month_end
+        )
+        operations = self._collect_attributed_operations(
+            cat, month_start, month_end, operation_links
+        )
+
+        total_planned = sum(s["amount"] for s in planned_sources)
+        total_actual = sum(op["amount"] for op in operations)
+
+        # Read projected from the cached report if available
+        projected = total_actual
+        if self._report is not None:
+            projected = _df_value(
+                self._report.budget_forecast,
+                pd.Timestamp(month_start),
+                cat,
+                BudgetColumn.FORECAST,
+            )
+            if projected == 0.0 and total_actual != 0.0:
+                projected = total_actual
+
+        ref = total_planned or total_actual or projected
+        return CategoryDetail(
+            category=category,
+            month=month_start,
+            planned_sources=tuple(planned_sources),
+            operations=tuple(operations),
+            total_planned=total_planned,
+            total_actual=total_actual,
+            forecast=projected,
+            remaining=abs(projected) - abs(total_actual),
+            is_income=ref > 0,
+        )
+
+    def _collect_planned_sources(
+        self,
+        forecast: Forecast,
+        category: Category,
+        month_start: date,
+        month_end: date,
+    ) -> list[PlannedSourceDetail]:
+        """Collect planned operation and budget sources for a category/month."""
+        sources: list[PlannedSourceDetail] = []
+
+        for planned_op in forecast.operations:
+            if planned_op.category != category:
+                continue
+            if not (amount := planned_op.amount_on_period(month_start, month_end)):
+                continue
+            sources.append(
+                PlannedSourceDetail(
+                    tag="planned",
+                    description=planned_op.description,
+                    periodicity=_format_periodicity(planned_op),
+                    amount=amount,
+                    iteration_day=planned_op.date_range.start_date.day,
+                )
+            )
+
+        for budget in forecast.budgets:
+            if budget.category != category:
+                continue
+            if not (amount := budget.amount_on_period(month_start, month_end)):
+                continue
+            sources.append(
+                PlannedSourceDetail(
+                    tag="budget",
+                    description=budget.description,
+                    periodicity=_format_budget_periodicity(
+                        budget, month_start, month_end
+                    ),
+                    amount=amount,
+                    iteration_day=month_start.day,
+                )
+            )
+
+        sources.sort(key=lambda s: (s["iteration_day"], s["description"]))
+        return sources
+
+    def _collect_attributed_operations(
+        self,
+        category: Category,
+        month_start: date,
+        month_end: date,
+        operation_links: tuple[OperationLink, ...],
+    ) -> list[AttributedOperationDetail]:
+        """Collect operations attributed to a category/month (link-aware)."""
+        account = self._account_provider.account
+
+        # Build link index: operation_unique_id → linked month (first day)
+        op_to_linked_month: dict[OperationId, date] = {}
+        for link in operation_links:
+            op_to_linked_month[link.operation_unique_id] = link.iteration_date.replace(
+                day=1
+            )
+
+        operations: list[AttributedOperationDetail] = []
+        for op in account.operations:
+            if op.category != category:
+                continue
+
+            if (linked_month := op_to_linked_month.get(op.unique_id)) is not None:
+                # Linked: attribute to the linked month
+                if linked_month != month_start:
+                    continue
+                annotation = _cross_month_annotation(
+                    op.operation_date, month_start, month_end
+                )
+            else:
+                # Unlinked: attribute to the real date's month
+                if not month_start <= op.operation_date <= month_end:
+                    continue
+                annotation = ""
+
+            operations.append(
+                AttributedOperationDetail(
+                    operation_date=op.operation_date,
+                    description=op.description,
+                    amount=op.amount,
+                    cross_month_annotation=annotation,
+                )
+            )
+
+        operations.sort(key=lambda o: (o["operation_date"], o["description"]))
+        return operations

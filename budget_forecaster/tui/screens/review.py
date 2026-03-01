@@ -10,6 +10,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Center, Horizontal, Vertical
 from textual.widgets import Button, DataTable, Static
+from textual.widgets.data_table import RowKey
 
 from budget_forecaster.core.types import Category
 from budget_forecaster.exceptions import BudgetForecasterError
@@ -19,12 +20,13 @@ from budget_forecaster.services.forecast.forecast_service import (
     CategoryBudget,
     MonthlySummary,
 )
+from budget_forecaster.tui.modals.category_detail import CategoryDetailModal
 
 logger = logging.getLogger(__name__)
 
 # Column widths
 _COL_CATEGORY = 30
-_COL_AMOUNT = 10
+_COL_AMOUNT = 12
 _COL_CONSUMPTION = 20
 
 
@@ -37,16 +39,16 @@ class _BarChar(enum.StrEnum):
 
 
 def _format_amount(value: float) -> Text:
-    """Format an amount as absolute value, right-aligned."""
-    return Text(f"{abs(value):,.0f}", justify="right")
+    """Format an amount as absolute value with currency, right-aligned."""
+    return Text(f"{abs(value):,.0f} \u20ac", justify="right")
 
 
 def _format_remaining(projected: float, actual: float) -> Text:
     """Format the Remaining column (Projected - Actual)."""
     if (remaining := abs(projected) - abs(actual)) == 0:
-        return Text("0", justify="right")
+        return Text("0 \u20ac", justify="right")
     sign = "+" if remaining > 0 else ""
-    return Text(f"{sign}{remaining:,.0f}", justify="right")
+    return Text(f"{sign}{remaining:,.0f} \u20ac", justify="right")
 
 
 def _render_consumption_bar(actual: float, planned: float) -> Text:
@@ -150,6 +152,7 @@ class ReviewWidget(Vertical):
         self._app_service: ApplicationService | None = None
         self._summaries: list[MonthlySummary] = []
         self._current_index: int = 0
+        self._row_to_category: dict[RowKey, str] = {}
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="review-nav"):
@@ -260,11 +263,12 @@ class ReviewWidget(Vertical):
         """Build the review DataTable from category data."""
         table = self.query_one("#review-table", DataTable)
         table.clear(columns=True)
+        self._row_to_category.clear()
 
         table.add_column(_("Category"), width=_COL_CATEGORY)
         table.add_column(_("Planned"), width=_COL_AMOUNT)
         table.add_column(_("Actual"), width=_COL_AMOUNT)
-        table.add_column(_("Projected"), width=_COL_AMOUNT)
+        table.add_column(_("Forecast"), width=_COL_AMOUNT)
         table.add_column(_("Remaining"), width=_COL_AMOUNT)
         table.add_column(_("Consumption"), width=_COL_CONSUMPTION)
 
@@ -282,10 +286,9 @@ class ReviewWidget(Vertical):
             else:
                 unforecasted.append((cat_name, cat_data))
 
-        # Sort forecasted by absolute planned descending
-        forecasted.sort(key=lambda x: abs(x[1]["planned"]), reverse=True)
-        # Sort unforecasted by absolute actual descending
-        unforecasted.sort(key=lambda x: abs(x[1]["actual"]), reverse=True)
+        # Sort: expenses first, then incomes, alphabetical within each group
+        forecasted.sort(key=lambda x: (x[1]["is_income"], _translate_category(x[0])))
+        unforecasted.sort(key=lambda x: (x[1]["is_income"], _translate_category(x[0])))
 
         # Forecasted section
         if forecasted:
@@ -299,17 +302,18 @@ class ReviewWidget(Vertical):
             )
             for cat_name, cat_data in forecasted:
                 direction = _direction_indicator(cat_data["is_income"])
-                table.add_row(
+                row_key = table.add_row(
                     Text(f"{direction} {_translate_category(cat_name)}"),
                     _format_amount(cat_data["planned"]),
                     _format_amount(cat_data["actual"]),
-                    _format_amount(cat_data["projected"]),
+                    _format_amount(cat_data["forecast"]),
                     _format_remaining(
-                        cat_data["projected"],
+                        cat_data["forecast"],
                         cat_data["actual"],
                     ),
                     _render_consumption_bar(cat_data["actual"], cat_data["planned"]),
                 )
+                self._row_to_category[row_key] = cat_name
 
         # Unforecasted section
         if unforecasted:
@@ -323,36 +327,43 @@ class ReviewWidget(Vertical):
             )
             for cat_name, cat_data in unforecasted:
                 direction = _direction_indicator(cat_data["is_income"])
-                actual_text = _format_amount(cat_data["actual"])
-                table.add_row(
+                row_key = table.add_row(
                     Text(f"{direction} {_translate_category(cat_name)}"),
                     Text("-", justify="right"),
-                    actual_text,
-                    _format_amount(cat_data["projected"]),
+                    _format_amount(cat_data["actual"]),
+                    _format_amount(cat_data["forecast"]),
                     Text("--", justify="right"),
-                    Text(f"{abs(cat_data['actual']):,.0f} EUR"),
+                    Text(f"{abs(cat_data['actual']):,.0f} \u20ac"),
                 )
+                self._row_to_category[row_key] = cat_name
 
         # Total row
         if categories:
-            total_planned = sum(c["planned"] for c in categories.values())
-            total_actual = sum(c["actual"] for c in categories.values())
-            total_projected = sum(c["projected"] for c in categories.values())
-            total_remaining = abs(total_projected) - abs(total_actual)
+            self._add_total_row(table, categories)
 
-            sign = "+" if total_remaining > 0 else ""
-            remaining_text = (
-                f"{sign}{total_remaining:,.0f}" if total_remaining != 0 else "0"
-            )
+    @staticmethod
+    def _add_total_row(table: DataTable, categories: dict[str, CategoryBudget]) -> None:
+        """Add the totals row to the review table."""
+        total_planned = sum(c["planned"] for c in categories.values())
+        total_actual = sum(c["actual"] for c in categories.values())
+        total_projected = sum(c["forecast"] for c in categories.values())
+        total_remaining = abs(total_projected) - abs(total_actual)
 
-            table.add_row(
-                Text(_("TOTAL"), style="bold"),
-                Text(f"{total_planned:,.0f}", justify="right", style="bold"),
-                Text(f"{total_actual:,.0f}", justify="right", style="bold"),
-                Text(f"{total_projected:,.0f}", justify="right", style="bold"),
-                Text(remaining_text, justify="right", style="bold"),
-                Text(""),
-            )
+        sign = "+" if total_remaining > 0 else ""
+        remaining_text = (
+            f"{sign}{total_remaining:,.0f} \u20ac"
+            if total_remaining != 0
+            else "0 \u20ac"
+        )
+
+        table.add_row(
+            Text(_("TOTAL"), style="bold"),
+            Text(f"{total_planned:,.0f} \u20ac", justify="right", style="bold"),
+            Text(f"{total_actual:,.0f} \u20ac", justify="right", style="bold"),
+            Text(f"{total_projected:,.0f} \u20ac", justify="right", style="bold"),
+            Text(remaining_text, justify="right", style="bold"),
+            Text(""),
+        )
 
     def _show_empty_state(self) -> None:
         """Show empty state when no data is available."""
@@ -380,3 +391,22 @@ class ReviewWidget(Vertical):
         if self._current_index < len(self._summaries) - 1:
             self._current_index += 1
             self._display_month()
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Open category detail modal when a category row is clicked."""
+        category = self._row_to_category.get(event.row_key)
+        if category is None or self._app_service is None:
+            return
+
+        summary = self._summaries[self._current_index]
+        month = summary["month"]
+        month_date = month.date() if hasattr(month, "date") else month
+
+        try:
+            detail = self._app_service.get_category_detail(
+                category, month_date.replace(day=1)
+            )
+            self.app.push_screen(CategoryDetailModal(detail))
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Error loading category detail")
+            self.app.notify(_("Error loading category detail"), severity="error")

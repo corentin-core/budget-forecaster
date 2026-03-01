@@ -876,10 +876,10 @@ msgid "Monthly average"
 msgstr "Moyenne mensuelle"
 
 msgid "Actual"
-msgstr "Réel"
+msgstr "Réalisé"
 
 msgid "Forecast"
-msgstr "Prévu"
+msgstr "Révisé"
 
 msgid "Adjusted"
 msgstr "Ajusté"
@@ -1000,9 +1000,6 @@ msgstr "Mois suivant"
 msgid "Planned"
 msgstr "Prévu"
 
-msgid "Projected"
-msgstr "Projeté"
-
 msgid "Remaining"
 msgstr "Restant"
 
@@ -1020,3 +1017,65 @@ msgstr "TOTAL"
 
 msgid "No planned operations or budgets for this month"
 msgstr "Aucune opération prévue ou budget pour ce mois"
+
+# ============================================================
+# Category detail modal
+# ============================================================
+
+msgid "Planned sources"
+msgstr "Sources prévues"
+
+msgid "Total planned"
+msgstr "Total prévu"
+
+msgid "Total actual"
+msgstr "Total réalisé"
+
+msgid "No operations for this category"
+msgstr "Aucune opération pour cette catégorie"
+
+msgid "Error loading category detail"
+msgstr "Erreur lors du chargement du détail de la catégorie"
+
+#: budget_forecaster/services/forecast/forecast_service.py — ordinals
+msgid "1st"
+msgstr "1er"
+
+msgid "{n}th"
+msgstr "{n}"
+
+msgid "{n}st"
+msgstr "{n}"
+
+msgid "{n}nd"
+msgstr "{n}"
+
+msgid "{n}rd"
+msgstr "{n}"
+
+#: budget_forecaster/services/forecast/forecast_service.py — periodicity
+msgid "monthly, {ordinal}"
+msgstr "mensuel, le {ordinal}"
+
+msgid "yearly, {ordinal}"
+msgstr "annuel, le {ordinal}"
+
+msgid "every {period}, {ordinal}"
+msgstr "tous les {period}, le {ordinal}"
+
+msgid "one-time, {ordinal}"
+msgstr "ponctuel, le {ordinal}"
+
+#: budget_forecaster/services/forecast/forecast_service.py — budget periodicity
+msgid "month"
+msgstr "mois"
+
+msgid "year"
+msgstr "an"
+
+#: budget_forecaster/services/forecast/forecast_service.py — cross-month
+msgid "paid early (operation dated {})"
+msgstr "payé en avance (opération du {})"
+
+msgid "paid late (operation dated {})"
+msgstr "payé en retard (opération du {})"

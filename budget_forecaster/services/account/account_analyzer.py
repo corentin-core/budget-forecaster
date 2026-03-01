@@ -206,7 +206,7 @@ class AccountAnalyzer:
 
         Produces a MultiIndex DataFrame with columns (month, column_name) where
         column_name is a BudgetColumn value: TotalPlanned, PlannedFromOps,
-        PlannedFromBudgets, Actual, Projected.
+        PlannedFromBudgets, Actual, Forecast.
         """
         budget_data: _BudgetData = {}
         months = pd.date_range(
@@ -388,12 +388,12 @@ class AccountAnalyzer:
 
     @staticmethod
     def _finalize_projected(budget_data: _BudgetData) -> None:
-        """Compute Projected = Actual + _UNREALIZED, then drop _UNREALIZED."""
+        """Compute Forecast = Actual + _UNREALIZED, then drop _UNREALIZED."""
         for category_months in budget_data.values():
             for month_columns in category_months.values():
                 actual = month_columns.get(BudgetColumn.ACTUAL, 0.0)
                 unrealized = month_columns.pop(BudgetColumn.UNREALIZED_INTERNAL, 0.0)
-                month_columns[BudgetColumn.PROJECTED] = actual + unrealized
+                month_columns[BudgetColumn.FORECAST] = actual + unrealized
 
     @staticmethod
     def _build_budget_forecast_df(budget_data: _BudgetData) -> pd.DataFrame:
@@ -412,7 +412,7 @@ class AccountAnalyzer:
             BudgetColumn.PLANNED_FROM_OPS,
             BudgetColumn.PLANNED_FROM_BUDGETS,
             BudgetColumn.ACTUAL,
-            BudgetColumn.PROJECTED,
+            BudgetColumn.FORECAST,
         ]
 
         df.index = pd.MultiIndex.from_tuples(df.index, names=["Category", "Month"])

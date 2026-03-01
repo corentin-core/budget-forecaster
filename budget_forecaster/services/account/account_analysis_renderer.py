@@ -268,7 +268,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
         main_columns = {
             BudgetColumn.TOTAL_PLANNED,
             BudgetColumn.ACTUAL,
-            BudgetColumn.PROJECTED,
+            BudgetColumn.FORECAST,
         }
         export_columns = [
             col for col in expenses_forecast.columns if col[1] in main_columns
@@ -281,7 +281,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
             col_tr: dict[str, str] = {
                 BudgetColumn.ACTUAL: _("Actual"),
                 BudgetColumn.TOTAL_PLANNED: _("Planned"),
-                BudgetColumn.PROJECTED: _("Projected"),
+                BudgetColumn.FORECAST: _("Forecast"),
             }
             export_df = self._translate_category_index(expenses_forecast)
             export_df.columns = pd.MultiIndex.from_tuples(
