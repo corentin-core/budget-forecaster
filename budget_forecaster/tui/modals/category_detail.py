@@ -57,26 +57,26 @@ class CategoryDetailModal(ModalScreen[None]):
         color: $text-muted;
     }
 
+    CategoryDetailModal .subsection-title {
+        color: $accent;
+        margin-top: 1;
+    }
+
     CategoryDetailModal .source-row {
         height: 1;
     }
 
-    CategoryDetailModal .source-tag {
-        width: 12;
-        color: $accent;
-    }
-
     CategoryDetailModal .source-desc {
-        width: 24;
+        width: 36;
     }
 
     CategoryDetailModal .source-period {
-        width: 26;
+        width: 22;
         color: $text-muted;
     }
 
     CategoryDetailModal .source-amount {
-        width: 12;
+        width: 16;
         text-align: right;
     }
 
@@ -90,11 +90,11 @@ class CategoryDetailModal(ModalScreen[None]):
     }
 
     CategoryDetailModal .op-desc {
-        width: 46;
+        width: 42;
     }
 
     CategoryDetailModal .op-amount {
-        width: 12;
+        width: 16;
         text-align: right;
     }
 
@@ -110,11 +110,11 @@ class CategoryDetailModal(ModalScreen[None]):
     }
 
     CategoryDetailModal .total-label {
-        width: 62;
+        width: 58;
     }
 
     CategoryDetailModal .total-amount {
-        width: 12;
+        width: 16;
         text-align: right;
         text-style: bold;
     }
@@ -149,7 +149,7 @@ class CategoryDetailModal(ModalScreen[None]):
         detail = self._detail
         month = detail["month"]
         month_label = f"{_(month.strftime('%B'))} {month.year}"
-        title = f"{_translate_category(detail['category'])} — {month_label}"
+        title = f"{_translate_category(detail['category'])} \u2014 {month_label}"
 
         with Vertical(id="modal-container"):
             yield Static(title, id="modal-title")
@@ -157,29 +157,38 @@ class CategoryDetailModal(ModalScreen[None]):
             # Planned sources section
             if detail["planned_sources"]:
                 yield Static(_("Planned sources"), classes="section-title")
-                yield Static(
-                    "─" * 74,
-                    classes="separator",
-                )
-                for source in detail["planned_sources"]:
-                    yield from self._compose_source_row(source)
-                yield Static(
-                    "─" * 74,
-                    classes="separator",
-                )
+
+                budgets = [s for s in detail["planned_sources"] if s["tag"] == "budget"]
+                planned_ops = [
+                    s for s in detail["planned_sources"] if s["tag"] == "planned"
+                ]
+
+                if budgets:
+                    yield Static(_("Budgets"), classes="subsection-title")
+                    yield Static("\u2500" * 74, classes="separator")
+                    for source in budgets:
+                        yield from self._compose_source_row(source)
+
+                if planned_ops:
+                    yield Static(_("Planned operations"), classes="subsection-title")
+                    yield Static("\u2500" * 74, classes="separator")
+                    for source in planned_ops:
+                        yield from self._compose_source_row(source)
+
+                yield Static("\u2500" * 74, classes="separator")
                 yield from self._compose_total_row(
                     _("Total planned"), detail["total_planned"]
                 )
 
             # Operations section
             yield Static(_("Operations"), classes="section-title")
-            yield Static("─" * 74, classes="separator")
+            yield Static("\u2500" * 74, classes="separator")
             if detail["operations"]:
                 for op in detail["operations"]:
                     yield from self._compose_operation_row(op)
             else:
                 yield Static(_("No operations for this category"), classes="op-desc")
-            yield Static("─" * 74, classes="separator")
+            yield Static("\u2500" * 74, classes="separator")
             yield from self._compose_total_row(
                 _("Total actual"), detail["total_actual"]
             )
@@ -190,10 +199,10 @@ class CategoryDetailModal(ModalScreen[None]):
             remaining_str = f"{sign}{remaining:,.0f}" if remaining != 0 else "0"
 
             summary = (
-                f"{_('Actual')}: {abs(detail['total_actual']):,.0f} / "
-                f"{_('Projected')}: {abs(detail['projected']):,.0f} / "
-                f"{_('Planned')}: {abs(detail['total_planned']):,.0f}    "
-                f"{_('Remaining')}: {remaining_str} EUR"
+                f"{_('Planned')}: {abs(detail['total_planned']):,.0f} \u20ac / "
+                f"{_('Actual')}: {abs(detail['total_actual']):,.0f} \u20ac / "
+                f"{_('Forecast')}: {abs(detail['forecast']):,.0f} \u20ac / "
+                f"{_('Remaining')}: {remaining_str} \u20ac"
             )
             yield Static(summary, id="footer-summary")
 
@@ -201,44 +210,38 @@ class CategoryDetailModal(ModalScreen[None]):
                 yield Button(_("Close"), id="btn-close", variant="default")
 
     @staticmethod
-    def _compose_source_row(
-        source: PlannedSourceDetail,
-    ) -> ComposeResult:
+    def _compose_source_row(source: PlannedSourceDetail) -> ComposeResult:
         """Compose a single planned source row."""
-        tag_text = f"[{source['tag']}]"
         amount_class = "amount-positive" if source["amount"] > 0 else "amount-negative"
         with Horizontal(classes="source-row"):
-            yield Static(tag_text, classes="source-tag")
-            yield Static(source["description"][:22], classes="source-desc")
+            yield Static(source["description"][:34], classes="source-desc")
             yield Static(source["periodicity"], classes="source-period")
             yield Static(
-                f"{source['amount']:+.2f}",
+                f"{source['amount']:+.2f} \u20ac",
                 classes=f"source-amount {amount_class}",
             )
 
     @staticmethod
-    def _compose_operation_row(
-        op: AttributedOperationDetail,
-    ) -> ComposeResult:
+    def _compose_operation_row(op: AttributedOperationDetail) -> ComposeResult:
         """Compose a single operation row with optional cross-month annotation."""
         date_str = op["operation_date"].strftime("%m/%d")
         amount_class = "amount-positive" if op["amount"] > 0 else "amount-negative"
         with Horizontal(classes="op-row"):
             yield Static(date_str, classes="op-date")
-            yield Static(op["description"][:44], classes="op-desc")
+            yield Static(op["description"][:40], classes="op-desc")
             yield Static(
-                f"{op['amount']:+.2f}",
+                f"{op['amount']:+.2f} \u20ac",
                 classes=f"op-amount {amount_class}",
             )
         if op["cross_month_annotation"]:
-            yield Static(f"← {op['cross_month_annotation']}", classes="annotation")
+            yield Static(f"\u2190 {op['cross_month_annotation']}", classes="annotation")
 
     @staticmethod
     def _compose_total_row(label: str, amount: float) -> ComposeResult:
         """Compose a total row."""
         with Horizontal(classes="total-row"):
             yield Static(label, classes="total-label")
-            yield Static(f"{amount:+.2f}", classes="total-amount")
+            yield Static(f"{amount:+.2f} \u20ac", classes="total-amount")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""

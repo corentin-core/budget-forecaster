@@ -490,6 +490,6 @@ class TestGetCategoryDetail:
 
         assert detail["total_actual"] == -320.0
         # Without a cached report, projected = total_actual
-        assert detail["remaining"] == abs(detail["projected"]) - abs(
+        assert detail["remaining"] == abs(detail["forecast"]) - abs(
             detail["total_actual"]
         )

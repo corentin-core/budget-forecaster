@@ -191,17 +191,17 @@ class TestComputeReportIntegration:
         # op dated Mar 5, linked to Mar 1 iteration → stays in March)
         assert budget_forecast.loc[str(Category.OTHER)]["2025-03-01"]["Actual"] == -95.0
 
-        # Projected = Actual + unrealized planned.
+        # Forecast = Actual + unrealized planned.
         # March iteration is realized (linked) → unrealized = 0.
-        # Projected = -95 + 0 = -95
-        march_projected = budget_forecast.loc[str(Category.OTHER)]["2025-03-01"][
-            "Projected"
+        # Forecast = -95 + 0 = -95
+        march_forecast = budget_forecast.loc[str(Category.OTHER)]["2025-03-01"][
+            "Forecast"
         ]
-        assert march_projected == -95.0
+        assert march_forecast == -95.0
 
         # April iteration is NOT realized → unrealized = -100
-        # Projected = 0 + (-100) = -100
-        april_projected = budget_forecast.loc[str(Category.OTHER)]["2025-04-01"][
-            "Projected"
+        # Forecast = 0 + (-100) = -100
+        april_forecast = budget_forecast.loc[str(Category.OTHER)]["2025-04-01"][
+            "Forecast"
         ]
-        assert april_projected == -100.0
+        assert april_forecast == -100.0

@@ -876,10 +876,10 @@ msgid "Monthly average"
 msgstr "Moyenne mensuelle"
 
 msgid "Actual"
-msgstr "Réel"
+msgstr "Réalisé"
 
 msgid "Forecast"
-msgstr "Prévu"
+msgstr "Révisé"
 
 msgid "Adjusted"
 msgstr "Ajusté"
@@ -999,9 +999,6 @@ msgstr "Mois suivant"
 
 msgid "Planned"
 msgstr "Prévu"
-
-msgid "Projected"
-msgstr "Projeté"
 
 msgid "Remaining"
 msgstr "Restant"

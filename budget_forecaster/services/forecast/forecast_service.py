@@ -37,7 +37,7 @@ class CategoryBudget(TypedDict):
 
     planned: float
     actual: float
-    projected: float
+    forecast: float
     is_income: bool
 
 
@@ -55,6 +55,7 @@ class PlannedSourceDetail(TypedDict):
     description: str
     periodicity: str
     amount: float
+    iteration_day: int
 
 
 class AttributedOperationDetail(TypedDict):
@@ -75,7 +76,7 @@ class CategoryDetail(TypedDict):
     operations: tuple[AttributedOperationDetail, ...]
     total_planned: float
     total_actual: float
-    projected: float
+    forecast: float
     remaining: float
     is_income: bool
 
@@ -375,7 +376,7 @@ class ForecastService:
 
                 planned = _df_value(df, month, category, BudgetColumn.TOTAL_PLANNED)
                 actual = _df_value(df, month, category, BudgetColumn.ACTUAL)
-                projected = _df_value(df, month, category, BudgetColumn.PROJECTED)
+                projected = _df_value(df, month, category, BudgetColumn.FORECAST)
 
                 if any((planned != 0, actual != 0, projected != 0)):
                     # Determine income vs expense from the first non-zero value.
@@ -385,7 +386,7 @@ class ForecastService:
                     categories[str(category)] = CategoryBudget(
                         planned=planned,
                         actual=actual,
-                        projected=projected,
+                        forecast=projected,
                         is_income=ref > 0,
                     )
             summaries.append(MonthlySummary(month=month, categories=categories))
@@ -448,7 +449,7 @@ class ForecastService:
                 self._report.budget_forecast,
                 pd.Timestamp(month_start),
                 cat,
-                BudgetColumn.PROJECTED,
+                BudgetColumn.FORECAST,
             )
             if projected == 0.0 and total_actual != 0.0:
                 projected = total_actual
@@ -461,7 +462,7 @@ class ForecastService:
             operations=tuple(operations),
             total_planned=total_planned,
             total_actual=total_actual,
-            projected=projected,
+            forecast=projected,
             remaining=abs(projected) - abs(total_actual),
             is_income=ref > 0,
         )
@@ -487,6 +488,7 @@ class ForecastService:
                     description=planned_op.description,
                     periodicity=_format_periodicity(planned_op),
                     amount=amount,
+                    iteration_day=planned_op.date_range.start_date.day,
                 )
             )
 
@@ -503,9 +505,11 @@ class ForecastService:
                         budget, month_start, month_end
                     ),
                     amount=amount,
+                    iteration_day=month_start.day,
                 )
             )
 
+        sources.sort(key=lambda s: (s["iteration_day"], s["description"]))
         return sources
 
     def _collect_attributed_operations(
@@ -552,5 +556,5 @@ class ForecastService:
                 )
             )
 
-        operations.sort(key=lambda o: o["operation_date"])
+        operations.sort(key=lambda o: (o["operation_date"], o["description"]))
         return operations
