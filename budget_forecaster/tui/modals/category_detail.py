@@ -7,21 +7,14 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
-from budget_forecaster.core.types import Category
 from budget_forecaster.i18n import _
 from budget_forecaster.services.forecast.forecast_service import (
     AttributedOperationDetail,
     CategoryDetail,
     PlannedSourceDetail,
+    SourceKind,
 )
-
-
-def _translate_category(name: str) -> str:
-    """Translate a category identifier to its display name."""
-    try:
-        return Category(name).display_name
-    except ValueError:
-        return name
+from budget_forecaster.tui.symbols import DisplaySymbol
 
 
 class CategoryDetailModal(ModalScreen[None]):
@@ -149,7 +142,9 @@ class CategoryDetailModal(ModalScreen[None]):
         detail = self._detail
         month = detail["month"]
         month_label = f"{_(month.strftime('%B'))} {month.year}"
-        title = f"{_translate_category(detail['category'])} \u2014 {month_label}"
+        category_name = detail["category"].display_name
+        title = f"{category_name} {DisplaySymbol.EM_DASH} {month_label}"
+        separator = DisplaySymbol.SEPARATOR * 74
 
         with Vertical(id="modal-container"):
             yield Static(title, id="modal-title")
@@ -158,53 +153,49 @@ class CategoryDetailModal(ModalScreen[None]):
             if detail["planned_sources"]:
                 yield Static(_("Planned sources"), classes="section-title")
 
-                budgets = [s for s in detail["planned_sources"] if s["tag"] == "budget"]
+                budgets = [
+                    s
+                    for s in detail["planned_sources"]
+                    if s["kind"] == SourceKind.BUDGET
+                ]
                 planned_ops = [
-                    s for s in detail["planned_sources"] if s["tag"] == "planned"
+                    s
+                    for s in detail["planned_sources"]
+                    if s["kind"] == SourceKind.PLANNED_OPERATION
                 ]
 
                 if budgets:
                     yield Static(_("Budgets"), classes="subsection-title")
-                    yield Static("\u2500" * 74, classes="separator")
+                    yield Static(separator, classes="separator")
                     for source in budgets:
                         yield from self._compose_source_row(source)
 
                 if planned_ops:
                     yield Static(_("Planned operations"), classes="subsection-title")
-                    yield Static("\u2500" * 74, classes="separator")
+                    yield Static(separator, classes="separator")
                     for source in planned_ops:
                         yield from self._compose_source_row(source)
 
-                yield Static("\u2500" * 74, classes="separator")
+                yield Static(separator, classes="separator")
                 yield from self._compose_total_row(
                     _("Total planned"), detail["total_planned"]
                 )
 
             # Operations section
             yield Static(_("Operations"), classes="section-title")
-            yield Static("\u2500" * 74, classes="separator")
+            yield Static(separator, classes="separator")
             if detail["operations"]:
                 for op in detail["operations"]:
                     yield from self._compose_operation_row(op)
             else:
                 yield Static(_("No operations for this category"), classes="op-desc")
-            yield Static("\u2500" * 74, classes="separator")
+            yield Static(separator, classes="separator")
             yield from self._compose_total_row(
                 _("Total actual"), detail["total_actual"]
             )
 
             # Footer summary
-            remaining = detail["remaining"]
-            sign = "+" if remaining > 0 else ""
-            remaining_str = f"{sign}{remaining:,.0f}" if remaining != 0 else "0"
-
-            summary = (
-                f"{_('Planned')}: {abs(detail['total_planned']):,.0f} \u20ac / "
-                f"{_('Actual')}: {abs(detail['total_actual']):,.0f} \u20ac / "
-                f"{_('Forecast')}: {abs(detail['forecast']):,.0f} \u20ac / "
-                f"{_('Remaining')}: {remaining_str} \u20ac"
-            )
-            yield Static(summary, id="footer-summary")
+            yield Static(self._build_footer_summary(detail), id="footer-summary")
 
             with Horizontal(id="buttons-row"):
                 yield Button(_("Close"), id="btn-close", variant="default")
@@ -217,7 +208,7 @@ class CategoryDetailModal(ModalScreen[None]):
             yield Static(source["description"][:34], classes="source-desc")
             yield Static(source["periodicity"], classes="source-period")
             yield Static(
-                f"{source['amount']:+.2f} \u20ac",
+                f"{source['amount']:+.2f} {DisplaySymbol.EURO}",
                 classes=f"source-amount {amount_class}",
             )
 
@@ -230,18 +221,35 @@ class CategoryDetailModal(ModalScreen[None]):
             yield Static(date_str, classes="op-date")
             yield Static(op["description"][:40], classes="op-desc")
             yield Static(
-                f"{op['amount']:+.2f} \u20ac",
+                f"{op['amount']:+.2f} {DisplaySymbol.EURO}",
                 classes=f"op-amount {amount_class}",
             )
         if op["cross_month_annotation"]:
-            yield Static(f"\u2190 {op['cross_month_annotation']}", classes="annotation")
+            yield Static(
+                f"{DisplaySymbol.ARROW_LEFT} {op['cross_month_annotation']}",
+                classes="annotation",
+            )
 
     @staticmethod
     def _compose_total_row(label: str, amount: float) -> ComposeResult:
         """Compose a total row."""
         with Horizontal(classes="total-row"):
             yield Static(label, classes="total-label")
-            yield Static(f"{amount:+.2f} \u20ac", classes="total-amount")
+            yield Static(f"{amount:+.2f} {DisplaySymbol.EURO}", classes="total-amount")
+
+    @staticmethod
+    def _build_footer_summary(detail: CategoryDetail) -> str:
+        """Build the footer summary line."""
+        remaining = detail["remaining"]
+        sign = "+" if remaining > 0 else ""
+        remaining_str = f"{sign}{remaining:,.0f}" if remaining != 0 else "0"
+        euro = DisplaySymbol.EURO
+        return (
+            f"{_('Planned')}: {abs(detail['total_planned']):,.0f} {euro} / "
+            f"{_('Actual')}: {abs(detail['total_actual']):,.0f} {euro} / "
+            f"{_('Forecast')}: {abs(detail['forecast']):,.0f} {euro} / "
+            f"{_('Remaining')}: {remaining_str} {euro}"
+        )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""

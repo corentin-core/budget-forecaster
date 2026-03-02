@@ -12,6 +12,7 @@ from budget_forecaster.exceptions import AccountNotLoadedError, BudgetForecaster
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.tui.modals.export_forecast import ExportForecastModal
+from budget_forecaster.tui.symbols import DisplaySymbol
 
 logger = logging.getLogger(__name__)
 
@@ -196,7 +197,7 @@ class BalanceWidget(Vertical):
         for row in range(height - 1, -1, -1):
             y_value = min_val + (val_range * row / (height - 1))
             y_rounded = round(y_value / 100) * 100
-            y_label = f"{y_rounded:>10,.0f} €"
+            y_label = f"{y_rounded:>10,.0f} {DisplaySymbol.EURO}"
 
             threshold = y_value
             line_chars = []
@@ -211,7 +212,7 @@ class BalanceWidget(Vertical):
 
         # X-axis line
         chart_len = len(display_data)
-        lines.append(" " * y_label_width + " └" + "─" * chart_len)
+        lines.append(" " * y_label_width + " └" + DisplaySymbol.SEPARATOR * chart_len)
 
         # X-axis with dates - simple format below the chart
         if len(display_data) >= 2:

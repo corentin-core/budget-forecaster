@@ -18,6 +18,7 @@ from budget_forecaster.i18n import _
 from budget_forecaster.services.operation.operation_link_service import (
     compute_match_score,
 )
+from budget_forecaster.tui.symbols import DisplaySymbol
 
 
 class LinkIterationModal(ModalScreen[date | None]):
@@ -157,12 +158,13 @@ class LinkIterationModal(ModalScreen[date | None]):
             with Vertical(id="info-section"):
                 yield Static(op.description, id="op-description")
                 yield Static(
-                    f"{op.operation_date.strftime('%d/%m/%Y')} | {op.amount:+.2f} €",
+                    f"{op.operation_date.strftime('%d/%m/%Y')} | "
+                    f"{op.amount:+.2f} {DisplaySymbol.EURO}",
                     id="op-details",
                     classes=amount_class,
                 )
                 yield Static(
-                    f"→ {self._target.description}",
+                    f"{DisplaySymbol.ARROW_RIGHT} {self._target.description}",
                     id="target-info",
                 )
 
@@ -238,7 +240,7 @@ class LinkIterationModal(ModalScreen[date | None]):
             else:
                 start = iteration.start_date.strftime("%d/%m/%Y")
                 end = iteration.last_date.strftime("%d/%m/%Y")
-                date_str = f"{start} → {end}"
+                date_str = f"{start} {DisplaySymbol.ARROW_RIGHT} {end}"
             label = f"{score_str}  {date_str}"
             option_id = iteration.start_date.strftime("%Y-%m-%d")
             options.append(Option(label, id=option_id))

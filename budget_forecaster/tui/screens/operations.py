@@ -18,6 +18,7 @@ from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.operation.operation_service import OperationFilter
 from budget_forecaster.tui.messages import DataRefreshRequested, SaveRequested
+from budget_forecaster.tui.symbols import DisplaySymbol
 from budget_forecaster.tui.widgets.category_select import CategorySelect
 from budget_forecaster.tui.widgets.filter_bar import FilterBar
 from budget_forecaster.tui.widgets.operation_table import OperationTable
@@ -102,7 +103,7 @@ class OperationDetailPanel(Vertical):
         )
         self.query_one("#detail-description", Static).update(operation.description)
 
-        amount_str = f"{operation.amount:+.2f} €"
+        amount_str = f"{operation.amount:+.2f} {DisplaySymbol.EURO}"
         self.query_one("#detail-amount", Static).update(amount_str)
         self.query_one("#detail-category", Static).update(
             operation.category.display_name

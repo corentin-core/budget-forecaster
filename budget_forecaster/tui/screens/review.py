@@ -21,6 +21,7 @@ from budget_forecaster.services.forecast.forecast_service import (
     MonthlySummary,
 )
 from budget_forecaster.tui.modals.category_detail import CategoryDetailModal
+from budget_forecaster.tui.symbols import DisplaySymbol
 
 logger = logging.getLogger(__name__)
 
@@ -40,15 +41,15 @@ class _BarChar(enum.StrEnum):
 
 def _format_amount(value: float) -> Text:
     """Format an amount as absolute value with currency, right-aligned."""
-    return Text(f"{abs(value):,.0f} \u20ac", justify="right")
+    return Text(f"{abs(value):,.0f} {DisplaySymbol.EURO}", justify="right")
 
 
 def _format_remaining(projected: float, actual: float) -> Text:
     """Format the Remaining column (Projected - Actual)."""
     if (remaining := abs(projected) - abs(actual)) == 0:
-        return Text("0 \u20ac", justify="right")
+        return Text(f"0 {DisplaySymbol.EURO}", justify="right")
     sign = "+" if remaining > 0 else ""
-    return Text(f"{sign}{remaining:,.0f} \u20ac", justify="right")
+    return Text(f"{sign}{remaining:,.0f} {DisplaySymbol.EURO}", justify="right")
 
 
 def _render_consumption_bar(actual: float, planned: float) -> Text:
@@ -86,7 +87,7 @@ def _translate_category(name: str) -> str:
 
 def _direction_indicator(is_income: bool) -> str:
     """Return direction arrow for income/expense."""
-    return "\u2191" if is_income else "\u2193"
+    return DisplaySymbol.ARROW_UP if is_income else DisplaySymbol.ARROW_DOWN
 
 
 class ReviewWidget(Vertical):
@@ -333,7 +334,7 @@ class ReviewWidget(Vertical):
                     _format_amount(cat_data["actual"]),
                     _format_amount(cat_data["forecast"]),
                     Text("--", justify="right"),
-                    Text(f"{abs(cat_data['actual']):,.0f} \u20ac"),
+                    Text(f"{abs(cat_data['actual']):,.0f} {DisplaySymbol.EURO}"),
                 )
                 self._row_to_category[row_key] = cat_name
 
@@ -350,17 +351,18 @@ class ReviewWidget(Vertical):
         total_remaining = abs(total_projected) - abs(total_actual)
 
         sign = "+" if total_remaining > 0 else ""
+        euro = DisplaySymbol.EURO
         remaining_text = (
-            f"{sign}{total_remaining:,.0f} \u20ac"
+            f"{sign}{total_remaining:,.0f} {euro}"
             if total_remaining != 0
-            else "0 \u20ac"
+            else f"0 {euro}"
         )
 
         table.add_row(
             Text(_("TOTAL"), style="bold"),
-            Text(f"{total_planned:,.0f} \u20ac", justify="right", style="bold"),
-            Text(f"{total_actual:,.0f} \u20ac", justify="right", style="bold"),
-            Text(f"{total_projected:,.0f} \u20ac", justify="right", style="bold"),
+            Text(f"{total_planned:,.0f} {euro}", justify="right", style="bold"),
+            Text(f"{total_actual:,.0f} {euro}", justify="right", style="bold"),
+            Text(f"{total_projected:,.0f} {euro}", justify="right", style="bold"),
             Text(remaining_text, justify="right", style="bold"),
             Text(""),
         )

@@ -13,6 +13,7 @@ from budget_forecaster.core.types import MatcherKey, OperationId, TargetName
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.i18n import _
+from budget_forecaster.tui.symbols import DisplaySymbol
 
 
 def get_row_key_at_cursor(table: DataTable) -> RowKey | None:  # type: ignore[type-arg]
@@ -125,10 +126,10 @@ class OperationTable(DataTable[str]):  # pylint: disable=too-many-instance-attri
         # Format date with selection marker
         date_str = op.operation_date.strftime("%d/%m/%Y")
         if op.unique_id in self._selected_ids:
-            date_str = f"► {date_str}"
+            date_str = f"{DisplaySymbol.PLAY} {date_str}"
 
         # Format amount
-        amount_str = f"{op.amount:+.2f} €"
+        amount_str = f"{op.amount:+.2f} {DisplaySymbol.EURO}"
 
         # Build link column value
         link_str = ""
@@ -164,7 +165,7 @@ class OperationTable(DataTable[str]):  # pylint: disable=too-many-instance-attri
         op = self._operations[row_key]
         date_str = op.operation_date.strftime("%d/%m/%Y")
         if op_id in self._selected_ids:
-            date_str = f"► {date_str}"
+            date_str = f"{DisplaySymbol.PLAY} {date_str}"
 
         self.update_cell(row_key, self._date_column_key, date_str)
 

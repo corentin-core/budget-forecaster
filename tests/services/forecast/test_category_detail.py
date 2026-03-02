@@ -24,11 +24,16 @@ from budget_forecaster.infrastructure.persistence.sqlite_repository import (
     SqliteRepository,
 )
 from budget_forecaster.services.forecast.forecast_service import (
+    AttributedOperationDetail,
+    CategoryDetail,
     ForecastService,
+    PlannedSourceDetail,
+    SourceKind,
     _cross_month_annotation,
     _format_budget_periodicity,
     _format_periodicity,
     _ordinal,
+    _periodicity_info,
 )
 
 
@@ -118,6 +123,14 @@ class TestFormatHelpers:
         )
         assert _format_periodicity(op) == "yearly, 15th"
 
+    def test_periodicity_info_non_standard_period(self) -> None:
+        """Non-standard period returns str representation for both fields."""
+        period = relativedelta(months=3)
+        date_range = RecurringDay(date(2025, 1, 1), period)
+        info = _periodicity_info(date_range)
+        assert info.label == str(period)
+        assert info.unit == str(period)
+
     def test_format_periodicity_one_time(self) -> None:
         """Single-day operation formats as 'one-time, Nth'."""
         op = PlannedOperation(
@@ -140,6 +153,18 @@ class TestFormatHelpers:
         )
         result = _format_budget_periodicity(budget, date(2025, 2, 1), date(2025, 2, 28))
         assert result == "500/month (01/02→28/02)"
+
+    def test_format_budget_periodicity_one_time(self) -> None:
+        """One-time budget formats as 'amount (dates)' without unit."""
+        budget = Budget(
+            record_id=3,
+            description="TV Purchase",
+            amount=Amount(-800.0, "EUR"),
+            category=Category.HOUSE_WORKS,
+            date_range=SingleDay(date(2025, 2, 15)),
+        )
+        result = _format_budget_periodicity(budget, date(2025, 2, 1), date(2025, 2, 28))
+        assert result == "800 (01/02→28/02)"
 
     def test_format_budget_periodicity_yearly(self) -> None:
         """Yearly budget formats as 'amount/year (dates)'."""
@@ -173,16 +198,14 @@ class TestCrossMonthAnnotation:
         result = _cross_month_annotation(
             date(2025, 1, 28), date(2025, 2, 1), date(2025, 2, 28)
         )
-        assert "paid early" in result
-        assert "Jan 28" in result
+        assert result == "paid early (operation dated Jan 28)"
 
     def test_paid_late(self) -> None:
         """Operation after the month gets 'paid late' annotation."""
         result = _cross_month_annotation(
             date(2025, 3, 2), date(2025, 2, 1), date(2025, 2, 28)
         )
-        assert "paid late" in result
-        assert "Mar 02" in result
+        assert result == "paid late (operation dated Mar 02)"
 
 
 class TestGetCategoryDetail:
@@ -213,15 +236,24 @@ class TestGetCategoryDetail:
 
         detail = service.get_category_detail("internet", date(2025, 2, 1))
 
-        assert detail["category"] == "internet"
-        assert detail["month"] == date(2025, 2, 1)
-        assert len(detail["planned_sources"]) == 1
-
-        source = detail["planned_sources"][0]
-        assert source["tag"] == "planned"
-        assert source["description"] == "Netflix"
-        assert source["periodicity"] == "monthly, 1st"
-        assert source["amount"] == -15.0
+        expected_source = PlannedSourceDetail(
+            kind=SourceKind.PLANNED_OPERATION,
+            description="Netflix",
+            periodicity="monthly, 1st",
+            amount=-15.0,
+            iteration_day=1,
+        )
+        assert detail == CategoryDetail(
+            category=Category.INTERNET,
+            month=date(2025, 2, 1),
+            planned_sources=(expected_source,),
+            operations=(),
+            total_planned=-15.0,
+            total_actual=0.0,
+            forecast=0.0,
+            remaining=0.0,
+            is_income=False,
+        )
 
     def test_category_with_budget(self, repository: RepositoryInterface) -> None:
         """Category with budget returns correct source."""
@@ -246,11 +278,24 @@ class TestGetCategoryDetail:
 
         detail = service.get_category_detail("house_works", date(2025, 2, 1))
 
-        assert len(detail["planned_sources"]) == 1
-        source = detail["planned_sources"][0]
-        assert source["tag"] == "budget"
-        assert source["description"] == "House works"
-        assert source["periodicity"] == "200/month (01/02→28/02)"
+        expected_source = PlannedSourceDetail(
+            kind=SourceKind.BUDGET,
+            description="House works",
+            periodicity="200/month (01/02\u219228/02)",
+            amount=-200.0,
+            iteration_day=1,
+        )
+        assert detail == CategoryDetail(
+            category=Category.HOUSE_WORKS,
+            month=date(2025, 2, 1),
+            planned_sources=(expected_source,),
+            operations=(),
+            total_planned=-200.0,
+            total_actual=0.0,
+            forecast=0.0,
+            remaining=0.0,
+            is_income=False,
+        )
 
     def test_mixed_budget_and_planned(self, repository: RepositoryInterface) -> None:
         """Category with both budget and planned op returns both sources."""
@@ -284,8 +329,8 @@ class TestGetCategoryDetail:
         detail = service.get_category_detail("house_works", date(2025, 2, 1))
 
         assert len(detail["planned_sources"]) == 2
-        tags = {s["tag"] for s in detail["planned_sources"]}
-        assert tags == {"budget", "planned"}
+        kinds = {s["kind"] for s in detail["planned_sources"]}
+        assert kinds == {SourceKind.BUDGET, SourceKind.PLANNED_OPERATION}
         assert detail["total_planned"] == -300.0
 
     def test_operations_attributed_to_month(
@@ -312,11 +357,13 @@ class TestGetCategoryDetail:
 
         detail = service.get_category_detail("house_works", date(2025, 2, 1))
 
-        assert len(detail["operations"]) == 1
-        op_detail = detail["operations"][0]
-        assert op_detail["description"] == "LEROY MERLIN"
-        assert op_detail["amount"] == -80.0
-        assert op_detail["cross_month_annotation"] == ""
+        expected_op = AttributedOperationDetail(
+            operation_date=date(2025, 2, 3),
+            description="LEROY MERLIN",
+            amount=-80.0,
+            cross_month_annotation="",
+        )
+        assert detail["operations"] == (expected_op,)
 
     def test_cross_month_linked_operation(
         self, repository: RepositoryInterface
@@ -357,19 +404,23 @@ class TestGetCategoryDetail:
         service = _make_service(account, repository)
         service.load_forecast()
 
-        # March detail should show the operation
+        # March detail should show the operation with cross-month annotation
         march_detail = service.get_category_detail(
             "rent", date(2025, 3, 1), operation_links=(link,)
         )
-        assert len(march_detail["operations"]) == 1
-        assert "paid early" in march_detail["operations"][0]["cross_month_annotation"]
-        assert "Feb 28" in march_detail["operations"][0]["cross_month_annotation"]
+        expected_op = AttributedOperationDetail(
+            operation_date=date(2025, 2, 28),
+            description="VIREMENT LOYER",
+            amount=-800.0,
+            cross_month_annotation="paid early (operation dated Feb 28)",
+        )
+        assert march_detail["operations"] == (expected_op,)
 
         # February detail should NOT show the operation (it was linked elsewhere)
         feb_detail = service.get_category_detail(
             "rent", date(2025, 2, 1), operation_links=(link,)
         )
-        assert len(feb_detail["operations"]) == 0
+        assert feb_detail["operations"] == ()
 
     def test_unforecasted_category(self, repository: RepositoryInterface) -> None:
         """Category with only operations and no forecast sources."""
@@ -393,10 +444,23 @@ class TestGetCategoryDetail:
 
         detail = service.get_category_detail("entertainment", date(2025, 2, 1))
 
-        assert len(detail["planned_sources"]) == 0
-        assert len(detail["operations"]) == 1
-        assert detail["total_planned"] == 0.0
-        assert detail["total_actual"] == -45.0
+        expected_op = AttributedOperationDetail(
+            operation_date=date(2025, 2, 10),
+            description="RESTAURANT SUSHI",
+            amount=-45.0,
+            cross_month_annotation="",
+        )
+        assert detail == CategoryDetail(
+            category=Category.ENTERTAINMENT,
+            month=date(2025, 2, 1),
+            planned_sources=(),
+            operations=(expected_op,),
+            total_planned=0.0,
+            total_actual=-45.0,
+            forecast=-45.0,
+            remaining=0.0,
+            is_income=False,
+        )
 
     def test_operations_sorted_by_date(self, repository: RepositoryInterface) -> None:
         """Operations are sorted by date ascending."""
@@ -429,9 +493,20 @@ class TestGetCategoryDetail:
 
         detail = service.get_category_detail("groceries", date(2025, 2, 1))
 
-        assert len(detail["operations"]) == 2
-        assert detail["operations"][0]["description"] == "FIRST"
-        assert detail["operations"][1]["description"] == "SECOND"
+        assert detail["operations"] == (
+            AttributedOperationDetail(
+                operation_date=date(2025, 2, 3),
+                description="FIRST",
+                amount=-10.0,
+                cross_month_annotation="",
+            ),
+            AttributedOperationDetail(
+                operation_date=date(2025, 2, 15),
+                description="SECOND",
+                amount=-20.0,
+                cross_month_annotation="",
+            ),
+        )
 
     def test_is_income_from_planned(self, repository: RepositoryInterface) -> None:
         """is_income is determined from planned amount when available."""
@@ -493,3 +568,247 @@ class TestGetCategoryDetail:
         assert detail["remaining"] == abs(detail["forecast"]) - abs(
             detail["total_actual"]
         )
+
+    def test_planned_sources_filtered_by_category(
+        self, repository: RepositoryInterface
+    ) -> None:
+        """Only planned ops/budgets matching the category appear in sources."""
+        repository.upsert_planned_operation(
+            PlannedOperation(
+                record_id=None,
+                description="Rent",
+                amount=Amount(-800.0, "EUR"),
+                category=Category.RENT,
+                date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
+            )
+        )
+        repository.upsert_planned_operation(
+            PlannedOperation(
+                record_id=None,
+                description="Netflix",
+                amount=Amount(-15.0, "EUR"),
+                category=Category.INTERNET,
+                date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
+            )
+        )
+        repository.upsert_budget(
+            Budget(
+                record_id=None,
+                description="Groceries budget",
+                amount=Amount(-400.0, "EUR"),
+                category=Category.GROCERIES,
+                date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
+            )
+        )
+
+        account = Account(
+            name="Test",
+            balance=1000.0,
+            currency="EUR",
+            balance_date=date(2025, 1, 20),
+            operations=(),
+        )
+        service = _make_service(account, repository)
+        service.load_forecast()
+
+        detail = service.get_category_detail("rent", date(2025, 2, 1))
+
+        assert len(detail["planned_sources"]) == 1
+        assert detail["planned_sources"][0]["description"] == "Rent"
+
+    def test_planned_sources_exclude_zero_amount_periods(
+        self, repository: RepositoryInterface
+    ) -> None:
+        """Planned ops with 0 amount in the queried month are excluded."""
+        # One-time operation in March → amount_on_period returns 0 for February
+        repository.upsert_planned_operation(
+            PlannedOperation(
+                record_id=None,
+                description="Plumber in March",
+                amount=Amount(-150.0, "EUR"),
+                category=Category.HOUSE_WORKS,
+                date_range=SingleDay(date(2025, 3, 15)),
+            )
+        )
+        # One-time budget in April → also 0 for February
+        repository.upsert_budget(
+            Budget(
+                record_id=None,
+                description="Kitchen appliance",
+                amount=Amount(-300.0, "EUR"),
+                category=Category.HOUSE_WORKS,
+                date_range=SingleDay(date(2025, 4, 1)),
+            )
+        )
+        # Monthly budget for same category → always has amount
+        repository.upsert_budget(
+            Budget(
+                record_id=None,
+                description="House works budget",
+                amount=Amount(-200.0, "EUR"),
+                category=Category.HOUSE_WORKS,
+                date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
+            )
+        )
+
+        account = Account(
+            name="Test",
+            balance=1000.0,
+            currency="EUR",
+            balance_date=date(2025, 1, 20),
+            operations=(),
+        )
+        service = _make_service(account, repository)
+        service.load_forecast()
+
+        # February → plumber and kitchen have 0 amount, only monthly budget appears
+        detail = service.get_category_detail("house_works", date(2025, 2, 1))
+        assert len(detail["planned_sources"]) == 1
+        assert detail["planned_sources"][0]["kind"] == SourceKind.BUDGET
+        assert detail["planned_sources"][0]["description"] == "House works budget"
+
+    def test_operations_of_other_categories_excluded(
+        self, repository: RepositoryInterface
+    ) -> None:
+        """Only operations matching the requested category are included."""
+        ops = (
+            HistoricOperation(
+                unique_id=1,
+                description="SUPERMARKET",
+                amount=Amount(-50.0, "EUR"),
+                category=Category.GROCERIES,
+                operation_date=date(2025, 2, 5),
+            ),
+            HistoricOperation(
+                unique_id=2,
+                description="NETFLIX",
+                amount=Amount(-15.0, "EUR"),
+                category=Category.INTERNET,
+                operation_date=date(2025, 2, 10),
+            ),
+        )
+
+        account = Account(
+            name="Test",
+            balance=1000.0,
+            currency="EUR",
+            balance_date=date(2025, 1, 20),
+            operations=ops,
+        )
+        service = _make_service(account, repository)
+        service.load_forecast()
+
+        detail = service.get_category_detail("groceries", date(2025, 2, 1))
+
+        assert len(detail["operations"]) == 1
+        assert detail["operations"][0]["description"] == "SUPERMARKET"
+
+    def test_unlinked_operation_outside_month_excluded(
+        self, repository: RepositoryInterface
+    ) -> None:
+        """Unlinked operations outside the target month are not included."""
+        ops = (
+            HistoricOperation(
+                unique_id=1,
+                description="JANUARY PURCHASE",
+                amount=Amount(-30.0, "EUR"),
+                category=Category.GROCERIES,
+                operation_date=date(2025, 1, 15),
+            ),
+            HistoricOperation(
+                unique_id=2,
+                description="FEBRUARY PURCHASE",
+                amount=Amount(-40.0, "EUR"),
+                category=Category.GROCERIES,
+                operation_date=date(2025, 2, 10),
+            ),
+        )
+
+        account = Account(
+            name="Test",
+            balance=1000.0,
+            currency="EUR",
+            balance_date=date(2025, 1, 1),
+            operations=ops,
+        )
+        service = _make_service(account, repository)
+        service.load_forecast()
+
+        detail = service.get_category_detail("groceries", date(2025, 2, 1))
+
+        assert len(detail["operations"]) == 1
+        assert detail["operations"][0]["description"] == "FEBRUARY PURCHASE"
+
+    def test_forecast_read_from_cached_report(
+        self, repository: RepositoryInterface
+    ) -> None:
+        """When report is cached, forecast is read from the DataFrame."""
+        op = PlannedOperation(
+            record_id=None,
+            description="Groceries Plan",
+            amount=Amount(-500.0, "EUR"),
+            category=Category.GROCERIES,
+            date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
+        )
+        repository.upsert_planned_operation(op)
+
+        operation = HistoricOperation(
+            unique_id=1,
+            description="SUPERMARKET",
+            amount=Amount(-320.0, "EUR"),
+            category=Category.GROCERIES,
+            operation_date=date(2025, 2, 5),
+        )
+
+        account = Account(
+            name="Test",
+            balance=1000.0,
+            currency="EUR",
+            balance_date=date(2025, 1, 20),
+            operations=(operation,),
+        )
+        service = _make_service(account, repository)
+        service.load_forecast()
+        service.compute_report(
+            start_date=date(2025, 1, 1),
+            end_date=date(2025, 6, 30),
+        )
+
+        detail = service.get_category_detail("groceries", date(2025, 2, 1))
+
+        # With report cached, forecast comes from the DataFrame
+        # (planned + unforecasted actual = -500 + -320 = -820)
+        assert detail["forecast"] == -820.0
+        assert detail["remaining"] == abs(-820.0) - abs(-320.0)
+
+    def test_forecast_falls_back_to_actual_when_report_zero(
+        self, repository: RepositoryInterface
+    ) -> None:
+        """When report forecast is 0 but actual exists, use actual as forecast."""
+        # Create an operation in a category with no planned sources
+        operation = HistoricOperation(
+            unique_id=1,
+            description="RESTAURANT",
+            amount=Amount(-45.0, "EUR"),
+            category=Category.ENTERTAINMENT,
+            operation_date=date(2025, 2, 10),
+        )
+
+        account = Account(
+            name="Test",
+            balance=1000.0,
+            currency="EUR",
+            balance_date=date(2025, 1, 20),
+            operations=(operation,),
+        )
+        service = _make_service(account, repository)
+        service.load_forecast()
+        service.compute_report(
+            start_date=date(2025, 1, 1),
+            end_date=date(2025, 6, 30),
+        )
+
+        detail = service.get_category_detail("entertainment", date(2025, 2, 1))
+
+        # No planned sources → forecast in report is 0 → falls back to actual
+        assert detail["forecast"] == -45.0
