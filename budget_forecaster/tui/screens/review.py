@@ -18,9 +18,11 @@ from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.forecast.forecast_service import (
     CategoryBudget,
+    MarginInfo,
     MonthlySummary,
 )
 from budget_forecaster.tui.modals.category_detail import CategoryDetailModal
+from budget_forecaster.tui.modals.threshold_edit import ThresholdEditModal
 from budget_forecaster.tui.symbols import DisplaySymbol
 
 logger = logging.getLogger(__name__)
@@ -141,11 +143,71 @@ class ReviewWidget(Vertical):
     ReviewWidget .computing {
         color: $warning;
     }
+
+    ReviewWidget #margin-section {
+        height: auto;
+        margin: 1 2;
+        padding: 1 2;
+        border: solid $primary;
+    }
+
+    ReviewWidget #margin-section.alert {
+        border: solid $error;
+    }
+
+    ReviewWidget #margin-header {
+        height: 1;
+    }
+
+    ReviewWidget #margin-value {
+        text-style: bold;
+        width: auto;
+    }
+
+    ReviewWidget #margin-value.negative {
+        color: $error;
+    }
+
+    ReviewWidget #margin-threshold-label {
+        width: auto;
+        margin-left: 2;
+        color: $text-muted;
+    }
+
+    ReviewWidget #btn-edit-threshold {
+        min-width: 8;
+        height: 3;
+        margin-left: 1;
+    }
+
+    ReviewWidget #margin-details {
+        height: auto;
+        margin-top: 1;
+    }
+
+    ReviewWidget .margin-detail-line {
+        height: 1;
+        color: $text-muted;
+    }
+
+    ReviewWidget #margin-explanation {
+        height: auto;
+        margin-top: 1;
+        color: $text-muted;
+    }
+
+    ReviewWidget #margin-alert-msg {
+        color: $error;
+        text-style: bold;
+        height: auto;
+        margin-top: 1;
+    }
     """
 
     BINDINGS = [
         Binding("comma", "previous_month", _("Previous month")),
         Binding("semicolon", "next_month", _("Next month")),
+        Binding("e", "edit_threshold", _("Edit threshold")),
     ]
 
     def __init__(self, **kwargs: Any) -> None:
@@ -162,6 +224,14 @@ class ReviewWidget(Vertical):
             yield Button("\u25b6", id="review-next")
         with Center(id="review-table-center"):
             yield DataTable(id="review-table", cursor_type="row")
+        with Vertical(id="margin-section"):
+            with Horizontal(id="margin-header"):
+                yield Static("", id="margin-value")
+                yield Static("", id="margin-threshold-label")
+                yield Button(_("Edit"), id="btn-edit-threshold")
+            yield Vertical(id="margin-details")
+            yield Static("", id="margin-explanation")
+            yield Static("", id="margin-alert-msg")
         yield Static("", id="review-status")
 
     def set_app_service(self, service: ApplicationService) -> None:
@@ -169,11 +239,13 @@ class ReviewWidget(Vertical):
         self._app_service = service
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Handle navigation button clicks."""
+        """Handle button clicks."""
         if event.button.id == "review-prev":
             self.action_previous_month()
         elif event.button.id == "review-next":
             self.action_next_month()
+        elif event.button.id == "btn-edit-threshold":
+            self.action_edit_threshold()
 
     def refresh_data(self) -> None:
         """Refresh data — invalidate cached report so next tab open recomputes."""
@@ -259,6 +331,9 @@ class ReviewWidget(Vertical):
 
         # Build table
         self._build_review_table(summary["categories"])
+
+        # Update margin section
+        self._update_margin(month_date)
 
     def _build_review_table(self, categories: dict[str, CategoryBudget]) -> None:
         """Build the review DataTable from category data."""
@@ -367,6 +442,125 @@ class ReviewWidget(Vertical):
             Text(""),
         )
 
+    def _update_margin(self, month_date: date) -> None:
+        """Update the margin section for the selected month."""
+        section = self.query_one("#margin-section", Vertical)
+        if (month_first := month_date.replace(day=1)) < date.today().replace(day=1):
+            section.display = False
+            return
+
+        if self._app_service is None:
+            section.display = False
+            return
+
+        if (margin_info := self._app_service.get_available_margin(month_first)) is None:
+            section.display = False
+            return
+
+        section.display = True
+        is_alert = margin_info["available_margin"] < 0
+        section.set_class(is_alert, "alert")
+
+        self._render_margin_header(margin_info, is_alert)
+        self._render_margin_details(margin_info, month_first)
+        self._render_margin_footer(margin_info, is_alert)
+
+    def _render_margin_header(self, margin_info: MarginInfo, is_alert: bool) -> None:
+        """Render the margin value and threshold labels."""
+        euro = DisplaySymbol.EURO
+        margin_val = margin_info["available_margin"]
+
+        value_widget = self.query_one("#margin-value", Static)
+        value_widget.update(f"{_('Available margin')}: {margin_val:,.0f} {euro}")
+        value_widget.set_class(is_alert, "negative")
+
+        threshold = margin_info["threshold"]
+        self.query_one("#margin-threshold-label", Static).update(
+            f"{_('Minimum threshold')}: {threshold:,.0f} {euro}"
+        )
+
+    def _render_margin_details(
+        self, margin_info: MarginInfo, month_first: date
+    ) -> None:
+        """Render balance and lowest balance detail lines."""
+        euro = DisplaySymbol.EURO
+        details = self.query_one("#margin-details", Vertical)
+        details.remove_children()
+
+        month_label = f"{_(month_first.strftime('%B'))} {month_first.day}"
+        balance_line = (
+            f"{_('Balance at')} {month_label}: "
+            f"{margin_info['balance_at_month_start']:,.0f} {euro}"
+        )
+
+        lowest_date = margin_info["lowest_balance_date"]
+        lowest_label = (
+            f"{_(lowest_date.strftime('%B'))} {lowest_date.day}, {lowest_date.year}"
+        )
+        lowest_line = (
+            f"{_('Lowest future balance')}: "
+            f"{margin_info['lowest_balance']:,.0f} {euro}  ({lowest_label})"
+        )
+        details.mount(Static(balance_line, classes="margin-detail-line"))
+        details.mount(Static(lowest_line, classes="margin-detail-line"))
+
+    def _render_margin_footer(self, margin_info: MarginInfo, is_alert: bool) -> None:
+        """Render explanation or alert message."""
+        euro = DisplaySymbol.EURO
+        threshold = margin_info["threshold"]
+        explanation = self.query_one("#margin-explanation", Static)
+        alert_msg = self.query_one("#margin-alert-msg", Static)
+
+        if is_alert:
+            lowest_date = margin_info["lowest_balance_date"]
+            lowest_label = (
+                f"{_(lowest_date.strftime('%B'))} {lowest_date.day}, "
+                f"{lowest_date.year}"
+            )
+            explanation.update("")
+            alert_msg.update(
+                _("/!\\ The account will go below your {} {} threshold on {}").format(
+                    f"{threshold:,.0f}", euro, lowest_label
+                )
+            )
+        else:
+            threshold_desc = (
+                f"{threshold:,.0f} {euro}" if threshold > 0 else f"0 {euro}"
+            )
+            explanation.update(
+                _(
+                    "= from this month onward, the most you can spend freely\n"
+                    "  without the account going below {}"
+                ).format(threshold_desc)
+            )
+            alert_msg.update("")
+
+    def _hide_margin(self) -> None:
+        """Hide the margin section."""
+        self.query_one("#margin-section", Vertical).display = False
+
+    def action_edit_threshold(self) -> None:
+        """Open the threshold edit modal."""
+        if self._app_service is None:
+            return
+        current = self._app_service.margin_threshold
+        self.app.push_screen(
+            ThresholdEditModal(current), callback=self._on_threshold_result
+        )
+
+    def _on_threshold_result(self, result: float | None) -> None:
+        """Handle threshold edit result."""
+        if result is None or self._app_service is None:
+            return
+        self._app_service.margin_threshold = result
+
+        # Refresh margin display
+        if self._summaries:
+            summary = self._summaries[self._current_index]
+            month = summary["month"]
+            month_date = month.date() if hasattr(month, "date") else month
+            self._update_margin(month_date)
+
     def _show_empty_state(self) -> None:
         """Show empty state when no data is available."""
         table = self.query_one("#review-table", DataTable)
@@ -381,6 +575,7 @@ class ReviewWidget(Vertical):
         self.query_one("#review-month-label", Static).update("")
         self.query_one("#review-prev", Button).disabled = True
         self.query_one("#review-next", Button).disabled = True
+        self._hide_margin()
 
     def action_previous_month(self) -> None:
         """Navigate to the previous month."""

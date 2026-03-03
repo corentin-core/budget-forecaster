@@ -38,6 +38,7 @@ from budget_forecaster.services.account.account_analysis_report import (
 from budget_forecaster.services.forecast.forecast_service import (
     CategoryDetail,
     ForecastService,
+    MarginInfo,
     MonthlySummary,
 )
 from budget_forecaster.services.import_service import (
@@ -379,6 +380,28 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
     def get_category_statistics(self) -> list[tuple[str, float, float]]:
         """Get category statistics from the report."""
         return self._forecast_service.get_category_statistics()
+
+    @property
+    def margin_threshold(self) -> float:
+        """The margin threshold from settings."""
+        return self._forecast_service.margin_threshold
+
+    @margin_threshold.setter
+    def margin_threshold(self, threshold: float) -> None:
+        self._forecast_service.margin_threshold = threshold
+
+    def get_available_margin(self, month: date) -> MarginInfo | None:
+        """Get available margin for a given month.
+
+        Args:
+            month: First day of the selected month.
+
+        Returns:
+            MarginInfo with margin details, or None if no report.
+        """
+        return self._forecast_service.get_available_margin(
+            month, self._forecast_service.margin_threshold
+        )
 
     # -------------------------------------------------------------------------
     # Import read methods (delegated to ImportService)

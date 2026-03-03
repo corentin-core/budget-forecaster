@@ -92,6 +92,16 @@ class CategoryDetail(TypedDict):
     is_income: bool
 
 
+class MarginInfo(TypedDict):
+    """Available margin information for a given month."""
+
+    available_margin: float
+    balance_at_month_start: float
+    lowest_balance: float
+    lowest_balance_date: date
+    threshold: float
+
+
 class _PeriodicityInfo(NamedTuple):
     """Display period information extracted from a date range."""
 
@@ -407,6 +417,16 @@ class ForecastService:
         """Get the last computed report."""
         return self._report
 
+    @property
+    def margin_threshold(self) -> float:
+        """The margin threshold from settings (default 0)."""
+        raw = self._repository.get_setting("margin_threshold")
+        return float(raw) if raw is not None else 0.0
+
+    @margin_threshold.setter
+    def margin_threshold(self, threshold: float) -> None:
+        self._repository.set_setting("margin_threshold", str(threshold))
+
     def get_balance_evolution_summary(self) -> list[tuple[date, float]]:
         """Get a summary of balance evolution for display.
 
@@ -424,6 +444,46 @@ class ForecastService:
             (d.to_pydatetime().date(), float(row["Balance"]))  # type: ignore[attr-defined]
             for d, row in sampled.iterrows()
         ]
+
+    def get_available_margin(self, month: date, threshold: float) -> MarginInfo | None:
+        """Compute available margin from a given month onward.
+
+        The margin is the lowest projected balance from the month's start
+        onward, minus the user-defined threshold.
+
+        Args:
+            month: First day of the selected month.
+            threshold: Minimum balance floor (in account currency).
+
+        Returns:
+            MarginInfo with margin details, or None if no report is available.
+        """
+        if self._report is None:
+            return None
+
+        df = self._report.balance_evolution_per_day
+        month_str = month.strftime("%Y-%m-%d")
+
+        # Filter from month start onward
+        future_df = df.loc[df.index >= month_str]
+        if future_df.empty:
+            return None
+
+        balance_at_start = float(future_df["Balance"].iloc[0])
+
+        # Reverse expanding minimum: lowest balance from each day onward
+        balances = future_df["Balance"]
+        lowest_balance = float(balances.min())
+        lowest_idx = cast(pd.Timestamp, balances.idxmin())
+        lowest_date = lowest_idx.to_pydatetime().date()
+
+        return MarginInfo(
+            available_margin=lowest_balance - threshold,
+            balance_at_month_start=balance_at_start,
+            lowest_balance=lowest_balance,
+            lowest_balance_date=lowest_date,
+            threshold=threshold,
+        )
 
     def get_monthly_summary(self) -> list[MonthlySummary]:
         """Get monthly budget summary with link-aware attribution.
