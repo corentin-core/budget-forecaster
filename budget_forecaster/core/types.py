@@ -89,7 +89,7 @@ class BudgetColumn(enum.StrEnum):
     ACTUAL = "Actual"
     """Realized operations amount (link-aware attribution)."""
 
-    PROJECTED = "Projected"
+    FORECAST = "Forecast"
     """Expected end-of-month total: Actual + not-yet-realized planned."""
 
     UNREALIZED_INTERNAL = "_Unrealized"

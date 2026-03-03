@@ -11,6 +11,7 @@ from textual.widgets.option_list import Option
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.i18n import _
+from budget_forecaster.tui.symbols import DisplaySymbol
 
 
 class CategoryModal(ModalScreen[Category | None]):
@@ -142,7 +143,7 @@ class CategoryModal(ModalScreen[Category | None]):
                             classes="op-desc",
                         )
                         yield Static(
-                            f"{op.amount:+.2f} €",
+                            f"{op.amount:+.2f} {DisplaySymbol.EURO}",
                             classes=f"op-amount {amount_class}",
                         )
 
@@ -163,7 +164,7 @@ class CategoryModal(ModalScreen[Category | None]):
                                 classes="similar-desc",
                             )
                             yield Static(
-                                f"→ {similar_op.category.display_name}",
+                                f"{DisplaySymbol.ARROW_RIGHT} {similar_op.category.display_name}",
                                 classes="similar-cat",
                             )
 
@@ -180,7 +181,7 @@ class CategoryModal(ModalScreen[Category | None]):
             for cat in categories:
                 label = cat.display_name
                 if cat == self._suggested_category:
-                    label = _("★ {} (suggestion)").format(label)
+                    label = _(f"{DisplaySymbol.STAR} {{}} (suggestion)").format(label)
                 options.append(Option(label, id=cat.name))
             yield OptionList(*options, id="category-list")
 

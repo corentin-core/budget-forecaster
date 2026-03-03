@@ -36,6 +36,7 @@ from budget_forecaster.services.account.account_analysis_report import (
     AccountAnalysisReport,
 )
 from budget_forecaster.services.forecast.forecast_service import (
+    CategoryDetail,
     ForecastService,
     MonthlySummary,
 )
@@ -361,6 +362,19 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
     def get_monthly_summary(self) -> list[MonthlySummary]:
         """Get monthly summary from the last computed report."""
         return self._forecast_service.get_monthly_summary()
+
+    def get_category_detail(self, category: str, month: date) -> CategoryDetail:
+        """Get detailed breakdown for a category in a given month.
+
+        Args:
+            category: Category name.
+            month: First day of the month.
+
+        Returns:
+            Full category detail for the modal drill-down.
+        """
+        links = self._operation_link_service.get_all_links()
+        return self._forecast_service.get_category_detail(category, month, links)
 
     def get_category_statistics(self) -> list[tuple[str, float, float]]:
         """Get category statistics from the report."""

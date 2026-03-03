@@ -520,7 +520,7 @@ class TestGetMonthlySummary:
             [
                 (month, "TotalPlanned"),
                 (month, "Actual"),
-                (month, "Projected"),
+                (month, "Forecast"),
             ]
         )
         df = pd.DataFrame(
@@ -546,7 +546,7 @@ class TestGetMonthlySummary:
             for cat_budget in summary["categories"].values():
                 assert "planned" in cat_budget
                 assert "actual" in cat_budget
-                assert "projected" in cat_budget
+                assert "forecast" in cat_budget
                 assert "is_income" in cat_budget
 
 
@@ -596,11 +596,11 @@ class TestTypedDicts:
     def test_category_budget_structure(self) -> None:
         """CategoryBudget has correct structure."""
         budget = CategoryBudget(
-            planned=150.0, actual=100.0, projected=120.0, is_income=False
+            planned=150.0, actual=100.0, forecast=120.0, is_income=False
         )
         assert budget["planned"] == 150.0
         assert budget["actual"] == 100.0
-        assert budget["projected"] == 120.0
+        assert budget["forecast"] == 120.0
         assert budget["is_income"] is False
 
     def test_monthly_summary_structure(self) -> None:
@@ -609,7 +609,7 @@ class TestTypedDicts:
         month = pd.Timestamp("2025-01-01")
         categories = {
             "groceries": CategoryBudget(
-                planned=150.0, actual=100.0, projected=120.0, is_income=False
+                planned=150.0, actual=100.0, forecast=120.0, is_income=False
             )
         }
         summary = MonthlySummary(month=month, categories=categories)

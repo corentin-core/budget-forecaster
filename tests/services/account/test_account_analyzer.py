@@ -297,13 +297,13 @@ class TestComputeForecast:
 class TestComputeBudgetForecast:
     """Tests for compute_budget_forecast."""
 
-    def test_planned_actual_projected_columns(
+    def test_planned_actual_forecast_columns(
         self,
         account: Account,
         planned_operations: tuple[PlannedOperation, ...],
         budgets: tuple[Budget, ...],
     ) -> None:
-        """Enriched DataFrame has Planned, Actual, Projected columns for all months."""
+        """Enriched DataFrame has Planned, Actual, Forecast columns for all months."""
         analyzer = AccountAnalyzer(account, Forecast(planned_operations, budgets))
         df = analyzer.compute_budget_forecast(date(2023, 1, 1), date(2023, 5, 1))
 
@@ -317,9 +317,9 @@ class TestComputeBudgetForecast:
         assert df.loc[str(Category.GROCERIES)]["2023-04-01"]["TotalPlanned"] == -320.0
         assert df.loc[str(Category.OTHER)]["2023-04-01"]["TotalPlanned"] == -250.0
 
-        # Projected = Actual + not-yet-realized (no links → all planned is pending)
-        assert df.loc[str(Category.GROCERIES)]["2023-03-01"]["Projected"] == -320.0
-        assert df.loc[str(Category.OTHER)]["2023-03-01"]["Projected"] == -50.0
+        # Forecast = Actual + not-yet-realized (no links → all planned is pending)
+        assert df.loc[str(Category.GROCERIES)]["2023-03-01"]["Forecast"] == -320.0
+        assert df.loc[str(Category.OTHER)]["2023-03-01"]["Forecast"] == -50.0
 
         # Source distinction columns
         assert (
@@ -362,16 +362,16 @@ class TestComputeBudgetForecast:
         assert feb["Actual"] == -30.0
 
         # March iteration is realized (linked) → not counted as unrealized
-        # TotalPlanned = -50 (monthly op), Projected = Actual + unrealized = -50 + 0
+        # TotalPlanned = -50 (monthly op), Forecast = Actual + unrealized = -50 + 0
         assert march["TotalPlanned"] == -50.0
-        assert march["Projected"] == -50.0
+        assert march["Forecast"] == -50.0
 
         # January: no actual, iteration not realized → unrealized = -50
-        # Projected = 0 + (-50) = -50
+        # Forecast = 0 + (-50) = -50
         assert jan["TotalPlanned"] == -50.0
-        assert jan["Projected"] == -50.0
+        assert jan["Forecast"] == -50.0
 
-    def test_projected_with_realized_iteration(self, account: Account) -> None:
+    def test_forecast_with_realized_iteration(self, account: Account) -> None:
         """Realized planned iterations are excluded from not-yet-realized amounts."""
         planned_op = PlannedOperation(
             record_id=1,
@@ -396,18 +396,18 @@ class TestComputeBudgetForecast:
 
         # March: iteration is realized → not-yet-realized = 0
         # Actual = -50 (op 1, linked to March), TotalPlanned = -100
-        # Projected = -50 + 0 = -50
+        # Forecast = -50 + 0 = -50
         march = df.loc[str(Category.GROCERIES)]["2023-03-01"]
         assert march["TotalPlanned"] == -100.0
         assert march["Actual"] == -50.0
-        assert march["Projected"] == -50.0
+        assert march["Forecast"] == -50.0
 
         # April: iteration is NOT realized → not-yet-realized = -100
-        # Actual = 0, Projected = 0 + (-100) = -100
+        # Actual = 0, Forecast = 0 + (-100) = -100
         april = df.loc[str(Category.GROCERIES)]["2023-04-01"]
         assert april["TotalPlanned"] == -100.0
         assert april["Actual"] == 0.0
-        assert april["Projected"] == -100.0
+        assert april["Forecast"] == -100.0
 
     def test_mixed_budget_and_planned_op_partial_realization(self) -> None:
         """Budget + planned op on same category, planned op realized but not budget."""
@@ -466,10 +466,10 @@ class TestComputeBudgetForecast:
         assert march["PlannedFromBudgets"] == -200.0
         # Actual = -100 (the plumber operation)
         assert march["Actual"] == -100.0
-        # Projected: planned op is realized (link exists), budget is not consumed
+        # Forecast: planned op is realized (link exists), budget is not consumed
         # not-yet-realized = 0 (planned op) + 200 (budget, no linked ops) = -200
-        # Projected = Actual (-100) + not-yet-realized (-200) = -300
-        assert march["Projected"] == -300.0
+        # Forecast = Actual (-100) + not-yet-realized (-200) = -300
+        assert march["Forecast"] == -300.0
 
 
 class TestComputeBudgetStatistics:
