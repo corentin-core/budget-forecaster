@@ -126,7 +126,12 @@ class ReviewWidget(Vertical):
         padding: 0 2;
     }
 
+    ReviewWidget #review-content {
+        height: 1fr;
+    }
+
     ReviewWidget #review-table-center {
+        width: 1fr;
         height: 1fr;
     }
 
@@ -145,6 +150,7 @@ class ReviewWidget(Vertical):
     }
 
     ReviewWidget #margin-section {
+        width: 55;
         height: auto;
         margin: 1 2;
         padding: 1 2;
@@ -155,28 +161,29 @@ class ReviewWidget(Vertical):
         border: solid $error;
     }
 
-    ReviewWidget #margin-header {
-        height: 1;
-    }
-
     ReviewWidget #margin-value {
         text-style: bold;
         width: auto;
+        height: 1;
     }
 
     ReviewWidget #margin-value.negative {
         color: $error;
     }
 
+    ReviewWidget #margin-threshold-row {
+        height: 3;
+        margin-top: 1;
+    }
+
     ReviewWidget #margin-threshold-label {
         width: auto;
-        margin-left: 2;
         color: $text-muted;
+        padding: 1 0;
     }
 
     ReviewWidget #btn-edit-threshold {
-        min-width: 8;
-        height: 3;
+        min-width: 10;
         margin-left: 1;
     }
 
@@ -222,16 +229,17 @@ class ReviewWidget(Vertical):
             yield Button("\u25c0", id="review-prev")
             yield Static("", id="review-month-label")
             yield Button("\u25b6", id="review-next")
-        with Center(id="review-table-center"):
-            yield DataTable(id="review-table", cursor_type="row")
-        with Vertical(id="margin-section"):
-            with Horizontal(id="margin-header"):
+        with Horizontal(id="review-content"):
+            with Center(id="review-table-center"):
+                yield DataTable(id="review-table", cursor_type="row")
+            with Vertical(id="margin-section"):
                 yield Static("", id="margin-value")
-                yield Static("", id="margin-threshold-label")
-                yield Button(_("Edit"), id="btn-edit-threshold")
-            yield Vertical(id="margin-details")
-            yield Static("", id="margin-explanation")
-            yield Static("", id="margin-alert-msg")
+                with Horizontal(id="margin-threshold-row"):
+                    yield Static("", id="margin-threshold-label")
+                    yield Button(_("Edit"), id="btn-edit-threshold")
+                yield Vertical(id="margin-details")
+                yield Static("", id="margin-explanation")
+                yield Static("", id="margin-alert-msg")
         yield Static("", id="review-status")
 
     def set_app_service(self, service: ApplicationService) -> None:
@@ -528,10 +536,9 @@ class ReviewWidget(Vertical):
                 f"{threshold:,.0f} {euro}" if threshold > 0 else f"0 {euro}"
             )
             explanation.update(
-                _(
-                    "= from this month onward, the most you can spend freely\n"
-                    "  without the account going below {}"
-                ).format(threshold_desc)
+                _("= the most you can spend freely without going below {}").format(
+                    threshold_desc
+                )
             )
             alert_msg.update("")
 
