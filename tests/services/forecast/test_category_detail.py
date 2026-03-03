@@ -27,8 +27,8 @@ from budget_forecaster.services.forecast.forecast_service import (
     AttributedOperationDetail,
     CategoryDetail,
     ForecastService,
+    ForecastSourceType,
     PlannedSourceDetail,
-    SourceKind,
     _cross_month_annotation,
     _format_budget_periodicity,
     _format_periodicity,
@@ -237,7 +237,7 @@ class TestGetCategoryDetail:
         detail = service.get_category_detail("internet", date(2025, 2, 1))
 
         expected_source = PlannedSourceDetail(
-            kind=SourceKind.PLANNED_OPERATION,
+            forecast_source_type=ForecastSourceType.PLANNED_OPERATION,
             description="Netflix",
             periodicity="monthly, 1st",
             amount=-15.0,
@@ -279,7 +279,7 @@ class TestGetCategoryDetail:
         detail = service.get_category_detail("house_works", date(2025, 2, 1))
 
         expected_source = PlannedSourceDetail(
-            kind=SourceKind.BUDGET,
+            forecast_source_type=ForecastSourceType.BUDGET,
             description="House works",
             periodicity="200/month (01/02\u219228/02)",
             amount=-200.0,
@@ -329,8 +329,11 @@ class TestGetCategoryDetail:
         detail = service.get_category_detail("house_works", date(2025, 2, 1))
 
         assert len(detail["planned_sources"]) == 2
-        kinds = {s["kind"] for s in detail["planned_sources"]}
-        assert kinds == {SourceKind.BUDGET, SourceKind.PLANNED_OPERATION}
+        kinds = {s["forecast_source_type"] for s in detail["planned_sources"]}
+        assert kinds == {
+            ForecastSourceType.BUDGET,
+            ForecastSourceType.PLANNED_OPERATION,
+        }
         assert detail["total_planned"] == -300.0
 
     def test_operations_attributed_to_month(
@@ -664,7 +667,10 @@ class TestGetCategoryDetail:
         # February → plumber and kitchen have 0 amount, only monthly budget appears
         detail = service.get_category_detail("house_works", date(2025, 2, 1))
         assert len(detail["planned_sources"]) == 1
-        assert detail["planned_sources"][0]["kind"] == SourceKind.BUDGET
+        assert (
+            detail["planned_sources"][0]["forecast_source_type"]
+            == ForecastSourceType.BUDGET
+        )
         assert detail["planned_sources"][0]["description"] == "House works budget"
 
     def test_operations_of_other_categories_excluded(

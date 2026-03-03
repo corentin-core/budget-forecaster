@@ -11,8 +11,8 @@ from budget_forecaster.i18n import _
 from budget_forecaster.services.forecast.forecast_service import (
     AttributedOperationDetail,
     CategoryDetail,
+    ForecastSourceType,
     PlannedSourceDetail,
-    SourceKind,
 )
 from budget_forecaster.tui.symbols import DisplaySymbol
 
@@ -156,12 +156,12 @@ class CategoryDetailModal(ModalScreen[None]):
                 budgets = [
                     s
                     for s in detail["planned_sources"]
-                    if s["kind"] == SourceKind.BUDGET
+                    if s["forecast_source_type"] == ForecastSourceType.BUDGET
                 ]
                 planned_ops = [
                     s
                     for s in detail["planned_sources"]
-                    if s["kind"] == SourceKind.PLANNED_OPERATION
+                    if s["forecast_source_type"] == ForecastSourceType.PLANNED_OPERATION
                 ]
 
                 if budgets:

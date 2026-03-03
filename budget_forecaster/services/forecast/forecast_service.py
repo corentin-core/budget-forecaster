@@ -36,8 +36,8 @@ from budget_forecaster.services.account.account_analyzer import AccountAnalyzer
 logger = logging.getLogger(__name__)
 
 
-class SourceKind(enum.StrEnum):
-    """Kind of planned source: budget envelope or planned operation."""
+class ForecastSourceType(enum.Enum):
+    """Type of forecast source: budget envelope or planned operation."""
 
     BUDGET = enum.auto()
     PLANNED_OPERATION = enum.auto()
@@ -62,7 +62,7 @@ class MonthlySummary(TypedDict):
 class PlannedSourceDetail(TypedDict):
     """A single planned source for a category in a month."""
 
-    kind: SourceKind
+    forecast_source_type: ForecastSourceType
     description: str
     periodicity: str
     amount: float
@@ -181,7 +181,7 @@ def _collect_operation_sources(
             continue
         sources.append(
             PlannedSourceDetail(
-                kind=SourceKind.PLANNED_OPERATION,
+                forecast_source_type=ForecastSourceType.PLANNED_OPERATION,
                 description=planned_op.description,
                 periodicity=_format_periodicity(planned_op),
                 amount=amount,
@@ -206,7 +206,7 @@ def _collect_budget_sources(
             continue
         sources.append(
             PlannedSourceDetail(
-                kind=SourceKind.BUDGET,
+                forecast_source_type=ForecastSourceType.BUDGET,
                 description=budget.description,
                 periodicity=_format_budget_periodicity(budget, month_start, month_end),
                 amount=amount,
