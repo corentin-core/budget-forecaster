@@ -653,31 +653,15 @@ def _generate_history(
     past_one_time_id: int,
     budget_ids: dict[str, int],
 ) -> tuple[list[HistoricOperation], list[HistoricOperation], list[OperationLink]]:
-    """Generate 3 months of historic operations and links."""
+    """Generate 3 months of history + current month (partial) with links."""
     all_bnp_ops: list[HistoricOperation] = []
     all_swile_ops: list[HistoricOperation] = []
     links: list[OperationLink] = []
 
     for month_start in (M_MINUS_3, M_MINUS_2, M_MINUS_1):
-        # Planned op operations
-        po_ops = _generate_planned_op_operations(month_start)
-        for op, po_def in po_ops:
-            all_bnp_ops.append(op)
-            po_id = planned_op_ids[po_def["desc"]]
-            iteration_date = month_start.replace(
-                day=min(
-                    po_def["day"],
-                    monthrange(month_start.year, month_start.month)[1],
-                )
-            )
-            links.append(
-                OperationLink(
-                    operation_unique_id=op.unique_id,
-                    target_type=LinkType.PLANNED_OPERATION,
-                    target_id=po_id,
-                    iteration_date=iteration_date,
-                )
-            )
+        _add_month_ops(
+            month_start, planned_op_ids, budget_ids, all_bnp_ops, all_swile_ops, links
+        )
 
         # One-time operation (only in M-2)
         if month_start == M_MINUS_2:
@@ -693,39 +677,139 @@ def _generate_history(
                 )
             )
 
-        # Grocery operations (linked to budget)
-        grocery_ops = _generate_grocery_operations(month_start)
-        for op in grocery_ops:
-            all_bnp_ops.append(op)
-            links.append(
-                OperationLink(
-                    operation_unique_id=op.unique_id,
-                    target_type=LinkType.BUDGET,
-                    target_id=budget_ids["Courses"],
-                    iteration_date=month_start,
-                )
-            )
-
-        # Entertainment operations (linked to budget)
-        ent_ops = _generate_entertainment_operations(month_start)
-        for op in ent_ops:
-            all_bnp_ops.append(op)
-            links.append(
-                OperationLink(
-                    operation_unique_id=op.unique_id,
-                    target_type=LinkType.BUDGET,
-                    target_id=budget_ids["Divertissement"],
-                    iteration_date=month_start,
-                )
-            )
-
-        # Uncategorized operations (no links)
-        all_bnp_ops.extend(_generate_uncategorized_operations(month_start))
-
-        # Swile operations (no links)
-        all_swile_ops.extend(_generate_swile_operations(month_start))
+    # Current month: partial data up to today, with links
+    _add_current_month_ops(
+        planned_op_ids, budget_ids, all_bnp_ops, all_swile_ops, links
+    )
 
     return all_bnp_ops, all_swile_ops, links
+
+
+def _add_month_ops(
+    month_start: date,
+    planned_op_ids: dict[str, int],
+    budget_ids: dict[str, int],
+    all_bnp_ops: list[HistoricOperation],
+    all_swile_ops: list[HistoricOperation],
+    links: list[OperationLink],
+) -> None:
+    """Add a full month of operations and links."""
+    # Planned op operations
+    po_ops = _generate_planned_op_operations(month_start)
+    for op, po_def in po_ops:
+        all_bnp_ops.append(op)
+        po_id = planned_op_ids[po_def["desc"]]
+        iteration_date = month_start.replace(
+            day=min(
+                po_def["day"],
+                monthrange(month_start.year, month_start.month)[1],
+            )
+        )
+        links.append(
+            OperationLink(
+                operation_unique_id=op.unique_id,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=po_id,
+                iteration_date=iteration_date,
+            )
+        )
+
+    # Grocery operations (linked to budget)
+    grocery_ops = _generate_grocery_operations(month_start)
+    for op in grocery_ops:
+        all_bnp_ops.append(op)
+        links.append(
+            OperationLink(
+                operation_unique_id=op.unique_id,
+                target_type=LinkType.BUDGET,
+                target_id=budget_ids["Courses"],
+                iteration_date=month_start,
+            )
+        )
+
+    # Entertainment operations (linked to budget)
+    ent_ops = _generate_entertainment_operations(month_start)
+    for op in ent_ops:
+        all_bnp_ops.append(op)
+        links.append(
+            OperationLink(
+                operation_unique_id=op.unique_id,
+                target_type=LinkType.BUDGET,
+                target_id=budget_ids["Divertissement"],
+                iteration_date=month_start,
+            )
+        )
+
+    # Uncategorized operations (no links)
+    all_bnp_ops.extend(_generate_uncategorized_operations(month_start))
+
+    # Swile operations (no links)
+    all_swile_ops.extend(_generate_swile_operations(month_start))
+
+
+def _link_current_month_ops(
+    bnp_ops: list[HistoricOperation],
+    planned_op_ids: dict[str, int],
+    budget_ids: dict[str, int],
+    links: list[OperationLink],
+) -> None:
+    """Create links for current-month BNP operations."""
+    # The first N ops correspond to planned ops whose day <= today
+    cursor = 0
+    for po in PLANNED_OPS:
+        if (
+            day := min(po["day"], monthrange(M_CURRENT.year, M_CURRENT.month)[1])
+        ) <= TODAY.day:
+            if cursor < len(bnp_ops):
+                links.append(
+                    OperationLink(
+                        operation_unique_id=bnp_ops[cursor].unique_id,
+                        target_type=LinkType.PLANNED_OPERATION,
+                        target_id=planned_op_ids[po["desc"]],
+                        iteration_date=M_CURRENT.replace(day=day),
+                    )
+                )
+                cursor += 1
+
+    # Grocery operations come after planned ops
+    fraction = TODAY.day / monthrange(M_CURRENT.year, M_CURRENT.month)[1]
+    grocery_end = cursor + max(2, int(9 * fraction))
+    for op in bnp_ops[cursor:grocery_end]:
+        links.append(
+            OperationLink(
+                operation_unique_id=op.unique_id,
+                target_type=LinkType.BUDGET,
+                target_id=budget_ids["Courses"],
+                iteration_date=M_CURRENT,
+            )
+        )
+
+    # Entertainment operations come after groceries
+    ent_end = grocery_end + max(1, int(3 * fraction))
+    for op in bnp_ops[grocery_end:ent_end]:
+        links.append(
+            OperationLink(
+                operation_unique_id=op.unique_id,
+                target_type=LinkType.BUDGET,
+                target_id=budget_ids["Divertissement"],
+                iteration_date=M_CURRENT,
+            )
+        )
+    # Last op is uncategorized — no link needed
+
+
+def _add_current_month_ops(
+    planned_op_ids: dict[str, int],
+    budget_ids: dict[str, int],
+    all_bnp_ops: list[HistoricOperation],
+    all_swile_ops: list[HistoricOperation],
+    links: list[OperationLink],
+) -> None:
+    """Add current-month partial operations (up to today) with links."""
+    bnp_ops = _generate_current_month_bnp_operations()
+    _link_current_month_ops(bnp_ops, planned_op_ids, budget_ids, links)
+    all_bnp_ops.extend(bnp_ops)
+    all_swile_ops.extend(_generate_current_month_swile_operations())
 
 
 def _save_accounts(
