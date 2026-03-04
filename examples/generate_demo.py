@@ -142,13 +142,23 @@ PLANNED_OPS: list[dict] = [
     },
 ]
 
-ONE_TIME_OP = {
+ONE_TIME_PAST = {
     "desc": "Réparation machine à laver",
     "amount": -400.00,
     "category": Category.FURNITURE,
     "month": M_MINUS_2,
     "day": 18,
     "hints": ["DARTY", "REPARATION"],
+}
+
+# One-time future expense — makes the margin dip below the 500€ threshold
+ONE_TIME_FUTURE = {
+    "desc": "Dépôt de garantie appartement",
+    "amount": -2500.00,
+    "category": Category.UNCATEGORIZED,
+    "month": M_CURRENT,
+    "day": 25,
+    "hints": ["VIREMENT DEPOT GARANTIE"],
 }
 
 BUDGETS: list[dict] = [
@@ -254,7 +264,7 @@ def _generate_planned_op_operations(
 
 def _generate_one_time_operation() -> tuple[HistoricOperation, dict]:
     """Generate the one-time washing machine repair operation."""
-    ot = ONE_TIME_OP
+    ot = ONE_TIME_PAST
     op_date = ot["month"].replace(day=ot["day"])
     op = HistoricOperation(
         unique_id=next(ID_COUNTER),
@@ -547,8 +557,13 @@ def write_swile_zip(
 # ---------------------------------------------------------------------------
 # Database population helpers
 # ---------------------------------------------------------------------------
-def _create_planned_operations(repo: SqliteRepository) -> tuple[dict[str, int], int]:
-    """Create all planned operations in the database. Returns IDs."""
+def _create_planned_operations(
+    repo: SqliteRepository,
+) -> tuple[dict[str, int], int, int]:
+    """Create all planned operations in the database.
+
+    Returns (planned_op_ids, past_one_time_id, future_one_time_id).
+    """
     planned_op_ids: dict[str, int] = {}
     for po in PLANNED_OPS:
         planned = PlannedOperation(
@@ -571,9 +586,9 @@ def _create_planned_operations(repo: SqliteRepository) -> tuple[dict[str, int], 
         po_id = repo.upsert_planned_operation(planned)
         planned_op_ids[po["desc"]] = po_id
 
-    # One-time: washing machine repair in M-2
-    ot = ONE_TIME_OP
-    one_time_planned = PlannedOperation(
+    # One-time past: washing machine repair in M-2
+    ot = ONE_TIME_PAST
+    past_planned = PlannedOperation(
         record_id=None,
         description=ot["desc"],
         amount=Amount(ot["amount"]),
@@ -584,14 +599,34 @@ def _create_planned_operations(repo: SqliteRepository) -> tuple[dict[str, int], 
             expiration_date=ot["month"].replace(day=ot["day"]),
         ),
     )
-    one_time_planned.matcher.update_params(
+    past_planned.matcher.update_params(
         description_hints=set(ot["hints"]),
         approximation_date_range=timedelta(days=5),
         approximation_amount_ratio=0.1,
     )
-    one_time_id = repo.upsert_planned_operation(one_time_planned)
+    past_one_time_id = repo.upsert_planned_operation(past_planned)
 
-    return planned_op_ids, one_time_id
+    # One-time future: security deposit this month — makes margin dip below threshold
+    ft = ONE_TIME_FUTURE
+    future_planned = PlannedOperation(
+        record_id=None,
+        description=ft["desc"],
+        amount=Amount(ft["amount"]),
+        category=ft["category"],
+        date_range=RecurringDay(
+            start_date=ft["month"].replace(day=ft["day"]),
+            period=relativedelta(months=1),
+            expiration_date=ft["month"].replace(day=ft["day"]),
+        ),
+    )
+    future_planned.matcher.update_params(
+        description_hints=set(ft["hints"]),
+        approximation_date_range=timedelta(days=5),
+        approximation_amount_ratio=0.1,
+    )
+    future_one_time_id = repo.upsert_planned_operation(future_planned)
+
+    return planned_op_ids, past_one_time_id, future_one_time_id
 
 
 def _create_budgets(repo: SqliteRepository) -> dict[str, int]:
@@ -615,7 +650,7 @@ def _create_budgets(repo: SqliteRepository) -> dict[str, int]:
 
 def _generate_history(
     planned_op_ids: dict[str, int],
-    one_time_id: int,
+    past_one_time_id: int,
     budget_ids: dict[str, int],
 ) -> tuple[list[HistoricOperation], list[HistoricOperation], list[OperationLink]]:
     """Generate 3 months of historic operations and links."""
@@ -646,14 +681,14 @@ def _generate_history(
 
         # One-time operation (only in M-2)
         if month_start == M_MINUS_2:
-            ot = ONE_TIME_OP
+            ot = ONE_TIME_PAST
             op, _ = _generate_one_time_operation()
             all_bnp_ops.append(op)
             links.append(
                 OperationLink(
                     operation_unique_id=op.unique_id,
                     target_type=LinkType.PLANNED_OPERATION,
-                    target_id=one_time_id,
+                    target_id=past_one_time_id,
                     iteration_date=ot["month"].replace(day=ot["day"]),
                 )
             )
@@ -704,7 +739,7 @@ def _save_accounts(
     swile_balance = 87.50
 
     bnp_account = Account(
-        name="BNP Compte Courant",
+        name="bnp",
         balance=bnp_balance,
         currency="EUR",
         balance_date=BALANCE_DATE,
@@ -713,7 +748,7 @@ def _save_accounts(
     repo.upsert_account(bnp_account)
 
     swile_account = Account(
-        name="Swile Titres Restaurant",
+        name="swile",
         balance=swile_balance,
         currency="EUR",
         balance_date=BALANCE_DATE,
@@ -771,10 +806,12 @@ def main() -> None:
     repo.initialize()
     repo.set_aggregated_account_name("Mon Budget")
 
-    planned_op_ids, one_time_id = _create_planned_operations(repo)
+    planned_op_ids, past_one_time_id, _future_one_time_id = _create_planned_operations(
+        repo
+    )
     budget_ids = _create_budgets(repo)
     all_bnp_ops, all_swile_ops, links = _generate_history(
-        planned_op_ids, one_time_id, budget_ids
+        planned_op_ids, past_one_time_id, budget_ids
     )
     bnp_balance, swile_balance = _save_accounts(repo, all_bnp_ops, all_swile_ops, links)
     repo.close()
@@ -783,10 +820,11 @@ def main() -> None:
     bnp_xls_path, swile_zip_path = _generate_exports(bnp_balance, swile_balance)
 
     # --- Summary ---
+    n_planned = len(PLANNED_OPS) + 2  # + past one-time + future one-time
     print(f"\nGenerated files:\n  {DB_PATH}\n  {bnp_xls_path}\n  {swile_zip_path}")
     print(f"\nBNP balance at {BALANCE_DATE}: {bnp_balance:.2f} EUR")
     print(f"Swile balance at {BALANCE_DATE}: {swile_balance:.2f} EUR")
-    print(f"Planned operations: {len(PLANNED_OPS) + 1}")
+    print(f"Planned operations: {n_planned}")
     print(f"Budgets: {len(BUDGETS)}")
     print(f"Historic operations (BNP): {len(all_bnp_ops)}")
     print(f"Historic operations (Swile): {len(all_swile_ops)}")
