@@ -34,7 +34,10 @@ nav:
       - Operation Links: user/operation-links.md
       - TUI Dashboard: user/tui-dashboard.md
       - TUI Operations: user/tui-operations.md
+      - TUI Balance: user/tui-balance.md
+      - TUI Monthly Review: user/tui-review.md
       - TUI Planned Operations & Budgets: user/tui-planned-budgets.md
+      - Available Margin: user/available-margin.md
   - Developer:
       - Architecture: dev/architecture.md
       - Operations: dev/operations.md
@@ -47,6 +50,8 @@ nav:
       - Operation Links: quality/operation-links.md
       - Forecast Calculation: quality/forecast-calculation.md
       - Split Operations: quality/split-operations.md
+      - Monthly Review: quality/monthly-review.md
+      - Archive Operations: quality/archive-operations.md
 
 markdown_extensions:
   - pymdownx.superfences:
