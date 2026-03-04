@@ -1,5 +1,5 @@
 database_path: ./demo.db
-account_name: BNP Compte Courant
+account_name: bnp
 account_currency: EUR
 inbox_path: ./data
 backup:
