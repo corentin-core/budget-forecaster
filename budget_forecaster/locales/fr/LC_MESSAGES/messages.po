@@ -1079,3 +1079,38 @@ msgstr "payé en avance (opération du {})"
 
 msgid "paid late (operation dated {})"
 msgstr "payé en retard (opération du {})"
+
+#: budget_forecaster/tui/screens/review.py — margin section
+msgid "Available margin"
+msgstr "Marge disponible"
+
+msgid "Minimum threshold"
+msgstr "Seuil minimum"
+
+msgid "Balance at"
+msgstr "Solde au"
+
+msgid "Lowest future balance"
+msgstr "Plus bas solde futur"
+
+msgid "/!\\ The account will go below your {} {} threshold on {}"
+msgstr "/!\\ Le compte passera sous votre seuil de {} {} le {}"
+
+msgid "= the most you can spend freely without going below {}"
+msgstr "= le maximum que vous pouvez dépenser sans passer sous {}"
+
+msgid "Edit threshold"
+msgstr "Modifier le seuil"
+
+#: budget_forecaster/tui/modals/threshold_edit.py
+msgid "Edit margin threshold"
+msgstr "Modifier le seuil de marge"
+
+msgid "Threshold"
+msgstr "Seuil"
+
+msgid "Invalid number"
+msgstr "Nombre invalide"
+
+msgid "Threshold must be positive or zero"
+msgstr "Le seuil doit être positif ou nul"
