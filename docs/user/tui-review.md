@@ -98,7 +98,7 @@ and attributed operations for the selected category.
 │ ────────────────────────────────────────────────────────────────────────── │
 │ Total actual                                              -230.20 EUR      │
 │                                                                            │
-│ Planned: 450 EUR / Actual: 230 EUR / Forecast: 450 EUR / Remaining: 220   │
+│ Planned: 450 EUR / Actual: 230 EUR / Forecast: 450 EUR / Remaining: 220    │
 │                                                                            │
 │                                                                  [Close]   │
 └────────────────────────────────────────────────────────────────────────────┘
