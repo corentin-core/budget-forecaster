@@ -130,17 +130,20 @@ Past (actual)              Now              Future (projected)
    Known amounts          |   Estimated amounts
 ```
 
-The balance evolution curve shows how your account balance changes over time, combining
-real history with the forecast projection.
+The balance evolution chart is displayed in the **Balance** tab of the TUI. See
+[Balance](tui-balance.md) for usage details.
 
 ## Budget Tracking
 
-For each budget, the forecast tracks consumption:
+For each budget, the forecast tracks consumption. The **Review** tab provides a
+per-category view with these columns:
 
 - **Planned**: The full budget amount for the period
-- **Actual** (Réel): Sum of real bank operations linked to this budget
-- **Adjusted** (Ajusté): Projected spending for the current period based on links
-- **Remaining**: Budget amount minus linked operations
+- **Actual**: Sum of real bank operations linked to this category
+- **Forecast**: Projected spending for the current period based on links
+- **Remaining**: Forecast minus Actual — how much is left
+
+See [Monthly Review](tui-review.md) for the full tab documentation.
 
 ### Daily Projection (Linear Decrease)
 
@@ -190,24 +193,25 @@ If linked operations exceed the budget, the remaining amount goes negative (over
 
 ## Monthly Summary
 
-The forecast report includes a monthly summary with three columns per month:
+The Review tab shows a per-category monthly summary with these columns:
 
-| Column                | Meaning                                                       |
-| --------------------- | ------------------------------------------------------------- |
-| **Réel** (Actual)     | Sum of real bank operations for that month                    |
-| **Prévu** (Planned)   | Sum of planned operations and budgets for that month          |
-| **Ajusté** (Adjusted) | Projected amounts for the current month, accounting for links |
+| Column        | Meaning                                                             |
+| ------------- | ------------------------------------------------------------------- |
+| **Planned**   | Sum of planned operations and budgets for that month                |
+| **Actual**    | Sum of real bank operations for that month                          |
+| **Forecast**  | Projected amounts for the current month, accounting for links       |
+| **Remaining** | Forecast minus Actual — how much of each category is still expected |
 
-- Past months only show **Réel** and **Prévu**
-- The current month shows all three columns
-- Future months only show **Prévu**
+Categories are split into **Forecasted** (with planned counterparts) and
+**Unforecasted** (spending without a plan).
 
 ## Excel Export
 
-The forecast report can be exported to Excel from the Forecast tab. The export includes:
+The forecast report can be exported to Excel from the **Balance** tab (press `X`). The
+export includes:
 
 - Balance evolution chart
-- Monthly summary by category (Réel / Prévu / Ajusté)
+- Monthly summary by category (Actual / Planned / Forecast)
 - Budget statistics (total and monthly average per category)
 
 ## Tips
