@@ -46,7 +46,7 @@
 > **Then** the margin shows -200 EUR, the margin section turns red, and a warning
 > message indicates the date when the balance drops below threshold
 
-## Cross-Month Attribution
+## Cross-Month Attribution (Early Payment)
 
 > **Given** a rent operation paid on January 25th linked to the February 1st iteration
 >
@@ -54,6 +54,35 @@
 >
 > **Then** the rent operation appears in February's Actual column (not January's), with
 > a cross-month annotation indicating it was paid early
+
+## Cross-Month Attribution (Late Payment)
+
+> **Given** a rent operation paid on February 8th linked to the January 5th iteration
+>
+> **When** the user views January in the Review tab
+>
+> **Then** the rent operation appears in January's Actual column (not February's), with
+> a cross-month annotation indicating it was paid late
+
+## Planned Operation Takes Priority Over Budget
+
+> **Given** a monthly grocery budget of 100 EUR and a planned grocery operation of 50
+> EUR on the same category
+>
+> **When** a 50 EUR grocery operation occurs and is linked to the planned operation
+>
+> **Then** the operation is attributed to the planned operation, not to the budget — the
+> budget remains fully unconsumed, and the Forecast shows 150 EUR (50 EUR realized from
+> the planned operation plus 100 EUR unrealized from the budget)
+
+## Unlinked Operation Adds to Budget Forecast
+
+> **Given** a monthly grocery budget of 100 EUR
+>
+> **When** a 50 EUR grocery operation occurs but is not linked to the budget
+>
+> **Then** the Forecast shows 150 EUR (50 EUR actual plus 100 EUR unrealized from the
+> budget), because unlinked spending is added on top of the planned amount
 
 ## Consumption Bar Over 100%
 

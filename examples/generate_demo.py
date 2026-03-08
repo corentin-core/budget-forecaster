@@ -78,25 +78,25 @@ ID_COUNTER = _id_counter
 # ---------------------------------------------------------------------------
 PLANNED_OPS: list[dict] = [
     {
-        "desc": "Salaire",
+        "desc": "Salary",
         "amount": 3200.00,
         "category": Category.SALARY,
         "day": 28,
-        "hints": ["VIREMENT SALAIRE", "SALAIRE"],
+        "hints": ["SALARY TRANSFER", "SALARY"],
     },
     {
-        "desc": "Loyer",
+        "desc": "Rent",
         "amount": -950.00,
         "category": Category.RENT,
         "day": 5,
-        "hints": ["PRELEVEMENT LOYER", "LOYER"],
+        "hints": ["RENT PAYMENT", "RENT"],
     },
     {
-        "desc": "Électricité",
+        "desc": "Electricity",
         "amount": -75.00,
         "category": Category.ELECTRICITY,
         "day": 10,
-        "hints": ["EDF", "ELECTRICITE"],
+        "hints": ["POWER COMPANY", "ELECTRICITY"],
     },
     {
         "desc": "Internet",
@@ -106,25 +106,25 @@ PLANNED_OPS: list[dict] = [
         "hints": ["FREE MOBILE", "INTERNET"],
     },
     {
-        "desc": "Téléphone",
+        "desc": "Phone",
         "amount": -19.99,
         "category": Category.PHONE,
         "day": 8,
-        "hints": ["FORFAIT TELEPHONE", "TELEPHONE"],
+        "hints": ["PHONE PLAN", "PHONE"],
     },
     {
-        "desc": "Navigo",
+        "desc": "Transit pass",
         "amount": -84.10,
         "category": Category.PUBLIC_TRANSPORT,
         "day": 1,
-        "hints": ["NAVIGO", "TRANSPORT"],
+        "hints": ["TRANSIT PASS", "TRANSPORT"],
     },
     {
-        "desc": "Épargne",
+        "desc": "Savings",
         "amount": -500.00,
         "category": Category.SAVINGS,
         "day": 29,
-        "hints": ["VIREMENT EPARGNE", "EPARGNE"],
+        "hints": ["SAVINGS TRANSFER", "SAVINGS"],
     },
     {
         "desc": "Spotify",
@@ -134,41 +134,41 @@ PLANNED_OPS: list[dict] = [
         "hints": ["SPOTIFY"],
     },
     {
-        "desc": "Assurance habitation",
+        "desc": "Home insurance",
         "amount": -25.00,
         "category": Category.HOUSE_INSURANCE,
         "day": 12,
-        "hints": ["ASSURANCE HABITATION", "MAIF"],
+        "hints": ["HOME INSURANCE", "INSURANCE"],
     },
 ]
 
 ONE_TIME_PAST = {
-    "desc": "Réparation machine à laver",
+    "desc": "Washing machine repair",
     "amount": -400.00,
     "category": Category.FURNITURE,
     "month": M_MINUS_2,
     "day": 18,
-    "hints": ["DARTY", "REPARATION"],
+    "hints": ["DARTY", "REPAIR"],
 }
 
 # One-time future expense — makes the margin dip below the 500€ threshold
 ONE_TIME_FUTURE = {
-    "desc": "Dépôt de garantie appartement",
+    "desc": "Apartment security deposit",
     "amount": -2500.00,
     "category": Category.UNCATEGORIZED,
     "month": M_CURRENT,
     "day": 25,
-    "hints": ["VIREMENT DEPOT GARANTIE"],
+    "hints": ["DEPOSIT TRANSFER"],
 }
 
 BUDGETS: list[dict] = [
     {
-        "desc": "Courses",
+        "desc": "Groceries",
         "amount": -450.00,
         "category": Category.GROCERIES,
     },
     {
-        "desc": "Divertissement",
+        "desc": "Entertainment",
         "amount": -120.00,
         "category": Category.ENTERTAINMENT,
     },
@@ -178,19 +178,19 @@ BUDGETS: list[dict] = [
 # BNP category strings (reverse mapping from category_mapping.yaml)
 # ---------------------------------------------------------------------------
 BNP_CATEGORY_MAP: dict[Category, str] = {
-    Category.SALARY: "Salaire",
-    Category.RENT: "Loyer",
-    Category.ELECTRICITY: "Electricité",
+    Category.SALARY: "Salary",
+    Category.RENT: "Rent",
+    Category.ELECTRICITY: "Electricity",
     Category.INTERNET: "Internet",
-    Category.PHONE: "Téléphone",
+    Category.PHONE: "Phone",
     Category.PUBLIC_TRANSPORT: "Transport",
-    Category.SAVINGS: "Epargne",
-    Category.ENTERTAINMENT: "Multimédia",
-    Category.HOUSE_INSURANCE: "Assurance habitation",
-    Category.FURNITURE: "Electroménager",
-    Category.GROCERIES: "Alimentation",
+    Category.SAVINGS: "Savings",
+    Category.ENTERTAINMENT: "Entertainment",
+    Category.HOUSE_INSURANCE: "Home insurance",
+    Category.FURNITURE: "Appliances",
+    Category.GROCERIES: "Groceries",
     Category.LEISURE: "Restaurant",
-    Category.UNCATEGORIZED: "Autre",
+    Category.UNCATEGORIZED: "Other",
 }
 
 # ---------------------------------------------------------------------------
@@ -722,7 +722,7 @@ def _add_month_ops(
             OperationLink(
                 operation_unique_id=op.unique_id,
                 target_type=LinkType.BUDGET,
-                target_id=budget_ids["Courses"],
+                target_id=budget_ids["Groceries"],
                 iteration_date=month_start,
             )
         )
@@ -735,7 +735,7 @@ def _add_month_ops(
             OperationLink(
                 operation_unique_id=op.unique_id,
                 target_type=LinkType.BUDGET,
-                target_id=budget_ids["Divertissement"],
+                target_id=budget_ids["Entertainment"],
                 iteration_date=month_start,
             )
         )
@@ -779,7 +779,7 @@ def _link_current_month_ops(
             OperationLink(
                 operation_unique_id=op.unique_id,
                 target_type=LinkType.BUDGET,
-                target_id=budget_ids["Courses"],
+                target_id=budget_ids["Groceries"],
                 iteration_date=M_CURRENT,
             )
         )
@@ -791,7 +791,7 @@ def _link_current_month_ops(
             OperationLink(
                 operation_unique_id=op.unique_id,
                 target_type=LinkType.BUDGET,
-                target_id=budget_ids["Divertissement"],
+                target_id=budget_ids["Entertainment"],
                 iteration_date=M_CURRENT,
             )
         )
@@ -888,7 +888,7 @@ def main() -> None:
     # --- Populate database ---
     repo = SqliteRepository(DB_PATH)
     repo.initialize()
-    repo.set_aggregated_account_name("Mon Budget")
+    repo.set_aggregated_account_name("My Budget")
 
     planned_op_ids, past_one_time_id, _future_one_time_id = _create_planned_operations(
         repo
