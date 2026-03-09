@@ -96,10 +96,10 @@ msgid "Groceries"
 msgstr "Alimentation"
 
 msgid "Entertainment"
-msgstr "Loisirs"
+msgstr "Divertissement"
 
 msgid "Leisure"
-msgstr "Détente"
+msgstr "Loisirs"
 
 msgid "Clothing"
 msgstr "Habillement"
