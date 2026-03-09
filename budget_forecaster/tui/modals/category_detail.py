@@ -19,6 +19,12 @@ from budget_forecaster.tui.modals.operation_detail import OperationDetailModal
 from budget_forecaster.tui.symbols import DisplaySymbol
 
 
+class _OperationRow(Horizontal):
+    """A focusable row for an operation in the category detail modal."""
+
+    can_focus = True
+
+
 class CategoryDetailModal(ModalScreen[None]):
     """Modal showing planned sources and attributed operations for a category."""
 
@@ -77,7 +83,6 @@ class CategoryDetailModal(ModalScreen[None]):
 
     CategoryDetailModal .op-row {
         height: 1;
-        can-focus: true;
     }
 
     CategoryDetailModal .op-row:hover {
@@ -237,7 +242,7 @@ class CategoryDetailModal(ModalScreen[None]):
         """Compose a single operation row with optional cross-month annotation."""
         date_str = op["operation_date"].strftime("%m/%d")
         amount_class = "amount-positive" if op["amount"] > 0 else "amount-negative"
-        row = Horizontal(classes="op-row", name=str(op["operation_id"]))
+        row = _OperationRow(classes="op-row", name=str(op["operation_id"]))
         with row:
             yield Static(date_str, classes="op-date")
             yield Static(op["description"][:40], classes="op-desc")
