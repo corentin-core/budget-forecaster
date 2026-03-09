@@ -36,9 +36,9 @@ class OperationDetailModal(ModalScreen[bool]):
     }
 
     OperationDetailModal #modal-container {
-        width: 70;
+        width: 90;
         height: auto;
-        max-height: 30;
+        max-height: 35;
         border: solid $primary;
         background: $surface;
         padding: 1 2;

@@ -4,9 +4,7 @@ from typing import Any
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
-from textual.events import Click
 from textual.screen import ModalScreen
-from textual.widget import Widget
 from textual.widgets import Button, Static
 
 from budget_forecaster.i18n import _
@@ -79,9 +77,14 @@ class CategoryDetailModal(ModalScreen[None]):
 
     CategoryDetailModal .op-row {
         height: 1;
+        can-focus: true;
     }
 
     CategoryDetailModal .op-row:hover {
+        background: $boost;
+    }
+
+    CategoryDetailModal .op-row:focus {
         background: $boost;
     }
 
@@ -140,7 +143,10 @@ class CategoryDetailModal(ModalScreen[None]):
     }
     """
 
-    BINDINGS = [("escape", "close", _("Close"))]
+    BINDINGS = [
+        ("escape", "close", _("Close")),
+        ("enter", "open_detail", _("Detail")),
+    ]
 
     def __init__(
         self,
@@ -266,20 +272,20 @@ class CategoryDetailModal(ModalScreen[None]):
             f"{_('Remaining')}: {remaining_str} {euro}"
         )
 
-    def on_click(self, event: Click) -> None:
-        """Handle click on operation rows to open detail modal."""
+    def action_open_detail(self) -> None:
+        """Open operation detail modal for the focused operation row."""
         if not self._app_service:
             return
 
-        # Walk up from clicked widget to find an op-row with operation_id in name
-        widget: Widget | None = event.widget
-        while widget is not None and widget is not self:
-            if "op-row" in widget.classes and widget.name is not None:
-                self.app.push_screen(
-                    OperationDetailModal(int(widget.name), self._app_service),
-                )
-                return
-            widget = widget.parent if isinstance(widget.parent, Widget) else None
+        focused = self.focused
+        if (
+            focused is not None
+            and "op-row" in focused.classes
+            and focused.name is not None
+        ):
+            self.app.push_screen(
+                OperationDetailModal(int(focused.name), self._app_service),
+            )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""
