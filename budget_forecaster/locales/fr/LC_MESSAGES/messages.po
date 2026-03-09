@@ -284,6 +284,12 @@ msgstr "Période :"
 msgid "Keywords:"
 msgstr "Mots-clés :"
 
+msgid "Link:"
+msgstr "Lien :"
+
+msgid "No link"
+msgstr "Aucun lien"
+
 msgid "Change category"
 msgstr "Changer de catégorie"
 

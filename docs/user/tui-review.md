@@ -109,7 +109,10 @@ and attributed operations for the selected category.
 - **Planned sources** — Which planned operations and budgets contribute to the Planned
   amount, with their individual amounts and periodicity
 - **Attributed operations** — Bank operations linked to this category, with cross-month
-  annotations when an operation was paid early or late relative to the selected month
+  annotations when an operation was paid early or late relative to the selected month.
+  Click on any operation row to open the
+  [operation detail modal](tui-operations.md#operation-detail-modal) with full
+  description and actions.
 - **Footer summary** — Planned / Actual / Forecast / Remaining at a glance
 
 ## Available Margin

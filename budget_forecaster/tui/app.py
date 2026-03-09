@@ -69,10 +69,7 @@ from budget_forecaster.tui.screens.dashboard import (
     UpcomingOperationRow,
 )
 from budget_forecaster.tui.screens.imports import ImportWidget
-from budget_forecaster.tui.screens.operations import (
-    OperationDetailPanel,
-    OperationsScreen,
-)
+from budget_forecaster.tui.screens.operations import OperationsScreen
 from budget_forecaster.tui.screens.planned_operations import PlannedOperationsWidget
 from budget_forecaster.tui.screens.review import ReviewWidget
 from budget_forecaster.tui.widgets import OperationTable
@@ -722,13 +719,6 @@ class BudgetApp(
             return
 
         self._open_plan_from_historic(operation.unique_id)
-
-    def on_operation_detail_panel_plan_operation_requested(
-        self, event: OperationDetailPanel.PlanOperationRequested
-    ) -> None:
-        """Handle plan operation request from detail panel."""
-        event.stop()
-        self._open_plan_from_historic(event.operation_id)
 
     def _open_plan_from_historic(self, operation_id: int) -> None:
         """Open the planned operation modal pre-filled from a historic operation."""

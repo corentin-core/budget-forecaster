@@ -39,16 +39,43 @@ The `►` symbol indicates a selected operation.
 | `L`          | Link selected operations        |
 | `P`          | Create planned operation        |
 
-## Operation Detail Panel
+## Operation Detail Modal
 
-When you highlight an operation, the detail panel on the right side shows the full
-operation information: ID, date, description, amount, and category. This is useful for
-viewing long descriptions that are truncated in the table.
+Press `Enter` on any operation to open a detail modal showing the full operation
+information: date, complete description (without truncation), amount, category, and link
+status.
 
-The panel also provides action buttons:
+The modal provides action buttons and keyboard shortcuts:
 
-- **Change category**: Open the category selection modal for this operation
-- **Create planned operation**: Open a pre-filled planned operation form (see below)
+| Key   | Action                   |
+| ----- | ------------------------ |
+| `c`   | Change category          |
+| `p`   | Create planned operation |
+| `Esc` | Close                    |
+
+This modal is available from any screen that displays operations: the Operations tab,
+the category detail drill-down in the Review tab, and the Dashboard.
+
+```
+┌────────────────────────────────────────────────────┐
+│ Operation detail                                   │
+├────────────────────────────────────────────────────┤
+│                                                    │
+│ Date         15/01/2025                            │
+│                                                    │
+│ Description  PAIEMENT CB AU PASSAGE 22 DE          │
+│              03/01/26 A PARIS 1. CARTE             │
+│              4978XXXXXXXX1234                       │
+│                                                    │
+│ Amount       -58.90 €                              │
+│                                                    │
+│ Category     Groceries                             │
+│                                                    │
+│ Link         🔗 Courses hebdo                      │
+│                                                    │
+│  [Change category]  [Create planned op]  [Close]   │
+└────────────────────────────────────────────────────┘
+```
 
 ## Creating a Planned Operation from History (P key)
 
@@ -56,7 +83,7 @@ When you spot a recurring payment or subscription in your operations, you can qu
 create a planned operation pre-filled with the operation's data.
 
 1. Highlight the operation in the table
-2. Press `P` or click "Create planned operation" in the detail panel
+2. Press `P` or open the detail modal and press `p`
 3. The planned operation form opens with pre-filled fields:
    - Description, amount, category, and date from the historic operation
 4. Adjust fields as needed (e.g., set recurrence to monthly)
@@ -64,21 +91,6 @@ create a planned operation pre-filled with the operation's data.
 
 On save, the planned operation is created **and** a link is automatically created
 between the source historic operation and the new planned operation.
-
-```
-┌───────────────────────────────────────────────┬──────────────────────────────┐
-│ Filter: [date range] [amount range]           │ Operation detail             │
-├──────────┬──────────────────┬────────┬────────┤                              │
-│ Date     │ Description      │ Amount │ Cat.   │ ID: 1234                     │
-├──────────┼──────────────────┼────────┼────────┤ Date: 15/01/2025 00:00       │
-│▶15/01/25 │ NETFLIX          │-17.99 €│ Entert.│ Description: NETFLIX         │
-│ 14/01/25 │ CARREFOUR        │-85.20 €│ Groc.  │ Amount: -17.99 €             │
-│ 12/01/25 │ SALARY           │+2500 € │ Salary │ Category: Entertainment      │
-│          │                  │        │        │                              │
-│          │                  │        │        │ [Change category]            │
-│          │                  │        │        │ [Create planned operation]   │
-└──────────┴──────────────────┴────────┴────────┴──────────────────────────────┘
-```
 
 ## Multi-Selection
 

@@ -7,6 +7,7 @@ from budget_forecaster.tui.modals.export_forecast import ExportForecastModal
 from budget_forecaster.tui.modals.file_browser import FileBrowserModal
 from budget_forecaster.tui.modals.link_iteration import LinkIterationModal
 from budget_forecaster.tui.modals.link_target import LinkTargetModal
+from budget_forecaster.tui.modals.operation_detail import OperationDetailModal
 from budget_forecaster.tui.modals.planned_operation_edit import (
     PlannedOperationEditModal,
 )
@@ -23,6 +24,7 @@ __all__ = [
     "FileBrowserModal",
     "LinkIterationModal",
     "LinkTargetModal",
+    "OperationDetailModal",
     "PlannedOperationEditModal",
     "SplitOperationModal",
     "SplitResult",
