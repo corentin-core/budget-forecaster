@@ -58,7 +58,7 @@ class OperationDetailPanel(Vertical):
 
     OperationDetailPanel #action-buttons-container {
         height: auto;
-        margin-top: 1;
+        dock: bottom;
     }
 
     OperationDetailPanel #action-buttons-container.hidden {
