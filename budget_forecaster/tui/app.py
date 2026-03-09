@@ -57,6 +57,7 @@ from budget_forecaster.tui.modals import (
     FileBrowserModal,
     LinkIterationModal,
     LinkTargetModal,
+    OperationDetailModal,
     PlannedOperationEditModal,
     SplitOperationModal,
     SplitResult,
@@ -766,6 +767,23 @@ class BudgetApp(
         except Exception:  # pylint: disable=broad-exception-caught
             logger.exception("Unexpected error creating planned operation")
             self.notify(_("An unexpected error occurred"), severity="error")
+
+    # Operation detail modal (dashboard table)
+
+    def on_operation_table_operation_selected(
+        self, event: OperationTable.OperationSelected
+    ) -> None:
+        """Open operation detail modal from the dashboard table."""
+        event.stop()
+        self.push_screen(
+            OperationDetailModal(event.operation.unique_id, self.app_service),
+            self._on_operation_detail_closed,
+        )
+
+    def _on_operation_detail_closed(self, modified: bool | None) -> None:
+        """Refresh screens if data was modified in the detail modal."""
+        if modified:
+            self._refresh_screens()
 
     # Budget event handlers
 
