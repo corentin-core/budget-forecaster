@@ -63,6 +63,13 @@ The matcher uses these criteria (same as forecast actualization):
 An operation matches if all criteria pass. When multiple targets match, the one with the
 highest score is selected.
 
+## Automatic Link from Planned Operation Creation
+
+When you create a planned operation from a historic operation (using `P` key in the
+Operations tab), a manual link is automatically created between the source historic
+operation and the new planned operation. This saves you from having to manually link
+them afterwards.
+
 ## Manual Linking in TUI
 
 ### Viewing Link Status

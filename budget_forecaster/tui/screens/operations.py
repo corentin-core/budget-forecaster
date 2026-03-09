@@ -3,7 +3,8 @@
 from typing import Any
 
 from textual.app import ComposeResult
-from textual.containers import Container, Vertical
+from textual.containers import Container, Horizontal, Vertical, VerticalScroll
+from textual.message import Message
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static
 
@@ -27,13 +28,19 @@ from budget_forecaster.tui.widgets.operation_table import OperationTable
 class OperationDetailPanel(Vertical):
     """Panel showing details of the selected operation."""
 
+    class PlanOperationRequested(Message):
+        """Message sent when the user wants to create a planned operation."""
+
+        def __init__(self, operation_id: int) -> None:
+            self.operation_id = operation_id
+            super().__init__()
+
     DEFAULT_CSS = """
     OperationDetailPanel {
         width: 40;
-        height: 100%;
+        height: 1fr;
         border: solid $primary;
         padding: 1;
-        dock: right;
     }
 
     OperationDetailPanel .detail-title {
@@ -49,12 +56,16 @@ class OperationDetailPanel(Vertical):
         margin-bottom: 1;
     }
 
-    OperationDetailPanel #edit-category-container {
-        height: auto;
-        margin-top: 1;
+    OperationDetailPanel #detail-scroll {
+        height: 1fr;
     }
 
-    OperationDetailPanel #edit-category-container.hidden {
+    OperationDetailPanel #action-buttons-container {
+        height: auto;
+        dock: bottom;
+    }
+
+    OperationDetailPanel #action-buttons-container.hidden {
         display: none;
     }
     """
@@ -66,19 +77,21 @@ class OperationDetailPanel(Vertical):
 
     def compose(self) -> ComposeResult:
         yield Static(_("Operation detail"), classes="detail-title")
-        yield Static(_("ID:"), classes="detail-label")
-        yield Static("-", id="detail-id", classes="detail-value")
-        yield Static(_("Date:"), classes="detail-label")
-        yield Static("-", id="detail-date", classes="detail-value")
-        yield Static(_("Description:"), classes="detail-label")
-        yield Static("-", id="detail-description", classes="detail-value")
-        yield Static(_("Amount:"), classes="detail-label")
-        yield Static("-", id="detail-amount", classes="detail-value")
-        yield Static(_("Category:"), classes="detail-label")
-        yield Static("-", id="detail-category", classes="detail-value")
+        with VerticalScroll(id="detail-scroll"):
+            yield Static(_("ID:"), classes="detail-label")
+            yield Static("-", id="detail-id", classes="detail-value")
+            yield Static(_("Date:"), classes="detail-label")
+            yield Static("-", id="detail-date", classes="detail-value")
+            yield Static(_("Description:"), classes="detail-label")
+            yield Static("-", id="detail-description", classes="detail-value")
+            yield Static(_("Amount:"), classes="detail-label")
+            yield Static("-", id="detail-amount", classes="detail-value")
+            yield Static(_("Category:"), classes="detail-label")
+            yield Static("-", id="detail-category", classes="detail-value")
 
-        with Vertical(id="edit-category-container", classes="hidden"):
+        with Vertical(id="action-buttons-container", classes="hidden"):
             yield Button(_("Change category"), id="btn-edit-category")
+            yield Button(_("Create planned operation"), id="btn-plan-operation")
 
     def set_app_service(self, service: ApplicationService) -> None:
         """Set the application service."""
@@ -110,7 +123,7 @@ class OperationDetailPanel(Vertical):
         )
 
         # Show edit button
-        self.query_one("#edit-category-container").remove_class("hidden")
+        self.query_one("#action-buttons-container").remove_class("hidden")
 
     def _clear(self) -> None:
         """Clear the detail panel."""
@@ -123,7 +136,7 @@ class OperationDetailPanel(Vertical):
             "detail-category",
         ):
             self.query_one(f"#{widget_id}", Static).update("-")
-        self.query_one("#edit-category-container").add_class("hidden")
+        self.query_one("#action-buttons-container").add_class("hidden")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
@@ -133,6 +146,8 @@ class OperationDetailPanel(Vertical):
                 CategoryEditModal(self._operation_id, self._app_service),
                 self._on_category_edited,
             )
+        elif event.button.id == "btn-plan-operation" and self._operation_id:
+            self.post_message(self.PlanOperationRequested(self._operation_id))
 
     def _on_category_edited(self, result: bool | None) -> None:
         """Handle category edit result."""
@@ -222,6 +237,10 @@ class OperationsScreen(Vertical):
         height: 1fr;
     }
 
+    OperationsScreen #operations-content {
+        height: 1fr;
+    }
+
     OperationsScreen #operations-table {
         height: 1fr;
     }
@@ -246,12 +265,17 @@ class OperationsScreen(Vertical):
             show_amount_range=True,
             id="operations-filter-bar",
         )
-        yield OperationTable(id="operations-table")
+        with Horizontal(id="operations-content"):
+            yield OperationTable(id="operations-table")
+            yield OperationDetailPanel(id="operation-detail-panel")
         yield Static(_("0 operations"), id="status-bar")
 
     def set_app_service(self, service: ApplicationService) -> None:
         """Set the application service and refresh."""
         self._app_service = service
+        self.query_one("#operation-detail-panel", OperationDetailPanel).set_app_service(
+            service
+        )
         self._apply_filter()
 
     def _build_lookups(
@@ -322,5 +346,7 @@ class OperationsScreen(Vertical):
     def on_operation_table_operation_highlighted(
         self, event: OperationTable.OperationHighlighted
     ) -> None:
-        """Show operation details when highlighted (not yet implemented)."""
-        _ = event
+        """Show operation details when highlighted."""
+        event.stop()
+        detail_panel = self.query_one("#operation-detail-panel", OperationDetailPanel)
+        detail_panel.show_operation(event.operation.unique_id)

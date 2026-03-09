@@ -64,6 +64,10 @@ def _make_app_service(operations: tuple[HistoricOperation, ...]) -> Mock:
     service.get_all_links = Mock(return_value=())
     service.get_all_planned_operations = Mock(return_value=())
     service.get_all_budgets = Mock(return_value=())
+
+    ops_by_id = {op.unique_id: op for op in operations}
+    service.get_operation_by_id = Mock(side_effect=lambda uid: ops_by_id[uid])
+
     return service
 
 

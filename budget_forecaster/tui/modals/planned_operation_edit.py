@@ -90,7 +90,7 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | None]):
         """
         super().__init__(**kwargs)
         self._operation = operation
-        self._is_new = operation is None
+        self._is_new = operation is None or operation.id is None
 
     def compose(self) -> ComposeResult:
         """Create the modal layout."""

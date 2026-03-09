@@ -1,5 +1,7 @@
 """Main TUI application for budget forecaster."""
 
+# pylint: disable=too-many-lines
+
 import logging
 from datetime import date
 from pathlib import Path
@@ -11,6 +13,8 @@ from textual.containers import Horizontal, Vertical
 from textual.css.query import NoMatches
 from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
 
+from budget_forecaster.core.amount import Amount
+from budget_forecaster.core.date_range import SingleDay
 from budget_forecaster.core.types import (
     Category,
     LinkType,
@@ -65,7 +69,10 @@ from budget_forecaster.tui.screens.dashboard import (
     UpcomingOperationRow,
 )
 from budget_forecaster.tui.screens.imports import ImportWidget
-from budget_forecaster.tui.screens.operations import OperationsScreen
+from budget_forecaster.tui.screens.operations import (
+    OperationDetailPanel,
+    OperationsScreen,
+)
 from budget_forecaster.tui.screens.planned_operations import PlannedOperationsWidget
 from budget_forecaster.tui.screens.review import ReviewWidget
 from budget_forecaster.tui.widgets import OperationTable
@@ -74,7 +81,9 @@ from budget_forecaster.tui.widgets import OperationTable
 logger = logging.getLogger("budget_forecaster")
 
 
-class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
+class BudgetApp(
+    App[None]
+):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """Main TUI application for budget management."""
 
     TITLE = "Budget Forecaster"
@@ -190,6 +199,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         Binding("r", "refresh_data", _("Refresh"), show=True),
         Binding("c", "categorize", _("Categorize"), show=True),
         Binding("l", "link_operation", _("Link"), show=True),
+        Binding("p", "plan_operation", _("Plan"), show=True),
         Binding("q", "quit", _("Quit"), show=True),
     ]
 
@@ -211,6 +221,7 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
         self._app_service: ApplicationService | None = None
         self._categorizing_operation_ids: tuple[OperationId, ...] = ()
         self._linking_operations: tuple[HistoricOperation, ...] = ()
+        self._planning_source_operation: HistoricOperation | None = None
 
     def _load_config(self) -> None:
         """Load configuration and account."""
@@ -690,6 +701,81 @@ class BudgetApp(App[None]):  # pylint: disable=too-many-instance-attributes
 
         self._refresh_screens()
         self._linking_operations = ()
+
+    # Plan operation from historic operation
+
+    def action_plan_operation(self) -> None:
+        """Open planned operation form pre-filled from highlighted operation."""
+        tabbed = self.query_one(TabbedContent)
+        if tabbed.active != "operations":
+            self.notify(_("Select an operation first"), severity="warning")
+            return
+
+        try:
+            table = self.query_one("#operations-table", OperationTable)
+        except NoMatches:
+            self.notify(_("No operation selected"), severity="warning")
+            return
+
+        if (operation := table.get_highlighted_operation()) is None:
+            self.notify(_("No operation selected"), severity="warning")
+            return
+
+        self._open_plan_from_historic(operation.unique_id)
+
+    def on_operation_detail_panel_plan_operation_requested(
+        self, event: OperationDetailPanel.PlanOperationRequested
+    ) -> None:
+        """Handle plan operation request from detail panel."""
+        event.stop()
+        self._open_plan_from_historic(event.operation_id)
+
+    def _open_plan_from_historic(self, operation_id: int) -> None:
+        """Open the planned operation modal pre-filled from a historic operation."""
+        operation = self.app_service.get_operation_by_id(operation_id)
+        self._planning_source_operation = operation
+
+        prefilled = PlannedOperation(
+            record_id=None,
+            description=operation.description,
+            amount=Amount(operation.amount, operation.currency),
+            category=operation.category,
+            date_range=SingleDay(operation.operation_date),
+        )
+
+        self.push_screen(
+            PlannedOperationEditModal(prefilled),
+            self._on_planned_from_historic_edited,
+        )
+
+    def _on_planned_from_historic_edited(self, result: PlannedOperation | None) -> None:
+        """Handle planned operation creation from historic operation."""
+        if result is None:
+            self._planning_source_operation = None
+            return
+
+        source = self._planning_source_operation
+        self._planning_source_operation = None
+
+        try:
+            saved_op = self.app_service.add_planned_operation(result)
+            self.notify(_("Operation '{}' created").format(saved_op.description))
+
+            # Create automatic link
+            if source is not None and saved_op.id is not None:
+                self.app_service.create_manual_link(
+                    source, saved_op, source.operation_date
+                )
+                self.notify(_("Link created with source operation"))
+
+            self._refresh_planned_operations()
+            self._refresh_screens()
+        except BudgetForecasterError as e:
+            logger.error("Error creating planned operation: %s", e)
+            self.notify(_("Error: {}").format(e), severity="error")
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.exception("Unexpected error creating planned operation")
+            self.notify(_("An unexpected error occurred"), severity="error")
 
     # Budget event handlers
 

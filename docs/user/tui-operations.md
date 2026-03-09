@@ -37,6 +37,48 @@ The `►` symbol indicates a selected operation.
 | `Escape`     | Clear all selections            |
 | `C`          | Categorize selected operations  |
 | `L`          | Link selected operations        |
+| `P`          | Create planned operation        |
+
+## Operation Detail Panel
+
+When you highlight an operation, the detail panel on the right side shows the full
+operation information: ID, date, description, amount, and category. This is useful for
+viewing long descriptions that are truncated in the table.
+
+The panel also provides action buttons:
+
+- **Change category**: Open the category selection modal for this operation
+- **Create planned operation**: Open a pre-filled planned operation form (see below)
+
+## Creating a Planned Operation from History (P key)
+
+When you spot a recurring payment or subscription in your operations, you can quickly
+create a planned operation pre-filled with the operation's data.
+
+1. Highlight the operation in the table
+2. Press `P` or click "Create planned operation" in the detail panel
+3. The planned operation form opens with pre-filled fields:
+   - Description, amount, category, and date from the historic operation
+4. Adjust fields as needed (e.g., set recurrence to monthly)
+5. Click "Save"
+
+On save, the planned operation is created **and** a link is automatically created
+between the source historic operation and the new planned operation.
+
+```
+┌───────────────────────────────────────────────┬──────────────────────────────┐
+│ Filter: [date range] [amount range]           │ Operation detail             │
+├──────────┬──────────────────┬────────┬────────┤                              │
+│ Date     │ Description      │ Amount │ Cat.   │ ID: 1234                     │
+├──────────┼──────────────────┼────────┼────────┤ Date: 15/01/2025 00:00       │
+│▶15/01/25 │ NETFLIX          │-17.99 €│ Entert.│ Description: NETFLIX         │
+│ 14/01/25 │ CARREFOUR        │-85.20 €│ Groc.  │ Amount: -17.99 €             │
+│ 12/01/25 │ SALARY           │+2500 € │ Salary │ Category: Entertainment      │
+│          │                  │        │        │                              │
+│          │                  │        │        │ [Change category]            │
+│          │                  │        │        │ [Create planned operation]   │
+└──────────┴──────────────────┴────────┴────────┴──────────────────────────────┘
+```
 
 ## Multi-Selection
 
@@ -229,3 +271,10 @@ or budget.
 4. Select the appropriate budget
 5. Choose the corresponding iteration (month)
 6. Validate with "Link"
+
+### Track a New Recurring Payment
+
+1. Spot a new subscription or recurring payment in the operations list
+2. Highlight it and press `P`
+3. Review the pre-filled form, set recurrence to "Monthly"
+4. Save — the planned operation is created and automatically linked
