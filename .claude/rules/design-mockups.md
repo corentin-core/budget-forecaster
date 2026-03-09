@@ -38,6 +38,9 @@ Use box-drawing characters for clean alignment:
 - Inner boxes start 2 chars after outer border (│ + space)
 - Inner boxes end 2 chars before outer border (space + │)
 - Use consistent width throughout the mockup
+- **ALWAYS verify alignment programmatically** before committing — compare `len()` of
+  each line in a Python one-liner to catch off-by-one errors that are invisible to the
+  eye
 
 ### Feature Explanations
 
