@@ -38,10 +38,9 @@ class OperationDetailPanel(Vertical):
     DEFAULT_CSS = """
     OperationDetailPanel {
         width: 40;
-        height: 100%;
+        height: 1fr;
         border: solid $primary;
         padding: 1;
-        dock: right;
     }
 
     OperationDetailPanel .detail-title {
