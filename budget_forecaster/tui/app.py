@@ -9,22 +9,18 @@ from typing import Any
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
 from textual.css.query import NoMatches
-from textual.widgets import Footer, Header, Static, TabbedContent, TabPane
+from textual.widgets import Footer, Header, TabbedContent, TabPane
 
 from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.date_range import SingleDay
 from budget_forecaster.core.types import (
     Category,
     LinkType,
-    MatcherKey,
     OperationId,
-    TargetName,
 )
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
-from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.exceptions import (
     AccountNotLoadedError,
@@ -46,10 +42,7 @@ from budget_forecaster.services.import_service import ImportService
 from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
 )
-from budget_forecaster.services.operation.operation_service import (
-    OperationFilter,
-    OperationService,
-)
+from budget_forecaster.services.operation.operation_service import OperationService
 from budget_forecaster.tui.messages import DataRefreshRequested, SaveRequested
 from budget_forecaster.tui.modals import (
     BudgetEditModal,
@@ -57,18 +50,13 @@ from budget_forecaster.tui.modals import (
     FileBrowserModal,
     LinkIterationModal,
     LinkTargetModal,
-    OperationDetailModal,
     PlannedOperationEditModal,
     SplitOperationModal,
     SplitResult,
 )
 from budget_forecaster.tui.screens.balance import BalanceWidget
 from budget_forecaster.tui.screens.budgets import BudgetsWidget
-from budget_forecaster.tui.screens.dashboard import (
-    CategoryRow,
-    UpcomingHeaderRow,
-    UpcomingOperationRow,
-)
+from budget_forecaster.tui.screens.dashboard import DashboardScreen
 from budget_forecaster.tui.screens.imports import ImportWidget
 from budget_forecaster.tui.screens.operations import OperationsScreen
 from budget_forecaster.tui.screens.planned_operations import PlannedOperationsWidget
@@ -86,72 +74,14 @@ class BudgetApp(
 
     TITLE = "Budget Forecaster"
     CSS = """
-    #stats-row {
-        height: 3;
-        margin-bottom: 1;
-    }
-
-    #stats-row Static {
-        width: 1fr;
-        border: solid $primary;
-        padding: 0 1;
-        margin: 0 1;
-    }
-
-    .stat-positive {
-        color: $success;
-    }
-
-    .stat-negative {
-        color: $error;
-    }
-
     #categorize-help {
         height: 1;
         margin-bottom: 1;
     }
 
-    #dashboard-content {
-        height: 1fr;
-    }
-
     OperationTable {
         height: 1fr;
         max-height: 100%;
-    }
-
-    #upcoming-section {
-        height: 10;
-        border: solid $primary;
-        padding: 1;
-        margin-bottom: 1;
-    }
-
-    #upcoming-title {
-        text-style: bold;
-        margin-bottom: 1;
-    }
-
-    #upcoming-list {
-        height: 1fr;
-        overflow-y: auto;
-    }
-
-    #categories-section {
-        height: 12;
-        border: solid $primary;
-        padding: 1;
-        margin-bottom: 1;
-    }
-
-    #categories-title {
-        text-style: bold;
-        margin-bottom: 1;
-    }
-
-    #categories-list {
-        height: 1fr;
-        overflow-y: auto;
     }
 
     #import-header {
@@ -298,25 +228,7 @@ class BudgetApp(
         yield Header()
         with TabbedContent(initial="dashboard"):
             with TabPane(_("Dashboard"), id="dashboard"):
-                with Vertical(id="dashboard-content"):
-                    # Simple stats display
-                    with Horizontal(id="stats-row"):
-                        yield Static(_("Balance: -"), id="stat-balance")
-                        yield Static(_("Operations this month: -"), id="stat-month-ops")
-                        yield Static(_("Uncategorized: -"), id="stat-uncategorized")
-                    with Vertical(id="upcoming-section"):
-                        yield Static(
-                            _("Upcoming planned operations (next 30 days)"),
-                            id="upcoming-title",
-                        )
-                        yield Vertical(id="upcoming-list")
-                    with Vertical(id="categories-section"):
-                        yield Static(
-                            _("Expenses by category (this month)"),
-                            id="categories-title",
-                        )
-                        yield Vertical(id="categories-list")
-                    yield OperationTable(id="dashboard-table")
+                yield DashboardScreen(id="dashboard-screen")
             with TabPane(_("Operations"), id="operations"):
                 yield OperationsScreen(id="operations-screen")
             with TabPane(_("Import"), id="import"):
@@ -343,107 +255,33 @@ class BudgetApp(
 
     def _refresh_screens(self) -> None:  # pylint: disable=too-many-locals
         """Refresh all screens with current data."""
-        # Build links and targets lookup dicts for operation tables
-        links: dict[OperationId, OperationLink] = {}
-        targets: dict[MatcherKey, TargetName] = {}
+        # Dashboard
+        dashboard = self.query_one("#dashboard-screen", DashboardScreen)
+        dashboard.set_app_service(self.app_service)
 
-        for link in self.app_service.get_all_links():
-            links[link.operation_unique_id] = link
-
-        for planned_op in self.app_service.get_all_planned_operations():
-            if planned_op.id is not None:
-                key = MatcherKey(LinkType.PLANNED_OPERATION, planned_op.id)
-                targets[key] = planned_op.description
-        for budget in self.app_service.get_all_budgets():
-            if budget.id is not None:
-                key = MatcherKey(LinkType.BUDGET, budget.id)
-                targets[key] = budget.description
-
-        # Update dashboard stats
-        balance = self.app_service.balance
-        stat_balance = self.query_one("#stat-balance", Static)
-        stat_balance.update(
-            _("Balance: {} {}").format(f"{balance:,.2f}", self.app_service.currency)
-        )
-        stat_balance.remove_class("stat-positive", "stat-negative")
-        stat_balance.add_class("stat-negative" if balance < 0 else "stat-positive")
-
-        # Last 3 months operations
-        now = date.today()
-        month, year = now.month - 3, now.year
-        if month <= 0:
-            month, year = month + 12, year - 1
-        recent_filter = OperationFilter(date_from=date(year, month, 1))
-        recent_ops = self.app_service.get_operations(recent_filter)
-        self.query_one("#stat-month-ops", Static).update(
-            _("Last 3 months: {} operations").format(len(recent_ops))
-        )
-
-        # Uncategorized count
-        uncategorized = self.app_service.get_uncategorized_operations()
-        stat_uncat = self.query_one("#stat-uncategorized", Static)
-        stat_uncat.update(_("Uncategorized: {}").format(len(uncategorized)))
-        stat_uncat.remove_class("stat-positive", "stat-negative")
-        stat_uncat.add_class("stat-negative" if uncategorized else "stat-positive")
-
-        # Refresh tables with link data
-        self.query_one("#dashboard-table", OperationTable).load_operations(
-            recent_ops, links, targets
-        )
-
-        # Update dashboard sub-sections
-        self._update_upcoming()
-        self._update_categories()
-
-        # Refresh operations screen (with its own filter bar)
+        # Operations screen
         operations_screen = self.query_one("#operations-screen", OperationsScreen)
         operations_screen.set_app_service(self.app_service)
-        # Refresh import widget
+
+        # Import widget
         import_widget = self.query_one("#import-widget", ImportWidget)
         import_widget.set_app_service(self.app_service)
 
-        # Refresh balance and review widgets
+        # Balance and review widgets
         balance_widget = self.query_one("#balance-widget", BalanceWidget)
         balance_widget.set_app_service(self.app_service)
         review_widget = self.query_one("#review-widget", ReviewWidget)
         review_widget.set_app_service(self.app_service)
 
-        # Refresh budgets widget
+        # Budgets widget
         budgets_widget = self.query_one("#budgets-widget", BudgetsWidget)
         budgets_widget.set_app_service(self.app_service)
 
-        # Refresh planned operations widget
+        # Planned operations widget
         planned_ops_widget = self.query_one(
             "#planned-ops-widget", PlannedOperationsWidget
         )
         planned_ops_widget.set_app_service(self.app_service)
-
-    def _update_upcoming(self) -> None:
-        """Update the upcoming planned operations section."""
-        iterations = self.app_service.get_upcoming_planned_iterations()
-        upcoming_list = self.query_one("#upcoming-list", Vertical)
-        upcoming_list.remove_children()
-        if not iterations:
-            upcoming_list.mount(Static(_("No upcoming planned operations")))
-        else:
-            upcoming_list.mount(UpcomingHeaderRow())
-            for iteration in iterations:
-                upcoming_list.mount(UpcomingOperationRow(iteration))
-
-    def _update_categories(self) -> None:
-        """Update the expenses by category section."""
-        now = date.today()
-        month_start = date(now.year, now.month, 1)
-        month_filter = OperationFilter(date_from=month_start)
-        totals = self.app_service.get_category_totals(month_filter)
-        expense_totals = {cat: amt for cat, amt in totals.items() if amt < 0}
-        sorted_categories = sorted(expense_totals.items(), key=lambda x: x[1])
-        max_expense = abs(min(expense_totals.values())) if expense_totals else 0
-
-        categories_list = self.query_one("#categories-list", Vertical)
-        categories_list.remove_children()
-        for cat, amount in sorted_categories[:10]:
-            categories_list.mount(CategoryRow(cat.display_name, amount, max_expense))
 
     def on_tabbed_content_tab_activated(
         self, event: TabbedContent.TabActivated
@@ -767,23 +605,6 @@ class BudgetApp(
         except Exception:  # pylint: disable=broad-exception-caught
             logger.exception("Unexpected error creating planned operation")
             self.notify(_("An unexpected error occurred"), severity="error")
-
-    # Operation detail modal (dashboard table)
-
-    def on_operation_table_operation_selected(
-        self, event: OperationTable.OperationSelected
-    ) -> None:
-        """Open operation detail modal from the dashboard table."""
-        event.stop()
-        self.push_screen(
-            OperationDetailModal(event.operation.unique_id, self.app_service),
-            self._on_operation_detail_closed,
-        )
-
-    def _on_operation_detail_closed(self, modified: bool | None) -> None:
-        """Refresh screens if data was modified in the detail modal."""
-        if modified:
-            self._refresh_screens()
 
     # Budget event handlers
 

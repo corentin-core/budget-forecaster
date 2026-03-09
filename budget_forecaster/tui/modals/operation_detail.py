@@ -156,6 +156,10 @@ class OperationDetailModal(ModalScreen[bool]):
                 )
                 yield Button(_("Close"), id="btn-close", variant="default")
 
+    def on_mount(self) -> None:
+        """Prevent auto-focus on buttons when the modal opens."""
+        self.set_focus(None)
+
     def _resolve_link_label(self) -> str:
         """Resolve the link target name for display."""
         if (
