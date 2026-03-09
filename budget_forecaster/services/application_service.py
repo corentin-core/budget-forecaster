@@ -36,7 +36,9 @@ from budget_forecaster.services.account.account_analysis_report import (
     AccountAnalysisReport,
 )
 from budget_forecaster.services.forecast.forecast_service import (
+    CategoryDetail,
     ForecastService,
+    MarginInfo,
     MonthlySummary,
 )
 from budget_forecaster.services.import_service import (
@@ -362,9 +364,44 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         """Get monthly summary from the last computed report."""
         return self._forecast_service.get_monthly_summary()
 
+    def get_category_detail(self, category: str, month: date) -> CategoryDetail:
+        """Get detailed breakdown for a category in a given month.
+
+        Args:
+            category: Category name.
+            month: First day of the month.
+
+        Returns:
+            Full category detail for the modal drill-down.
+        """
+        links = self._operation_link_service.get_all_links()
+        return self._forecast_service.get_category_detail(category, month, links)
+
     def get_category_statistics(self) -> list[tuple[str, float, float]]:
         """Get category statistics from the report."""
         return self._forecast_service.get_category_statistics()
+
+    @property
+    def margin_threshold(self) -> float:
+        """The margin threshold from settings."""
+        return self._forecast_service.margin_threshold
+
+    @margin_threshold.setter
+    def margin_threshold(self, threshold: float) -> None:
+        self._forecast_service.margin_threshold = threshold
+
+    def get_available_margin(self, month: date) -> MarginInfo | None:
+        """Get available margin for a given month.
+
+        Args:
+            month: First day of the selected month.
+
+        Returns:
+            MarginInfo with margin details, or None if no report.
+        """
+        return self._forecast_service.get_available_margin(
+            month, self._forecast_service.margin_threshold
+        )
 
     # -------------------------------------------------------------------------
     # Import read methods (delegated to ImportService)

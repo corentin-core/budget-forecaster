@@ -14,6 +14,7 @@ from budget_forecaster.core.date_range import RecurringDateRange
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.i18n import _
+from budget_forecaster.tui.symbols import DisplaySymbol
 
 
 class SplitResult(NamedTuple):
@@ -169,7 +170,7 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
                     classes="info-hint",
                 )
 
-                yield Static("─" * 40, id="separator")
+                yield Static(DisplaySymbol.SEPARATOR * 40, id="separator")
 
                 # New amount
                 with Horizontal(classes="form-row"):
@@ -218,7 +219,7 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
 
     def _format_current_state(self) -> str:
         """Format the current state for display."""
-        amount = f"{self._target.amount:+.2f} €"
+        amount = f"{self._target.amount:+.2f} {DisplaySymbol.EURO}"
         period = self._format_period()
 
         if self._is_budget:

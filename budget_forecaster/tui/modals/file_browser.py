@@ -9,6 +9,7 @@ from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, Static
 
 from budget_forecaster.i18n import _
+from budget_forecaster.tui.symbols import DisplaySymbol
 from budget_forecaster.tui.widgets import get_row_key_at_cursor
 
 
@@ -69,7 +70,11 @@ class FileBrowserModal(ModalScreen[Path | None]):
             yield Static(str(self._current_path), id="current-path")
             yield DataTable(id="file-list")
             with Horizontal(id="button-row"):
-                yield Button(_("← Parent"), id="btn-parent", variant="default")
+                yield Button(
+                    f"{DisplaySymbol.ARROW_LEFT} {_('Parent')}",
+                    id="btn-parent",
+                    variant="default",
+                )
                 yield Button(_("Select"), id="btn-select", variant="primary")
                 yield Button(_("Cancel"), id="btn-cancel", variant="default")
 

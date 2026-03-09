@@ -319,3 +319,25 @@ class RepositoryInterface(
 
         Closes the repository.
         """
+
+    # Settings
+
+    @abstractmethod
+    def get_setting(self, key: str) -> str | None:
+        """Get a setting value by key.
+
+        Args:
+            key: The setting key.
+
+        Returns:
+            The setting value, or None if the key does not exist.
+        """
+
+    @abstractmethod
+    def set_setting(self, key: str, value: str) -> None:
+        """Set a setting value (insert or update).
+
+        Args:
+            key: The setting key.
+            value: The setting value.
+        """

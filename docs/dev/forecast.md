@@ -18,6 +18,38 @@ classDiagram
         +__call__(forecast) Forecast
     }
 
+    class ForecastService {
+        +load_forecast() Forecast
+        +get_monthly_summary() list~MonthlySummary~
+        +get_category_detail() CategoryDetail
+        +get_available_margin() MarginInfo
+    }
+
+    class ForecastSourceType {
+        <<enumeration>>
+        BUDGET
+        PLANNED_OPERATION
+    }
+
+    class CategoryDetail {
+        +category: Category
+        +month: date
+        +planned_sources: tuple~PlannedSourceDetail~
+        +operations: tuple~AttributedOperationDetail~
+        +total_planned: float
+        +total_actual: float
+        +forecast: float
+        +remaining: float
+    }
+
+    class MarginInfo {
+        +available_margin: float
+        +balance_at_month_start: float
+        +lowest_balance: float
+        +lowest_balance_date: date
+        +threshold: float
+    }
+
     class PlannedOperation {
         +id
         +date_range
@@ -34,6 +66,10 @@ classDiagram
     Forecast "1" *-- "*" Budget
     ForecastActualizer --> Forecast : transforms
     ForecastActualizer --> OperationLink : uses
+    ForecastService --> ForecastActualizer : uses
+    ForecastService --> CategoryDetail : produces
+    ForecastService --> MarginInfo : produces
+    CategoryDetail --> ForecastSourceType : references
 ```
 
 ForecastActualizer transforms a raw forecast into an actualized one by examining
@@ -137,3 +173,60 @@ timeline
         Fri : Market -50€ → consumed
         : Remaining: -370€
 ```
+
+## Monthly Review
+
+ForecastService provides enriched monthly data for the Review tab.
+
+### Budget Forecast Computation
+
+`AccountAnalyzer.compute_budget_forecast()` produces a DataFrame with per-category,
+per-month breakdown. The enriched version includes:
+
+- **Planned** — Total from planned operations and budgets
+- **Actual** — Sum of linked operations (link-aware attribution)
+- **Forecast** — Projected amount: actual if linked, planned otherwise
+- **Source distinction** — Each planned amount tracks whether it comes from a budget
+  envelope or a planned operation
+
+Link-aware attribution means operations are attributed to the month of their **linked
+iteration**, not their bank date. An operation paid early (e.g. rent paid on Jan 25 for
+the Feb iteration) appears in February's actual column.
+
+### Category Detail
+
+`ForecastService.get_category_detail()` returns a `CategoryDetail` TypedDict for
+drill-down into a specific category and month:
+
+- **Planned sources** — `PlannedSourceDetail` entries listing each contributing planned
+  operation or budget, with its `ForecastSourceType` (BUDGET or PLANNED_OPERATION),
+  description, periodicity, and amount
+- **Attributed operations** — `AttributedOperationDetail` entries for bank operations
+  linked to the category, with cross-month annotations when an operation was paid in a
+  different month than its linked iteration
+
+### Available Margin
+
+`ForecastService.get_available_margin()` returns a `MarginInfo` TypedDict:
+
+- Scans the projected balance from the selected month onward
+- Finds the lowest future balance and its date
+- Computes: `available_margin = lowest_balance - threshold`
+- The threshold is stored in the `settings` table (see below)
+
+## Settings Table
+
+Schema V6 introduced a key-value `settings` table for application-level configuration:
+
+```sql
+CREATE TABLE settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+```
+
+Currently used for:
+
+- `margin_threshold` — The minimum balance safety net (default: `"0"`)
+
+Access via `SqliteRepository.get_setting(key)` and `set_setting(key, value)`.

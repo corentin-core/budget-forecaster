@@ -32,15 +32,23 @@ So I built my own.
   history
 - **Operation linking** — Match actual transactions to their planned counterparts for
   accurate forecast updates
+- **Monthly review** — Per-category planned vs actual with consumption bars
+- **Available margin** — Track remaining disposable income with alert threshold
+- **Category drill-down** — Inspect planned sources and matched operations per category
 - **Terminal UI** — Interactive interface built with
   [Textual](https://textual.textualize.io/)
 - **Internationalization** — Available in English and French
 
 ## Screenshots
 
-**Forecast** — Balance projection with budget breakdown by category:
+**Monthly Review** — Per-category budget tracking with consumption bars and available
+margin:
 
-![Forecast screen](docs/images/forecast.png)
+![Review screen](docs/images/review.png)
+
+**Balance** — Balance projection chart with past actuals and future forecast:
+
+![Balance screen](docs/images/balance.png)
 
 **Operations** — Imported transactions with categories and links to planned operations:
 
@@ -57,13 +65,16 @@ cd budget-forecaster
 python3.12 -m venv venv && source venv/bin/activate
 pip install -e .
 
+# Optionally regenerate demo data with fresh dates
+python examples/generate_demo.py
+
 # Launch with the demo data
 cd examples/
 python -m budget_forecaster.main -c config.yaml
 ```
 
-The demo database contains 3 months of categorized operations with planned counterparts
-and budgets. See [examples/README.md](examples/README.md) for details.
+The demo database contains categorized operations with planned counterparts and budgets.
+See [examples/README.md](examples/README.md) for details.
 
 ## Architecture
 

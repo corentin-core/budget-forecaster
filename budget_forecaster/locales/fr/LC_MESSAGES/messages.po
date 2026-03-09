@@ -876,10 +876,10 @@ msgid "Monthly average"
 msgstr "Moyenne mensuelle"
 
 msgid "Actual"
-msgstr "Réel"
+msgstr "Réalisé"
 
 msgid "Forecast"
-msgstr "Prévu"
+msgstr "Révisé"
 
 msgid "Adjusted"
 msgstr "Ajusté"
@@ -918,3 +918,199 @@ msgstr "Expiré"
 
 msgid "All"
 msgstr "Tout"
+
+# ============================================================
+# Balance tab & Export modal
+# ============================================================
+
+msgid "Export"
+msgstr "Exporter"
+
+msgid "Computing..."
+msgstr "Calcul en cours..."
+
+msgid "Report: {} to {}"
+msgstr "Rapport : {} à {}"
+
+msgid "Monthly review — coming in a future update"
+msgstr "Revue mensuelle — disponible dans une mise à jour future"
+
+msgid "Export forecast to Excel"
+msgstr "Exporter la prévision en Excel"
+
+msgid "To"
+msgstr "Au"
+
+msgid "Exporting..."
+msgstr "Export en cours..."
+
+# ============================================================
+# Month names
+# ============================================================
+
+msgid "January"
+msgstr "Janvier"
+
+msgid "February"
+msgstr "Février"
+
+msgid "March"
+msgstr "Mars"
+
+msgid "April"
+msgstr "Avril"
+
+msgid "May"
+msgstr "Mai"
+
+msgid "June"
+msgstr "Juin"
+
+msgid "July"
+msgstr "Juillet"
+
+msgid "August"
+msgstr "Août"
+
+msgid "September"
+msgstr "Septembre"
+
+msgid "October"
+msgstr "Octobre"
+
+msgid "November"
+msgstr "Novembre"
+
+msgid "December"
+msgstr "Décembre"
+
+# ============================================================
+# Review tab
+# ============================================================
+
+msgid "Review"
+msgstr "Revue"
+
+msgid "Previous month"
+msgstr "Mois précédent"
+
+msgid "Next month"
+msgstr "Mois suivant"
+
+msgid "Planned"
+msgstr "Prévu"
+
+msgid "Remaining"
+msgstr "Restant"
+
+msgid "Consumption"
+msgstr "Consommation"
+
+msgid "Forecasted"
+msgstr "Prévisionnel"
+
+msgid "Unforecasted"
+msgstr "Non prévisionnel"
+
+msgid "TOTAL"
+msgstr "TOTAL"
+
+msgid "No planned operations or budgets for this month"
+msgstr "Aucune opération prévue ou budget pour ce mois"
+
+# ============================================================
+# Category detail modal
+# ============================================================
+
+msgid "Planned sources"
+msgstr "Sources prévues"
+
+msgid "Total planned"
+msgstr "Total prévu"
+
+msgid "Total actual"
+msgstr "Total réalisé"
+
+msgid "No operations for this category"
+msgstr "Aucune opération pour cette catégorie"
+
+msgid "Error loading category detail"
+msgstr "Erreur lors du chargement du détail de la catégorie"
+
+#: budget_forecaster/services/forecast/forecast_service.py — ordinals
+msgid "1st"
+msgstr "1er"
+
+msgid "{n}th"
+msgstr "{n}"
+
+msgid "{n}st"
+msgstr "{n}"
+
+msgid "{n}nd"
+msgstr "{n}"
+
+msgid "{n}rd"
+msgstr "{n}"
+
+#: budget_forecaster/services/forecast/forecast_service.py — periodicity
+msgid "monthly, {ordinal}"
+msgstr "mensuel, le {ordinal}"
+
+msgid "yearly, {ordinal}"
+msgstr "annuel, le {ordinal}"
+
+msgid "every {period}, {ordinal}"
+msgstr "tous les {period}, le {ordinal}"
+
+msgid "one-time, {ordinal}"
+msgstr "ponctuel, le {ordinal}"
+
+#: budget_forecaster/services/forecast/forecast_service.py — budget periodicity
+msgid "month"
+msgstr "mois"
+
+msgid "year"
+msgstr "an"
+
+#: budget_forecaster/services/forecast/forecast_service.py — cross-month
+msgid "paid early (operation dated {})"
+msgstr "payé en avance (opération du {})"
+
+msgid "paid late (operation dated {})"
+msgstr "payé en retard (opération du {})"
+
+#: budget_forecaster/tui/screens/review.py — margin section
+msgid "Available margin"
+msgstr "Marge disponible"
+
+msgid "Minimum threshold"
+msgstr "Seuil minimum"
+
+msgid "Balance at"
+msgstr "Solde au"
+
+msgid "Lowest future balance"
+msgstr "Plus bas solde futur"
+
+msgid "/!\\ The account will go below your {} {} threshold on {}"
+msgstr "/!\\ Le compte passera sous votre seuil de {} {} le {}"
+
+msgid "= the most you can spend freely without going below {}"
+msgstr "= le maximum que vous pouvez dépenser sans passer sous {}"
+
+msgid "Edit threshold"
+msgstr "Modifier le seuil"
+
+#: budget_forecaster/tui/modals/threshold_edit.py
+msgid "Edit margin threshold"
+msgstr "Modifier le seuil de marge"
+
+msgid "Threshold"
+msgstr "Seuil"
+
+msgid "Invalid number"
+msgstr "Nombre invalide"
+
+msgid "Threshold must be positive or zero"
+msgstr "Le seuil doit être positif ou nul"

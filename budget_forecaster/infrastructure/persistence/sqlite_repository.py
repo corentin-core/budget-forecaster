@@ -39,7 +39,7 @@ from budget_forecaster.infrastructure.persistence.repository_interface import (
 logger = logging.getLogger(__name__)
 
 # Current schema version
-CURRENT_SCHEMA_VERSION = 5
+CURRENT_SCHEMA_VERSION = 6
 
 # Base schema (version 0 -> 1)
 SCHEMA_V1 = """
@@ -196,6 +196,16 @@ _CATEGORY_MIGRATION_MAP: dict[str, str] = {
 }
 
 
+# Schema migration v5 -> v6: add settings key-value table
+SCHEMA_V6 = """
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+INSERT INTO settings (key, value) VALUES ('margin_threshold', '0');
+"""
+
+
 def _migrate_v5(conn: sqlite3.Connection) -> None:
     """Migrate category values from French to language-neutral keys."""
     for old_value, new_value in _CATEGORY_MIGRATION_MAP.items():
@@ -218,6 +228,7 @@ class SqliteRepository(RepositoryInterface):
         3: (2, SCHEMA_V3),
         4: (3, SCHEMA_V4),
         5: (4, _migrate_v5),
+        6: (5, SCHEMA_V6),
     }
 
     def __init__(self, db_path: Path) -> None:
@@ -936,6 +947,38 @@ class SqliteRepository(RepositoryInterface):
             (target_type, target_id),
         )
         conn.commit()
+
+    # Settings methods
+
+    def get_setting(self, key: str) -> str | None:
+        """Get a setting value by key.
+
+        Args:
+            key: The setting key.
+
+        Returns:
+            The setting value, or None if the key does not exist.
+        """
+        conn = self._get_connection()
+        cursor = conn.execute("SELECT value FROM settings WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        return row["value"] if row else None
+
+    def set_setting(self, key: str, value: str) -> None:
+        """Set a setting value (insert or update).
+
+        Args:
+            key: The setting key.
+            value: The setting value.
+        """
+        conn = self._get_connection()
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+            (key, value),
+        )
+        conn.commit()
+
+    # Private helpers
 
     def _row_to_operation_link(self, row: sqlite3.Row) -> OperationLink:
         """Convert a database row to an OperationLink object."""

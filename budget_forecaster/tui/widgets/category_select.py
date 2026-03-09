@@ -10,6 +10,7 @@ from textual.widgets.option_list import Option
 
 from budget_forecaster.core.types import Category
 from budget_forecaster.i18n import _
+from budget_forecaster.tui.symbols import DisplaySymbol
 
 
 class CategorySelect(Vertical):
@@ -85,7 +86,7 @@ class CategorySelect(Vertical):
             # Mark suggested category
             label = cat.display_name
             if cat == self._suggested:
-                label = _("★ {} (suggestion)").format(label)
+                label = _(f"{DisplaySymbol.STAR} {{}} (suggestion)").format(label)
             option_list.add_option(Option(label, id=cat.name))
 
     def on_input_changed(self, event: Input.Changed) -> None:

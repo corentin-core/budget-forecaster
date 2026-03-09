@@ -19,6 +19,7 @@ from budget_forecaster.i18n import _
 from budget_forecaster.services.operation.operation_link_service import (
     compute_match_score,
 )
+from budget_forecaster.tui.symbols import DisplaySymbol
 
 # Column widths for alignment
 COL_SCORE = 6
@@ -301,7 +302,7 @@ class LinkTargetModal(
                             classes="op-desc",
                         )
                         yield Static(
-                            f"{op.amount:+.2f} €",
+                            f"{op.amount:+.2f} {DisplaySymbol.EURO}",
                             classes=f"op-amount {amount_class}",
                         )
 
@@ -469,7 +470,7 @@ class LinkTargetModal(
         label.append(desc_truncated)
 
         # Amount column
-        amount_str = f"{amount:+.0f} €".rjust(COL_AMOUNT)
+        amount_str = f"{amount:+.0f} {DisplaySymbol.EURO}".rjust(COL_AMOUNT)
         if amount < 0:
             label.append(amount_str, style="red")
         else:

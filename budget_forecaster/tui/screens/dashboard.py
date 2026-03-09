@@ -15,6 +15,7 @@ from budget_forecaster.services.application_service import (
     UpcomingIteration,
 )
 from budget_forecaster.services.operation.operation_service import OperationFilter
+from budget_forecaster.tui.symbols import DisplaySymbol
 
 
 class StatCard(Static):
@@ -103,7 +104,7 @@ class CategoryRow(Horizontal):
 
     def compose(self) -> ComposeResult:
         yield Static(self._cat_name, classes="cat-name")
-        yield Static(f"{self._amount:+.2f} €", classes="cat-amount")
+        yield Static(f"{self._amount:+.2f} {DisplaySymbol.EURO}", classes="cat-amount")
 
         # Create a simple progress bar
         if self._max_amount > 0:
@@ -327,7 +328,9 @@ class DashboardScreen(Vertical):
         # Month expenses
         expenses = sum(op.amount for op in month_ops if op.amount < 0)
         expenses_card = self.query_one("#month-expenses-card", StatCard)
-        expenses_card.update_value(f"{expenses:,.2f} €", is_negative=expenses < 0)
+        expenses_card.update_value(
+            f"{expenses:,.2f} {DisplaySymbol.EURO}", is_negative=expenses < 0
+        )
 
         # Uncategorized
         uncategorized = self._app_service.get_uncategorized_operations()
