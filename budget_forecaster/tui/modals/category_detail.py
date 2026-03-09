@@ -4,7 +4,9 @@ from typing import Any
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
+from textual.events import Click
 from textual.screen import ModalScreen
+from textual.widget import Widget
 from textual.widgets import Button, Static
 
 from budget_forecaster.i18n import _
@@ -277,20 +279,31 @@ class CategoryDetailModal(ModalScreen[None]):
             f"{_('Remaining')}: {remaining_str} {euro}"
         )
 
+    def _open_operation_detail(self, operation_id: int) -> None:
+        """Open operation detail modal for the given operation."""
+        if self._app_service:
+            self.app.push_screen(
+                OperationDetailModal(operation_id, self._app_service),
+            )
+
     def action_open_detail(self) -> None:
         """Open operation detail modal for the focused operation row."""
-        if not self._app_service:
-            return
-
         focused = self.focused
         if (
             focused is not None
             and "op-row" in focused.classes
             and focused.name is not None
         ):
-            self.app.push_screen(
-                OperationDetailModal(int(focused.name), self._app_service),
-            )
+            self._open_operation_detail(int(focused.name))
+
+    def on_click(self, event: Click) -> None:
+        """Open operation detail modal on click on an operation row."""
+        widget: Widget | None = event.widget
+        while widget is not None and widget is not self:
+            if "op-row" in widget.classes and widget.name is not None:
+                self._open_operation_detail(int(widget.name))
+                return
+            widget = widget.parent if isinstance(widget.parent, Widget) else None
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""
