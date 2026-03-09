@@ -1114,3 +1114,12 @@ msgstr "Nombre invalide"
 
 msgid "Threshold must be positive or zero"
 msgstr "Le seuil doit être positif ou nul"
+
+msgid "Create planned operation"
+msgstr "Créer une opération planifiée"
+
+msgid "Select an operation first"
+msgstr "Sélectionnez d'abord une opération"
+
+msgid "Link created with source operation"
+msgstr "Lien créé avec l'opération source"
