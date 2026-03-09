@@ -3,7 +3,7 @@
 from typing import Any
 
 from textual.app import ComposeResult
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.message import Message
 from textual.screen import ModalScreen
 from textual.widgets import Button, Static
@@ -56,6 +56,10 @@ class OperationDetailPanel(Vertical):
         margin-bottom: 1;
     }
 
+    OperationDetailPanel #detail-scroll {
+        height: 1fr;
+    }
+
     OperationDetailPanel #action-buttons-container {
         height: auto;
         dock: bottom;
@@ -73,16 +77,17 @@ class OperationDetailPanel(Vertical):
 
     def compose(self) -> ComposeResult:
         yield Static(_("Operation detail"), classes="detail-title")
-        yield Static(_("ID:"), classes="detail-label")
-        yield Static("-", id="detail-id", classes="detail-value")
-        yield Static(_("Date:"), classes="detail-label")
-        yield Static("-", id="detail-date", classes="detail-value")
-        yield Static(_("Description:"), classes="detail-label")
-        yield Static("-", id="detail-description", classes="detail-value")
-        yield Static(_("Amount:"), classes="detail-label")
-        yield Static("-", id="detail-amount", classes="detail-value")
-        yield Static(_("Category:"), classes="detail-label")
-        yield Static("-", id="detail-category", classes="detail-value")
+        with VerticalScroll(id="detail-scroll"):
+            yield Static(_("ID:"), classes="detail-label")
+            yield Static("-", id="detail-id", classes="detail-value")
+            yield Static(_("Date:"), classes="detail-label")
+            yield Static("-", id="detail-date", classes="detail-value")
+            yield Static(_("Description:"), classes="detail-label")
+            yield Static("-", id="detail-description", classes="detail-value")
+            yield Static(_("Amount:"), classes="detail-label")
+            yield Static("-", id="detail-amount", classes="detail-value")
+            yield Static(_("Category:"), classes="detail-label")
+            yield Static("-", id="detail-category", classes="detail-value")
 
         with Vertical(id="action-buttons-container", classes="hidden"):
             yield Button(_("Change category"), id="btn-edit-category")
