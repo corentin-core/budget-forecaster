@@ -41,7 +41,7 @@ class OperationTable(DataTable[str]):  # pylint: disable=too-many-instance-attri
     """A table widget for displaying operations with multi-selection support."""
 
     BINDINGS = [
-        Binding("enter", "open_detail", _("Detail"), show=False),
+        Binding("enter", "open_detail", _("Detail"), show=True),
         Binding("space", "toggle_selection", _("Select"), show=True),
         Binding("shift+up", "extend_selection_up", _("Extend up"), show=False),
         Binding("shift+down", "extend_selection_down", _("Extend down"), show=False),
