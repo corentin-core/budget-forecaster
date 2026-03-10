@@ -10,8 +10,10 @@ from textual.screen import ModalScreen
 from textual.widget import Widget
 from textual.widgets import Button, Static
 
+from budget_forecaster.core.types import LinkType
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.exceptions import BudgetForecasterError
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.forecast.forecast_service import (
@@ -21,9 +23,14 @@ from budget_forecaster.services.forecast.forecast_service import (
     PlannedSourceDetail,
 )
 from budget_forecaster.tui.modals.budget_edit import BudgetEditModal
+from budget_forecaster.tui.modals.edit_actions import EditAction
 from budget_forecaster.tui.modals.operation_detail import OperationDetailModal
 from budget_forecaster.tui.modals.planned_operation_edit import (
     PlannedOperationEditModal,
+)
+from budget_forecaster.tui.modals.split_operation import (
+    SplitOperationModal,
+    SplitResult,
 )
 from budget_forecaster.tui.symbols import DisplaySymbol
 
@@ -336,7 +343,7 @@ class CategoryDetailModal(ModalScreen[None]):
                 if budget := self._app_service.get_budget_by_id(source_id):
                     self.app.push_screen(
                         BudgetEditModal(budget),
-                        self._on_budget_edited,
+                        lambda result, b=budget: self._on_budget_edited(b, result),
                     )
             elif source_type == ForecastSourceType.PLANNED_OPERATION.name:
                 if operation := self._app_service.get_planned_operation_by_id(
@@ -344,35 +351,150 @@ class CategoryDetailModal(ModalScreen[None]):
                 ):
                     self.app.push_screen(
                         PlannedOperationEditModal(operation),
-                        self._on_planned_operation_edited,
+                        lambda result, op=operation: self._on_planned_operation_edited(
+                            op, result
+                        ),
                     )
         except Exception:  # pylint: disable=broad-except
             logger.exception("Error opening source edit modal")
             self.app.notify(_("Error opening edit modal"), severity="error")
 
-    def _on_budget_edited(self, budget: Budget | None) -> None:
+    def _on_budget_edited(
+        self, original: Budget, result: Budget | EditAction | None
+    ) -> None:
         """Handle budget edit completion."""
-        if budget is None or not self._app_service:
+        if result is None or not self._app_service:
             return
+        if result == EditAction.SPLIT:
+            self._open_budget_split(original)
+            return
+        if result == EditAction.DELETE:
+            self._delete_budget(original)
+            return
+        assert isinstance(result, Budget)
         try:
-            self._app_service.update_budget(budget)
-            self.app.notify(_("Budget '{}' modified").format(budget.description))
+            self._app_service.update_budget(result)
+            self.app.notify(_("Budget '{}' modified").format(result.description))
             self._refresh_detail()
         except Exception:  # pylint: disable=broad-except
             logger.exception("Error saving budget")
             self.app.notify(_("Error saving budget"), severity="error")
 
-    def _on_planned_operation_edited(self, operation: PlannedOperation | None) -> None:
-        """Handle planned operation edit completion."""
-        if operation is None or not self._app_service:
+    def _open_budget_split(self, budget: Budget) -> None:
+        """Open the split modal for a budget."""
+        if budget.id is None or not self._app_service:
+            return
+        default_date = self._app_service.get_next_non_actualized_iteration(
+            LinkType.BUDGET, budget.id
+        )
+        self.app.push_screen(
+            SplitOperationModal(budget, default_date),
+            lambda result: self._on_budget_split(budget, result),
+        )
+
+    def _on_budget_split(self, budget: Budget, result: SplitResult | None) -> None:
+        """Handle budget split completion."""
+        if result is None or budget.id is None or not self._app_service:
             return
         try:
-            self._app_service.update_planned_operation(operation)
-            self.app.notify(_("Operation '{}' modified").format(operation.description))
+            new_budget = self._app_service.split_budget_at_date(
+                budget_id=budget.id,
+                split_date=result.split_date,
+                new_amount=result.new_amount,
+                new_period=result.new_period,
+                new_duration=result.new_duration,
+            )
+            self.app.notify(
+                _("Budget '{}' split (new: #{})").format(
+                    budget.description, new_budget.id
+                )
+            )
+            self._refresh_detail()
+        except (ValueError, BudgetForecasterError) as e:
+            logger.error("Error splitting budget: %s", e)
+            self.app.notify(_("Error: {}").format(e), severity="error")
+
+    def _delete_budget(self, budget: Budget) -> None:
+        """Delete a budget."""
+        if budget.id is None or not self._app_service:
+            return
+        try:
+            self._app_service.delete_budget(budget.id)
+            self.app.notify(_("Budget '{}' deleted").format(budget.description))
+            self._refresh_detail()
+        except (BudgetForecasterError, Exception):  # pylint: disable=broad-except
+            logger.exception("Error deleting budget")
+            self.app.notify(_("Error deleting budget"), severity="error")
+
+    def _on_planned_operation_edited(
+        self,
+        original: PlannedOperation,
+        result: PlannedOperation | EditAction | None,
+    ) -> None:
+        """Handle planned operation edit completion."""
+        if result is None or not self._app_service:
+            return
+        if result == EditAction.SPLIT:
+            self._open_planned_operation_split(original)
+            return
+        if result == EditAction.DELETE:
+            self._delete_planned_operation(original)
+            return
+        assert isinstance(result, PlannedOperation)
+        try:
+            self._app_service.update_planned_operation(result)
+            self.app.notify(_("Operation '{}' modified").format(result.description))
             self._refresh_detail()
         except Exception:  # pylint: disable=broad-except
             logger.exception("Error saving planned operation")
             self.app.notify(_("Error saving planned operation"), severity="error")
+
+    def _open_planned_operation_split(self, operation: PlannedOperation) -> None:
+        """Open the split modal for a planned operation."""
+        if operation.id is None or not self._app_service:
+            return
+        default_date = self._app_service.get_next_non_actualized_iteration(
+            LinkType.PLANNED_OPERATION, operation.id
+        )
+        self.app.push_screen(
+            SplitOperationModal(operation, default_date),
+            lambda result: self._on_planned_operation_split(operation, result),
+        )
+
+    def _on_planned_operation_split(
+        self, operation: PlannedOperation, result: SplitResult | None
+    ) -> None:
+        """Handle planned operation split completion."""
+        if result is None or operation.id is None or not self._app_service:
+            return
+        try:
+            new_op = self._app_service.split_planned_operation_at_date(
+                operation_id=operation.id,
+                split_date=result.split_date,
+                new_amount=result.new_amount,
+                new_period=result.new_period,
+            )
+            self.app.notify(
+                _("Operation '{}' split (new: #{})").format(
+                    operation.description, new_op.id
+                )
+            )
+            self._refresh_detail()
+        except (ValueError, BudgetForecasterError) as e:
+            logger.error("Error splitting planned operation: %s", e)
+            self.app.notify(_("Error: {}").format(e), severity="error")
+
+    def _delete_planned_operation(self, operation: PlannedOperation) -> None:
+        """Delete a planned operation."""
+        if operation.id is None or not self._app_service:
+            return
+        try:
+            self._app_service.delete_planned_operation(operation.id)
+            self.app.notify(_("Operation '{}' deleted").format(operation.description))
+            self._refresh_detail()
+        except (BudgetForecasterError, Exception):  # pylint: disable=broad-except
+            logger.exception("Error deleting planned operation")
+            self.app.notify(_("Error deleting planned operation"), severity="error")
 
     def _refresh_detail(self) -> None:
         """Re-fetch category detail and recompose the modal."""

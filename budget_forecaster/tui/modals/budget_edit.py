@@ -18,9 +18,10 @@ from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.i18n import _
 from budget_forecaster.tui.modals.duration_input import DurationInput
+from budget_forecaster.tui.modals.edit_actions import EditAction
 
 
-class BudgetEditModal(ModalScreen[Budget | None]):
+class BudgetEditModal(ModalScreen[Budget | EditAction | None]):
     """Modal for creating or editing a budget."""
 
     DEFAULT_CSS = """
@@ -198,7 +199,28 @@ class BudgetEditModal(ModalScreen[Budget | None]):
             # Buttons
             with Horizontal(id="buttons-row"):
                 yield Button(_("Cancel"), id="btn-cancel", variant="default")
+                if not self._is_new:
+                    yield Button(
+                        _("Delete"),
+                        id="btn-delete",
+                        variant="error",
+                    )
+                    yield Button(
+                        _("Split"),
+                        id="btn-split",
+                        variant="warning",
+                        disabled=not self._can_split,
+                    )
                 yield Button(_("Save"), id="btn-save", variant="primary")
+
+    @property
+    def _can_split(self) -> bool:
+        """Check if the budget can be split (existing + periodic)."""
+        return (
+            self._budget is not None
+            and self._budget.id is not None
+            and isinstance(self._budget.date_range, RecurringDateRange)
+        )
 
     def _get_duration(self) -> relativedelta | None:
         """Get the duration from the current budget."""
@@ -231,6 +253,10 @@ class BudgetEditModal(ModalScreen[Budget | None]):
             self.dismiss(None)
         elif event.button.id == "btn-save":
             self._save()
+        elif event.button.id == "btn-split":
+            self.dismiss(EditAction.SPLIT)
+        elif event.button.id == "btn-delete":
+            self.dismiss(EditAction.DELETE)
 
     def _save(self) -> None:
         """Validate and save the budget."""
