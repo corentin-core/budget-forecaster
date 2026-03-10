@@ -641,33 +641,30 @@ class BudgetApp(
         result: Budget | EditAction | None,
     ) -> None:
         """Handle budget edit completion."""
-        if result is None:
-            return
-
-        if result == EditAction.SPLIT:
-            self._open_budget_split(original)
-            return
-        if result == EditAction.DELETE:
-            self._delete_budget(original)
-            return
-
-        assert isinstance(result, Budget)
-        try:
-            if result.id is None:
-                # New budget
-                self.app_service.add_budget(result)
-                self.notify(_("Budget '{}' created").format(result.description))
-            else:
-                # Update existing
-                self.app_service.update_budget(result)
-                self.notify(_("Budget '{}' modified").format(result.description))
-            self._refresh_budgets()
-        except BudgetForecasterError as e:
-            logger.error("Error saving budget: %s", e)
-            self.notify(_("Error: {}").format(e), severity="error")
-        except Exception:  # pylint: disable=broad-exception-caught
-            logger.exception("Unexpected error saving budget")
-            self.notify(_("An unexpected error occurred"), severity="error")
+        match result:
+            case None:
+                return
+            case EditAction.SPLIT:
+                self._open_budget_split(original)
+            case EditAction.DELETE:
+                self._delete_budget(original)
+            case Budget() as budget:
+                try:
+                    if budget.id is None:
+                        self.app_service.add_budget(budget)
+                        self.notify(_("Budget '{}' created").format(budget.description))
+                    else:
+                        self.app_service.update_budget(budget)
+                        self.notify(
+                            _("Budget '{}' modified").format(budget.description)
+                        )
+                    self._refresh_budgets()
+                except BudgetForecasterError as e:
+                    logger.error("Error saving budget: %s", e)
+                    self.notify(_("Error: {}").format(e), severity="error")
+                except Exception:  # pylint: disable=broad-exception-caught
+                    logger.exception("Unexpected error saving budget")
+                    self.notify(_("An unexpected error occurred"), severity="error")
 
     def _on_new_budget_created(self, result: Budget | EditAction | None) -> None:
         """Handle new budget creation (EditAction cannot occur for new items)."""
@@ -818,33 +815,32 @@ class BudgetApp(
         result: PlannedOperation | EditAction | None,
     ) -> None:
         """Handle planned operation edit completion."""
-        if result is None:
-            return
-
-        if result == EditAction.SPLIT:
-            self._open_planned_operation_split(original)
-            return
-        if result == EditAction.DELETE:
-            self._delete_planned_operation(original)
-            return
-
-        assert isinstance(result, PlannedOperation)
-        try:
-            if result.id is None:
-                # New operation
-                self.app_service.add_planned_operation(result)
-                self.notify(_("Operation '{}' created").format(result.description))
-            else:
-                # Update existing
-                self.app_service.update_planned_operation(result)
-                self.notify(_("Operation '{}' modified").format(result.description))
-            self._refresh_planned_operations()
-        except BudgetForecasterError as e:
-            logger.error("Error saving planned operation: %s", e)
-            self.notify(_("Error: {}").format(e), severity="error")
-        except Exception:  # pylint: disable=broad-exception-caught
-            logger.exception("Unexpected error saving planned operation")
-            self.notify(_("An unexpected error occurred"), severity="error")
+        match result:
+            case None:
+                return
+            case EditAction.SPLIT:
+                self._open_planned_operation_split(original)
+            case EditAction.DELETE:
+                self._delete_planned_operation(original)
+            case PlannedOperation() as operation:
+                try:
+                    if operation.id is None:
+                        self.app_service.add_planned_operation(operation)
+                        self.notify(
+                            _("Operation '{}' created").format(operation.description)
+                        )
+                    else:
+                        self.app_service.update_planned_operation(operation)
+                        self.notify(
+                            _("Operation '{}' modified").format(operation.description)
+                        )
+                    self._refresh_planned_operations()
+                except BudgetForecasterError as e:
+                    logger.error("Error saving planned operation: %s", e)
+                    self.notify(_("Error: {}").format(e), severity="error")
+                except Exception:  # pylint: disable=broad-exception-caught
+                    logger.exception("Unexpected error saving planned operation")
+                    self.notify(_("An unexpected error occurred"), severity="error")
 
     def _on_new_planned_operation_created(
         self, result: PlannedOperation | EditAction | None

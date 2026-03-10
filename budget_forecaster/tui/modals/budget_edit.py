@@ -249,14 +249,15 @@ class BudgetEditModal(ModalScreen[Budget | EditAction | None]):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
-        if event.button.id == "btn-cancel":
-            self.dismiss(None)
-        elif event.button.id == "btn-save":
-            self._save()
-        elif event.button.id == "btn-split":
-            self.dismiss(EditAction.SPLIT)
-        elif event.button.id == "btn-delete":
-            self.dismiss(EditAction.DELETE)
+        match event.button.id:
+            case "btn-cancel":
+                self.dismiss(None)
+            case "btn-save":
+                self._save()
+            case "btn-split":
+                self.dismiss(EditAction.SPLIT)
+            case "btn-delete":
+                self.dismiss(EditAction.DELETE)
 
     def _save(self) -> None:
         """Validate and save the budget."""

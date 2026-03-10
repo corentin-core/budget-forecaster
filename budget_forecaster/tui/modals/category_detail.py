@@ -363,22 +363,25 @@ class CategoryDetailModal(ModalScreen[None]):
         self, original: Budget, result: Budget | EditAction | None
     ) -> None:
         """Handle budget edit completion."""
-        if result is None or not self._app_service:
+        if not self._app_service:
             return
-        if result == EditAction.SPLIT:
-            self._open_budget_split(original)
-            return
-        if result == EditAction.DELETE:
-            self._delete_budget(original)
-            return
-        assert isinstance(result, Budget)
-        try:
-            self._app_service.update_budget(result)
-            self.app.notify(_("Budget '{}' modified").format(result.description))
-            self._refresh_detail()
-        except Exception:  # pylint: disable=broad-except
-            logger.exception("Error saving budget")
-            self.app.notify(_("Error saving budget"), severity="error")
+        match result:
+            case None:
+                return
+            case EditAction.SPLIT:
+                self._open_budget_split(original)
+            case EditAction.DELETE:
+                self._delete_budget(original)
+            case Budget() as budget:
+                try:
+                    self._app_service.update_budget(budget)
+                    self.app.notify(
+                        _("Budget '{}' modified").format(budget.description)
+                    )
+                    self._refresh_detail()
+                except Exception:  # pylint: disable=broad-except
+                    logger.exception("Error saving budget")
+                    self.app.notify(_("Error saving budget"), severity="error")
 
     def _open_budget_split(self, budget: Budget) -> None:
         """Open the split modal for a budget."""
@@ -432,22 +435,27 @@ class CategoryDetailModal(ModalScreen[None]):
         result: PlannedOperation | EditAction | None,
     ) -> None:
         """Handle planned operation edit completion."""
-        if result is None or not self._app_service:
+        if not self._app_service:
             return
-        if result == EditAction.SPLIT:
-            self._open_planned_operation_split(original)
-            return
-        if result == EditAction.DELETE:
-            self._delete_planned_operation(original)
-            return
-        assert isinstance(result, PlannedOperation)
-        try:
-            self._app_service.update_planned_operation(result)
-            self.app.notify(_("Operation '{}' modified").format(result.description))
-            self._refresh_detail()
-        except Exception:  # pylint: disable=broad-except
-            logger.exception("Error saving planned operation")
-            self.app.notify(_("Error saving planned operation"), severity="error")
+        match result:
+            case None:
+                return
+            case EditAction.SPLIT:
+                self._open_planned_operation_split(original)
+            case EditAction.DELETE:
+                self._delete_planned_operation(original)
+            case PlannedOperation() as operation:
+                try:
+                    self._app_service.update_planned_operation(operation)
+                    self.app.notify(
+                        _("Operation '{}' modified").format(operation.description)
+                    )
+                    self._refresh_detail()
+                except Exception:  # pylint: disable=broad-except
+                    logger.exception("Error saving planned operation")
+                    self.app.notify(
+                        _("Error saving planned operation"), severity="error"
+                    )
 
     def _open_planned_operation_split(self, operation: PlannedOperation) -> None:
         """Open the split modal for a planned operation."""

@@ -38,13 +38,15 @@ def relativedelta_to_unit(rd: relativedelta) -> tuple[int, DurationUnit]:
 
 def unit_to_relativedelta(value: int, unit: DurationUnit) -> relativedelta:
     """Convert (value, unit) to a relativedelta."""
-    if unit == DurationUnit.DAYS:
-        return relativedelta(days=value)
-    if unit == DurationUnit.WEEKS:
-        return relativedelta(weeks=value)
-    if unit == DurationUnit.YEARS:
-        return relativedelta(years=value)
-    return relativedelta(months=value)
+    match unit:
+        case DurationUnit.DAYS:
+            return relativedelta(days=value)
+        case DurationUnit.WEEKS:
+            return relativedelta(weeks=value)
+        case DurationUnit.MONTHS:
+            return relativedelta(months=value)
+        case DurationUnit.YEARS:
+            return relativedelta(years=value)
 
 
 def _unit_options() -> list[tuple[str, str]]:

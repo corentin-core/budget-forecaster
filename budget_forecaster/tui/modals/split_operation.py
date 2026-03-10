@@ -24,12 +24,12 @@ def _format_relativedelta(rd: relativedelta) -> str:
         return ngettext("{} year", "{} years", rd.years).format(rd.years)
     if rd.months and rd.months > 0:
         return ngettext("{} month", "{} months", rd.months).format(rd.months)
-    if rd.days and rd.days > 0:
-        if rd.days % 7 == 0:
-            weeks = rd.days // 7
-            return ngettext("{} week", "{} weeks", weeks).format(weeks)
+    if not rd.days or rd.days <= 0:
+        return ngettext("{} month", "{} months", 1).format(1)
+    if rd.days % 7 != 0:
         return ngettext("{} day", "{} days", rd.days).format(rd.days)
-    return ngettext("{} month", "{} months", 1).format(1)
+    weeks = rd.days // 7
+    return ngettext("{} week", "{} weeks", weeks).format(weeks)
 
 
 class SplitResult(NamedTuple):
