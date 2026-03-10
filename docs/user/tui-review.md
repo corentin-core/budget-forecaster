@@ -110,7 +110,9 @@ and attributed operations for the selected category.
 **Features:**
 
 - **Planned sources** — Which planned operations and budgets contribute to the Planned
-  amount, with their individual amounts and periodicity
+  amount, with their individual amounts and periodicity. Press `Enter` on any source row
+  to open the edit form for that planned operation or budget. After saving, the modal
+  refreshes with updated data.
 - **Attributed operations** — Bank operations linked to this category, with cross-month
   annotations when an operation was paid early or late relative to the selected month.
   Click on any operation row to open the
@@ -138,3 +140,10 @@ reviewing past months.
 | `Enter` | Open category detail for selected row |
 | `E`     | Edit margin threshold                 |
 | `R`     | Refresh data (invalidates cache)      |
+
+### Category Detail Modal Shortcuts
+
+| Key     | Action                                           |
+| ------- | ------------------------------------------------ |
+| `Enter` | Edit source (on source row) / Detail (on op row) |
+| `Esc`   | Close modal                                      |
