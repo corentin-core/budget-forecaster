@@ -158,7 +158,7 @@ class OperationDetailModal(ModalScreen[bool]):
 
     def on_mount(self) -> None:
         """Prevent auto-focus on buttons when the modal opens."""
-        self.set_focus(None)
+        self.call_after_refresh(self.set_focus, None)
 
     def _resolve_link_label(self) -> str:
         """Resolve the link target name for display."""
