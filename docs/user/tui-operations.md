@@ -65,7 +65,7 @@ the category detail drill-down in the Review tab, and the Dashboard.
 │                                                    │
 │ Description  PAIEMENT CB AU PASSAGE 22 DE          │
 │              03/01/26 A PARIS 1. CARTE             │
-│              4978XXXXXXXX1234                       │
+│              4978XXXXXXXX1234                      │
 │                                                    │
 │ Amount       -58.90 €                              │
 │                                                    │
