@@ -6,12 +6,20 @@ from textual.containers import Container
 from textual.widgets import Button, Input, Select, Static
 
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.tui.modals.duration_input import DurationInput
 from budget_forecaster.tui.modals.planned_operation_edit import (
     PlannedOperationEditModal,
 )
 
 # Terminal size for tests - large enough to display modal
 TEST_SIZE = (100, 50)
+
+
+def _set_duration_input(modal: object, widget_id: str, value: str, unit: str) -> None:
+    """Set value and unit on a DurationInput widget."""
+    duration_widget = modal.query_one(f"#{widget_id}", DurationInput)
+    duration_widget.query_one(".duration-value", Input).value = value
+    duration_widget.query_one(".duration-unit", Select).value = unit
 
 
 class PlannedOpEditTestApp(App[None]):
@@ -44,6 +52,7 @@ async def _fill_and_save_periodic_op(
     *,
     op_date: str = "2025-01-01",
     period: str = "12",
+    period_unit: str = "months",
     end_date: str = "",
 ) -> None:
     """Fill the planned operation edit form and press save."""
@@ -54,7 +63,7 @@ async def _fill_and_save_periodic_op(
     modal.query_one("#input-amount", Input).value = "-100"
     modal.query_one("#input-date", Input).value = op_date
     modal.query_one("#select-periodic", Select).value = "yes"
-    modal.query_one("#input-period", Input).value = period
+    _set_duration_input(modal, "input-period", period, period_unit)
     modal.query_one("#input-end-date", Input).value = end_date
     await pilot.pause()
 

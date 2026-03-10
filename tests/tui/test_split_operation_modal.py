@@ -17,10 +17,18 @@ from budget_forecaster.core.date_range import (
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.tui.modals.duration_input import DurationInput
 from budget_forecaster.tui.modals.split_operation import (
     SplitOperationModal,
     SplitResult,
 )
+
+
+def _set_duration_input(modal: object, widget_id: str, value: str, unit: str) -> None:
+    """Set value and unit on a DurationInput widget."""
+    duration_widget = modal.query_one(f"#{widget_id}", DurationInput)
+    duration_widget.query_one(".duration-value", Input).value = value
+    duration_widget.query_one(".duration-unit", Select).value = unit
 
 
 def make_periodic_planned_operation(
@@ -150,9 +158,9 @@ class TestSplitOperationModalDisplay:
             await pilot.pause()
 
             modal = app.screen
-            duration_input = modal.query_one("#input-duration", Input)
-            # Parent should not have hidden class
-            parent = duration_input.parent
+            duration_widget = modal.query_one("#input-duration", DurationInput)
+            # Parent (form-row) should not have hidden class
+            parent = duration_widget.parent
             assert parent is not None
             assert "hidden" not in parent.classes
 
@@ -165,8 +173,8 @@ class TestSplitOperationModalDisplay:
             await pilot.pause()
 
             modal = app.screen
-            duration_input = modal.query_one("#input-duration", Input)
-            parent = duration_input.parent
+            duration_widget = modal.query_one("#input-duration", DurationInput)
+            parent = duration_widget.parent
             assert parent is not None
             assert "hidden" in parent.classes
 
@@ -268,8 +276,7 @@ class TestSplitOperationModalValidation:
             date_input = modal.query_one("#input-split-date", Input)
             date_input.value = "2025-06-01"
 
-            duration_input = modal.query_one("#input-duration", Input)
-            duration_input.value = "-5"  # Invalid: negative
+            _set_duration_input(modal, "input-duration", "-5", "months")
             await pilot.pause()
 
             apply_btn = modal.query_one("#btn-apply", Button)
@@ -372,9 +379,8 @@ class TestSplitOperationModalSubmission:
             amount_input = modal.query_one("#input-amount", Input)
             amount_input.value = "-500.0"
 
-            # Set new duration
-            duration_input = modal.query_one("#input-duration", Input)
-            duration_input.value = "2"  # 2 months
+            # Set new duration to 2 months
+            _set_duration_input(modal, "input-duration", "2", "months")
             await pilot.pause()
 
             apply_btn = modal.query_one("#btn-apply", Button)
@@ -402,8 +408,7 @@ class TestSplitOperationModalSubmission:
             date_input.value = "2025-06-01"
 
             # Change period to quarterly (3 months)
-            period_select = modal.query_one("#select-period", Select)
-            period_select.value = "3"  # Trimestriel
+            _set_duration_input(modal, "input-period", "3", "months")
             await pilot.pause()
 
             apply_btn = modal.query_one("#btn-apply", Button)

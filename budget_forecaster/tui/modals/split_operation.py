@@ -7,14 +7,29 @@ from dateutil.relativedelta import relativedelta
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Label, Select, Static
+from textual.widgets import Button, Input, Label, Static
 
 from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.date_range import RecurringDateRange
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
-from budget_forecaster.i18n import _
+from budget_forecaster.i18n import _, ngettext
+from budget_forecaster.tui.modals.duration_input import DurationInput
 from budget_forecaster.tui.symbols import DisplaySymbol
+
+
+def _format_relativedelta(rd: relativedelta) -> str:
+    """Format a relativedelta for user-facing display."""
+    if rd.years and rd.years > 0:
+        return ngettext("{} year", "{} years", rd.years).format(rd.years)
+    if rd.months and rd.months > 0:
+        return ngettext("{} month", "{} months", rd.months).format(rd.months)
+    if rd.days and rd.days > 0:
+        if rd.days % 7 == 0:
+            weeks = rd.days // 7
+            return ngettext("{} week", "{} weeks", weeks).format(weeks)
+        return ngettext("{} day", "{} days", rd.days).format(rd.days)
+    return ngettext("{} month", "{} months", 1).format(1)
 
 
 class SplitResult(NamedTuple):
@@ -184,28 +199,19 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
                 # New period
                 with Horizontal(classes="form-row"):
                     yield Label(_("Period:"), classes="form-label")
-                    period_options = [
-                        (_("Monthly"), "1"),
-                        (_("Bimonthly"), "2"),
-                        (_("Quarterly"), "3"),
-                        (_("Semi-annual"), "6"),
-                        (_("Annual"), "12"),
-                    ]
-                    current_period = self._get_period_months()
-                    yield Select(
-                        period_options,
-                        value=str(current_period),
-                        id="select-period",
+                    yield DurationInput(
+                        self._get_period(),
+                        id="input-period",
                         classes="form-input",
                     )
 
                 # Duration (only for budgets)
                 hidden_class = "" if self._is_budget else "hidden"
                 with Horizontal(classes=f"form-row {hidden_class}"):
-                    yield Label(_("Duration (months):"), classes="form-label")
-                    duration = self._get_duration_months() if self._is_budget else 1
-                    yield Input(
-                        value=str(duration),
+                    yield Label(_("Duration:"), classes="form-label")
+                    duration = self._get_duration() if self._is_budget else None
+                    yield DurationInput(
+                        duration,
                         id="input-duration",
                         classes="form-input",
                     )
@@ -223,43 +229,33 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
         period = self._format_period()
 
         if self._is_budget:
-            duration = self._get_duration_months()
-            return _("Currently: {} / {} months, {}").format(amount, duration, period)
+            duration = self._format_duration()
+            return _("Currently: {} / {}, {}").format(amount, duration, period)
         return _("Currently: {} {}").format(amount, period)
 
     def _format_period(self) -> str:
         """Format the period for display."""
-        months = self._get_period_months()
-        period_names = {
-            1: _("monthly"),
-            2: _("bimonthly"),
-            3: _("quarterly"),
-            6: _("semi-annual"),
-            12: _("annual"),
-        }
-        return period_names.get(months, _("every {} months").format(months))
-
-    def _get_period_months(self) -> int:
-        """Get the period in months from the current target."""
         tr = self._target.date_range
         if isinstance(tr, RecurringDateRange):
-            p = tr.period
-            if p.months:
-                return p.months
-            if p.years:
-                return p.years * 12
-        return 1
+            return _format_relativedelta(tr.period)
+        return _format_relativedelta(relativedelta(months=1))
 
-    def _get_duration_months(self) -> int:
-        """Get the duration in months (for budgets)."""
+    def _format_duration(self) -> str:
+        """Format the duration for display (budgets only)."""
+        tr = self._target.date_range
+        return _format_relativedelta(tr.duration)
+
+    def _get_period(self) -> relativedelta | None:
+        """Get the period from the current target."""
         tr = self._target.date_range
         if isinstance(tr, RecurringDateRange):
-            d = tr.duration
-            if d.months:
-                return d.months
-            if d.years:
-                return d.years * 12
-        return 1
+            return tr.period
+        return None
+
+    def _get_duration(self) -> relativedelta | None:
+        """Get the duration from the current target (budgets only)."""
+        tr = self._target.date_range
+        return tr.duration
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
@@ -293,22 +289,12 @@ class SplitOperationModal(ModalScreen[SplitResult | None]):
                 raise ValueError(_("Amount must be a number")) from exc
 
             # Get period
-            period_select = self.query_one("#select-period", Select)
-            if period_select.value == Select.BLANK:
-                raise ValueError(_("Period is required"))
-            period_months = int(str(period_select.value))
-            new_period = relativedelta(months=period_months)
+            new_period = self.query_one("#input-period", DurationInput).duration
 
             # Get duration (for budgets)
             new_duration: relativedelta | None = None
             if self._is_budget:
-                duration_str = self.query_one("#input-duration", Input).value.strip()
-                try:
-                    if (duration_months := int(duration_str)) <= 0:
-                        raise ValueError("must be positive")
-                    new_duration = relativedelta(months=duration_months)
-                except ValueError as exc:
-                    raise ValueError(_("Duration must be a positive integer")) from exc
+                new_duration = self.query_one("#input-duration", DurationInput).duration
 
             result = SplitResult(
                 split_date=split_date,

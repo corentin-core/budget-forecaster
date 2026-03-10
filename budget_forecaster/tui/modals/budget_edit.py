@@ -17,6 +17,7 @@ from budget_forecaster.core.date_range import DateRange, RecurringDateRange
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.i18n import _
+from budget_forecaster.tui.modals.duration_input import DurationInput
 
 
 class BudgetEditModal(ModalScreen[Budget | None]):
@@ -149,12 +150,12 @@ class BudgetEditModal(ModalScreen[Budget | None]):
                         classes="form-input",
                     )
 
-                # Duration (months)
+                # Duration
                 with Horizontal(classes="form-row"):
-                    yield Label(_("Duration (months):"), classes="form-label")
-                    duration = self._get_duration_months()
-                    yield Input(
-                        value=str(duration),
+                    yield Label(_("Duration:"), classes="form-label")
+                    duration = self._get_duration()
+                    yield DurationInput(
+                        duration,
                         id="input-duration",
                         classes="form-input",
                     )
@@ -173,12 +174,11 @@ class BudgetEditModal(ModalScreen[Budget | None]):
                     )
 
                 with Horizontal(classes="form-row"):
-                    yield Label(_("Period (months):"), classes="form-label")
-                    period = self._get_period_months()
-                    yield Input(
-                        value=str(period) if period else "",
+                    yield Label(_("Period:"), classes="form-label")
+                    period = self._get_period()
+                    yield DurationInput(
+                        period,
                         id="input-period",
-                        placeholder=_("Leave empty if not recurring"),
                         classes="form-input",
                     )
 
@@ -200,21 +200,19 @@ class BudgetEditModal(ModalScreen[Budget | None]):
                 yield Button(_("Cancel"), id="btn-cancel", variant="default")
                 yield Button(_("Save"), id="btn-save", variant="primary")
 
-    def _get_duration_months(self) -> int:
-        """Get the duration in months from the current budget."""
+    def _get_duration(self) -> relativedelta | None:
+        """Get the duration from the current budget."""
         if not self._budget:
-            return 1
-        tr = self._budget.date_range
-        rd = tr.duration
-        return rd.months if rd.months else 1
+            return None
+        return self._budget.date_range.duration
 
-    def _get_period_months(self) -> int | None:
-        """Get the period in months from the current budget."""
+    def _get_period(self) -> relativedelta | None:
+        """Get the period from the current budget."""
         if not self._budget:
             return None
         tr = self._budget.date_range
         if isinstance(tr, RecurringDateRange):
-            return tr.period.months if tr.period.months else 1
+            return tr.period
         return None
 
     def _get_end_date(self) -> date | None:
@@ -265,25 +263,13 @@ class BudgetEditModal(ModalScreen[Budget | None]):
             except ValueError:
                 raise ValueError(_("Start date must be in YYYY-MM-DD format"))
 
-            duration_str = self.query_one("#input-duration", Input).value.strip()
-            try:
-                duration_months = int(duration_str)
-                if duration_months <= 0:
-                    raise ValueError()
-            except ValueError:
-                raise ValueError(_("Duration must be a positive integer"))
+            duration_rd = self.query_one("#input-duration", DurationInput).duration
 
             is_periodic = self.query_one("#select-periodic", Select).value == "yes"
 
-            period_str = self.query_one("#input-period", Input).value.strip()
-            period_months = None
-            if period_str:
-                try:
-                    period_months = int(period_str)
-                    if period_months <= 0:
-                        raise ValueError()
-                except ValueError:
-                    raise ValueError(_("Period must be a positive integer"))
+            period_rd: relativedelta | None = None
+            if is_periodic:
+                period_rd = self.query_one("#input-period", DurationInput).duration
 
             end_str = self.query_one("#input-end-date", Input).value.strip()
             end_date = None
@@ -294,16 +280,15 @@ class BudgetEditModal(ModalScreen[Budget | None]):
                     raise ValueError(_("End date must be in YYYY-MM-DD format"))
 
             # Build date range
-            inner_range = DateRange(start_date, relativedelta(months=duration_months))
+            inner_range = DateRange(start_date, duration_rd)
 
             dr: DateRange | RecurringDateRange
-            if is_periodic and period_months:
-                period = relativedelta(months=period_months)
-                if end_date is not None and end_date < start_date + period:
+            if is_periodic and period_rd:
+                if end_date is not None and end_date < start_date + period_rd:
                     raise ValueError(_("End date must allow at least two iterations"))
                 dr = RecurringDateRange(
                     inner_range,
-                    period,
+                    period_rd,
                     end_date,
                 )
             else:

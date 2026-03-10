@@ -66,6 +66,29 @@ The status dropdown lets you filter operations by their state:
 3 budget(s) configuré(s)
 ```
 
+## Duration and Period Input
+
+Duration and period fields use a **number + unit selector** that supports granular time
+units:
+
+```
+│ Durée:    [1    ] [Mois         ▼]                  │
+│ Période:  [1    ] [Mois         ▼]                  │
+```
+
+### Available Units
+
+| Unit   | French   | Example use case                  |
+| ------ | -------- | --------------------------------- |
+| Days   | Jours    | Short-term budgets (e.g. 15 days) |
+| Weeks  | Semaines | Biweekly operations               |
+| Months | Mois     | Monthly budgets (default)         |
+| Years  | Années   | Annual subscriptions              |
+
+The unit selector defaults to **Months** for backwards compatibility with existing
+budgets and operations. When editing an existing item, the unit is automatically
+detected from the stored value.
+
 ## Splitting Operations and Budgets
 
 The **Scinder** (Split) action allows you to modify a recurring planned operation or
@@ -94,7 +117,7 @@ When you split an operation or budget:
 ├───────────────────────────────────────────────────────────────┤
 │ ┌─────────────────────────────────────────────────────────┐   │
 │ │ Salaire                                                 │   │
-│ │ Actuellement: +2500.00 €, mensuel                       │   │
+│ │ Actuellement: +2500.00 €, 1 month, monthly              │   │
 │ │ Depuis: 28/01/2025                                      │   │
 │ └─────────────────────────────────────────────────────────┘   │
 │                                                               │
@@ -102,16 +125,16 @@ When you split an operation or budget:
 │ (i) Prochaine itération non ajustée                           │
 │ ───────────────────────────────────────────────────────────── │
 │ Montant:             [ 2700.0     ]                           │
-│ Période:             [ Mensuel   v]                           │
+│ Période:             [ 1    ] [Mois         ▼]                │
 │                                                               │
 │                                     [Annuler]  [Appliquer]    │
 └───────────────────────────────────────────────────────────────┘
 ```
 
-For budgets, an additional **Durée** field is displayed:
+For budgets, an additional **Durée** (Duration) field is displayed:
 
 ```
-│ Durée (mois):        [ 1          ]                           │
+│ Durée:               [ 1    ] [Mois         ▼]                │
 ```
 
 ### Split Workflow Example
@@ -122,7 +145,7 @@ For budgets, an additional **Durée** field is displayed:
 2. Click **Scinder**
 3. Set split date: `2025-06-01` (first iteration with new amount)
 4. Set new amount: `2700.0`
-5. Keep period: Mensuel (monthly)
+5. Keep period: 1 Months
 6. Click **Appliquer**
 
 **Result**:
@@ -131,22 +154,12 @@ For budgets, an additional **Durée** field is displayed:
 - New "Salaire" operation starts on 2025-06-01 with €2700
 - Links for June onwards are automatically migrated to the new operation
 
-### Period Options
-
-| Option      | Description            |
-| ----------- | ---------------------- |
-| Mensuel     | Monthly (1 month)      |
-| Bimestriel  | Bi-monthly (2 months)  |
-| Trimestriel | Quarterly (3 months)   |
-| Semestriel  | Semi-annual (6 months) |
-| Annuel      | Annual (12 months)     |
-
 ### Validation Rules
 
 - Split date must be **after** the original start date
 - Split date must correspond to a valid iteration
 - Amount must be a valid number
-- Duration (for budgets) must be a positive integer
+- Duration and period must be positive integers
 
 ### Keyboard Shortcuts
 

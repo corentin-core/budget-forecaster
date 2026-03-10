@@ -211,8 +211,8 @@ msgstr "Aucune opération prévue à venir"
 msgid "Currently: {} {}"
 msgstr "Actuellement : {} {}"
 
-msgid "Currently: {} / {} months, {}"
-msgstr "Actuellement : {} / {} mois, {}"
+msgid "Currently: {} / {}, {}"
+msgstr "Actuellement : {} / {}, {}"
 
 msgid "Uncategorized: {}"
 msgstr "Non catégorisé : {}"
@@ -578,11 +578,14 @@ msgstr "Tolérance de date (jours) :"
 msgid "Date tolerance must be a positive integer"
 msgstr "La tolérance de date doit être un entier positif"
 
-msgid "Duration (months):"
-msgstr "Durée (mois) :"
+msgid "Duration:"
+msgstr "Durée :"
 
 msgid "Duration must be a positive integer"
 msgstr "La durée doit être un entier positif"
+
+msgid "Unit is required"
+msgstr "L'unité est requise"
 
 msgid "Changes saved"
 msgstr "Modifications enregistrées"
@@ -820,6 +823,46 @@ msgstr "{} mois"
 
 msgid "{} yr."
 msgstr "{} an(s)"
+
+# ============================================================
+# DurationInput widget — unit labels
+# ============================================================
+
+msgid "Days"
+msgstr "Jours"
+
+msgid "Weeks"
+msgstr "Semaines"
+
+msgid "Months"
+msgstr "Mois"
+
+msgid "Years"
+msgstr "Années"
+
+# ============================================================
+# DurationInput — ngettext plural forms for display
+# ============================================================
+
+msgid "{} day"
+msgid_plural "{} days"
+msgstr[0] "{} jour"
+msgstr[1] "{} jours"
+
+msgid "{} week"
+msgid_plural "{} weeks"
+msgstr[0] "{} semaine"
+msgstr[1] "{} semaines"
+
+msgid "{} month"
+msgid_plural "{} months"
+msgstr[0] "{} mois"
+msgstr[1] "{} mois"
+
+msgid "{} year"
+msgid_plural "{} years"
+msgstr[0] "{} an"
+msgstr[1] "{} ans"
 
 # ============================================================
 # Bank adapter labels
