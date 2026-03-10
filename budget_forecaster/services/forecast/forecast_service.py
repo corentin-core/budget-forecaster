@@ -64,6 +64,7 @@ class MonthlySummary(TypedDict):
 class PlannedSourceDetail(TypedDict):
     """A single planned source for a category in a month."""
 
+    source_id: int | None
     forecast_source_type: ForecastSourceType
     description: str
     periodicity: str
@@ -238,6 +239,7 @@ def _collect_operation_sources(
             continue
         sources.append(
             PlannedSourceDetail(
+                source_id=planned_op.id,
                 forecast_source_type=ForecastSourceType.PLANNED_OPERATION,
                 description=planned_op.description,
                 periodicity=_format_periodicity(planned_op),
@@ -263,6 +265,7 @@ def _collect_budget_sources(
             continue
         sources.append(
             PlannedSourceDetail(
+                source_id=budget.id,
                 forecast_source_type=ForecastSourceType.BUDGET,
                 description=budget.description,
                 periodicity=_format_budget_periodicity(budget, month_start, month_end),

@@ -222,7 +222,7 @@ class TestGetCategoryDetail:
             category=Category.INTERNET,
             date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
         )
-        repository.upsert_planned_operation(op)
+        op_id = repository.upsert_planned_operation(op)
 
         account = Account(
             name="Test",
@@ -237,6 +237,7 @@ class TestGetCategoryDetail:
         detail = service.get_category_detail("internet", date(2025, 2, 1))
 
         expected_source = PlannedSourceDetail(
+            source_id=op_id,
             forecast_source_type=ForecastSourceType.PLANNED_OPERATION,
             description="Netflix",
             periodicity="monthly, 1st",
@@ -264,7 +265,7 @@ class TestGetCategoryDetail:
             category=Category.HOUSE_WORKS,
             date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
         )
-        repository.upsert_budget(budget)
+        budget_id = repository.upsert_budget(budget)
 
         account = Account(
             name="Test",
@@ -279,6 +280,7 @@ class TestGetCategoryDetail:
         detail = service.get_category_detail("house_works", date(2025, 2, 1))
 
         expected_source = PlannedSourceDetail(
+            source_id=budget_id,
             forecast_source_type=ForecastSourceType.BUDGET,
             description="House works",
             periodicity="200/month (01/02\u219228/02)",
@@ -663,6 +665,47 @@ class TestGetCategoryDetail:
         assert detail["remaining"] == abs(detail["forecast"]) - abs(
             detail["total_actual"]
         )
+
+    def test_source_id_present_in_planned_sources(
+        self, repository: RepositoryInterface
+    ) -> None:
+        """Planned sources include the database ID of the source."""
+        op_id = repository.upsert_planned_operation(
+            PlannedOperation(
+                record_id=None,
+                description="Netflix",
+                amount=Amount(-15.0, "EUR"),
+                category=Category.INTERNET,
+                date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
+            )
+        )
+        budget_id = repository.upsert_budget(
+            Budget(
+                record_id=None,
+                description="Internet budget",
+                amount=Amount(-50.0, "EUR"),
+                category=Category.INTERNET,
+                date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
+            )
+        )
+
+        account = Account(
+            name="Test",
+            balance=1000.0,
+            currency="EUR",
+            balance_date=date(2025, 1, 20),
+            operations=(),
+        )
+        service = _make_service(account, repository)
+        service.load_forecast()
+
+        detail = service.get_category_detail("internet", date(2025, 2, 1))
+
+        source_ids = {
+            s["forecast_source_type"]: s["source_id"] for s in detail["planned_sources"]
+        }
+        assert source_ids[ForecastSourceType.PLANNED_OPERATION] == op_id
+        assert source_ids[ForecastSourceType.BUDGET] == budget_id
 
     def test_planned_sources_filtered_by_category(
         self, repository: RepositoryInterface

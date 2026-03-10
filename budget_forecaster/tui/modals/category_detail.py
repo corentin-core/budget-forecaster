@@ -1,5 +1,6 @@
 """Category detail modal — drill-down for a category in a given month."""
 
+import logging
 from typing import Any
 
 from textual.app import ComposeResult
@@ -9,6 +10,8 @@ from textual.screen import ModalScreen
 from textual.widget import Widget
 from textual.widgets import Button, Static
 
+from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.forecast.forecast_service import (
@@ -17,8 +20,20 @@ from budget_forecaster.services.forecast.forecast_service import (
     ForecastSourceType,
     PlannedSourceDetail,
 )
+from budget_forecaster.tui.modals.budget_edit import BudgetEditModal
 from budget_forecaster.tui.modals.operation_detail import OperationDetailModal
+from budget_forecaster.tui.modals.planned_operation_edit import (
+    PlannedOperationEditModal,
+)
 from budget_forecaster.tui.symbols import DisplaySymbol
+
+logger = logging.getLogger(__name__)
+
+
+class _SourceRow(Horizontal):
+    """A focusable row for a planned source in the category detail modal."""
+
+    can_focus = True
 
 
 class _OperationRow(Horizontal):
@@ -67,6 +82,14 @@ class CategoryDetailModal(ModalScreen[None]):
 
     CategoryDetailModal .source-row {
         height: 1;
+    }
+
+    CategoryDetailModal .source-row:hover {
+        background: $boost;
+    }
+
+    CategoryDetailModal .source-row:focus {
+        background: $boost;
     }
 
     CategoryDetailModal .source-desc {
@@ -158,7 +181,7 @@ class CategoryDetailModal(ModalScreen[None]):
 
     BINDINGS = [
         ("escape", "close", _("Close")),
-        ("enter", "open_detail", _("Detail")),
+        ("enter", "activate_row", _("Detail / Edit")),
     ]
 
     def __init__(
@@ -237,7 +260,11 @@ class CategoryDetailModal(ModalScreen[None]):
     def _compose_source_row(source: PlannedSourceDetail) -> ComposeResult:
         """Compose a single planned source row."""
         amount_class = "amount-positive" if source["amount"] > 0 else "amount-negative"
-        with Horizontal(classes="source-row"):
+        source_type = source["forecast_source_type"].name
+        source_id = source["source_id"]
+        row_name = f"{source_type}:{source_id}" if source_id is not None else None
+        row = _SourceRow(classes="source-row", name=row_name)
+        with row:
             yield Static(source["description"][:34], classes="source-desc")
             yield Static(source["periodicity"], classes="source-period")
             yield Static(
@@ -299,23 +326,101 @@ class CategoryDetailModal(ModalScreen[None]):
                 OperationDetailModal(operation_id, self._app_service),
             )
 
-    def action_open_detail(self) -> None:
-        """Open operation detail modal for the focused operation row."""
+    def _open_source_edit(self, source_type: str, source_id: int) -> None:
+        """Open the edit modal for a planned source."""
+        if not self._app_service:
+            return
+
+        try:
+            if source_type == ForecastSourceType.BUDGET.name:
+                if budget := self._app_service.get_budget_by_id(source_id):
+                    self.app.push_screen(
+                        BudgetEditModal(budget),
+                        self._on_budget_edited,
+                    )
+            elif source_type == ForecastSourceType.PLANNED_OPERATION.name:
+                if operation := self._app_service.get_planned_operation_by_id(
+                    source_id
+                ):
+                    self.app.push_screen(
+                        PlannedOperationEditModal(operation),
+                        self._on_planned_operation_edited,
+                    )
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Error opening source edit modal")
+            self.app.notify(_("Error opening edit modal"), severity="error")
+
+    def _on_budget_edited(self, budget: Budget | None) -> None:
+        """Handle budget edit completion."""
+        if budget is None or not self._app_service:
+            return
+        try:
+            self._app_service.update_budget(budget)
+            self.app.notify(_("Budget '{}' modified").format(budget.description))
+            self._refresh_detail()
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Error saving budget")
+            self.app.notify(_("Error saving budget"), severity="error")
+
+    def _on_planned_operation_edited(self, operation: PlannedOperation | None) -> None:
+        """Handle planned operation edit completion."""
+        if operation is None or not self._app_service:
+            return
+        try:
+            self._app_service.update_planned_operation(operation)
+            self.app.notify(_("Operation '{}' modified").format(operation.description))
+            self._refresh_detail()
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Error saving planned operation")
+            self.app.notify(_("Error saving planned operation"), severity="error")
+
+    def _refresh_detail(self) -> None:
+        """Re-fetch category detail and recompose the modal."""
+        if not self._app_service:
+            return
+        try:
+            detail = self._detail
+            self._detail = self._app_service.get_category_detail(
+                detail["category"].value, detail["month"]
+            )
+            self.call_later(self.recompose)
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Error refreshing category detail")
+
+    def action_activate_row(self) -> None:
+        """Activate the focused row: edit for source rows, detail for op rows."""
         focused = self.focused
-        if (
-            focused is not None
-            and "op-row" in focused.classes
-            and focused.name is not None
-        ):
+        if focused is None or focused.name is None:
+            return
+
+        if "source-row" in focused.classes:
+            self._activate_source_row(focused.name)
+        elif "op-row" in focused.classes:
             self._open_operation_detail(int(focused.name))
 
+    def _activate_source_row(self, row_name: str) -> None:
+        """Parse source row name and open the edit modal."""
+        parts = row_name.split(":", 1)
+        if len(parts) != 2:
+            return
+        source_type, source_id_str = parts
+        try:
+            source_id = int(source_id_str)
+        except ValueError:
+            return
+        self._open_source_edit(source_type, source_id)
+
     def on_click(self, event: Click) -> None:
-        """Open operation detail modal on click on an operation row."""
+        """Handle click on a row."""
         widget: Widget | None = event.widget
         while widget is not None and widget is not self:
-            if "op-row" in widget.classes and widget.name is not None:
-                self._open_operation_detail(int(widget.name))
-                return
+            if widget.name is not None:
+                if "source-row" in widget.classes:
+                    self._activate_source_row(widget.name)
+                    return
+                if "op-row" in widget.classes:
+                    self._open_operation_detail(int(widget.name))
+                    return
             widget = widget.parent if isinstance(widget.parent, Widget) else None
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
