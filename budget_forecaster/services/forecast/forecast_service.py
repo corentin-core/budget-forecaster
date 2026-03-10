@@ -16,8 +16,10 @@ from budget_forecaster.core.types import (
     BudgetColumn,
     BudgetId,
     Category,
+    LinkType,
     OperationId,
     PlannedOperationId,
+    TargetId,
 )
 from budget_forecaster.domain.account.account_interface import AccountInterface
 from budget_forecaster.domain.forecast.forecast import Forecast
@@ -77,6 +79,8 @@ class AttributedOperationDetail(TypedDict):
     description: str
     amount: float
     cross_month_annotation: str  # empty if same month
+    link_type: str  # "budget", "planned_operation", or "" if unlinked
+    link_target_name: str  # name of the linked budget/planned op, or ""
 
 
 class CategoryDetail(TypedDict):
@@ -175,6 +179,48 @@ def _cross_month_annotation(
     if operation_date < month_start:
         return _("paid early (operation dated {})").format(date_str)
     return _("paid late (operation dated {})").format(date_str)
+
+
+def _build_link_index(
+    operation_links: tuple[OperationLink, ...],
+) -> dict[OperationId, tuple[date, OperationLink]]:
+    """Build a map from operation_unique_id to (linked month, link)."""
+    return {
+        link.operation_unique_id: (link.iteration_date.replace(day=1), link)
+        for link in operation_links
+    }
+
+
+def _resolve_link_info(
+    link_entry: tuple[date, OperationLink] | None,
+    target_names: dict[tuple[LinkType, TargetId], str],
+) -> tuple[str, str]:
+    """Resolve link type and target name from a link entry.
+
+    Returns:
+        (link_type, link_target_name) — both empty strings if unlinked.
+    """
+    if link_entry is None:
+        return "", ""
+    link = link_entry[1]
+    return (
+        link.target_type.value,
+        target_names.get((link.target_type, link.target_id), ""),
+    )
+
+
+def _build_target_name_index(
+    forecast: Forecast,
+) -> dict[tuple[LinkType, TargetId], str]:
+    """Build a map from (link_type, target_id) to target description."""
+    index: dict[tuple[LinkType, TargetId], str] = {}
+    for planned_op in forecast.operations:
+        if planned_op.id is not None:
+            index[(LinkType.PLANNED_OPERATION, planned_op.id)] = planned_op.description
+    for budget in forecast.budgets:
+        if budget.id is not None:
+            index[(LinkType.BUDGET, budget.id)] = budget.description
+    return index
 
 
 def _collect_operation_sources(
@@ -568,7 +614,7 @@ class ForecastService:
             forecast, cat, month_start, month_end
         )
         operations = self._collect_attributed_operations(
-            cat, month_start, month_end, operation_links
+            forecast, cat, month_start, month_end, operation_links
         )
 
         total_planned = sum(s["amount"] for s in planned_sources)
@@ -621,27 +667,23 @@ class ForecastService:
 
     def _collect_attributed_operations(
         self,
+        forecast: Forecast,
         category: Category,
         month_start: date,
         month_end: date,
         operation_links: tuple[OperationLink, ...],
     ) -> tuple[AttributedOperationDetail, ...]:
         """Collect operations attributed to a category/month (link-aware)."""
-        account = self._account_provider.account
-
-        # Build link index: operation_unique_id → linked month (first day)
-        op_to_linked_month: dict[OperationId, date] = {}
-        for link in operation_links:
-            op_to_linked_month[link.operation_unique_id] = link.iteration_date.replace(
-                day=1
-            )
+        op_to_link = _build_link_index(operation_links)
+        target_names = _build_target_name_index(forecast)
 
         operations: list[AttributedOperationDetail] = []
-        for op in account.operations:
+        for op in self._account_provider.account.operations:
             if op.category != category:
                 continue
 
-            linked_month = op_to_linked_month.get(op.unique_id)
+            link_entry = op_to_link.get(op.unique_id)
+            linked_month = link_entry[0] if link_entry is not None else None
 
             if linked_month is not None and linked_month != month_start:
                 continue
@@ -655,6 +697,8 @@ class ForecastService:
                 if linked_month is not None
                 else ""
             )
+            link_type, link_target_name = _resolve_link_info(link_entry, target_names)
+
             operations.append(
                 AttributedOperationDetail(
                     operation_id=op.unique_id,
@@ -662,6 +706,8 @@ class ForecastService:
                     description=op.description,
                     amount=op.amount,
                     cross_month_annotation=annotation,
+                    link_type=link_type,
+                    link_target_name=link_target_name,
                 )
             )
 

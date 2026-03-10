@@ -366,6 +366,8 @@ class TestGetCategoryDetail:
             description="LEROY MERLIN",
             amount=-80.0,
             cross_month_annotation="",
+            link_type="",
+            link_target_name="",
         )
         assert detail["operations"] == (expected_op,)
 
@@ -418,6 +420,8 @@ class TestGetCategoryDetail:
             description="VIREMENT LOYER",
             amount=-800.0,
             cross_month_annotation="paid early (operation dated Feb 28)",
+            link_type="planned_operation",
+            link_target_name="Rent",
         )
         assert march_detail["operations"] == (expected_op,)
 
@@ -426,6 +430,83 @@ class TestGetCategoryDetail:
             "rent", date(2025, 2, 1), operation_links=(link,)
         )
         assert feb_detail["operations"] == ()
+
+    def test_linked_operation_shows_link_info(
+        self, repository: RepositoryInterface
+    ) -> None:
+        """Same-month linked operation shows link type and target name."""
+        budget = Budget(
+            record_id=None,
+            description="Groceries budget",
+            amount=Amount(-400.0, "EUR"),
+            category=Category.GROCERIES,
+            date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
+        )
+        budget_id = repository.upsert_budget(budget)
+
+        operation = HistoricOperation(
+            unique_id=1,
+            description="CARREFOUR",
+            amount=Amount(-85.0, "EUR"),
+            category=Category.GROCERIES,
+            operation_date=date(2025, 2, 5),
+        )
+        link = OperationLink(
+            operation_unique_id=1,
+            target_type=LinkType.BUDGET,
+            target_id=budget_id,
+            iteration_date=date(2025, 2, 1),
+            is_manual=False,
+        )
+
+        account = Account(
+            name="Test",
+            balance=1000.0,
+            currency="EUR",
+            balance_date=date(2025, 1, 20),
+            operations=(operation,),
+        )
+        service = _make_service(account, repository)
+        service.load_forecast()
+
+        detail = service.get_category_detail(
+            "groceries", date(2025, 2, 1), operation_links=(link,)
+        )
+
+        assert len(detail["operations"]) == 1
+        op_detail = detail["operations"][0]
+        assert op_detail["link_type"] == "budget"
+        assert op_detail["link_target_name"] == "Groceries budget"
+        assert op_detail["cross_month_annotation"] == ""
+
+    def test_unlinked_operation_has_empty_link_fields(
+        self, repository: RepositoryInterface
+    ) -> None:
+        """Unlinked operations have empty link_type and link_target_name."""
+        operation = HistoricOperation(
+            unique_id=1,
+            description="SUPERMARKET",
+            amount=Amount(-50.0, "EUR"),
+            category=Category.GROCERIES,
+            operation_date=date(2025, 2, 5),
+        )
+
+        account = Account(
+            name="Test",
+            balance=1000.0,
+            currency="EUR",
+            balance_date=date(2025, 1, 20),
+            operations=(operation,),
+        )
+        service = _make_service(account, repository)
+        service.load_forecast()
+
+        detail = service.get_category_detail("groceries", date(2025, 2, 1))
+
+        assert len(detail["operations"]) == 1
+        op_detail = detail["operations"][0]
+        assert op_detail["link_type"] == ""
+        assert op_detail["link_target_name"] == ""
 
     def test_unforecasted_category(self, repository: RepositoryInterface) -> None:
         """Category with only operations and no forecast sources."""
@@ -455,6 +536,8 @@ class TestGetCategoryDetail:
             description="RESTAURANT SUSHI",
             amount=-45.0,
             cross_month_annotation="",
+            link_type="",
+            link_target_name="",
         )
         assert detail == CategoryDetail(
             category=Category.ENTERTAINMENT,
@@ -506,6 +589,8 @@ class TestGetCategoryDetail:
                 description="FIRST",
                 amount=-10.0,
                 cross_month_annotation="",
+                link_type="",
+                link_target_name="",
             ),
             AttributedOperationDetail(
                 operation_id=2,
@@ -513,6 +598,8 @@ class TestGetCategoryDetail:
                 description="SECOND",
                 amount=-20.0,
                 cross_month_annotation="",
+                link_type="",
+                link_target_name="",
             ),
         )
 

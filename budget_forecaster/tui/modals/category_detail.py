@@ -115,6 +115,12 @@ class CategoryDetailModal(ModalScreen[None]):
         padding-left: 9;
     }
 
+    CategoryDetailModal .link-annotation {
+        height: 1;
+        color: $accent;
+        padding-left: 9;
+    }
+
     CategoryDetailModal .total-row {
         height: 1;
         text-style: bold;
@@ -241,7 +247,7 @@ class CategoryDetailModal(ModalScreen[None]):
 
     @staticmethod
     def _compose_operation_row(op: AttributedOperationDetail) -> ComposeResult:
-        """Compose a single operation row with optional cross-month annotation."""
+        """Compose a single operation row with optional annotations."""
         date_str = op["operation_date"].strftime("%m/%d")
         amount_class = "amount-positive" if op["amount"] > 0 else "amount-negative"
         row = _OperationRow(classes="op-row", name=str(op["operation_id"]))
@@ -256,6 +262,13 @@ class CategoryDetailModal(ModalScreen[None]):
             yield Static(
                 f"{DisplaySymbol.ARROW_LEFT} {op['cross_month_annotation']}",
                 classes="annotation",
+            )
+        if op["link_target_name"]:
+            link_label = _("budget") if op["link_type"] == "budget" else _("planned")
+            yield Static(
+                f"{DisplaySymbol.ARROW_RIGHT} {_('linked to')} {link_label}: "
+                f"{op['link_target_name']}",
+                classes="link-annotation",
             )
 
     @staticmethod
