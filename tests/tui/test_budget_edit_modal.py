@@ -7,9 +7,17 @@ from textual.widgets import Button, Input, Select, Static
 
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.tui.modals.budget_edit import BudgetEditModal
+from budget_forecaster.tui.modals.duration_input import DurationInput
 
 # Terminal size for tests - large enough to display modal
 TEST_SIZE = (100, 50)
+
+
+def _set_duration_input(modal: object, widget_id: str, value: str, unit: str) -> None:
+    """Set value and unit on a DurationInput widget."""
+    duration_widget = modal.query_one(f"#{widget_id}", DurationInput)
+    duration_widget.query_one(".duration-value", Input).value = value
+    duration_widget.query_one(".duration-unit", Select).value = unit
 
 
 class BudgetEditTestApp(App[None]):
@@ -52,9 +60,9 @@ async def _fill_and_save_periodic_budget(
     modal.query_one("#input-description", Input).value = "Test budget"
     modal.query_one("#input-amount", Input).value = "-100"
     modal.query_one("#input-start-date", Input).value = start_date
-    modal.query_one("#input-duration", Input).value = duration
+    _set_duration_input(modal, "input-duration", duration, "months")
     modal.query_one("#select-periodic", Select).value = "yes"
-    modal.query_one("#input-period", Input).value = period
+    _set_duration_input(modal, "input-period", period, "months")
     modal.query_one("#input-end-date", Input).value = end_date
     await pilot.pause()
 

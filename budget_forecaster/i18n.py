@@ -37,3 +37,8 @@ def setup_i18n(language: str) -> None:
 def _(message: str) -> str:
     """Return the translated string for *message*."""
     return _translation.gettext(message)
+
+
+def ngettext(singular: str, plural: str, n: int) -> str:
+    """Return the singular or plural translated string based on *n*."""
+    return _translation.ngettext(singular, plural, n)
