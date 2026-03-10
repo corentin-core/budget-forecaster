@@ -4,17 +4,27 @@ from typing import Any
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
+from textual.events import Click
 from textual.screen import ModalScreen
+from textual.widget import Widget
 from textual.widgets import Button, Static
 
 from budget_forecaster.i18n import _
+from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.forecast.forecast_service import (
     AttributedOperationDetail,
     CategoryDetail,
     ForecastSourceType,
     PlannedSourceDetail,
 )
+from budget_forecaster.tui.modals.operation_detail import OperationDetailModal
 from budget_forecaster.tui.symbols import DisplaySymbol
+
+
+class _OperationRow(Horizontal):
+    """A focusable row for an operation in the category detail modal."""
+
+    can_focus = True
 
 
 class CategoryDetailModal(ModalScreen[None]):
@@ -77,6 +87,14 @@ class CategoryDetailModal(ModalScreen[None]):
         height: 1;
     }
 
+    CategoryDetailModal .op-row:hover {
+        background: $boost;
+    }
+
+    CategoryDetailModal .op-row:focus {
+        background: $boost;
+    }
+
     CategoryDetailModal .op-date {
         width: 8;
         color: $text-muted;
@@ -132,11 +150,20 @@ class CategoryDetailModal(ModalScreen[None]):
     }
     """
 
-    BINDINGS = [("escape", "close", _("Close"))]
+    BINDINGS = [
+        ("escape", "close", _("Close")),
+        ("enter", "open_detail", _("Detail")),
+    ]
 
-    def __init__(self, detail: CategoryDetail, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        detail: CategoryDetail,
+        app_service: ApplicationService | None = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(**kwargs)
         self._detail = detail
+        self._app_service = app_service
 
     def compose(self) -> ComposeResult:
         detail = self._detail
@@ -217,7 +244,8 @@ class CategoryDetailModal(ModalScreen[None]):
         """Compose a single operation row with optional cross-month annotation."""
         date_str = op["operation_date"].strftime("%m/%d")
         amount_class = "amount-positive" if op["amount"] > 0 else "amount-negative"
-        with Horizontal(classes="op-row"):
+        row = _OperationRow(classes="op-row", name=str(op["operation_id"]))
+        with row:
             yield Static(date_str, classes="op-date")
             yield Static(op["description"][:40], classes="op-desc")
             yield Static(
@@ -250,6 +278,32 @@ class CategoryDetailModal(ModalScreen[None]):
             f"{_('Forecast')}: {abs(detail['forecast']):,.0f} {euro} / "
             f"{_('Remaining')}: {remaining_str} {euro}"
         )
+
+    def _open_operation_detail(self, operation_id: int) -> None:
+        """Open operation detail modal for the given operation."""
+        if self._app_service:
+            self.app.push_screen(
+                OperationDetailModal(operation_id, self._app_service),
+            )
+
+    def action_open_detail(self) -> None:
+        """Open operation detail modal for the focused operation row."""
+        focused = self.focused
+        if (
+            focused is not None
+            and "op-row" in focused.classes
+            and focused.name is not None
+        ):
+            self._open_operation_detail(int(focused.name))
+
+    def on_click(self, event: Click) -> None:
+        """Open operation detail modal on click on an operation row."""
+        widget: Widget | None = event.widget
+        while widget is not None and widget is not self:
+            if "op-row" in widget.classes and widget.name is not None:
+                self._open_operation_detail(int(widget.name))
+                return
+            widget = widget.parent if isinstance(widget.parent, Widget) else None
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button press."""

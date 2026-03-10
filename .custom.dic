@@ -35,6 +35,7 @@ dir
 edf
 enum
 enums
+focusable
 forecasted
 gettext
 historicoperation

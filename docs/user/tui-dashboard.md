@@ -88,6 +88,9 @@ The bottom section displays a standard operations table covering the last 3 mont
 supports the same interactions as the Operations tab:
 
 - Row navigation with arrow keys
+- Press `Enter` on any operation to open the
+  [operation detail modal](tui-operations.md#operation-detail-modal) with full
+  description and actions
 - Multi-selection with `Space`, `Shift+↑/↓`, `Ctrl+A`
 - Categorization with `C` and linking with `L`
 

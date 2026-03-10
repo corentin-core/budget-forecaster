@@ -361,6 +361,7 @@ class TestGetCategoryDetail:
         detail = service.get_category_detail("house_works", date(2025, 2, 1))
 
         expected_op = AttributedOperationDetail(
+            operation_id=1,
             operation_date=date(2025, 2, 3),
             description="LEROY MERLIN",
             amount=-80.0,
@@ -412,6 +413,7 @@ class TestGetCategoryDetail:
             "rent", date(2025, 3, 1), operation_links=(link,)
         )
         expected_op = AttributedOperationDetail(
+            operation_id=1,
             operation_date=date(2025, 2, 28),
             description="VIREMENT LOYER",
             amount=-800.0,
@@ -448,6 +450,7 @@ class TestGetCategoryDetail:
         detail = service.get_category_detail("entertainment", date(2025, 2, 1))
 
         expected_op = AttributedOperationDetail(
+            operation_id=1,
             operation_date=date(2025, 2, 10),
             description="RESTAURANT SUSHI",
             amount=-45.0,
@@ -498,12 +501,14 @@ class TestGetCategoryDetail:
 
         assert detail["operations"] == (
             AttributedOperationDetail(
+                operation_id=1,
                 operation_date=date(2025, 2, 3),
                 description="FIRST",
                 amount=-10.0,
                 cross_month_annotation="",
             ),
             AttributedOperationDetail(
+                operation_id=2,
                 operation_date=date(2025, 2, 15),
                 description="SECOND",
                 amount=-20.0,

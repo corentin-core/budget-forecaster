@@ -8,66 +8,17 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Static
 
-from budget_forecaster.core.types import Category
+from budget_forecaster.core.types import LinkType, MatcherKey, OperationId, TargetName
+from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import (
     ApplicationService,
     UpcomingIteration,
 )
 from budget_forecaster.services.operation.operation_service import OperationFilter
+from budget_forecaster.tui.modals.operation_detail import OperationDetailModal
 from budget_forecaster.tui.symbols import DisplaySymbol
-
-
-class StatCard(Static):
-    """A card displaying a statistic."""
-
-    DEFAULT_CSS = """
-    StatCard {
-        width: 1fr;
-        height: 5;
-        border: solid $primary;
-        padding: 0 1;
-        margin: 0 1;
-    }
-
-    StatCard .stat-title {
-        color: $text-muted;
-    }
-
-    StatCard .stat-value {
-        text-style: bold;
-    }
-
-    StatCard .stat-positive {
-        color: $success;
-    }
-
-    StatCard .stat-negative {
-        color: $error;
-    }
-    """
-
-    def __init__(self, title: str, value: str = "-", **kwargs: Any) -> None:
-        super().__init__(**kwargs)
-        self._title = title
-        self._value = value
-        self._is_negative = False
-
-    def compose(self) -> ComposeResult:
-        yield Static(self._title, classes="stat-title")
-        yield Static(self._value, classes="stat-value", id="value")
-
-    def update_value(self, value: str, is_negative: bool = False) -> None:
-        """Update the displayed value."""
-        self._value = value
-        self._is_negative = is_negative
-        value_widget = self.query_one("#value", Static)
-        value_widget.update(value)
-        value_widget.remove_class("stat-positive", "stat-negative")
-        if is_negative:
-            value_widget.add_class("stat-negative")
-        else:
-            value_widget.add_class("stat-positive")
+from budget_forecaster.tui.widgets.operation_table import OperationTable
 
 
 class CategoryRow(Horizontal):
@@ -106,7 +57,6 @@ class CategoryRow(Horizontal):
         yield Static(self._cat_name, classes="cat-name")
         yield Static(f"{self._amount:+.2f} {DisplaySymbol.EURO}", classes="cat-amount")
 
-        # Create a simple progress bar
         if self._max_amount > 0:
             progress_width = int(abs(self._amount) / self._max_amount * 20)
             progress_bar = "█" * progress_width
@@ -221,51 +171,64 @@ class UpcomingOperationRow(Horizontal):
 
 
 class DashboardScreen(Vertical):
-    """Dashboard screen showing account summary and statistics."""
+    """Dashboard screen showing account summary, categories, and recent operations."""
 
     DEFAULT_CSS = """
     DashboardScreen {
-        width: 100%;
         height: 1fr;
     }
 
-    #stats-row {
-        height: 7;
+    DashboardScreen #stats-row {
+        height: 3;
         margin-bottom: 1;
     }
 
-    #categories-section {
-        height: 1fr;
+    DashboardScreen #stats-row Static {
+        width: 1fr;
         border: solid $primary;
-        padding: 1;
+        padding: 0 1;
+        margin: 0 1;
     }
 
-    #categories-title {
+    DashboardScreen .stat-positive {
+        color: $success;
+    }
+
+    DashboardScreen .stat-negative {
+        color: $error;
+    }
+
+    DashboardScreen #upcoming-section {
+        height: 10;
+        border: solid $primary;
+        padding: 1;
+        margin-bottom: 1;
+    }
+
+    DashboardScreen #upcoming-title {
         text-style: bold;
         margin-bottom: 1;
     }
 
-    #categories-list {
+    DashboardScreen #upcoming-list {
         height: 1fr;
         overflow-y: auto;
     }
 
-    #upcoming-section {
-        height: auto;
-        max-height: 12;
+    DashboardScreen #categories-section {
+        height: 12;
         border: solid $primary;
         padding: 1;
-        margin-top: 1;
+        margin-bottom: 1;
     }
 
-    #upcoming-title {
+    DashboardScreen #categories-title {
         text-style: bold;
         margin-bottom: 1;
     }
 
-    #upcoming-list {
-        height: auto;
-        max-height: 8;
+    DashboardScreen #categories-list {
+        height: 1fr;
         overflow-y: auto;
     }
     """
@@ -276,99 +239,89 @@ class DashboardScreen(Vertical):
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="stats-row"):
-            yield StatCard(_("Current balance"), id="balance-card")
-            yield StatCard(_("Operations this month"), id="month-ops-card")
-            yield StatCard(_("Expenses this month"), id="month-expenses-card")
-            yield StatCard(_("Uncategorized"), id="uncategorized-card")
-
-        with Vertical(id="categories-section"):
-            yield Static(_("Expenses by category (this month)"), id="categories-title")
-            yield Vertical(id="categories-list")
-
+            yield Static(_("Balance: -"), id="stat-balance")
+            yield Static(_("Operations this month: -"), id="stat-month-ops")
+            yield Static(_("Uncategorized: -"), id="stat-uncategorized")
         with Vertical(id="upcoming-section"):
             yield Static(
                 _("Upcoming planned operations (next 30 days)"),
                 id="upcoming-title",
             )
             yield Vertical(id="upcoming-list")
+        with Vertical(id="categories-section"):
+            yield Static(
+                _("Expenses by category (this month)"),
+                id="categories-title",
+            )
+            yield Vertical(id="categories-list")
+        yield OperationTable(id="dashboard-table")
 
     def set_app_service(self, service: ApplicationService) -> None:
-        """Set the application service and refresh.
-
-        Args:
-            service: The application service to get data from.
-        """
+        """Set the application service and refresh all sections."""
         self._app_service = service
+        self._refresh()
+
+    def _refresh(self) -> None:
+        """Refresh all dashboard sections."""
+        if not self._app_service:
+            return
         self._update_stats()
-        self._update_categories()
         self._update_upcoming()
+        self._update_categories()
+        self._update_recent_operations()
+
+    def _build_lookups(
+        self,
+    ) -> tuple[dict[OperationId, OperationLink], dict[MatcherKey, TargetName]]:
+        """Build links and targets lookup dicts."""
+        links: dict[OperationId, OperationLink] = {}
+        targets: dict[MatcherKey, TargetName] = {}
+
+        if not self._app_service:
+            return links, targets
+
+        for link in self._app_service.get_all_links():
+            links[link.operation_unique_id] = link
+
+        for planned_op in self._app_service.get_all_planned_operations():
+            if planned_op.id is not None:
+                key = MatcherKey(LinkType.PLANNED_OPERATION, planned_op.id)
+                targets[key] = planned_op.description
+        for budget in self._app_service.get_all_budgets():
+            if budget.id is not None:
+                key = MatcherKey(LinkType.BUDGET, budget.id)
+                targets[key] = budget.description
+
+        return links, targets
 
     def _update_stats(self) -> None:
-        """Update the statistics cards."""
+        """Update the statistics row."""
         if not self._app_service:
             return
 
-        # Balance
         balance = self._app_service.balance
-        balance_card = self.query_one("#balance-card", StatCard)
-        balance_card.update_value(
-            f"{balance:,.2f} {self._app_service.currency}",
-            is_negative=balance < 0,
+        stat_balance = self.query_one("#stat-balance", Static)
+        stat_balance.update(
+            _("Balance: {} {}").format(f"{balance:,.2f}", self._app_service.currency)
         )
+        stat_balance.remove_class("stat-positive", "stat-negative")
+        stat_balance.add_class("stat-negative" if balance < 0 else "stat-positive")
 
-        # Current month operations
         now = date.today()
-        month_start = date(now.year, now.month, 1)
-        month_filter = OperationFilter(date_from=month_start)
-        month_ops = self._app_service.get_operations(month_filter)
-
-        month_ops_card = self.query_one("#month-ops-card", StatCard)
-        month_ops_card.update_value(str(len(month_ops)))
-
-        # Month expenses
-        expenses = sum(op.amount for op in month_ops if op.amount < 0)
-        expenses_card = self.query_one("#month-expenses-card", StatCard)
-        expenses_card.update_value(
-            f"{expenses:,.2f} {DisplaySymbol.EURO}", is_negative=expenses < 0
+        month, year = now.month - 3, now.year
+        if month <= 0:
+            month, year = month + 12, year - 1
+        recent_filter = OperationFilter(date_from=date(year, month, 1))
+        recent_ops = self._app_service.get_operations(recent_filter)
+        self.query_one("#stat-month-ops", Static).update(
+            _("Last 3 months: {} operations").format(len(recent_ops))
         )
 
-        # Uncategorized
         uncategorized = self._app_service.get_uncategorized_operations()
-        uncat_card = self.query_one("#uncategorized-card", StatCard)
-        uncat_card.update_value(
-            str(len(uncategorized)),
-            is_negative=len(uncategorized) > 0,
-        )
-
-    def _update_categories(self) -> None:
-        """Update the category breakdown."""
-        if not self._app_service:
-            return
-
-        # Get current month's category totals
-        now = date.today()
-        month_start = date(now.year, now.month, 1)
-        month_filter = OperationFilter(date_from=month_start)
-
-        totals = self._app_service.get_category_totals(month_filter)
-
-        # Filter to only expenses (negative amounts) and sort by amount
-        expense_totals = {cat: amount for cat, amount in totals.items() if amount < 0}
-        sorted_categories = sorted(
-            expense_totals.items(), key=lambda x: x[1]
-        )  # Most negative first
-
-        # Calculate max for bar scaling
-        max_expense = abs(min(expense_totals.values())) if expense_totals else 0
-
-        # Update the list
-        categories_list = self.query_one("#categories-list", Vertical)
-        categories_list.remove_children()
-
-        for cat, amount in sorted_categories[:15]:  # Top 15 expenses
-            if cat not in (Category.OTHER, Category.UNCATEGORIZED) or amount != 0:
-                row = CategoryRow(cat.display_name, amount, max_expense)
-                categories_list.mount(row)
+        stat_uncat = self.query_one("#stat-uncategorized", Static)
+        stat_uncat.update(_("Uncategorized: {}").format(len(uncategorized)))
+        stat_uncat.remove_class("stat-positive", "stat-negative")
+        stat_uncat.add_class("stat-negative" if uncategorized else "stat-positive")
 
     def _update_upcoming(self) -> None:
         """Update the upcoming planned operations section."""
@@ -376,13 +329,62 @@ class DashboardScreen(Vertical):
             return
 
         iterations = self._app_service.get_upcoming_planned_iterations()
-
         upcoming_list = self.query_one("#upcoming-list", Vertical)
         upcoming_list.remove_children()
-
         if not iterations:
             upcoming_list.mount(Static(_("No upcoming planned operations")))
+        else:
+            upcoming_list.mount(UpcomingHeaderRow())
+            for iteration in iterations:
+                upcoming_list.mount(UpcomingOperationRow(iteration))
+
+    def _update_categories(self) -> None:
+        """Update the expenses by category section."""
+        if not self._app_service:
             return
 
-        for iteration in iterations:
-            upcoming_list.mount(UpcomingOperationRow(iteration))
+        now = date.today()
+        month_start = date(now.year, now.month, 1)
+        month_filter = OperationFilter(date_from=month_start)
+        totals = self._app_service.get_category_totals(month_filter)
+        expense_totals = {cat: amt for cat, amt in totals.items() if amt < 0}
+        sorted_categories = sorted(expense_totals.items(), key=lambda x: x[1])
+        max_expense = abs(min(expense_totals.values())) if expense_totals else 0
+
+        categories_list = self.query_one("#categories-list", Vertical)
+        categories_list.remove_children()
+        for cat, amount in sorted_categories[:10]:
+            categories_list.mount(CategoryRow(cat.display_name, amount, max_expense))
+
+    def _update_recent_operations(self) -> None:
+        """Update the recent operations table with last 3 months."""
+        if not self._app_service:
+            return
+
+        now = date.today()
+        month, year = now.month - 3, now.year
+        if month <= 0:
+            month, year = month + 12, year - 1
+        recent_filter = OperationFilter(date_from=date(year, month, 1))
+        recent_ops = self._app_service.get_operations(recent_filter)
+
+        links, targets = self._build_lookups()
+        self.query_one("#dashboard-table", OperationTable).load_operations(
+            recent_ops, links, targets
+        )
+
+    def on_operation_table_operation_selected(
+        self, event: OperationTable.OperationSelected
+    ) -> None:
+        """Open operation detail modal from the dashboard table."""
+        event.stop()
+        if self._app_service:
+            self.app.push_screen(
+                OperationDetailModal(event.operation.unique_id, self._app_service),
+                self._on_detail_modal_closed,
+            )
+
+    def _on_detail_modal_closed(self, modified: bool | None) -> None:
+        """Refresh dashboard if data was modified."""
+        if modified:
+            self._refresh()

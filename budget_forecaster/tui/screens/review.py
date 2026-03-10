@@ -610,7 +610,9 @@ class ReviewWidget(Vertical):
             detail = self._app_service.get_category_detail(
                 category, month_date.replace(day=1)
             )
-            self.app.push_screen(CategoryDetailModal(detail))
+            self.app.push_screen(
+                CategoryDetailModal(detail, app_service=self._app_service)
+            )
         except Exception:  # pylint: disable=broad-except
             logger.exception("Error loading category detail")
             self.app.notify(_("Error loading category detail"), severity="error")

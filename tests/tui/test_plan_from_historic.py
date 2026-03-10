@@ -3,22 +3,14 @@
 # pylint: disable=protected-access,too-few-public-methods
 
 from datetime import date
-from unittest.mock import Mock
-
-from textual.app import App, ComposeResult
 
 from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.date_range import SingleDay
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
-from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.tui.modals.planned_operation_edit import (
     PlannedOperationEditModal,
-)
-from budget_forecaster.tui.screens.operations import (
-    OperationDetailPanel,
-    OperationsScreen,
 )
 
 
@@ -37,41 +29,6 @@ def _make_operation(
         amount=Amount(amount, "EUR"),
         category=category,
     )
-
-
-SAMPLE_OPERATIONS = (_make_operation(),)
-
-
-def _make_app_service(
-    operations: tuple[HistoricOperation, ...] = SAMPLE_OPERATIONS,
-) -> Mock:
-    """Create a mock ApplicationService."""
-    service = Mock(spec=ApplicationService)
-    service.get_operations = Mock(return_value=operations)
-    service.get_all_links = Mock(return_value=())
-    service.get_all_planned_operations = Mock(return_value=())
-    service.get_all_budgets = Mock(return_value=())
-
-    ops_by_id = {op.unique_id: op for op in operations}
-    service.get_operation_by_id = Mock(side_effect=lambda uid: ops_by_id[uid])
-
-    return service
-
-
-class DetailPanelTestApp(App[None]):
-    """Test app wrapping OperationsScreen to test detail panel."""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._service = _make_app_service()
-
-    def compose(self) -> ComposeResult:
-        yield OperationsScreen(id="ops-screen")
-
-    def on_mount(self) -> None:
-        """Inject the mock service."""
-        screen = self.query_one(OperationsScreen)
-        screen.set_app_service(self._service)
 
 
 class TestPlanOperationEditModalIsNew:
@@ -105,47 +62,6 @@ class TestPlanOperationEditModalIsNew:
         )
         modal = PlannedOperationEditModal(operation=existing)
         assert modal._is_new is False
-
-
-class TestDetailPanelIntegration:
-    """Integration tests for the operation detail panel."""
-
-    async def test_detail_panel_shows_operation_on_highlight(self) -> None:
-        """Detail panel updates when an operation is highlighted."""
-        app = DetailPanelTestApp()
-        async with app.run_test():
-            detail = app.query_one(OperationDetailPanel)
-            assert detail._operation_id is not None
-
-    async def test_plan_button_visible_when_operation_highlighted(self) -> None:
-        """The 'Create planned operation' button is visible after highlight."""
-        app = DetailPanelTestApp()
-        async with app.run_test():
-            app.query_one("#btn-plan-operation")
-            # Button should be in the visible container
-            container = app.query_one("#action-buttons-container")
-            assert "hidden" not in container.classes
-
-    async def test_plan_button_posts_message(self) -> None:
-        """Pressing the plan button emits PlanOperationRequested."""
-        received: list[OperationDetailPanel.PlanOperationRequested] = []
-
-        class CapturingApp(DetailPanelTestApp):
-            """App that captures PlanOperationRequested messages."""
-
-            def on_operation_detail_panel_plan_operation_requested(
-                self, event: OperationDetailPanel.PlanOperationRequested
-            ) -> None:
-                """Capture the message."""
-                received.append(event)
-
-        app = CapturingApp()
-        async with app.run_test() as pilot:
-            btn = app.query_one("#btn-plan-operation")
-            btn.press()
-            await pilot.pause()
-            assert len(received) == 1
-            assert received[0].operation_id == 1
 
 
 class TestPrefilledPlannedOperation:

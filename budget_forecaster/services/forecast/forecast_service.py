@@ -72,6 +72,7 @@ class PlannedSourceDetail(TypedDict):
 class AttributedOperationDetail(TypedDict):
     """An operation attributed to a category in a month (link-aware)."""
 
+    operation_id: int
     operation_date: date
     description: str
     amount: float
@@ -656,6 +657,7 @@ class ForecastService:
             )
             operations.append(
                 AttributedOperationDetail(
+                    operation_id=op.unique_id,
                     operation_date=op.operation_date,
                     description=op.description,
                     amount=op.amount,

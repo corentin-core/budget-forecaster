@@ -41,6 +41,7 @@ class OperationTable(DataTable[str]):  # pylint: disable=too-many-instance-attri
     """A table widget for displaying operations with multi-selection support."""
 
     BINDINGS = [
+        Binding("enter", "open_detail", _("Detail"), show=True),
         Binding("space", "toggle_selection", _("Select"), show=True),
         Binding("shift+up", "extend_selection_up", _("Extend up"), show=False),
         Binding("shift+down", "extend_selection_down", _("Extend down"), show=False),
@@ -215,10 +216,13 @@ class OperationTable(DataTable[str]):  # pylint: disable=too-many-instance-attri
         return len(self._selected_ids)
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        """Handle row selection (Enter pressed)."""
-        if event.row_key is not None:
-            if operation := self._operations.get(str(event.row_key.value)):
-                self.post_message(self.OperationSelected(operation))
+        """Suppress default DataTable row-selected (fires on click too)."""
+        event.stop()
+
+    def action_open_detail(self) -> None:
+        """Open detail for the highlighted operation (Enter key only)."""
+        if operation := self.get_highlighted_operation():
+            self.post_message(self.OperationSelected(operation))
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         """Handle row highlight."""
