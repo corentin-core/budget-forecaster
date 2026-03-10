@@ -1043,6 +1043,12 @@ msgstr "Aucune opération pour cette catégorie"
 msgid "Error loading category detail"
 msgstr "Erreur lors du chargement du détail de la catégorie"
 
+msgid "linked to"
+msgstr "lié à"
+
+msgid "planned"
+msgstr "opération prévue"
+
 #: budget_forecaster/services/forecast/forecast_service.py — ordinals
 msgid "1st"
 msgstr "1er"

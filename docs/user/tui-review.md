@@ -90,10 +90,13 @@ and attributed operations for the selected category.
 │ Operations                                                                 │
 │ ────────────────────────────────────────────────────────────────────────── │
 │ 03/02  CB CARREFOUR CITY                                   -62.30 EUR      │
+│          → linked to budget: Courses                                       │
 │ 03/05  CB MONOPRIX                                         -45.80 EUR      │
+│          → linked to budget: Courses                                       │
 │ 03/09  CB LIDL                                             -38.50 EUR      │
 │ 02/27  CB AUCHAN                                           -55.20 EUR      │
-│        ← paid early (operation dated Feb 27)                               │
+│          ← paid early (operation dated Feb 27)                             │
+│          → linked to budget: Courses                                       │
 │ 03/12  CB PICARD                                           -28.40 EUR      │
 │ ────────────────────────────────────────────────────────────────────────── │
 │ Total actual                                              -230.20 EUR      │
@@ -113,6 +116,9 @@ and attributed operations for the selected category.
   Click on any operation row to open the
   [operation detail modal](tui-operations.md#operation-detail-modal) with full
   description and actions.
+- **Link indicators** — Linked operations display an annotation line showing the link
+  type (budget or planned operation) and the target name. Unlinked operations have no
+  annotation, making them visually distinct.
 - **Footer summary** — Planned / Actual / Forecast / Remaining at a glance
 
 ## Available Margin
