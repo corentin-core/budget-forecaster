@@ -768,6 +768,12 @@ msgstr "Aucun lien à supprimer"
 msgid "{} link(s) removed"
 msgstr "{} lien(s) supprimé(s)"
 
+msgid "Edit link"
+msgstr "Modifier le lien"
+
+msgid "Link removed"
+msgstr "Lien supprimé"
+
 # ============================================================
 # Frequency labels
 # ============================================================

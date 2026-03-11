@@ -1,6 +1,7 @@
 """Modal for displaying full operation details."""
 
 import logging
+from datetime import date
 from typing import Any
 
 from textual.app import ComposeResult
@@ -11,6 +12,7 @@ from textual.widgets import Button, Static
 from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.date_range import SingleDay
 from budget_forecaster.core.types import LinkType
+from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.exceptions import BudgetForecasterError
 from budget_forecaster.i18n import _
@@ -18,6 +20,8 @@ from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.tui.messages import DataRefreshRequested, SaveRequested
 from budget_forecaster.tui.modals.category import CategoryModal
 from budget_forecaster.tui.modals.edit_actions import EditAction
+from budget_forecaster.tui.modals.link_iteration import LinkIterationModal
+from budget_forecaster.tui.modals.link_target import LinkTargetModal
 from budget_forecaster.tui.modals.planned_operation_edit import (
     PlannedOperationEditModal,
 )
@@ -41,7 +45,7 @@ class OperationDetailModal(ModalScreen[bool]):
     }
 
     OperationDetailModal #modal-container {
-        width: 90;
+        width: 110;
         height: auto;
         max-height: 35;
         border: solid $primary;
@@ -95,6 +99,7 @@ class OperationDetailModal(ModalScreen[bool]):
         ("escape", "close", _("Close")),
         ("c", "change_category", _("Change category")),
         ("p", "plan_operation", _("Create planned operation")),
+        ("l", "link_operation", _("Link")),
     ]
 
     def __init__(
@@ -159,6 +164,11 @@ class OperationDetailModal(ModalScreen[bool]):
                     id="btn-plan-operation",
                     variant="default",
                 )
+                yield Button(
+                    self._link_button_label(),
+                    id="btn-link",
+                    variant="default",
+                )
                 yield Button(_("Close"), id="btn-close", variant="default")
 
     def on_mount(self) -> None:
@@ -175,6 +185,14 @@ class OperationDetailModal(ModalScreen[bool]):
         if target_name := self._find_target_name(link.target_type, link.target_id):
             return f"🔗 {target_name}"
         return "🔗"
+
+    def _has_link(self) -> bool:
+        """Check if the operation currently has a link."""
+        return self._app_service.get_link_for_operation(self._operation_id) is not None
+
+    def _link_button_label(self) -> str:
+        """Return the appropriate label for the link button."""
+        return _("Edit link") if self._has_link() else _("Link")
 
     def _find_target_name(self, target_type: LinkType, target_id: int) -> str:
         """Find the name of a link target."""
@@ -196,6 +214,8 @@ class OperationDetailModal(ModalScreen[bool]):
             self._change_category()
         elif event.button.id == "btn-plan-operation":
             self._plan_operation()
+        elif event.button.id == "btn-link":
+            self._link_operation()
 
     def _change_category(self) -> None:
         """Open category selection modal."""
@@ -281,3 +301,72 @@ class OperationDetailModal(ModalScreen[bool]):
     def action_plan_operation(self) -> None:
         """Keyboard shortcut for creating planned operation."""
         self._plan_operation()
+
+    def action_link_operation(self) -> None:
+        """Keyboard shortcut for linking operation."""
+        self._link_operation()
+
+    def _link_operation(self) -> None:
+        """Open link modal for the current operation."""
+        operation = self._app_service.get_operation_by_id(self._operation_id)
+        current_link = self._app_service.get_link_for_operation(operation.unique_id)
+        planned_operations = list(self._app_service.get_all_planned_operations())
+        budgets = list(self._app_service.get_all_budgets())
+
+        self.app.push_screen(
+            LinkTargetModal(
+                (operation,),
+                current_link,
+                planned_operations,
+                budgets,
+            ),
+            self._on_target_selected,
+        )
+
+    def _on_target_selected(
+        self, result: PlannedOperation | Budget | str | None
+    ) -> None:
+        """Handle target selection from link modal."""
+        if result is None:
+            return
+
+        if result == "unlink":
+            self._app_service.delete_link(self._operation_id)
+            self.app.notify(_("Link removed"))
+            self._mark_modified()
+            return
+
+        if isinstance(result, (PlannedOperation, Budget)):
+            operation = self._app_service.get_operation_by_id(self._operation_id)
+            self.app.push_screen(
+                LinkIterationModal(operation, result),
+                lambda iteration_date: self._on_iteration_selected(
+                    iteration_date, result
+                ),
+            )
+
+    def _on_iteration_selected(
+        self,
+        iteration_date: date | None,
+        target: PlannedOperation | Budget,
+    ) -> None:
+        """Handle iteration selection from link modal."""
+        if iteration_date is None:
+            return
+
+        if target.id is None:
+            self.app.notify(_("Invalid target"), severity="error")
+            return
+
+        operation = self._app_service.get_operation_by_id(self._operation_id)
+        self._app_service.create_manual_link(operation, target, iteration_date)
+        self.app.notify(_("Operation linked to '{}'").format(target.description))
+        self._mark_modified()
+
+    def _mark_modified(self) -> None:
+        """Mark data as modified, refresh link display, and notify."""
+        self._modified = True
+        self.query_one("#detail-link", Static).update(self._resolve_link_label())
+        self.query_one("#btn-link", Button).label = self._link_button_label()
+        self.post_message(DataRefreshRequested())
+        self.post_message(SaveRequested())

@@ -88,6 +88,10 @@ In the Operations tab, the "Lien" column shows linked operations:
 
 ### Creating a Link
 
+There are two ways to create or edit a link:
+
+#### From the Operations tab
+
 1. Select one or more operations in the Operations tab (see Multi-selection below)
 2. Press `L` to open the link modal
 3. Choose the target type (Planned Operation or Budget)
@@ -98,6 +102,17 @@ In the Operations tab, the "Lien" column shows linked operations:
 
 **Note:** When linking multiple operations, all are linked to the same target and
 iteration. This is useful for split payments or grouping similar transactions.
+
+#### From the Operation Detail Modal
+
+1. Press `Enter` on an operation to open its detail modal
+2. Click the "Link" button (or press `L`)
+3. Follow the same target selection and iteration flow
+4. The modal updates the link label and button text after changes
+
+If the operation already has a link, the button shows "Edit link" instead of "Link". You
+can also unlink from this modal by clicking "Supprimer le lien" in the target selection
+step.
 
 ### Multi-selection
 

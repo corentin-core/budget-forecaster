@@ -1,6 +1,6 @@
 """Tests for OperationDetailModal."""
 
-# pylint: disable=too-few-public-methods
+# pylint: disable=too-few-public-methods,protected-access
 
 from datetime import date
 from typing import Any
@@ -9,7 +9,7 @@ from unittest.mock import Mock
 import pytest
 from textual.app import App, ComposeResult
 from textual.containers import Container
-from textual.widgets import Static
+from textual.widgets import Button, Static
 
 from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.date_range import SingleDay
@@ -207,3 +207,164 @@ class TestOperationDetailActions:
             await pilot.pause()
 
             assert app.modal_result is False
+
+
+class TestOperationDetailLinkButton:
+    """Tests for the link button in operation detail modal."""
+
+    @pytest.mark.asyncio
+    async def test_shows_link_button_when_no_link(self) -> None:
+        """Shows 'Link' button when operation has no link."""
+        service = _make_app_service(link=None)
+
+        app = OperationDetailTestApp(service)
+        async with app.run_test() as pilot:
+            app.open_modal()
+            await pilot.pause()
+
+            btn = app.screen.query_one("#btn-link", Button)
+            assert str(btn.label) == "Link"
+
+    @pytest.mark.asyncio
+    async def test_shows_edit_link_button_when_linked(self) -> None:
+        """Shows 'Edit link' button when operation has a link."""
+        planned_op = PlannedOperation(
+            record_id=42,
+            description="Courses hebdo",
+            amount=Amount(-100.0, "EUR"),
+            category=Category.GROCERIES,
+            date_range=SingleDay(date(2025, 1, 15)),
+        )
+        link = OperationLink(
+            operation_unique_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=42,
+            iteration_date=date(2025, 1, 15),
+        )
+        service = _make_app_service(link=link, planned_ops=(planned_op,))
+
+        app = OperationDetailTestApp(service)
+        async with app.run_test() as pilot:
+            app.open_modal()
+            await pilot.pause()
+
+            btn = app.screen.query_one("#btn-link", Button)
+            assert str(btn.label) == "Edit link"
+
+    @pytest.mark.asyncio
+    async def test_unlink_refreshes_label_and_button(self) -> None:
+        """Unlinking refreshes link label to 'No link' and button to 'Link'."""
+        link = OperationLink(
+            operation_unique_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=42,
+            iteration_date=date(2025, 1, 15),
+        )
+        planned_op = PlannedOperation(
+            record_id=42,
+            description="Courses hebdo",
+            amount=Amount(-100.0, "EUR"),
+            category=Category.GROCERIES,
+            date_range=SingleDay(date(2025, 1, 15)),
+        )
+        service = _make_app_service(link=link, planned_ops=(planned_op,))
+
+        # After unlink, get_link_for_operation should return None
+        unlink_called = False
+
+        def delete_link_side_effect(_op_id: int) -> None:
+            nonlocal unlink_called
+            unlink_called = True
+            service.get_link_for_operation.return_value = None
+
+        service.delete_link = Mock(side_effect=delete_link_side_effect)
+
+        app = OperationDetailTestApp(service)
+        async with app.run_test() as pilot:
+            app.open_modal()
+            await pilot.pause()
+
+            modal = app.screen
+            # Simulate the _on_target_selected callback with "unlink"
+            modal._on_target_selected("unlink")
+            await pilot.pause()
+
+            assert unlink_called
+            link_widget = modal.query_one("#detail-link", Static)
+            assert "Courses hebdo" not in str(link_widget.content)
+            btn = modal.query_one("#btn-link", Button)
+            assert str(btn.label) == "Link"
+
+    @pytest.mark.asyncio
+    async def test_link_created_refreshes_label_and_button(self) -> None:
+        """Creating a link refreshes the link label and button text."""
+        service = _make_app_service(link=None)
+        op = service.get_operation_by_id.return_value
+
+        planned_op = PlannedOperation(
+            record_id=42,
+            description="Loyer",
+            amount=Amount(-800.0, "EUR"),
+            category=Category.RENT,
+            date_range=SingleDay(date(2025, 1, 1)),
+        )
+        service.get_all_planned_operations.return_value = (planned_op,)
+
+        # After link creation, get_link_for_operation returns the new link
+        new_link = OperationLink(
+            operation_unique_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=42,
+            iteration_date=date(2025, 1, 1),
+        )
+
+        def create_link_side_effect(
+            _operation: Any, _target: Any, _iteration_date: Any
+        ) -> None:
+            service.get_link_for_operation.return_value = new_link
+
+        service.create_manual_link = Mock(side_effect=create_link_side_effect)
+
+        app = OperationDetailTestApp(service)
+        async with app.run_test() as pilot:
+            app.open_modal()
+            await pilot.pause()
+
+            modal = app.screen
+            # Simulate the _on_iteration_selected callback
+            modal._on_iteration_selected(date(2025, 1, 1), planned_op)
+            await pilot.pause()
+
+            service.create_manual_link.assert_called_once_with(
+                op, planned_op, date(2025, 1, 1)
+            )
+            link_widget = modal.query_one("#detail-link", Static)
+            assert "Loyer" in str(link_widget.content)
+            btn = modal.query_one("#btn-link", Button)
+            assert str(btn.label) == "Edit link"
+
+    @pytest.mark.asyncio
+    async def test_unlink_posts_save_and_refresh_messages(self) -> None:
+        """Unlinking posts SaveRequested and DataRefreshRequested."""
+        link = OperationLink(
+            operation_unique_id=1,
+            target_type=LinkType.PLANNED_OPERATION,
+            target_id=42,
+            iteration_date=date(2025, 1, 15),
+        )
+        service = _make_app_service(link=link)
+        service.delete_link = Mock(
+            side_effect=lambda _: setattr(
+                service.get_link_for_operation, "return_value", None
+            )
+        )
+
+        app = OperationDetailTestApp(service)
+        async with app.run_test() as pilot:
+            app.open_modal()
+            await pilot.pause()
+
+            app.screen._on_target_selected("unlink")
+            await pilot.pause()
+
+            assert any(isinstance(m, SaveRequested) for m in app.received_messages)
