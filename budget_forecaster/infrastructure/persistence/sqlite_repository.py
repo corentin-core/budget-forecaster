@@ -39,7 +39,7 @@ from budget_forecaster.infrastructure.persistence.repository_interface import (
 logger = logging.getLogger(__name__)
 
 # Current schema version
-CURRENT_SCHEMA_VERSION = 6
+CURRENT_SCHEMA_VERSION = 7
 
 # Base schema (version 0 -> 1)
 SCHEMA_V1 = """
@@ -217,6 +217,12 @@ def _migrate_v5(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+# Schema migration v6 -> v7: add expense_breakdown_threshold setting
+SCHEMA_V7 = """
+INSERT OR IGNORE INTO settings (key, value) VALUES ('expense_breakdown_threshold', '2');
+"""
+
+
 class SqliteRepository(RepositoryInterface):
     """Repository for persisting account data in SQLite."""
 
@@ -229,6 +235,7 @@ class SqliteRepository(RepositoryInterface):
         4: (3, SCHEMA_V4),
         5: (4, _migrate_v5),
         6: (5, SCHEMA_V6),
+        7: (6, SCHEMA_V7),
     }
 
     def __init__(self, db_path: Path) -> None:

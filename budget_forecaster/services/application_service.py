@@ -390,6 +390,15 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
     def margin_threshold(self, threshold: float) -> None:
         self._forecast_service.margin_threshold = threshold
 
+    @property
+    def expense_breakdown_threshold(self) -> float:
+        """The expense breakdown threshold percentage."""
+        return self._forecast_service.expense_breakdown_threshold
+
+    @expense_breakdown_threshold.setter
+    def expense_breakdown_threshold(self, threshold: float) -> None:
+        self._forecast_service.expense_breakdown_threshold = threshold
+
     def get_available_margin(self, month: date) -> MarginInfo | None:
         """Get available margin for a given month.
 
