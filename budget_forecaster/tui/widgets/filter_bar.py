@@ -163,34 +163,31 @@ class FilterBar(Vertical):
                     id="filter-status-select",
                     allow_blank=False,
                 )
+            if self._show_date_range:
+                yield Static(_("From"), classes="range-label")
+                yield Input(
+                    placeholder="YYYY-MM-DD",
+                    id="filter-date-from",
+                )
+                yield Static(_("To"), classes="range-label")
+                yield Input(
+                    placeholder="YYYY-MM-DD",
+                    id="filter-date-to",
+                )
+            if self._show_amount_range:
+                yield Static(_("Min"), classes="range-label")
+                yield Input(
+                    placeholder=_("Amount"),
+                    id="filter-amount-min",
+                )
+                yield Static(_("Max"), classes="range-label")
+                yield Input(
+                    placeholder=_("Amount"),
+                    id="filter-amount-max",
+                )
             yield Button(_("Filter"), id="filter-apply")
             yield Button(_("Reset"), id="filter-reset", variant="default")
             yield Static("", id="filter-status", classes="filter-status")
-
-        if self._show_date_range or self._show_amount_range:
-            with Horizontal(id="filter-row-range"):
-                if self._show_date_range:
-                    yield Static(_("From"), classes="range-label")
-                    yield Input(
-                        placeholder="YYYY-MM-DD",
-                        id="filter-date-from",
-                    )
-                    yield Static(_("To"), classes="range-label")
-                    yield Input(
-                        placeholder="YYYY-MM-DD",
-                        id="filter-date-to",
-                    )
-                if self._show_amount_range:
-                    yield Static(_("Min"), classes="range-label")
-                    yield Input(
-                        placeholder=_("Amount"),
-                        id="filter-amount-min",
-                    )
-                    yield Static(_("Max"), classes="range-label")
-                    yield Input(
-                        placeholder=_("Amount"),
-                        id="filter-amount-max",
-                    )
 
     @property
     def search_text(self) -> str | None:

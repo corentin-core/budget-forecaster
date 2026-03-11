@@ -103,7 +103,7 @@ class TestOperationsScreenIntegration:
     async def test_filter_by_search_text(self) -> None:
         """Filtering by search text shows only matching operations."""
         app = OperationsScreenTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             app.query_one("#filter-search", Input).value = "carrefour"
             await pilot.click("#filter-apply")
 
@@ -114,7 +114,7 @@ class TestOperationsScreenIntegration:
     async def test_filter_by_category(self) -> None:
         """Filtering by category shows only matching operations."""
         app = OperationsScreenTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             app.query_one("#filter-category", Select).value = Category.GROCERIES.name
             await pilot.click("#filter-apply")
 
@@ -125,7 +125,7 @@ class TestOperationsScreenIntegration:
     async def test_combined_filters(self) -> None:
         """Combining search text and category narrows results further."""
         app = OperationsScreenTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             app.query_one("#filter-search", Input).value = "express"
             app.query_one("#filter-category", Select).value = Category.GROCERIES.name
             await pilot.click("#filter-apply")
@@ -137,7 +137,7 @@ class TestOperationsScreenIntegration:
     async def test_reset_restores_all_operations(self) -> None:
         """Resetting filters shows all operations again."""
         app = OperationsScreenTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             # Apply a filter first
             app.query_one("#filter-search", Input).value = "carrefour"
             await pilot.click("#filter-apply")
@@ -159,7 +159,7 @@ class TestOperationsScreenIntegration:
     async def test_filter_bar_shows_filtered_count(self) -> None:
         """Filter bar status shows filtered vs total count."""
         app = OperationsScreenTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             app.query_one("#filter-search", Input).value = "carrefour"
             await pilot.click("#filter-apply")
 
@@ -169,7 +169,7 @@ class TestOperationsScreenIntegration:
     async def test_filter_by_date_from(self) -> None:
         """Filtering by date_from excludes earlier operations."""
         app = OperationsScreenTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             app.query_one("#filter-date-from", Input).value = "2025-02-01"
             await pilot.click("#filter-apply")
 
@@ -184,7 +184,7 @@ class TestOperationsScreenIntegration:
     async def test_filter_by_date_to(self) -> None:
         """Filtering by date_to excludes later operations."""
         app = OperationsScreenTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             app.query_one("#filter-date-to", Input).value = "2025-01-31"
             await pilot.click("#filter-apply")
 
@@ -195,7 +195,7 @@ class TestOperationsScreenIntegration:
     async def test_filter_by_date_range(self) -> None:
         """Filtering by date range shows operations within the range."""
         app = OperationsScreenTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             app.query_one("#filter-date-from", Input).value = "2025-02-01"
             app.query_one("#filter-date-to", Input).value = "2025-03-31"
             await pilot.click("#filter-apply")
@@ -207,7 +207,7 @@ class TestOperationsScreenIntegration:
     async def test_filter_by_min_amount(self) -> None:
         """Filtering by min_amount excludes smaller amounts."""
         app = OperationsScreenTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             app.query_one("#filter-amount-min", Input).value = "-50"
             await pilot.click("#filter-apply")
 
@@ -222,7 +222,7 @@ class TestOperationsScreenIntegration:
     async def test_filter_by_max_amount(self) -> None:
         """Filtering by max_amount excludes larger amounts."""
         app = OperationsScreenTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             app.query_one("#filter-amount-max", Input).value = "-80"
             await pilot.click("#filter-apply")
 
@@ -233,7 +233,7 @@ class TestOperationsScreenIntegration:
     async def test_filter_by_amount_range(self) -> None:
         """Filtering by amount range narrows results."""
         app = OperationsScreenTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             app.query_one("#filter-amount-min", Input).value = "-90"
             app.query_one("#filter-amount-max", Input).value = "-40"
             await pilot.click("#filter-apply")
@@ -245,7 +245,7 @@ class TestOperationsScreenIntegration:
     async def test_combined_all_filters(self) -> None:
         """Combining search, category, date, and amount filters."""
         app = OperationsScreenTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             app.query_one("#filter-search", Input).value = "carrefour"
             app.query_one("#filter-category", Select).value = Category.GROCERIES.name
             app.query_one("#filter-date-from", Input).value = "2025-03-01"
@@ -258,7 +258,7 @@ class TestOperationsScreenIntegration:
     async def test_invalid_date_ignored(self) -> None:
         """Invalid date values are ignored (treated as no filter)."""
         app = OperationsScreenTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             app.query_one("#filter-date-from", Input).value = "invalid"
             await pilot.click("#filter-apply")
 
@@ -268,7 +268,7 @@ class TestOperationsScreenIntegration:
     async def test_invalid_amount_ignored(self) -> None:
         """Invalid amount values are ignored (treated as no filter)."""
         app = OperationsScreenTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             app.query_one("#filter-amount-min", Input).value = "abc"
             await pilot.click("#filter-apply")
 

@@ -26,22 +26,13 @@ class BudgetsWidget(Vertical):
         height: 1fr;
     }
 
-    BudgetsWidget #budgets-header {
-        height: 3;
+    BudgetsWidget #budgets-toolbar {
+        height: auto;
         margin-bottom: 1;
     }
 
-    BudgetsWidget #budgets-title {
-        width: 1fr;
-        padding: 0 1;
-    }
-
-    BudgetsWidget #budgets-buttons {
-        width: auto;
-    }
-
-    BudgetsWidget Button {
-        margin-left: 1;
+    BudgetsWidget #btn-add-budget {
+        margin-right: 1;
     }
 
     BudgetsWidget #budgets-table {
@@ -99,15 +90,9 @@ class BudgetsWidget(Vertical):
 
     def compose(self) -> ComposeResult:
         """Create the widget layout."""
-        with Horizontal(id="budgets-header"):
-            yield Static(_("Budgets"), id="budgets-title")
-            with Horizontal(id="budgets-buttons"):
-                yield Button(_("Add"), id="btn-add-budget", variant="primary")
-                yield Button(_("Edit"), id="btn-edit-budget", variant="default")
-                yield Button(_("Split"), id="btn-split-budget", variant="default")
-                yield Button(_("Delete"), id="btn-delete-budget", variant="error")
-
-        yield FilterBar(id="budgets-filter-bar", show_status_filter=True)
+        with Horizontal(id="budgets-toolbar"):
+            yield Button(_("Add"), id="btn-add-budget", variant="primary")
+            yield FilterBar(id="budgets-filter-bar", show_status_filter=True)
         yield DataTable(id="budgets-table")
         with Horizontal(id="budgets-status-bar"):
             yield Static("", id="budgets-status")
@@ -122,12 +107,11 @@ class BudgetsWidget(Vertical):
             _("Description"),
             _("Amount"),
             _("Category"),
-            _("Start"),
-            _("Duration"),
+            _("Date"),
             _("Period"),
             _("End"),
+            _("Duration"),
         )
-        self._update_button_states()
 
     @property
     def budgets(self) -> tuple[Budget, ...]:
@@ -157,7 +141,6 @@ class BudgetsWidget(Vertical):
         )
         self._populate_table()
         self._update_status()
-        self._update_button_states()
 
         filter_bar = self.query_one("#budgets-filter-bar", FilterBar)
         filter_bar.update_status(len(self._filtered_budgets), len(self._all_budgets))
@@ -210,15 +193,19 @@ class BudgetsWidget(Vertical):
                 period = "-"
                 end_date = time_range.last_date.strftime("%Y-%m-%d")
 
+            desc = budget.description
+            if len(desc) > 30:
+                desc = desc[:27] + "..."
+
             table.add_row(
-                str(budget.id),
-                budget.description,
-                f"{budget.amount:.2f} {budget.currency}",
-                budget.category.display_name,
+                f"{budget.id:<4}",
+                f"{desc:<30}",
+                f"{budget.amount:>10.2f} {budget.currency}",
+                f"{budget.category.display_name:<20}",
                 start_date,
+                f"{period:<6}",
+                f"{end_date:<10}",
                 duration,
-                period,
-                end_date,
                 key=str(budget.id),
             )
 
@@ -256,22 +243,8 @@ class BudgetsWidget(Vertical):
         count = len(self._filtered_budgets)
         status.update(_("{} budget(s) configured").format(count))
 
-    def _update_button_states(self) -> None:
-        """Update button enabled states based on selection."""
-        has_selection = self._selected_budget is not None
-        self.query_one("#btn-edit-budget", Button).disabled = not has_selection
-        self.query_one("#btn-delete-budget", Button).disabled = not has_selection
-
-        # Split is only available for periodic budgets
-        can_split = (
-            has_selection
-            and self._selected_budget is not None
-            and isinstance(self._selected_budget.date_range, RecurringDateRange)
-        )
-        self.query_one("#btn-split-budget", Button).disabled = not can_split
-
-    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        """Handle row selection in the data table."""
+    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        """Track the currently highlighted budget."""
         if event.row_key is None:
             self._selected_budget = None
         else:
@@ -279,8 +252,17 @@ class BudgetsWidget(Vertical):
             self._selected_budget = next(
                 (b for b in self._filtered_budgets if b.id == budget_id), None
             )
-        self._update_button_states()
         self.post_message(self.BudgetSelected(self._selected_budget))
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Open edit modal on Enter/click."""
+        if event.row_key is not None:
+            budget_id = int(str(event.row_key.value))
+            budget = next(
+                (b for b in self._filtered_budgets if b.id == budget_id), None
+            )
+            if budget:
+                self.post_message(self.BudgetEditRequested(budget))
 
     def on_filter_bar_filter_changed(self, event: FilterBar.FilterChanged) -> None:
         """Handle filter changes from the filter bar."""
@@ -302,14 +284,3 @@ class BudgetsWidget(Vertical):
         """Handle button presses."""
         if event.button.id == "btn-add-budget":
             self.post_message(self.BudgetEditRequested(None))
-        elif event.button.id == "btn-edit-budget":
-            if self._selected_budget:
-                self.post_message(self.BudgetEditRequested(self._selected_budget))
-        elif event.button.id == "btn-split-budget":
-            if self._selected_budget and isinstance(
-                self._selected_budget.date_range, RecurringDateRange
-            ):
-                self.post_message(self.BudgetSplitRequested(self._selected_budget))
-        elif event.button.id == "btn-delete-budget":
-            if self._selected_budget:
-                self.post_message(self.BudgetDeleteRequested(self._selected_budget))
