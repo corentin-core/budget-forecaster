@@ -276,7 +276,7 @@ def _collect_budget_sources(
     return tuple(sources)
 
 
-class ForecastService:
+class ForecastService:  # pylint: disable=too-many-public-methods
     """Service for generating and managing forecasts.
 
     This service handles forecast computation and CRUD operations for
@@ -477,6 +477,16 @@ class ForecastService:
     def margin_threshold(self, threshold: float) -> None:
         self._repository.set_setting("margin_threshold", str(threshold))
 
+    @property
+    def expense_breakdown_threshold(self) -> float:
+        """The expense breakdown threshold percentage (default 2%)."""
+        raw = self._repository.get_setting("expense_breakdown_threshold")
+        return float(raw) if raw is not None else 2.0
+
+    @expense_breakdown_threshold.setter
+    def expense_breakdown_threshold(self, threshold: float) -> None:
+        self._repository.set_setting("expense_breakdown_threshold", str(threshold))
+
     def get_balance_evolution_summary(self) -> list[tuple[date, float]]:
         """Get a summary of balance evolution for display.
 
@@ -644,7 +654,7 @@ class ForecastService:
             total_planned=total_planned,
             total_actual=total_actual,
             forecast=forecast_value,
-            remaining=abs(forecast_value) - abs(total_actual),
+            remaining=forecast_value - total_actual,
             is_income=ref > 0,
         )
 

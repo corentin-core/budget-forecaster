@@ -67,22 +67,33 @@ class ThresholdEditModal(ModalScreen[float | None]):
 
     BINDINGS = [("escape", "cancel", _("Cancel"))]
 
-    def __init__(self, current_threshold: float, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        current_threshold: float,
+        *,
+        title: str = "",
+        unit: str = "",
+        **kwargs: Any,
+    ) -> None:
         """Initialize the threshold edit modal.
 
         Args:
             current_threshold: Current threshold value to pre-fill.
+            title: Modal title. Defaults to "Edit margin threshold".
+            unit: Unit label shown next to the input. Defaults to currency symbol.
         """
         super().__init__(**kwargs)
         self._current_threshold = current_threshold
+        self._title = title or _("Edit margin threshold")
+        self._unit = unit or DisplaySymbol.EURO
 
     def compose(self) -> ComposeResult:
         with Vertical(id="modal-container"):
-            yield Static(_("Edit margin threshold"), id="modal-title")
+            yield Static(self._title, id="modal-title")
 
             with Horizontal(classes="form-row"):
                 yield Label(
-                    f"{_('Threshold')} ({DisplaySymbol.EURO})",
+                    f"{_('Threshold')} ({self._unit})",
                     classes="form-label",
                 )
                 yield Input(

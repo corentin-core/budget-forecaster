@@ -1178,3 +1178,40 @@ msgstr "Sélectionnez d'abord une opération"
 
 msgid "Link created with source operation"
 msgstr "Lien créé avec l'opération source"
+
+# ============================================================
+# Analytics / Expense breakdown
+# ============================================================
+
+msgid "Analytics"
+msgstr "Statistiques"
+
+msgid "Balance evolution"
+msgstr "Évolution du solde"
+
+msgid "Expense breakdown"
+msgstr "Répartition des dépenses"
+
+msgid "No expense data for this period"
+msgstr "Aucune donnée de dépense pour cette période"
+
+msgid "Period: {} — {} ({} months) — monthly average"
+msgstr "Période : {} — {} ({} mois) — moyenne mensuelle"
+
+msgid "Total"
+msgstr "Total"
+
+msgid "Other"
+msgstr "Autres"
+
+msgid "Y"
+msgstr "A"
+
+msgid "M"
+msgstr "M"
+
+msgid "Avg/mo"
+msgstr "Moy/mois"
+
+msgid "Edit breakdown threshold"
+msgstr "Modifier le seuil de regroupement"
