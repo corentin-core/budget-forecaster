@@ -13,3 +13,5 @@ site/
 coverage.xml
 .serena/
 *.xlsx
+.claude/
+CLAUDE.md
