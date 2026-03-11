@@ -101,7 +101,7 @@ class AccountAnalysisRendererExcel(AccountAnalysisRenderer):
             report.balance_date, report.balance_evolution_per_day
         )
         self._add_expenses_forecast(report.budget_forecast)
-        self._add_expenses_statistics(report.budget_statistics)
+        self._add_expenses_statistics(report.budget_statistics.data)
         self._add_operations(report.operations)
         self._add_forecast(report.forecast)
 

@@ -573,7 +573,7 @@ class TestGetCategoryStatistics:
         )
 
         mock_report = MagicMock()
-        mock_report.budget_statistics = df
+        mock_report.budget_statistics.data = df
 
         mock_analyzer = MagicMock()
         mock_analyzer.compute_report.return_value = mock_report

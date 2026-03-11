@@ -5,6 +5,18 @@ from typing import NamedTuple
 import pandas as pd
 
 
+class BudgetStatistics(NamedTuple):
+    """Budget statistics with the effective analysis period.
+
+    The analysis period may differ from the requested period because
+    incomplete months are trimmed.
+    """
+
+    data: pd.DataFrame
+    analysis_start: date
+    analysis_end: date
+
+
 class AccountAnalysisReport(NamedTuple):
     """
     A class to represent an account analysis report.
@@ -17,4 +29,4 @@ class AccountAnalysisReport(NamedTuple):
     forecast: pd.DataFrame
     balance_evolution_per_day: pd.DataFrame
     budget_forecast: pd.DataFrame
-    budget_statistics: pd.DataFrame
+    budget_statistics: BudgetStatistics

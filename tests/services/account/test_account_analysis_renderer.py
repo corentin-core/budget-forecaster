@@ -12,6 +12,7 @@ from budget_forecaster.services.account.account_analysis_renderer import (
 )
 from budget_forecaster.services.account.account_analysis_report import (
     AccountAnalysisReport,
+    BudgetStatistics,
 )
 
 
@@ -69,12 +70,16 @@ def sample_report() -> AccountAnalysisReport:
     budget_forecast.columns = pd.MultiIndex.from_tuples(budget_forecast.columns)
 
     # Budget statistics: indexed by category
-    budget_statistics = pd.DataFrame(
-        {
-            "Total": [-800.0, -100.0, 2500.0],
-            "Monthly average": [-800.0, -100.0, 2500.0],
-        },
-        index=[Category.RENT, Category.GROCERIES, Category.SALARY],
+    budget_statistics = BudgetStatistics(
+        data=pd.DataFrame(
+            {
+                "Total": [-800.0, -100.0, 2500.0],
+                "Monthly average": [-800.0, -100.0, 2500.0],
+            },
+            index=[Category.RENT, Category.GROCERIES, Category.SALARY],
+        ),
+        analysis_start=start_date,
+        analysis_end=end_date,
     )
 
     return AccountAnalysisReport(
@@ -227,7 +232,11 @@ class TestAccountAnalysisRendererExcel:
                 index=pd.date_range("2025-01-01", periods=1, freq="D"),
             ),
             budget_forecast=pd.DataFrame(),
-            budget_statistics=pd.DataFrame(columns=["Total", "Monthly average"]),
+            budget_statistics=BudgetStatistics(
+                data=pd.DataFrame(columns=["Total", "Monthly average"]),
+                analysis_start=date(2025, 1, 1),
+                analysis_end=date(2025, 3, 31),
+            ),
         )
 
         output_path = tmp_path / "empty_report.xlsx"

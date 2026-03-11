@@ -22,6 +22,7 @@ from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.services.account.account_analysis_report import (
     AccountAnalysisReport,
+    BudgetStatistics,
 )
 from budget_forecaster.services.account.account_forecaster import AccountForecaster
 from budget_forecaster.services.forecast.forecast_actualizer import ForecastActualizer
@@ -436,12 +437,16 @@ class AccountAnalyzer:
 
     def compute_budget_statistics(
         self, start_date: date, end_date: date
-    ) -> pd.DataFrame:
+    ) -> BudgetStatistics:
         """Compute the expenses statistics per category."""
         if not self._account.operations:
-            return pd.DataFrame(
-                columns=["Category", "Total", "Monthly average"]
-            ).set_index("Category")
+            return BudgetStatistics(
+                data=pd.DataFrame(
+                    columns=["Category", "Total", "Monthly average"]
+                ).set_index("Category"),
+                analysis_start=start_date,
+                analysis_end=end_date,
+            )
 
         expenses_per_category_dict: dict[Category, list[tuple[date, float]]] = {}
         analysis_start = max(
@@ -494,4 +499,8 @@ class AccountAnalyzer:
         )
         df.set_index("Category", inplace=True)
         df = df.round(2)
-        return df
+        return BudgetStatistics(
+            data=df,
+            analysis_start=analysis_start,
+            analysis_end=analysis_end,
+        )

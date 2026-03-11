@@ -593,7 +593,7 @@ class ForecastService:  # pylint: disable=too-many-public-methods
         if self._report is None:
             return []
 
-        df = self._report.budget_statistics
+        df = self._report.budget_statistics.data
         return [
             (str(cat), float(row["Total"]), float(row["Monthly average"]))
             for cat, row in df.iterrows()

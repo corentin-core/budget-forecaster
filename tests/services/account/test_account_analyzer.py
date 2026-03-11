@@ -485,10 +485,12 @@ class TestComputeBudgetStatistics:
             operations=(),
         )
         analyzer = AccountAnalyzer(empty_account, Forecast((), ()))
-        df = analyzer.compute_budget_statistics(date(2023, 1, 1), date(2023, 12, 31))
-        assert len(df) == 0
-        assert "Total" in df.columns
-        assert "Monthly average" in df.columns
+        stats = analyzer.compute_budget_statistics(date(2023, 1, 1), date(2023, 12, 31))
+        assert len(stats.data) == 0
+        assert "Total" in stats.data.columns
+        assert "Monthly average" in stats.data.columns
+        assert stats.analysis_start == date(2023, 1, 1)
+        assert stats.analysis_end == date(2023, 12, 31)
 
     def test_statistics_across_complete_months(self) -> None:
         """Statistics are computed only for complete months.
@@ -542,8 +544,11 @@ class TestComputeBudgetStatistics:
             operations=operations,
         )
         analyzer = AccountAnalyzer(test_account, Forecast((), ()))
-        df = analyzer.compute_budget_statistics(date(2023, 1, 1), date(2023, 4, 1))
+        stats = analyzer.compute_budget_statistics(date(2023, 1, 1), date(2023, 4, 1))
+        df = stats.data
         # Analysis covers Jan 1 to Feb 28 → Jan and Feb operations included
+        assert stats.analysis_start == date(2023, 1, 1)
+        assert stats.analysis_end == date(2023, 2, 28)
         assert str(Category.GROCERIES) in df.index
         assert str(Category.RENT) in df.index
         # Groceries: Jan (-100) + Feb (-120) = -220
@@ -586,12 +591,15 @@ class TestComputeBudgetStatistics:
             operations=operations,
         )
         analyzer = AccountAnalyzer(test_account, Forecast((), ()))
-        df = analyzer.compute_budget_statistics(date(2023, 1, 1), date(2023, 4, 1))
+        stats = analyzer.compute_budget_statistics(date(2023, 1, 1), date(2023, 4, 1))
+        df = stats.data
         # Analysis: max(min_op_date=2022-06-01, start=2023-01-01) = 2023-01-01
         #   Jan 1 is day 1 → kept as-is
         # Analysis end: min(max_op_date=2023-03-01, end=2023-04-01) = 2023-03-01
         #   Mar 1 is day 1 → kept as-is
         # Range: 2023-01-01 to 2023-03-01 → covers Jan and Feb
+        assert stats.analysis_start == date(2023, 1, 1)
+        assert stats.analysis_end == date(2023, 3, 1)
         assert df.loc[str(Category.GROCERIES)]["Total"] == pytest.approx(-155.0)
 
     def test_single_incomplete_month(self) -> None:
@@ -617,11 +625,12 @@ class TestComputeBudgetStatistics:
             operations=operations,
         )
         analyzer = AccountAnalyzer(test_account, Forecast((), ()))
-        df = analyzer.compute_budget_statistics(date(2023, 3, 1), date(2023, 3, 31))
+        stats = analyzer.compute_budget_statistics(date(2023, 3, 1), date(2023, 3, 31))
         # analysis_start = max(2023-03-15, 2023-03-01) = Mar 15 → trimmed to Apr 1
         # analysis_end = min(2023-03-15, 2023-03-31) = Mar 15 → trimmed to Feb 28
         # Apr 1 > Feb 28 → no operations qualify
-        assert len(df) == 0
+        assert len(stats.data) == 0
+        assert stats.analysis_start > stats.analysis_end
 
     def test_zero_months_included_in_average(self) -> None:
         """Months with no operations count as 0 in the monthly average.
@@ -662,10 +671,13 @@ class TestComputeBudgetStatistics:
             operations=operations,
         )
         analyzer = AccountAnalyzer(test_account, Forecast((), ()))
-        df = analyzer.compute_budget_statistics(date(2023, 1, 1), date(2023, 5, 1))
+        stats = analyzer.compute_budget_statistics(date(2023, 1, 1), date(2023, 5, 1))
+        df = stats.data
         # analysis_start = max(Jan 1, Jan 1) = Jan 1 (day 1 → kept)
         # analysis_end = min(Apr 30, May 1) = Apr 30 (not day 1 → Mar 31)
         # Range: Jan 1 to Mar 31 → months Jan, Feb, Mar
+        assert stats.analysis_start == date(2023, 1, 1)
+        assert stats.analysis_end == date(2023, 3, 31)
         # Groceries: Jan=-100, Feb=0, Mar=-100 → total=-200, avg=-200/3≈-66.67
         assert df.loc[str(Category.GROCERIES)]["Total"] == pytest.approx(-200.0)
         assert df.loc[str(Category.GROCERIES)]["Monthly average"] == pytest.approx(
@@ -708,6 +720,8 @@ class TestComputeReport:
         # Budget forecast has multi-level columns
         assert report.budget_forecast.columns.nlevels == 2
 
-        # Budget statistics has expected columns
-        assert "Total" in report.budget_statistics.columns
-        assert "Monthly average" in report.budget_statistics.columns
+        # Budget statistics has expected columns and exposes analysis period
+        assert "Total" in report.budget_statistics.data.columns
+        assert "Monthly average" in report.budget_statistics.data.columns
+        assert isinstance(report.budget_statistics.analysis_start, date)
+        assert isinstance(report.budget_statistics.analysis_end, date)
