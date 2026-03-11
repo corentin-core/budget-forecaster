@@ -84,13 +84,13 @@ class OperationDetailModal(ModalScreen[bool]):
         color: $text-muted;
     }
 
-    OperationDetailModal #buttons-row {
+    OperationDetailModal .buttons-row {
         height: 3;
         margin-top: 1;
         align: right middle;
     }
 
-    OperationDetailModal #buttons-row Button {
+    OperationDetailModal .buttons-row Button {
         margin-left: 1;
     }
     """
@@ -155,7 +155,7 @@ class OperationDetailModal(ModalScreen[bool]):
                     id="detail-link",
                 )
 
-            with Horizontal(id="buttons-row"):
+            with Horizontal(classes="buttons-row"):
                 yield Button(
                     _("Change category"), id="btn-change-category", variant="primary"
                 )
@@ -164,6 +164,7 @@ class OperationDetailModal(ModalScreen[bool]):
                     id="btn-plan-operation",
                     variant="default",
                 )
+            with Horizontal(classes="buttons-row"):
                 yield Button(
                     self._link_button_label(),
                     id="btn-link",
