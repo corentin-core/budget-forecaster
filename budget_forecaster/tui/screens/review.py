@@ -42,19 +42,23 @@ class _BarChar(enum.StrEnum):
 
 
 def _format_amount(value: float) -> Text:
-    """Format an amount as absolute value with currency, right-aligned."""
-    return Text(f"{abs(value):,.0f} {DisplaySymbol.EURO}", justify="right")
+    """Format a signed amount with currency, right-aligned."""
+    return Text(f"{value:+,.0f} {DisplaySymbol.EURO}", justify="right")
 
 
 def _format_remaining(projected: float, actual: float) -> Text:
     """Format the Remaining column (Projected - Actual)."""
-    if (remaining := abs(projected) - abs(actual)) == 0:
+    if (remaining := projected - actual) == 0:
         return Text(f"0 {DisplaySymbol.EURO}", justify="right")
-    sign = "+" if remaining > 0 else ""
-    return Text(f"{sign}{remaining:,.0f} {DisplaySymbol.EURO}", justify="right")
+    return Text(f"{remaining:+,.0f} {DisplaySymbol.EURO}", justify="right")
 
 
-def _render_consumption_bar(actual: float, planned: float) -> Text:
+_CONSUMPTION_TOLERANCE = 1.01  # 1% tolerance before alerting
+
+
+def _render_consumption_bar(
+    actual: float, planned: float, *, is_income: bool = False
+) -> Text:
     """Render an ASCII consumption bar with color."""
     if planned == 0:
         return Text("")
@@ -63,15 +67,24 @@ def _render_consumption_bar(actual: float, planned: float) -> Text:
     bar_width = 10
     filled = min(bar_width, int(ratio * bar_width))
     empty = bar_width - filled
-    is_over = ratio > 1.0
+    is_over = ratio > _CONSUMPTION_TOLERANCE
 
-    style = "red" if is_over else "green"
+    # Opposite signs (e.g. expected reimbursement but got expense): always bad
+    if (planned > 0) != (actual > 0) and actual != 0:
+        is_bad = planned > 0 > actual
+    else:
+        # Alert when things go wrong: expense over budget OR income under expected
+        is_bad = (is_over and not is_income) or (
+            not is_over and is_income and ratio < 1.0 / _CONSUMPTION_TOLERANCE
+        )
+    style = "red" if is_bad else "green"
     pct_str = f"{ratio * 100:.0f}%"
 
     result = Text("[")
     result.append(_BarChar.FILLED * filled, style=style)
     if is_over:
-        result.append(_BarChar.OVER_BUDGET, style="bold red")
+        over_style = "bold red" if is_bad else "bold green"
+        result.append(_BarChar.OVER_BUDGET, style=over_style)
         empty = max(0, empty - 1)
     result.append(_BarChar.EMPTY * empty)
     result.append("]")
@@ -395,7 +408,11 @@ class ReviewWidget(Vertical):
                         cat_data["forecast"],
                         cat_data["actual"],
                     ),
-                    _render_consumption_bar(cat_data["actual"], cat_data["planned"]),
+                    _render_consumption_bar(
+                        cat_data["actual"],
+                        cat_data["planned"],
+                        is_income=cat_data["is_income"],
+                    ),
                 )
                 self._row_to_category[row_key] = cat_name
 
@@ -417,7 +434,7 @@ class ReviewWidget(Vertical):
                     _format_amount(cat_data["actual"]),
                     _format_amount(cat_data["forecast"]),
                     Text("--", justify="right"),
-                    Text(f"{abs(cat_data['actual']):,.0f} {DisplaySymbol.EURO}"),
+                    Text(f"{cat_data['actual']:+,.0f} {DisplaySymbol.EURO}"),
                 )
                 self._row_to_category[row_key] = cat_name
 
@@ -431,21 +448,17 @@ class ReviewWidget(Vertical):
         total_planned = sum(c["planned"] for c in categories.values())
         total_actual = sum(c["actual"] for c in categories.values())
         total_projected = sum(c["forecast"] for c in categories.values())
-        total_remaining = abs(total_projected) - abs(total_actual)
-
-        sign = "+" if total_remaining > 0 else ""
+        total_remaining = total_projected - total_actual
         euro = DisplaySymbol.EURO
         remaining_text = (
-            f"{sign}{total_remaining:,.0f} {euro}"
-            if total_remaining != 0
-            else f"0 {euro}"
+            f"{total_remaining:+,.0f} {euro}" if total_remaining != 0 else f"0 {euro}"
         )
 
         table.add_row(
             Text(_("TOTAL"), style="bold"),
-            Text(f"{total_planned:,.0f} {euro}", justify="right", style="bold"),
-            Text(f"{total_actual:,.0f} {euro}", justify="right", style="bold"),
-            Text(f"{total_projected:,.0f} {euro}", justify="right", style="bold"),
+            Text(f"{total_planned:+,.0f} {euro}", justify="right", style="bold"),
+            Text(f"{total_actual:+,.0f} {euro}", justify="right", style="bold"),
+            Text(f"{total_projected:+,.0f} {euro}", justify="right", style="bold"),
             Text(remaining_text, justify="right", style="bold"),
             Text(""),
         )

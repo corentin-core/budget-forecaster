@@ -662,9 +662,7 @@ class TestGetCategoryDetail:
 
         assert detail["total_actual"] == -320.0
         # Without a cached report, projected = total_actual
-        assert detail["remaining"] == abs(detail["forecast"]) - abs(
-            detail["total_actual"]
-        )
+        assert detail["remaining"] == detail["forecast"] - detail["total_actual"]
 
     def test_source_id_present_in_planned_sources(
         self, repository: RepositoryInterface
@@ -920,7 +918,7 @@ class TestGetCategoryDetail:
         # With report cached, forecast comes from the DataFrame
         # (planned + unforecasted actual = -500 + -320 = -820)
         assert detail["forecast"] == -820.0
-        assert detail["remaining"] == abs(-820.0) - abs(-320.0)
+        assert detail["remaining"] == -820.0 - (-320.0)
 
     def test_forecast_falls_back_to_actual_when_report_zero(
         self, repository: RepositoryInterface

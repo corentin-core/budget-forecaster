@@ -1,5 +1,6 @@
 """Modal for displaying full operation details."""
 
+import logging
 from typing import Any
 
 from textual.app import ComposeResult
@@ -11,14 +12,18 @@ from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.date_range import SingleDay
 from budget_forecaster.core.types import LinkType
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.exceptions import BudgetForecasterError
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.tui.messages import DataRefreshRequested, SaveRequested
 from budget_forecaster.tui.modals.category import CategoryModal
+from budget_forecaster.tui.modals.edit_actions import EditAction
 from budget_forecaster.tui.modals.planned_operation_edit import (
     PlannedOperationEditModal,
 )
 from budget_forecaster.tui.symbols import DisplaySymbol
+
+logger = logging.getLogger(__name__)
 
 
 class OperationDetailModal(ModalScreen[bool]):
@@ -237,9 +242,33 @@ class OperationDetailModal(ModalScreen[bool]):
 
     def _on_planned_operation_created(self, result: Any) -> None:
         """Handle planned operation creation result."""
-        if result is not None:
+        if result is None or isinstance(result, EditAction):
+            return
+
+        try:
+            saved_op = self._app_service.add_planned_operation(result)
+            self.app.notify(_("Operation '{}' created").format(saved_op.description))
+
+            # Create automatic link between historic and planned operation
+            operation = self._app_service.get_operation_by_id(self._operation_id)
+            if saved_op.id is not None:
+                self._app_service.create_manual_link(
+                    operation, saved_op, operation.operation_date
+                )
+                self.app.notify(_("Link created with source operation"))
+
             self._modified = True
             self.post_message(DataRefreshRequested())
+            self.post_message(SaveRequested())
+
+            # Refresh displayed link
+            self.query_one("#detail-link", Static).update(self._resolve_link_label())
+        except BudgetForecasterError as exc:
+            logger.error("Error creating planned operation: %s", exc)
+            self.app.notify(_("Error: {}").format(exc), severity="error")
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.exception("Unexpected error creating planned operation")
+            self.app.notify(_("An unexpected error occurred"), severity="error")
 
     def action_close(self) -> None:
         """Close the modal."""
