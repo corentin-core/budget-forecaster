@@ -58,9 +58,10 @@ class CategoryDetailModal(ModalScreen[None]):
     }
 
     CategoryDetailModal #modal-container {
-        width: 80;
+        width: 85;
         height: auto;
         max-height: 40;
+        overflow-y: auto;
         border: solid $primary;
         background: $surface;
         padding: 1 2;
@@ -316,13 +317,12 @@ class CategoryDetailModal(ModalScreen[None]):
     def _build_footer_summary(detail: CategoryDetail) -> str:
         """Build the footer summary line."""
         remaining = detail["remaining"]
-        sign = "+" if remaining > 0 else ""
-        remaining_str = f"{sign}{remaining:,.0f}" if remaining != 0 else "0"
+        remaining_str = f"{remaining:+,.0f}" if remaining != 0 else "0"
         euro = DisplaySymbol.EURO
         return (
-            f"{_('Planned')}: {abs(detail['total_planned']):,.0f} {euro} / "
-            f"{_('Actual')}: {abs(detail['total_actual']):,.0f} {euro} / "
-            f"{_('Forecast')}: {abs(detail['forecast']):,.0f} {euro} / "
+            f"{_('Planned')}: {detail['total_planned']:+,.0f} {euro} / "
+            f"{_('Actual')}: {detail['total_actual']:+,.0f} {euro} / "
+            f"{_('Forecast')}: {detail['forecast']:+,.0f} {euro} / "
             f"{_('Remaining')}: {remaining_str} {euro}"
         )
 
