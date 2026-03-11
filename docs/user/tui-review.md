@@ -15,17 +15,17 @@ and available margin panel on the right.
 │ Category        Planned Actual Forecast Rem.│ Available margin: 1,240 EUR    │
 ├─────────────────────────────────────────────┤ Minimum threshold:   500 EUR   │
 │ Forecasted                                  │                                │
-│ ↓ Rent            950    952    952     -2  │ Balance at Mar 1: 2,800 EUR    │
-│ ↓ Groceries       450    280    450    170  │ Lowest balance:   1,740 EUR    │
-│ ↓ Electricity      75     72     72      3  │   (Mar 29, 2026)               │
-│ ↓ Entertainment   120     45    120     75  │                                │
-│ ↓ Spotify          11     11     11      0  │ = the most you can spend       │
-│ ↑ Salary         3200   3200   3200      0  │   freely without going below   │
+│ ↓ Rent           -950   -952   -952     -2  │ Balance at Mar 1: 2,800 EUR    │
+│ ↓ Groceries      -450   -280   -450   -170  │ Lowest balance:   1,740 EUR    │
+│ ↓ Electricity     -75    -72    -72     -3  │   (Mar 29, 2026)               │
+│ ↓ Entertainment  -120    -45   -120    -75  │                                │
+│ ↓ Spotify         -11    -11    -11      0  │ = the most you can spend       │
+│ ↑ Salary        +3200  +3200  +3200      0  │   freely without going below   │
 │                                             │   500 EUR                      │
 │ Unforecasted                                │                                │
-│ ↓ Uncategorized     -     25     25     --  │                        [Edit]  │
+│ ↓ Uncategorized     -    -25    -25     --  │                        [Edit]  │
 │                                             │                                │
-│ TOTAL           -1606  -1385  -1606   -221  │                                │
+│ TOTAL           -1606  -1385  -1606   +221  │                                │
 ├─────────────────────────────────────────────┴────────────────────────────────┤
 │  , Previous   ; Next   Enter Detail   E Threshold   R Refresh                │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -37,25 +37,28 @@ Use the `◀` / `▶` buttons or keyboard shortcuts to browse months. The review
 the current month by default.
 
 The forecast is auto-computed when opening the tab for the first time. The result is
-cached and shared with the Balance tab — switching between the two does not recompute.
+cached and shared with the Analytics tab — switching between the two does not recompute.
 
 ## Column Explanations
 
 | Column      | Description                                                                 |
 | ----------- | --------------------------------------------------------------------------- |
 | Category    | Spending/income category with direction indicator (↓ expense, ↑ income)     |
-| Planned     | Total amount from planned operations and budgets for this month             |
-| Actual      | Sum of real bank operations linked to this category                         |
+| Planned     | Total signed amount from planned operations and budgets for this month      |
+| Actual      | Sum of real bank operations linked to this category (signed)                |
 | Forecast    | Projected amount accounting for links (actual if linked, planned otherwise) |
-| Remaining   | Forecast minus Actual — how much is left to spend or receive                |
+| Remaining   | Forecast minus Actual — positive means under budget, negative means over    |
 | Consumption | Visual progress bar showing Actual / Planned ratio                          |
 
 ### Consumption Bar
 
 The consumption bar uses a 10-character progress bar:
 
-- **Green** — Under budget (ratio ≤ 100%)
-- **Red with `!`** — Over budget (ratio > 100%)
+- **Green** — On track (expenses under budget, income meeting expectations)
+- **Red with `!`** — Alert (expenses over budget, or income below expected)
+- A **1% tolerance** is applied before triggering the alert state
+- When planned and actual have **opposite signs** (e.g. expected a reimbursement but got
+  an expense), the bar is always red
 
 Example: `[▓▓▓▓▓▓░░░░] 60%` means 60% of the planned amount has been spent.
 
@@ -101,7 +104,7 @@ and attributed operations for the selected category.
 │ ────────────────────────────────────────────────────────────────────────── │
 │ Total actual                                              -230.20 EUR      │
 │                                                                            │
-│ Planned: 450 EUR / Actual: 230 EUR / Forecast: 450 EUR / Remaining: 220    │
+│ Planned: -450 EUR / Actual: -230 EUR / Forecast: -450 EUR / Remaining: -220 │
 │                                                                            │
 │                                                                  [Close]   │
 └────────────────────────────────────────────────────────────────────────────┘

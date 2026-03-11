@@ -2,21 +2,19 @@
 
 The Dashboard is the first screen displayed when launching the application. It provides
 an at-a-glance overview of your financial situation: account balance, upcoming planned
-operations, expense breakdown, and recent transactions.
+operations, and expense breakdown.
 
 ## Layout
 
-The dashboard is composed of four sections, from top to bottom:
+The dashboard is composed of three sections, from top to bottom:
 
-1. **Summary statistics** — Balance, monthly operations count, monthly expenses,
-   uncategorized count
+1. **Summary statistics** — Balance, recent operations count, uncategorized count
 2. **Upcoming planned operations** — Next 30 days of scheduled transactions
 3. **Expenses by category** — Current month breakdown with progress bars
-4. **Recent operations table** — Last 3 months of bank transactions
 
 ```
 ┌────────────────────────┬─────────────────────────┬──────────────────────────┐
-│ Balance: 1,234.56 EUR  │ Operations this month: 7│ Uncategorized: 3         │
+│ Balance: 1,234.56 EUR  │ Last 3 months: 42 ops   │ Uncategorized: 3         │
 ├────────────────────────┴─────────────────────────┴──────────────────────────┤
 │ Upcoming planned operations (next 30 days)                                  │
 │ Date       Description                  Amount           Period             │
@@ -28,14 +26,7 @@ The dashboard is composed of four sections, from top to bottom:
 │ Rent                            -800.00 €   ████████████████████            │
 │ Groceries                       -320.50 €   ████████                        │
 │ Electricity                      -95.00 €   ██                              │
-├──────────┬──────────────────────────────┬───────────┬────────────┬──────────┤
-│ Date     │ Description                  │ Amount    │ Category   │ Link     │
-├──────────┼──────────────────────────────┼───────────┼────────────┼──────────┤
-│ 02/03/25 │ TRANSFER LANDLORD            │  -800.00€ │ Rent       │ 🔗 Rent  │
-│ 01/03/25 │ SUPERMARKET CARREFOUR        │   -45.20€ │ Groceries  │          │
-│ 28/02/25 │ SALARY COMPANY               │ +2500.00€ │ Salary     │ 🔗 Sal.  │
-│ ...      │                              │           │            │          │
-└──────────┴──────────────────────────────┴───────────┴────────────┴──────────┘
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Summary Statistics
@@ -82,26 +73,9 @@ row displays:
 
 Only negative amounts (expenses) are shown. Income categories are excluded.
 
-## Recent Operations Table
-
-The bottom section displays a standard operations table covering the last 3 months. It
-supports the same interactions as the Operations tab:
-
-- Row navigation with arrow keys
-- Press `Enter` on any operation to open the
-  [operation detail modal](tui-operations.md#operation-detail-modal) with full
-  description and actions
-- Multi-selection with `Space`, `Shift+↑/↓`, `Ctrl+A`
-- Categorization with `C` and linking with `L`
-
-See [Managing Operations](tui-operations.md) for the full keyboard shortcuts and
-workflow documentation.
-
 ## Keyboard Shortcuts
 
-| Key | Action                                       |
-| --- | -------------------------------------------- |
-| `R` | Refresh all dashboard data                   |
-| `C` | Categorize selected operation(s)             |
-| `L` | Link selected operation(s) to a planned item |
-| `Q` | Quit the application                         |
+| Key | Action                     |
+| --- | -------------------------- |
+| `R` | Refresh all dashboard data |
+| `Q` | Quit the application       |
