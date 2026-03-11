@@ -8,17 +8,13 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Static
 
-from budget_forecaster.core.types import LinkType, MatcherKey, OperationId, TargetName
-from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import (
     ApplicationService,
     UpcomingIteration,
 )
 from budget_forecaster.services.operation.operation_service import OperationFilter
-from budget_forecaster.tui.modals.operation_detail import OperationDetailModal
 from budget_forecaster.tui.symbols import DisplaySymbol
-from budget_forecaster.tui.widgets.operation_table import OperationTable
 
 
 class CategoryRow(Horizontal):
@@ -105,7 +101,7 @@ class UpcomingHeaderRow(Horizontal):
     }
 
     UpcomingHeaderRow .upcoming-period {
-        width: 10;
+        width: 14;
         text-align: right;
     }
     """
@@ -148,7 +144,7 @@ class UpcomingOperationRow(Horizontal):
     }
 
     UpcomingOperationRow .upcoming-period {
-        width: 10;
+        width: 14;
         text-align: right;
     }
     """
@@ -199,9 +195,9 @@ class DashboardScreen(Vertical):
     }
 
     DashboardScreen #upcoming-section {
-        height: 10;
+        height: 14;
         border: solid $primary;
-        padding: 1;
+        padding: 1 2;
         margin-bottom: 1;
     }
 
@@ -254,7 +250,6 @@ class DashboardScreen(Vertical):
                 id="categories-title",
             )
             yield Vertical(id="categories-list")
-        yield OperationTable(id="dashboard-table")
 
     def set_app_service(self, service: ApplicationService) -> None:
         """Set the application service and refresh all sections."""
@@ -268,31 +263,6 @@ class DashboardScreen(Vertical):
         self._update_stats()
         self._update_upcoming()
         self._update_categories()
-        self._update_recent_operations()
-
-    def _build_lookups(
-        self,
-    ) -> tuple[dict[OperationId, OperationLink], dict[MatcherKey, TargetName]]:
-        """Build links and targets lookup dicts."""
-        links: dict[OperationId, OperationLink] = {}
-        targets: dict[MatcherKey, TargetName] = {}
-
-        if not self._app_service:
-            return links, targets
-
-        for link in self._app_service.get_all_links():
-            links[link.operation_unique_id] = link
-
-        for planned_op in self._app_service.get_all_planned_operations():
-            if planned_op.id is not None:
-                key = MatcherKey(LinkType.PLANNED_OPERATION, planned_op.id)
-                targets[key] = planned_op.description
-        for budget in self._app_service.get_all_budgets():
-            if budget.id is not None:
-                key = MatcherKey(LinkType.BUDGET, budget.id)
-                targets[key] = budget.description
-
-        return links, targets
 
     def _update_stats(self) -> None:
         """Update the statistics row."""
@@ -355,36 +325,3 @@ class DashboardScreen(Vertical):
         categories_list.remove_children()
         for cat, amount in sorted_categories[:10]:
             categories_list.mount(CategoryRow(cat.display_name, amount, max_expense))
-
-    def _update_recent_operations(self) -> None:
-        """Update the recent operations table with last 3 months."""
-        if not self._app_service:
-            return
-
-        now = date.today()
-        month, year = now.month - 3, now.year
-        if month <= 0:
-            month, year = month + 12, year - 1
-        recent_filter = OperationFilter(date_from=date(year, month, 1))
-        recent_ops = self._app_service.get_operations(recent_filter)
-
-        links, targets = self._build_lookups()
-        self.query_one("#dashboard-table", OperationTable).load_operations(
-            recent_ops, links, targets
-        )
-
-    def on_operation_table_operation_selected(
-        self, event: OperationTable.OperationSelected
-    ) -> None:
-        """Open operation detail modal from the dashboard table."""
-        event.stop()
-        if self._app_service:
-            self.app.push_screen(
-                OperationDetailModal(event.operation.unique_id, self._app_service),
-                self._on_detail_modal_closed,
-            )
-
-    def _on_detail_modal_closed(self, modified: bool | None) -> None:
-        """Refresh dashboard if data was modified."""
-        if modified:
-            self._refresh()

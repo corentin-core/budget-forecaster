@@ -143,7 +143,7 @@ class OperationTable(DataTable[str]):  # pylint: disable=too-many-instance-attri
 
         self.add_row(
             date_str,
-            self._truncate(op.description, 50),
+            self._truncate(op.description, 70),
             amount_str,
             op.category.display_name,
             link_str,

@@ -55,7 +55,7 @@ from budget_forecaster.tui.modals import (
     SplitOperationModal,
     SplitResult,
 )
-from budget_forecaster.tui.screens.balance import BalanceWidget
+from budget_forecaster.tui.screens.analytics import AnalyticsWidget
 from budget_forecaster.tui.screens.budgets import BudgetsWidget
 from budget_forecaster.tui.screens.dashboard import DashboardScreen
 from budget_forecaster.tui.screens.imports import ImportWidget
@@ -232,16 +232,16 @@ class BudgetApp(
                 yield DashboardScreen(id="dashboard-screen")
             with TabPane(_("Operations"), id="operations"):
                 yield OperationsScreen(id="operations-screen")
-            with TabPane(_("Import"), id="import"):
-                yield ImportWidget(id="import-widget")
-            with TabPane(_("Balance"), id="balance"):
-                yield BalanceWidget(id="balance-widget")
             with TabPane(_("Review"), id="review"):
                 yield ReviewWidget(id="review-widget")
+            with TabPane(_("Analytics"), id="analytics"):
+                yield AnalyticsWidget(id="analytics-widget")
             with TabPane(_("Budgets"), id="budgets"):
                 yield BudgetsWidget(id="budgets-widget")
             with TabPane(_("Planned ops"), id="planned-ops"):
                 yield PlannedOperationsWidget(id="planned-ops-widget")
+            with TabPane(_("Import"), id="import"):
+                yield ImportWidget(id="import-widget")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -268,11 +268,14 @@ class BudgetApp(
         import_widget = self.query_one("#import-widget", ImportWidget)
         import_widget.set_app_service(self.app_service)
 
-        # Balance and review widgets
-        balance_widget = self.query_one("#balance-widget", BalanceWidget)
-        balance_widget.set_app_service(self.app_service)
+        # Analytics and review widgets
+        analytics_widget = self.query_one("#analytics-widget", AnalyticsWidget)
+        analytics_widget.set_app_service(self.app_service)
         review_widget = self.query_one("#review-widget", ReviewWidget)
         review_widget.set_app_service(self.app_service)
+
+        # Invalidate forecast cache so next tab activation recomputes
+        self._refresh_forecast_widgets()
 
         # Budgets widget
         budgets_widget = self.query_one("#budgets-widget", BudgetsWidget)
@@ -287,10 +290,10 @@ class BudgetApp(
     def on_tabbed_content_tab_activated(
         self, event: TabbedContent.TabActivated
     ) -> None:
-        """Auto-compute forecast when Balance or Review tab becomes active."""
+        """Auto-compute forecast when Analytics or Review tab becomes active."""
         tab_id = event.pane.id
-        if tab_id == "balance":
-            self.query_one("#balance-widget", BalanceWidget).compute_and_display()
+        if tab_id == "analytics":
+            self.query_one("#analytics-widget", AnalyticsWidget).compute_and_display()
         elif tab_id == "review":
             self.query_one("#review-widget", ReviewWidget).compute_and_display()
 
@@ -347,45 +350,26 @@ class BudgetApp(
 
     def action_categorize(self) -> None:
         """Open category selection for selected operations."""
-        # Get the active tab and prioritize its table
-        tabbed = self.query_one(TabbedContent)
-        active_tab = tabbed.active
+        try:
+            table = self.query_one("#operations-table", OperationTable)
+        except NoMatches:
+            return
+        if operations := table.get_selected_operations():
+            self._categorizing_operation_ids = tuple(op.unique_id for op in operations)
+            # Get similar operations and suggestion based on first operation
+            first_op = operations[0]
+            similar = tuple(self.app_service.find_similar_operations(first_op))
+            suggested = self.app_service.suggest_category(first_op)
 
-        # Map tab IDs to table IDs
-        tab_to_table = {
-            "dashboard": "#dashboard-table",
-            "operations": "#operations-table",
-        }
-
-        # Try active tab's table first, then others
-        table_order = [tab_to_table.get(active_tab, "#operations-table")]
-        for table_id in ("#operations-table", "#dashboard-table"):
-            if table_id not in table_order:
-                table_order.append(table_id)
-
-        for table_id in table_order:
-            try:
-                table = self.query_one(table_id, OperationTable)
-            except NoMatches:
-                continue
-            if operations := table.get_selected_operations():
-                self._categorizing_operation_ids = tuple(
-                    op.unique_id for op in operations
-                )
-                # Get similar operations and suggestion based on first operation
-                first_op = operations[0]
-                similar = tuple(self.app_service.find_similar_operations(first_op))
-                suggested = self.app_service.suggest_category(first_op)
-
-                self.push_screen(
-                    CategoryModal(
-                        operations,
-                        similar_operations=similar,
-                        suggested_category=suggested,
-                    ),
-                    self._on_category_selected,
-                )
-                return
+            self.push_screen(
+                CategoryModal(
+                    operations,
+                    similar_operations=similar,
+                    suggested_category=suggested,
+                ),
+                self._on_category_selected,
+            )
+            return
 
         self.notify(_("No operation selected"), severity="warning")
 
@@ -408,13 +392,11 @@ class BudgetApp(
             self._persistent_account.reload()
         self._refresh_screens()
 
-        # Clear selection in all tables
-        for table_id in ("#dashboard-table", "#operations-table"):
-            try:
-                table = self.query_one(table_id, OperationTable)
-                table.clear_selection()
-            except NoMatches:
-                pass
+        # Clear selection
+        try:
+            self.query_one("#operations-table", OperationTable).clear_selection()
+        except NoMatches:
+            pass
 
         # Build notification message
         links_created = sum(1 for r in results if r.new_link is not None)
@@ -435,49 +417,32 @@ class BudgetApp(
 
     def action_link_operation(self) -> None:
         """Open link modal for selected operations."""
-        # Get the active tab and prioritize its table
-        tabbed = self.query_one(TabbedContent)
-        active_tab = tabbed.active
+        try:
+            table = self.query_one("#operations-table", OperationTable)
+        except NoMatches:
+            return
+        if operations := table.get_selected_operations():
+            self._linking_operations = operations
 
-        # Map tab IDs to table IDs
-        tab_to_table = {
-            "dashboard": "#dashboard-table",
-            "operations": "#operations-table",
-        }
+            # Get current link for first operation (for display)
+            current_link = self.app_service.get_link_for_operation(
+                operations[0].unique_id
+            )
 
-        # Try active tab's table first, then others
-        table_order = [tab_to_table.get(active_tab, "#operations-table")]
-        for table_id in ("#operations-table", "#dashboard-table"):
-            if table_id not in table_order:
-                table_order.append(table_id)
+            # Get all targets
+            planned_operations = list(self.app_service.get_all_planned_operations())
+            budgets = list(self.app_service.get_all_budgets())
 
-        for table_id in table_order:
-            try:
-                table = self.query_one(table_id, OperationTable)
-            except NoMatches:
-                continue
-            if operations := table.get_selected_operations():
-                self._linking_operations = operations
-
-                # Get current link for first operation (for display)
-                current_link = self.app_service.get_link_for_operation(
-                    operations[0].unique_id
-                )
-
-                # Get all targets
-                planned_operations = list(self.app_service.get_all_planned_operations())
-                budgets = list(self.app_service.get_all_budgets())
-
-                self.push_screen(
-                    LinkTargetModal(
-                        operations,
-                        current_link,
-                        planned_operations,
-                        budgets,
-                    ),
-                    self._on_target_selected,
-                )
-                return
+            self.push_screen(
+                LinkTargetModal(
+                    operations,
+                    current_link,
+                    planned_operations,
+                    budgets,
+                ),
+                self._on_target_selected,
+            )
+            return
 
         self.notify(_("No operation selected"), severity="warning")
 
@@ -897,9 +862,17 @@ class BudgetApp(
         self._refresh_forecast_widgets()
 
     def _refresh_forecast_widgets(self) -> None:
-        """Refresh balance and review widgets (invalidate cache)."""
-        self.query_one("#balance-widget", BalanceWidget).refresh_data()
+        """Refresh analytics and review widgets (invalidate cache + recompute)."""
+        self.query_one("#analytics-widget", AnalyticsWidget).refresh_data()
         self.query_one("#review-widget", ReviewWidget).refresh_data()
+
+        # Recompute the active tab immediately
+        tabbed = self.query_one(TabbedContent)
+        active_tab = tabbed.active
+        if active_tab == "analytics":
+            self.query_one("#analytics-widget", AnalyticsWidget).compute_and_display()
+        elif active_tab == "review":
+            self.query_one("#review-widget", ReviewWidget).compute_and_display()
 
 
 def run_app(config_path: Path) -> None:

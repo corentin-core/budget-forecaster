@@ -245,7 +245,7 @@ class TestFilterBarExtended:
     async def test_filter_includes_date_and_amount(self) -> None:
         """FilterChanged includes date and amount values."""
         app = FilterBarExtendedTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             app.query_one("#filter-date-from", Input).value = "2025-01-01"
             app.query_one("#filter-date-to", Input).value = "2025-06-30"
             app.query_one("#filter-amount-min", Input).value = "-200"
@@ -262,7 +262,7 @@ class TestFilterBarExtended:
     async def test_filter_with_no_range_values(self) -> None:
         """FilterChanged has None for empty range fields."""
         app = FilterBarExtendedTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             await pilot.click("#filter-apply")
 
             assert len(app.filter_changed_events) == 1
@@ -275,7 +275,7 @@ class TestFilterBarExtended:
     async def test_reset_clears_date_inputs(self) -> None:
         """Reset clears date range inputs."""
         app = FilterBarExtendedTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             app.query_one("#filter-date-from", Input).value = "2025-01-01"
             app.query_one("#filter-date-to", Input).value = "2025-12-31"
             await pilot.click("#filter-reset")
@@ -287,7 +287,7 @@ class TestFilterBarExtended:
     async def test_reset_clears_amount_inputs(self) -> None:
         """Reset clears amount range inputs."""
         app = FilterBarExtendedTestApp()
-        async with app.run_test() as pilot:
+        async with app.run_test(size=(200, 24)) as pilot:
             app.query_one("#filter-amount-min", Input).value = "-100"
             app.query_one("#filter-amount-max", Input).value = "0"
             await pilot.click("#filter-reset")

@@ -26,22 +26,13 @@ class PlannedOperationsWidget(Vertical):
         height: 1fr;
     }
 
-    PlannedOperationsWidget #planned-ops-header {
-        height: 3;
+    PlannedOperationsWidget #planned-ops-toolbar {
+        height: auto;
         margin-bottom: 1;
     }
 
-    PlannedOperationsWidget #planned-ops-title {
-        width: 1fr;
-        padding: 0 1;
-    }
-
-    PlannedOperationsWidget #planned-ops-buttons {
-        width: auto;
-    }
-
-    PlannedOperationsWidget Button {
-        margin-left: 1;
+    PlannedOperationsWidget #btn-add-op {
+        margin-right: 1;
     }
 
     PlannedOperationsWidget #planned-ops-table {
@@ -99,15 +90,9 @@ class PlannedOperationsWidget(Vertical):
 
     def compose(self) -> ComposeResult:
         """Create the widget layout."""
-        with Horizontal(id="planned-ops-header"):
-            yield Static(_("Planned operations"), id="planned-ops-title")
-            with Horizontal(id="planned-ops-buttons"):
-                yield Button(_("Add"), id="btn-add-op", variant="primary")
-                yield Button(_("Edit"), id="btn-edit-op", variant="default")
-                yield Button(_("Split"), id="btn-split-op", variant="default")
-                yield Button(_("Delete"), id="btn-delete-op", variant="error")
-
-        yield FilterBar(id="planned-ops-filter-bar", show_status_filter=True)
+        with Horizontal(id="planned-ops-toolbar"):
+            yield Button(_("Add"), id="btn-add-op", variant="primary")
+            yield FilterBar(id="planned-ops-filter-bar", show_status_filter=True)
         yield DataTable(id="planned-ops-table")
         with Horizontal(id="planned-ops-status-bar"):
             yield Static("", id="planned-ops-status")
@@ -127,7 +112,6 @@ class PlannedOperationsWidget(Vertical):
             _("End"),
             _("Keywords"),
         )
-        self._update_button_states()
 
     @property
     def planned_operations(self) -> tuple[PlannedOperation, ...]:
@@ -157,7 +141,6 @@ class PlannedOperationsWidget(Vertical):
         )
         self._populate_table()
         self._update_status()
-        self._update_button_states()
 
         filter_bar = self.query_one("#planned-ops-filter-bar", FilterBar)
         filter_bar.update_status(
@@ -219,14 +202,18 @@ class PlannedOperationsWidget(Vertical):
             if len(hints) > 30:
                 hints = hints[:27] + "..."
 
+            desc = op.description
+            if len(desc) > 30:
+                desc = desc[:27] + "..."
+
             table.add_row(
-                str(op.id),
-                op.description,
-                f"{op.amount:.2f} {op.currency}",
-                op.category.display_name,
+                f"{op.id:<4}",
+                f"{desc:<30}",
+                f"{op.amount:>10.2f} {op.currency}",
+                f"{op.category.display_name:<20}",
                 start_date,
-                period,
-                end_date,
+                f"{period:<6}",
+                f"{end_date:<10}",
                 hints,
                 key=str(op.id),
             )
@@ -249,22 +236,8 @@ class PlannedOperationsWidget(Vertical):
         count = len(self._filtered_operations)
         status.update(_("{} planned operation(s)").format(count))
 
-    def _update_button_states(self) -> None:
-        """Update button enabled states based on selection."""
-        has_selection = self._selected_operation is not None
-        self.query_one("#btn-edit-op", Button).disabled = not has_selection
-        self.query_one("#btn-delete-op", Button).disabled = not has_selection
-
-        # Split is only available for periodic operations
-        can_split = (
-            has_selection
-            and self._selected_operation is not None
-            and isinstance(self._selected_operation.date_range, RecurringDay)
-        )
-        self.query_one("#btn-split-op", Button).disabled = not can_split
-
-    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        """Handle row selection in the data table."""
+    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        """Track the currently highlighted planned operation."""
         if event.row_key is None:
             self._selected_operation = None
         else:
@@ -272,8 +245,17 @@ class PlannedOperationsWidget(Vertical):
             self._selected_operation = next(
                 (op for op in self._filtered_operations if op.id == op_id), None
             )
-        self._update_button_states()
         self.post_message(self.OperationSelected(self._selected_operation))
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Open edit modal on Enter/click."""
+        if event.row_key is not None:
+            op_id = int(str(event.row_key.value))
+            operation = next(
+                (op for op in self._filtered_operations if op.id == op_id), None
+            )
+            if operation:
+                self.post_message(self.OperationEditRequested(operation))
 
     def on_filter_bar_filter_changed(self, event: FilterBar.FilterChanged) -> None:
         """Handle filter changes from the filter bar."""
@@ -295,18 +277,3 @@ class PlannedOperationsWidget(Vertical):
         """Handle button presses."""
         if event.button.id == "btn-add-op":
             self.post_message(self.OperationEditRequested(None))
-        elif event.button.id == "btn-edit-op":
-            if self._selected_operation:
-                self.post_message(self.OperationEditRequested(self._selected_operation))
-        elif event.button.id == "btn-split-op":
-            if self._selected_operation and isinstance(
-                self._selected_operation.date_range, RecurringDay
-            ):
-                self.post_message(
-                    self.OperationSplitRequested(self._selected_operation)
-                )
-        elif event.button.id == "btn-delete-op":
-            if self._selected_operation:
-                self.post_message(
-                    self.OperationDeleteRequested(self._selected_operation)
-                )
