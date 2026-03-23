@@ -881,12 +881,10 @@ def generate_demo_db(
     Args:
         db_path: Path for the SQLite database file.
         account_name: Name for the aggregated account.
-        seed: Random seed for reproducibility. Also resets the ID counter.
+        seed: Random seed for reproducibility.
     """
-    global ID_COUNTER  # pylint: disable=global-statement
     if seed is not None:
         random.seed(seed)
-        ID_COUNTER = itertools.count(1)
     repo = SqliteRepository(db_path)
     repo.initialize()
     repo.set_aggregated_account_name(account_name)
