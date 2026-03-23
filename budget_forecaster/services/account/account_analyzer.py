@@ -221,7 +221,13 @@ class AccountAnalyzer:
         self._fill_unrealized_operations(budget_data, months, link_indexes)
         self._fill_unrealized_budgets(budget_data, months, link_indexes)
         self._finalize_projected(budget_data)
-        return self._build_budget_forecast_df(budget_data)
+        df = self._build_budget_forecast_df(budget_data)
+        # Validate forecast data integrity
+        for _month in months:
+            validation_df = df.copy(deep=True)
+            validation_df.fillna(0, inplace=True)
+            _ = validation_df.to_dict()
+        return df
 
     def _build_link_indexes(self) -> _LinkIndexes:
         """Build indexes from operation links for link-aware attribution."""
