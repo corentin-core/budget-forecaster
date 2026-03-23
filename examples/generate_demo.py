@@ -869,6 +869,39 @@ def _generate_exports(bnp_balance: float, swile_balance: float) -> tuple[Path, P
 # ---------------------------------------------------------------------------
 # Main generation logic
 # ---------------------------------------------------------------------------
+def generate_demo_db(
+    db_path: Path,
+    account_name: str = "My Budget",
+    seed: int | None = None,
+) -> None:
+    """Populate a SQLite database with demo data (no file exports).
+
+    Useful for benchmarks and tests that need a realistic dataset.
+
+    Args:
+        db_path: Path for the SQLite database file.
+        account_name: Name for the aggregated account.
+        seed: Random seed for reproducibility. Also resets the ID counter.
+    """
+    global ID_COUNTER  # pylint: disable=global-statement
+    if seed is not None:
+        random.seed(seed)
+        ID_COUNTER = itertools.count(1)
+    repo = SqliteRepository(db_path)
+    repo.initialize()
+    repo.set_aggregated_account_name(account_name)
+
+    planned_op_ids, past_one_time_id, _future_one_time_id = _create_planned_operations(
+        repo
+    )
+    budget_ids = _create_budgets(repo)
+    all_bnp_ops, all_swile_ops, links = _generate_history(
+        planned_op_ids, past_one_time_id, budget_ids
+    )
+    _save_accounts(repo, all_bnp_ops, all_swile_ops, links)
+    repo.close()
+
+
 def main() -> None:
     """Generate all demo artifacts."""
     # Clean up existing files

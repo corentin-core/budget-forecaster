@@ -16,6 +16,7 @@ cancelled
 cancelling
 cli
 codecov
+codspeed
 commun
 config
 conn
@@ -69,12 +70,14 @@ pragma
 pre
 prs
 prévu
+pytest
 recomputation
 recurringdaterange
 relativedelta
 renderable
 renderer
 renderers
+repo
 repr
 reproducibility
 revenus
