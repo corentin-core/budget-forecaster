@@ -274,7 +274,10 @@ class RecurringDateRange(DateRangeInterface):
 
     def _ensure_cached_up_to(self, target_date: date) -> None:
         """Extend the cache of start dates up to (and slightly past) target_date."""
-        if target_date <= self._last_cached_end:
+        if (
+            target_date <= self._last_cached_end
+            or self._last_cached_end >= self.last_date
+        ):
             return
 
         n = len(self._cached_starts)
