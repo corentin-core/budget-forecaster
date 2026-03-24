@@ -190,11 +190,13 @@ class AccountAnalyzer:
         current_balance = initial_state.balance
         balance_evolution: list[float] = [current_balance]
         dates = pd.date_range(start_date, end_date, freq="D")
+
+        amount_by_date: defaultdict[date, float] = defaultdict(float)
+        for operation in final_state.operations:
+            amount_by_date[operation.operation_date] += operation.amount
+
         for ts in dates[1:]:
-            current_date = ts.date()
-            for operation in final_state.operations:
-                if operation.operation_date == current_date:
-                    current_balance += operation.amount
+            current_balance += amount_by_date[ts.date()]
             balance_evolution.append(current_balance)
 
         df = pd.DataFrame({"Date": dates, "Balance": balance_evolution})
