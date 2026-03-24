@@ -404,6 +404,49 @@ class TestPeriodicTimeRange:  # pylint: disable=too-many-public-methods
         with pytest.raises(ValueError, match="No iteration found"):
             ptr.split_at(date(2025, 6, 1))
 
+    def test_cache_extends_progressively(self) -> None:
+        """Test that cache extends progressively with different from_dates."""
+        initial = SingleDay(date(2023, 1, 15))
+        ptr = RecurringDateRange(initial, relativedelta(months=1), date(2023, 12, 31))
+
+        # First call from early date
+        result_a = [
+            dr.start_date for dr in ptr.iterate_over_date_ranges(date(2023, 3, 1))
+        ]
+        # Second call from later date
+        result_b = [
+            dr.start_date for dr in ptr.iterate_over_date_ranges(date(2023, 6, 1))
+        ]
+        # Third call from the beginning (no from_date)
+        result_all = [dr.start_date for dr in ptr.iterate_over_date_ranges()]
+
+        # Results must match non-cached behavior
+        assert result_a[0] == date(2023, 2, 15)
+        assert result_a[-1] == date(2023, 12, 15)
+        assert result_b[0] == date(2023, 5, 15)
+        assert result_b[-1] == date(2023, 12, 15)
+        assert result_all[0] == date(2023, 1, 15)
+        assert len(result_all) == 12
+
+    def test_cache_shared_across_calls(self) -> None:
+        """Test that cache is reused: second call produces same results without recomputation."""
+        initial = SingleDay(date(2023, 1, 15))
+        ptr = RecurringDateRange(initial, relativedelta(months=1), date(2023, 12, 31))
+
+        # First call consumes all date ranges
+        result_first = [
+            dr.start_date for dr in ptr.iterate_over_date_ranges(date(2023, 6, 1))
+        ]
+        # Second call with earlier from_date reuses cache, must produce correct results
+        result_second = [
+            dr.start_date for dr in ptr.iterate_over_date_ranges(date(2023, 3, 1))
+        ]
+
+        assert result_first[0] == date(2023, 5, 15)
+        assert result_second[0] == date(2023, 2, 15)
+        # Both calls should end at the same last iteration
+        assert result_first[-1] == result_second[-1] == date(2023, 12, 15)
+
     def test_current_time_range(self, periodic_time_range: RecurringDateRange) -> None:
         """Test the current_time_range method."""
         for month in range(1, 13):
