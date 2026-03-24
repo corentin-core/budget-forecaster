@@ -224,7 +224,7 @@ class RecurringDateRange(DateRangeInterface):
         self._period = period
         self._expiration_date = expiration_date or date.max
         self._cached_starts: list[date] = []
-        self._cache_exhausted: bool = False
+        self._last_cached_end: date = date.min
 
     @property
     def start_date(self) -> date:
@@ -274,7 +274,7 @@ class RecurringDateRange(DateRangeInterface):
 
     def _ensure_cached_up_to(self, target_date: date) -> None:
         """Extend the cache of start dates up to (and slightly past) target_date."""
-        if self._cache_exhausted:
+        if target_date <= self._last_cached_end:
             return
 
         n = len(self._cached_starts)
@@ -282,9 +282,10 @@ class RecurringDateRange(DateRangeInterface):
             start = self.start_date + n * self._period
             dr = self._initial_date_range.replace(start_date=start)
             if dr.last_date > self.last_date:
-                self._cache_exhausted = True
+                self._last_cached_end = self.last_date
                 break
             self._cached_starts.append(start)
+            self._last_cached_end = dr.last_date
             n += 1
             if start >= target_date:
                 break
@@ -306,15 +307,16 @@ class RecurringDateRange(DateRangeInterface):
                     start_date=self._cached_starts[idx]
                 )
                 idx += 1
-            elif not self._cache_exhausted:
+            elif self._last_cached_end < self.last_date:
                 # Extend cache one more entry
                 n = len(self._cached_starts)
                 start = self.start_date + n * self._period
                 dr = self._initial_date_range.replace(start_date=start)
                 if dr.last_date > self.last_date:
-                    self._cache_exhausted = True
+                    self._last_cached_end = self.last_date
                     break
                 self._cached_starts.append(start)
+                self._last_cached_end = dr.last_date
                 yield dr
                 idx += 1
             else:
