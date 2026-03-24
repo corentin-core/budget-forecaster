@@ -281,7 +281,7 @@ class RecurringDateRange(DateRangeInterface):
             return
 
         n = len(self._cached_starts)
-        while True:
+        while self._last_cached_end < target_date:
             start = self.start_date + n * self._period
             dr = self._initial_date_range.replace(start_date=start)
             if dr.last_date > self.last_date:
@@ -290,8 +290,6 @@ class RecurringDateRange(DateRangeInterface):
             self._cached_starts.append(start)
             self._last_cached_end = dr.last_date
             n += 1
-            if start >= target_date:
-                break
 
     def iterate_over_date_ranges(
         self, from_date: date | None = None
@@ -304,26 +302,23 @@ class RecurringDateRange(DateRangeInterface):
         if (idx := bisect_left(self._cached_starts, effective_from)) > 0:
             idx -= 1
 
-        while True:
-            if idx < len(self._cached_starts):
-                yield self._initial_date_range.replace(
-                    start_date=self._cached_starts[idx]
-                )
-                idx += 1
-            elif self._last_cached_end < self.last_date:
-                # Extend cache one more entry
-                n = len(self._cached_starts)
-                start = self.start_date + n * self._period
-                dr = self._initial_date_range.replace(start_date=start)
-                if dr.last_date > self.last_date:
-                    self._last_cached_end = self.last_date
-                    break
-                self._cached_starts.append(start)
-                self._last_cached_end = dr.last_date
-                yield dr
-                idx += 1
-            else:
+        # Yield cached entries
+        while idx < len(self._cached_starts):
+            yield self._initial_date_range.replace(start_date=self._cached_starts[idx])
+            idx += 1
+
+        # Extend cache lazily for remaining entries
+        n = len(self._cached_starts)
+        while self._last_cached_end < self.last_date:
+            start = self.start_date + n * self._period
+            dr = self._initial_date_range.replace(start_date=start)
+            if dr.last_date > self.last_date:
+                self._last_cached_end = self.last_date
                 break
+            self._cached_starts.append(start)
+            self._last_cached_end = dr.last_date
+            n += 1
+            yield dr
 
     def split_at(
         self, split_date: date
