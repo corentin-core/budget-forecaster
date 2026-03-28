@@ -531,8 +531,14 @@ class ForecastService:  # pylint: disable=too-many-public-methods
 
         balance_at_start = float(future_df["Balance"].iloc[0])
 
-        # Reverse expanding minimum: lowest balance from each day onward
-        balances = future_df["Balance"]
+        # For lowest balance, only consider today onward (past dips are irrelevant)
+        today_str = date.today().strftime("%Y-%m-%d")
+        from_str = max(month_str, today_str)
+        from_today_df = df.loc[df.index >= from_str]
+        if from_today_df.empty:
+            return None
+
+        balances = from_today_df["Balance"]
         lowest_balance = float(balances.min())
         lowest_idx = cast(pd.Timestamp, balances.idxmin())
         lowest_date = lowest_idx.to_pydatetime().date()
