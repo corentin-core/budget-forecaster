@@ -1,6 +1,7 @@
 """Date range module."""
 import abc
 import itertools
+from bisect import bisect_left
 from datetime import date, timedelta
 from functools import total_ordering
 from typing import Any, Iterator, Optional
@@ -222,6 +223,8 @@ class RecurringDateRange(DateRangeInterface):
         self._initial_date_range = initial_date_range
         self._period = period
         self._expiration_date = expiration_date or date.max
+        self._cached_starts: list[date] = []
+        self._last_cached_end: date = date.min
 
     @property
     def start_date(self) -> date:
@@ -269,42 +272,53 @@ class RecurringDateRange(DateRangeInterface):
             is not None
         )
 
+    def _ensure_cached_up_to(self, target_date: date) -> None:
+        """Extend the cache of start dates up to (and slightly past) target_date."""
+        if (
+            target_date <= self._last_cached_end
+            or self._last_cached_end >= self.last_date
+        ):
+            return
+
+        n = len(self._cached_starts)
+        while self._last_cached_end < target_date:
+            start = self.start_date + n * self._period
+            dr = self._initial_date_range.replace(start_date=start)
+            if dr.last_date > self.last_date:
+                self._last_cached_end = self.last_date
+                break
+            self._cached_starts.append(start)
+            self._last_cached_end = dr.last_date
+            n += 1
+
     def iterate_over_date_ranges(
         self, from_date: date | None = None
     ) -> Iterator[DateRangeInterface]:
-        """Iterate over the date ranges."""
-        start = 0
-        if from_date is not None and from_date > self.start_date:
-            days_diff = (from_date - self.start_date).days
+        """Iterate over the date ranges using progressive date caching."""
+        effective_from = from_date if from_date is not None else self.start_date
+        self._ensure_cached_up_to(effective_from)
 
-            # Estimate period length in days using MAXIMUM values (31 days/month,
-            # 366 days/year) to be conservative. Overestimating the period length
-            # underestimates the number of periods, so we may start a bit early.
-            # The while loop below corrects forward, which is safe. The opposite
-            # (underestimating period → overestimating start) would skip iterations.
-            approx_period_days = (
-                self._period.years * 366
-                + self._period.months * 31
-                + self._period.weeks * 7
-                + self._period.days
-            )
+        # Find start index via binary search; include period before from_date
+        if (idx := bisect_left(self._cached_starts, effective_from)) > 0:
+            idx -= 1
 
-            if approx_period_days > 0:
-                start = max(0, days_diff // approx_period_days - 1)
+        # Yield cached entries
+        while idx < len(self._cached_starts):
+            yield self._initial_date_range.replace(start_date=self._cached_starts[idx])
+            idx += 1
 
-            # Fine-tune: advance to the correct position
-            while self.start_date + (start + 1) * self._period < from_date:
-                start += 1
-
-        date_ranges = (
-            self._initial_date_range.replace(
-                start_date=self.start_date + n * self._period
-            )
-            for n in itertools.count(start)
-        )
-        return itertools.takewhile(
-            lambda dr: dr.last_date <= self.last_date, date_ranges
-        )
+        # Extend cache lazily for remaining entries
+        n = len(self._cached_starts)
+        while self._last_cached_end < self.last_date:
+            start = self.start_date + n * self._period
+            dr = self._initial_date_range.replace(start_date=start)
+            if dr.last_date > self.last_date:
+                self._last_cached_end = self.last_date
+                break
+            self._cached_starts.append(start)
+            self._last_cached_end = dr.last_date
+            n += 1
+            yield dr
 
     def split_at(
         self, split_date: date
