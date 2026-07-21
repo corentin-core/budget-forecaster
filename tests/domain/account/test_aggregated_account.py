@@ -17,6 +17,7 @@ def _make_operation(
     amount: float,
     operation_date: date,
     category: Category = Category.UNCATEGORIZED,
+    source_ref: str | None = None,
 ) -> HistoricOperation:
     return HistoricOperation(
         unique_id=unique_id,
@@ -24,6 +25,7 @@ def _make_operation(
         amount=Amount(amount),
         category=category,
         operation_date=operation_date,
+        source_ref=source_ref,
     )
 
 
@@ -164,6 +166,97 @@ class TestUpdateAccount:
 
         # balance_date derived from max operation date
         assert result.account.balance_date == date(2025, 1, 20)
+
+
+class TestDedupWithSourceRef:
+    """Tests for the two-level dedup rule (source_ref + content ref)."""
+
+    @staticmethod
+    def _params(operations: tuple[HistoricOperation, ...]) -> AccountParameters:
+        return AccountParameters(
+            name="BNP",
+            balance=None,
+            currency="EUR",
+            balance_date=date(2025, 1, 15),
+            operations=operations,
+        )
+
+    def test_api_op_deduped_by_reference(self) -> None:
+        """An incoming API op whose reference already exists is a duplicate."""
+        existing = _make_operation(
+            1, "OP", -50.0, date(2025, 1, 10), source_ref="ref-1"
+        )
+        current = _make_account(operations=(existing,))
+
+        # Same reference, different content: still a duplicate.
+        incoming = _make_operation(
+            2, "OP RELABELLED", -50.0, date(2025, 1, 11), source_ref="ref-1"
+        )
+
+        result = AggregatedAccount.update_account(current, self._params((incoming,)))
+
+        assert result.stats.duplicates_skipped == 1
+        assert len(result.account.operations) == 1
+
+    def test_distinct_reference_is_kept(self) -> None:
+        """An incoming API op with a new reference is appended."""
+        existing = _make_operation(
+            1, "OP", -50.0, date(2025, 1, 10), source_ref="ref-1"
+        )
+        current = _make_account(operations=(existing,))
+
+        incoming = _make_operation(
+            2, "OTHER", -20.0, date(2025, 1, 11), source_ref="ref-2"
+        )
+
+        result = AggregatedAccount.update_account(current, self._params((incoming,)))
+
+        assert result.stats.new_operations == 1
+        assert len(result.account.operations) == 2
+
+    def test_same_day_identical_api_ops_are_kept(self) -> None:
+        """Two same-day identical API ops with distinct references are both kept."""
+        current = _make_account(operations=())
+
+        op1 = _make_operation(
+            1, "MONOPRIX", -12.5, date(2025, 1, 10), source_ref="ref-a"
+        )
+        op2 = _make_operation(
+            2, "MONOPRIX", -12.5, date(2025, 1, 10), source_ref="ref-b"
+        )
+
+        result = AggregatedAccount.update_account(current, self._params((op1, op2)))
+
+        assert result.stats.new_operations == 2
+        assert len(result.account.operations) == 2
+
+    def test_api_op_reconciled_against_file_op(self) -> None:
+        """An incoming API op matching a file op by content is a duplicate."""
+        file_op = _make_operation(
+            1, "MONOPRIX", -12.5, date(2025, 1, 10)
+        )  # no reference
+        current = _make_account(operations=(file_op,))
+
+        api_op = _make_operation(
+            2, "MONOPRIX", -12.5, date(2025, 1, 10), source_ref="ref-1"
+        )
+
+        result = AggregatedAccount.update_account(current, self._params((api_op,)))
+
+        assert result.stats.duplicates_skipped == 1
+        assert len(result.account.operations) == 1
+
+    def test_file_ops_dedup_by_content(self) -> None:
+        """Reference-less (file) ops keep deduping on content."""
+        file_op = _make_operation(1, "LOYER", -800.0, date(2025, 1, 5))
+        current = _make_account(operations=(file_op,))
+
+        same = _make_operation(2, "LOYER", -800.0, date(2025, 1, 5))
+
+        result = AggregatedAccount.update_account(current, self._params((same,)))
+
+        assert result.stats.duplicates_skipped == 1
+        assert len(result.account.operations) == 1
 
 
 class TestUpsertAccount:

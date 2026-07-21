@@ -18,6 +18,7 @@ from budget_forecaster.core.date_range import (
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.account.account import Account, AccountParameters
 from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.domain.operation.content_ref import content_ref
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.exceptions import (
@@ -26,14 +27,16 @@ from budget_forecaster.exceptions import (
     BudgetNotFoundError,
     PlannedOperationNotFoundError,
 )
-from budget_forecaster.infrastructure.persistence.persistent_account import (
-    PersistentAccount,
-)
-from budget_forecaster.infrastructure.persistence.sqlite_repository import (
+from budget_forecaster.infrastructure.persistence.migrations import (
     _CATEGORY_MIGRATION_MAP,
     SCHEMA_V1,
     SCHEMA_V2,
     SCHEMA_V3,
+)
+from budget_forecaster.infrastructure.persistence.persistent_account import (
+    PersistentAccount,
+)
+from budget_forecaster.infrastructure.persistence.sqlite_repository import (
     SqliteRepository,
 )
 
@@ -197,6 +200,40 @@ class TestSqliteRepository:
 
             assert repository.operation_exists(1) is True
             assert repository.operation_exists(999) is False
+
+    def test_source_ref_round_trip(self, temp_db_path: Path) -> None:
+        """API ops keep their reference; file ops get their content ref stored."""
+        api_op = HistoricOperation(
+            unique_id=1,
+            description="MONOPRIX",
+            amount=Amount(-12.5, "EUR"),
+            category=Category.GROCERIES,
+            operation_date=date(2026, 1, 10),
+            source_ref="eb-ref-1",
+        )
+        file_op = HistoricOperation(
+            unique_id=2,
+            description="LOYER",
+            amount=Amount(-800.0, "EUR"),
+            category=Category.RENT,
+            operation_date=date(2026, 1, 5),
+        )
+        account = Account(
+            name="BNP",
+            balance=1000.0,
+            currency="EUR",
+            balance_date=date(2026, 1, 31),
+            operations=(api_op, file_op),
+        )
+        with SqliteRepository(temp_db_path) as repository:
+            repository.set_aggregated_account_name("Test")
+            repository.upsert_account(account)
+
+            retrieved = repository.get_account_by_name("BNP")
+
+        by_id = {op.unique_id: op for op in retrieved.operations}
+        assert by_id[1].source_ref == "eb-ref-1"
+        assert by_id[2].source_ref == content_ref("LOYER", -800.0, date(2026, 1, 5))
 
 
 class TestPersistentAccount:
@@ -710,3 +747,31 @@ class TestSchemaMigration:
         with SqliteRepository(temp_db_path) as repository:
             accounts = repository.get_all_accounts()
             assert accounts[0].operations[0].category == Category(expected_key)
+
+    def test_migration_v7_to_v8_backfills_source_ref(self, temp_db_path: Path) -> None:
+        """V8 adds source_ref and backfills existing rows with their content ref."""
+        conn = sqlite3.connect(temp_db_path)
+        conn.executescript(SCHEMA_V1)
+        conn.execute("INSERT INTO schema_version (version) VALUES (7)")
+        conn.execute("INSERT INTO aggregated_accounts (name) VALUES ('Test')")
+        conn.execute(
+            "INSERT INTO accounts (aggregated_account_id, name, balance, currency, "
+            "balance_date) VALUES (1, 'Compte', 1000.0, 'EUR', '2026-01-15')"
+        )
+        conn.executemany(
+            "INSERT INTO operations (unique_id, account_id, description, category, "
+            "date, amount, currency) VALUES (?, 1, ?, 'groceries', ?, ?, 'EUR')",
+            [
+                (1, "MONOPRIX", "2026-01-10", -12.5),
+                (2, "LOYER", "2026-01-05", -800.0),
+            ],
+        )
+        conn.commit()
+        conn.close()
+
+        with SqliteRepository(temp_db_path) as repository:
+            operations = repository.get_all_accounts()[0].operations
+
+        by_id = {op.unique_id: op for op in operations}
+        assert by_id[1].source_ref == content_ref("MONOPRIX", -12.5, date(2026, 1, 10))
+        assert by_id[2].source_ref == content_ref("LOYER", -800.0, date(2026, 1, 5))

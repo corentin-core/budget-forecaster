@@ -8,6 +8,8 @@ alimentaires
 alimentation
 args
 au
+backfill
+backfills
 bnp
 bookmarklet
 bool
@@ -28,6 +30,8 @@ dataclass
 dataframe
 daterange
 datetime
+dedup
+deduping
 deduplicates
 deletable
 deserialization
@@ -43,6 +47,7 @@ focusable
 forecasted
 gettext
 historicoperation
+idempotency
 impl
 init
 iterable
@@ -65,6 +70,7 @@ msgid
 mtime
 mtimes
 mypy
+nullable
 orchestrator
 params
 paribas

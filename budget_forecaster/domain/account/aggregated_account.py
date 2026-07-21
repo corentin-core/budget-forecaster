@@ -67,20 +67,19 @@ class AggregatedAccount:
         Returns:
             UpdateResult containing the updated account and import statistics.
         """
-        # Keep only the operations that are not already in the account
-        current_operations_hash = {
-            hash((operation.description, operation.amount, operation.operation_date))
+        # Dedup on the external reference when present (API/API idempotency),
+        # and always on the content ref (reconciles API vs file-imported ops).
+        existing_refs = {
+            operation.source_ref or operation.content_ref
             for operation in current_account.operations
         }
         operations = list(current_account.operations)
         new_count = 0
         for operation in new_account.operations:
-            if (
-                hash(
-                    (operation.description, operation.amount, operation.operation_date)
-                )
-                not in current_operations_hash
-            ):
+            keys = {operation.content_ref}
+            if operation.source_ref is not None:
+                keys.add(operation.source_ref)
+            if keys.isdisjoint(existing_refs):
                 operations.append(operation)
                 new_count += 1
 

@@ -24,6 +24,7 @@ def _transaction(**overrides: object) -> dict:
         "credit_debit_indicator": "DBIT",
         "transaction_amount": {"currency": "EUR", "amount": "42.90"},
         "remittance_information": ["CARTE 14/01 MONOPRIX", "PARIS"],
+        "entry_reference": "eb-ref-123",
     }
     raw.update(overrides)
     return raw
@@ -73,6 +74,23 @@ class TestMapTransaction:
 
         assert operation is not None
         assert operation.description == expected
+
+    def test_entry_reference_becomes_source_ref(self) -> None:
+        """The API entry_reference is carried as the operation's source_ref."""
+        operation = map_transaction(_transaction(), HistoricOperationFactory(0))
+
+        assert operation is not None
+        assert operation.source_ref == "eb-ref-123"
+
+    def test_missing_entry_reference_yields_no_source_ref(self) -> None:
+        """Without an entry_reference the operation falls back to content dedup."""
+        raw = _transaction()
+        del raw["entry_reference"]
+
+        operation = map_transaction(raw, HistoricOperationFactory(0))
+
+        assert operation is not None
+        assert operation.source_ref is None
 
     def test_booking_date_is_parsed(self) -> None:
         """The booking date is parsed as the operation date."""
