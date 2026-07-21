@@ -10,6 +10,7 @@ from budget_forecaster.infrastructure.config import (
     AccountConfig,
     BackupConfig,
     Config,
+    EnableBankingConfig,
 )
 
 CONFIGS_FIXTURES_DIR = Path(__file__).parents[1] / "fixtures" / "configs"
@@ -51,6 +52,11 @@ class TestConfigDefaults:
         config = Config()
         assert config.logging_config is None
 
+    def test_default_enable_banking(self) -> None:
+        """Enable Banking is not configured by default."""
+        config = Config()
+        assert config.enable_banking is None
+
 
 class TestConfigParseYaml:
     """Tests for YAML config file parsing."""
@@ -91,6 +97,13 @@ class TestConfigParseYaml:
         )
         assert config.logging_config is not None
         assert config.logging_config["version"] == 1
+        assert config.enable_banking == EnableBankingConfig(
+            application_id="app-1234",
+            private_key_path=Path(
+                "~/.config/budget-forecaster/eb_private_key.pem"
+            ).expanduser(),
+            redirect_url="https://localhost:8080/callback",
+        )
 
     def test_parse_backup_partial_config(self) -> None:
         """Test parsing backup config with only some fields set."""
