@@ -65,6 +65,8 @@ repos:
           - pandas-stubs
           - textual>=0.50.0
           - python-dateutil
+          - pyjwt
+          - types-requests
   - repo: local
     hooks:
       - id: pylint

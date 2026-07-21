@@ -1,4 +1,5 @@
 """Module for the Config class."""
+
 import logging
 import logging.config
 import subprocess
@@ -38,6 +39,14 @@ class BackupConfig(NamedTuple):
     directory: Path | None = None  # None = same directory as database
 
 
+class EnableBankingConfig(NamedTuple):
+    """Credentials for the Enable Banking API source."""
+
+    application_id: str
+    private_key_path: Path
+    redirect_url: str
+
+
 class Config:  # pylint: disable=too-few-public-methods,too-many-instance-attributes
     """A class to store the configuration."""
 
@@ -55,6 +64,8 @@ class Config:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
         self.logging_config: dict[str, Any] | None = None
         # i18n config
         self.language: str = "en"
+        # Enable Banking API source (None = not configured)
+        self.enable_banking: EnableBankingConfig | None = None
 
     def _parse_yaml(self, yaml_path: Path) -> None:
         """Parse a YAML configuration file."""
@@ -89,6 +100,14 @@ class Config:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
             # Parse language setting
             if "language" in config:
                 self.language = config["language"]
+            # Parse Enable Banking credentials
+            if "enable_banking" in config:
+                eb_cfg = config["enable_banking"]
+                self.enable_banking = EnableBankingConfig(
+                    application_id=eb_cfg["application_id"],
+                    private_key_path=Path(eb_cfg["private_key_path"]).expanduser(),
+                    redirect_url=eb_cfg["redirect_url"],
+                )
 
     def setup_logging(self) -> None:
         """Initialize Python's logging system using the configuration.

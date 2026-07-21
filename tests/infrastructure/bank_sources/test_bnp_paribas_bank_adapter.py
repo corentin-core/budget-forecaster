@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from budget_forecaster.core.types import Category
-from budget_forecaster.infrastructure.bank_adapters.bnp_paribas.bnp_paribas_bank_adapter import (
+from budget_forecaster.infrastructure.bank_sources.bnp_paribas.bnp_paribas_bank_adapter import (
     BnpParibasBankAdapter,
 )
 from budget_forecaster.services.operation.historic_operation_factory import (

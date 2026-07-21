@@ -15,9 +15,11 @@ budgetinterface
 cancelled
 cancelling
 cli
+clôturé
 codecov
 codspeed
 commun
+comptable
 config
 conn
 csv
@@ -46,6 +48,7 @@ init
 iterable
 iteratively
 json
+jwt
 kwargs
 libelle
 lifecycle
@@ -82,6 +85,7 @@ repr
 reproducibility
 revenus
 rmul
+rsa
 réel
 salaire
 solde
@@ -96,6 +100,7 @@ timedelta
 trimestriel
 tui
 ui
+uids
 uncategorized
 unforecasted
 unicode
