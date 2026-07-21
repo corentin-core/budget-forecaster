@@ -11,7 +11,9 @@ import yaml
 from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
-from budget_forecaster.infrastructure.bank_adapters.bank_adapter import BankAdapterBase
+from budget_forecaster.infrastructure.bank_sources.file_export_adapter import (
+    FileExportAdapterBase,
+)
 from budget_forecaster.services.operation.historic_operation_factory import (
     HistoricOperationFactory,
 )
@@ -82,7 +84,7 @@ def load_category_keywords(
     return result
 
 
-class BnpParibasBankAdapter(BankAdapterBase):
+class BnpParibasBankAdapter(FileExportAdapterBase):
     """Adapter for the BNP Paribas bank export operations."""
 
     def __init__(self, category_mapping_path: Path | None = None) -> None:

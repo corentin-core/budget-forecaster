@@ -76,7 +76,7 @@ class TestIsSupportedExport:
         nonexistent = temp_inbox / "nonexistent.xlsx"
         assert service.is_supported_export(nonexistent) is False
 
-    @patch("budget_forecaster.services.import_service.BankAdapterFactory")
+    @patch("budget_forecaster.services.import_service.FileExportAdapterFactory")
     def test_supported_format(
         self,
         mock_factory_class: MagicMock,
@@ -246,7 +246,7 @@ class TestImportFile:
         assert result.stats is None
         assert result.error_message is not None
 
-    @patch("budget_forecaster.services.import_service.BankAdapterFactory")
+    @patch("budget_forecaster.services.import_service.FileExportAdapterFactory")
     def test_import_success(
         self,
         mock_factory_class: MagicMock,
@@ -262,7 +262,7 @@ class TestImportFile:
         mock_adapter.operations = [MagicMock(), MagicMock()]  # 2 operations
 
         mock_factory = MagicMock()
-        mock_factory.create_bank_adapter.return_value = mock_adapter
+        mock_factory.create_adapter.return_value = mock_adapter
         mock_factory_class.return_value = mock_factory
 
         # Mock upsert_account to return stats
@@ -288,7 +288,7 @@ class TestImportFile:
         mock_persistent_account.upsert_account.assert_called_once()
         mock_persistent_account.save.assert_called_once()
 
-    @patch("budget_forecaster.services.import_service.BankAdapterFactory")
+    @patch("budget_forecaster.services.import_service.FileExportAdapterFactory")
     def test_import_moves_to_processed(
         self,
         mock_factory_class: MagicMock,
@@ -304,7 +304,7 @@ class TestImportFile:
         mock_adapter.operations = []
 
         mock_factory = MagicMock()
-        mock_factory.create_bank_adapter.return_value = mock_adapter
+        mock_factory.create_adapter.return_value = mock_adapter
         mock_factory_class.return_value = mock_factory
 
         # Mock upsert_account to return stats
@@ -357,7 +357,7 @@ class TestImportFromInbox:
 
         assert nonexistent.exists()
 
-    @patch("budget_forecaster.services.import_service.BankAdapterFactory")
+    @patch("budget_forecaster.services.import_service.FileExportAdapterFactory")
     def test_calls_progress_callback(
         self,
         mock_factory_class: MagicMock,
@@ -373,7 +373,7 @@ class TestImportFromInbox:
         mock_adapter.operations = []
 
         mock_factory = MagicMock()
-        mock_factory.create_bank_adapter.return_value = mock_adapter
+        mock_factory.create_adapter.return_value = mock_adapter
         mock_factory_class.return_value = mock_factory
 
         # Mock upsert_account to return stats

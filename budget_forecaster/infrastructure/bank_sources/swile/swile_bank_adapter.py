@@ -8,7 +8,9 @@ from pathlib import Path
 from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.types import Category
 from budget_forecaster.exceptions import InvalidExportDataError
-from budget_forecaster.infrastructure.bank_adapters.bank_adapter import BankAdapterBase
+from budget_forecaster.infrastructure.bank_sources.file_export_adapter import (
+    FileExportAdapterBase,
+)
 from budget_forecaster.services.operation.historic_operation_factory import (
     HistoricOperationFactory,
 )
@@ -16,7 +18,7 @@ from budget_forecaster.services.operation.historic_operation_factory import (
 _SWILE_ZIP_PATTERN = re.compile(r"^swile-export-\d{4}-\d{2}-\d{2}\.zip$")
 
 
-class SwileBankAdapter(BankAdapterBase):
+class SwileBankAdapter(FileExportAdapterBase):
     """Adapter for the Swile Meal-Vouchers account"""
 
     def __init__(self) -> None:

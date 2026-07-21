@@ -13,8 +13,8 @@ from typing import NamedTuple
 from budget_forecaster.core.types import ImportProgressCallback, ImportStats
 from budget_forecaster.domain.account.account import AccountParameters
 from budget_forecaster.exceptions import UnsupportedExportError
-from budget_forecaster.infrastructure.bank_adapters.bank_adapter_factory import (
-    BankAdapterFactory,
+from budget_forecaster.infrastructure.bank_sources.file_export_adapter_factory import (
+    FileExportAdapterFactory,
 )
 from budget_forecaster.infrastructure.persistence.persistent_account import (
     PersistentAccount,
@@ -75,7 +75,7 @@ class ImportService:
         self._inbox_path = inbox_path
         self._exclude_patterns = exclude_patterns or []
         self._include_patterns = include_patterns or []
-        self._bank_adapter_factory = BankAdapterFactory()
+        self._file_export_adapter_factory = FileExportAdapterFactory()
 
     def is_excluded(self, path: Path) -> bool:
         """Check if a path matches any exclusion pattern.
@@ -154,7 +154,7 @@ class ImportService:
             True if the path is a supported export.
         """
         try:
-            self._bank_adapter_factory.create_bank_adapter(path)
+            self._file_export_adapter_factory.create_adapter(path)
             return True
         except UnsupportedExportError:
             return False
@@ -176,15 +176,15 @@ class ImportService:
         operation_factory = self._create_operation_factory()
 
         try:
-            bank_adapter = self._bank_adapter_factory.create_bank_adapter(path)
-            bank_adapter.load_bank_export(path, operation_factory)
+            adapter = self._file_export_adapter_factory.create_adapter(path)
+            adapter.load_bank_export(path, operation_factory)
 
             account_params = AccountParameters(
-                name=bank_adapter.name,
-                balance=bank_adapter.balance,
+                name=adapter.name,
+                balance=adapter.balance,
                 currency="EUR",
-                balance_date=bank_adapter.export_date or date.today(),
-                operations=bank_adapter.operations,
+                balance_date=adapter.export_date or date.today(),
+                operations=adapter.operations,
             )
 
             stats = self._persistent_account.upsert_account(account_params)

@@ -9,7 +9,7 @@ import pytest
 
 from budget_forecaster.core.types import Category
 from budget_forecaster.exceptions import InvalidExportDataError
-from budget_forecaster.infrastructure.bank_adapters.swile.swile_bank_adapter import (
+from budget_forecaster.infrastructure.bank_sources.swile.swile_bank_adapter import (
     SwileBankAdapter,
 )
 from budget_forecaster.services.operation.historic_operation_factory import (

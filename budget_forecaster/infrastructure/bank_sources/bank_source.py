@@ -1,7 +1,10 @@
-"""Module for the BankAdapter interface class."""
+"""Common bank source abstraction.
+
+A bank source produces historic operations and a balance for an account,
+whatever the origin: a downloaded export file or a remote API.
+"""
 import abc
 from datetime import date
-from pathlib import Path
 from typing import Final
 
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
@@ -10,47 +13,32 @@ from budget_forecaster.services.operation.historic_operation_factory import (
 )
 
 
-class BankAdapterInterface(abc.ABC):
-    """Adapter for the bank export transactions."""
-
-    @abc.abstractmethod
-    def __init__(self) -> None:
-        """Initialize the bank adapter."""
+class BankSource(abc.ABC):
+    """A source of bank operations and balance for an account."""
 
     @property
     @abc.abstractmethod
     def name(self) -> str:
-        """Return the bank adapter name."""
-
-    @abc.abstractmethod
-    def load_bank_export(
-        self, bank_export: Path, operation_factory: HistoricOperationFactory
-    ) -> None:
-        """Load the bank export."""
-
-    @classmethod
-    @abc.abstractmethod
-    def match(cls, bank_export: Path) -> bool:
-        """Return True if the bank export is supported."""
+        """Return the source name."""
 
     @property
     @abc.abstractmethod
     def operations(self) -> tuple[HistoricOperation, ...]:
-        """Return the operations."""
+        """Return the loaded operations."""
 
     @property
     @abc.abstractmethod
     def balance(self) -> float | None:
-        """Return the balance."""
+        """Return the account balance."""
 
     @property
     @abc.abstractmethod
     def export_date(self) -> date | None:
-        """Return the export date."""
+        """Return the date the balance is valid at."""
 
 
-class BankAdapterBase(BankAdapterInterface, abc.ABC):
-    """Base class for bank adapters."""
+class BankSourceBase(BankSource, abc.ABC):
+    """Base class storing the loaded operations, balance and date."""
 
     def __init__(self, name: str) -> None:
         self._name: Final[str] = name
@@ -73,3 +61,16 @@ class BankAdapterBase(BankAdapterInterface, abc.ABC):
     @property
     def export_date(self) -> date | None:
         return self._export_date
+
+
+class ApiBankSource(BankSourceBase, abc.ABC):
+    """A bank source that fetches operations and balance from a remote API."""
+
+    @abc.abstractmethod
+    def fetch(
+        self,
+        account_uid: str,
+        operation_factory: HistoricOperationFactory,
+        date_from: date | None = None,
+    ) -> None:
+        """Fetch operations and balance for an account into this source."""
