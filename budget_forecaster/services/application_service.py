@@ -346,6 +346,14 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         """Load the forecast from the database."""
         return self._forecast_service.load_forecast()
 
+    def reload_forecast(self) -> Forecast:
+        """Reload the forecast and drop the cached report.
+
+        Use this after operations change (category, link) so the next report
+        computation reflects the new data instead of returning a stale one.
+        """
+        return self._forecast_service.reload_forecast()
+
     def compute_report(
         self,
         start_date: date | None = None,

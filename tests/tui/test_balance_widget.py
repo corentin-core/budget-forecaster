@@ -108,8 +108,8 @@ async def test_compute_and_display_skips_if_report_cached() -> None:
 
 
 @pytest.mark.asyncio
-async def test_refresh_data_calls_load_forecast() -> None:
-    """refresh_data calls load_forecast to invalidate the cache."""
+async def test_refresh_data_reloads_forecast() -> None:
+    """refresh_data reloads the forecast, dropping the cached report."""
     app_service = _make_app_service(has_report=True)
 
     app = BalanceTestApp(app_service)
@@ -117,7 +117,7 @@ async def test_refresh_data_calls_load_forecast() -> None:
         widget = app.query_one(BalanceWidget)
         widget.refresh_data()
 
-        app_service.load_forecast.assert_called_once()
+        app_service.reload_forecast.assert_called_once()
 
 
 @pytest.mark.asyncio
