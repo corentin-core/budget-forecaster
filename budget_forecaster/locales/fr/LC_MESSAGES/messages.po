@@ -542,8 +542,11 @@ msgstr "La date de début doit être au format AAAA-MM-JJ"
 msgid "End date:"
 msgstr "Date de fin :"
 
-msgid "End date must allow at least two iterations"
-msgstr "La date de fin doit permettre au moins deux itérations"
+msgid "End date cannot be before the start date"
+msgstr "La date de fin ne peut pas précéder la date de début"
+
+msgid "End date only applies to recurring operations"
+msgstr "La date de fin ne s'applique qu'aux opérations récurrentes"
 
 msgid "End date must be in YYYY-MM-DD format"
 msgstr "La date de fin doit être au format AAAA-MM-JJ"

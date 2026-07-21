@@ -311,13 +311,15 @@ class BudgetEditModal(ModalScreen[Budget | EditAction | None]):
 
             dr: DateRange | RecurringDateRange
             if is_periodic and period_rd:
-                if end_date is not None and end_date < start_date + period_rd:
-                    raise ValueError(_("End date must allow at least two iterations"))
+                if end_date is not None and end_date < start_date:
+                    raise ValueError(_("End date cannot be before the start date"))
                 dr = RecurringDateRange(
                     inner_range,
                     period_rd,
                     end_date,
                 )
+            elif end_date is not None:
+                raise ValueError(_("End date only applies to recurring operations"))
             else:
                 dr = inner_range
 

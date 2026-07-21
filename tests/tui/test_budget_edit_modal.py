@@ -75,29 +75,8 @@ async def _fill_and_save_periodic_budget(
 class TestBudgetEditEndDateValidation:
     """Tests for end date validation on recurring budgets."""
 
-    async def test_rejects_end_date_equal_to_start(self) -> None:
-        """End date equal to start date prevents recurrence."""
-        app = BudgetEditTestApp()
-        async with app.run_test(size=TEST_SIZE) as pilot:
-            app.open_modal()
-            await pilot.pause()
-
-            await _fill_and_save_periodic_budget(
-                app,
-                pilot,
-                start_date="2025-02-09",
-                period="12",
-                end_date="2025-02-09",
-            )
-
-            assert not app.modal_dismissed
-            modal = app.screen
-            assert isinstance(modal, BudgetEditModal)
-            error = modal.query_one("#error-message", Static)
-            assert str(error.content) == "End date must allow at least two iterations"
-
-    async def test_rejects_end_date_within_first_period(self) -> None:
-        """End date before start + period prevents meaningful recurrence."""
+    async def test_accepts_end_date_capturing_single_iteration(self) -> None:
+        """A recurring budget ending within its first period keeps one occurrence."""
         app = BudgetEditTestApp()
         async with app.run_test(size=TEST_SIZE) as pilot:
             app.open_modal()
@@ -111,11 +90,29 @@ class TestBudgetEditEndDateValidation:
                 end_date="2025-06-01",
             )
 
+            assert app.modal_dismissed
+            assert app.modal_result is not None
+
+    async def test_rejects_end_date_before_start(self) -> None:
+        """End date earlier than the start date is invalid."""
+        app = BudgetEditTestApp()
+        async with app.run_test(size=TEST_SIZE) as pilot:
+            app.open_modal()
+            await pilot.pause()
+
+            await _fill_and_save_periodic_budget(
+                app,
+                pilot,
+                start_date="2025-02-09",
+                period="12",
+                end_date="2025-02-08",
+            )
+
             assert not app.modal_dismissed
             modal = app.screen
             assert isinstance(modal, BudgetEditModal)
             error = modal.query_one("#error-message", Static)
-            assert str(error.content) == "End date must allow at least two iterations"
+            assert str(error.content) == "End date cannot be before the start date"
 
     async def test_accepts_end_date_after_second_iteration(self) -> None:
         """End date allowing two iterations is valid."""
@@ -152,3 +149,29 @@ class TestBudgetEditEndDateValidation:
 
             assert app.modal_dismissed
             assert app.modal_result is not None
+
+    async def test_rejects_end_date_on_non_recurring_budget(self) -> None:
+        """An end date on a one-time budget is rejected instead of dropped."""
+        app = BudgetEditTestApp()
+        async with app.run_test(size=TEST_SIZE) as pilot:
+            app.open_modal()
+            await pilot.pause()
+
+            modal = app.screen
+            assert isinstance(modal, BudgetEditModal)
+            modal.query_one("#input-description", Input).value = "Test budget"
+            modal.query_one("#input-amount", Input).value = "-100"
+            modal.query_one("#input-start-date", Input).value = "2025-01-01"
+            _set_duration_input(modal, "input-duration", "1", "months")
+            modal.query_one("#select-periodic", Select).value = "no"
+            modal.query_one("#input-end-date", Input).value = "2026-01-01"
+            await pilot.pause()
+
+            save_btn = modal.query_one("#btn-save", Button)
+            save_btn.focus()
+            await pilot.press("enter")
+            await pilot.pause()
+
+            assert not app.modal_dismissed
+            error = modal.query_one("#error-message", Static)
+            assert str(error.content) == "End date only applies to recurring operations"
