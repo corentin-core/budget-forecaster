@@ -96,6 +96,7 @@ class TestGetAvailableMargin:
         result = service.get_available_margin(date(2026, 3, 1), threshold=0)
         assert result is None
 
+    @freeze_time("2026-03-01")
     @patch("budget_forecaster.services.forecast.forecast_service.AccountAnalyzer")
     def test_basic_margin_no_threshold(
         self,
@@ -123,6 +124,7 @@ class TestGetAvailableMargin:
         assert result["lowest_balance_date"] == date(2026, 4, 15)
         assert result["threshold"] == 0
 
+    @freeze_time("2026-03-01")
     @patch("budget_forecaster.services.forecast.forecast_service.AccountAnalyzer")
     def test_margin_with_threshold(
         self,
@@ -146,6 +148,7 @@ class TestGetAvailableMargin:
         assert result["lowest_balance"] == 1500
         assert result["threshold"] == 500
 
+    @freeze_time("2026-03-01")
     @patch("budget_forecaster.services.forecast.forecast_service.AccountAnalyzer")
     def test_negative_margin_alert(
         self,
@@ -169,6 +172,7 @@ class TestGetAvailableMargin:
         assert result["lowest_balance"] == 300
         assert result["lowest_balance_date"] == date(2026, 4, 1)
 
+    @freeze_time("2026-03-01")
     @patch("budget_forecaster.services.forecast.forecast_service.AccountAnalyzer")
     def test_margin_from_future_month(
         self,
