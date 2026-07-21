@@ -373,13 +373,15 @@ class PlannedOperationEditModal(ModalScreen[PlannedOperation | EditAction | None
             # Build date range
             dr: SingleDay | RecurringDay
             if is_periodic and period_rd:
-                if end_date is not None and end_date < op_date + period_rd:
-                    raise ValueError(_("End date must allow at least two iterations"))
+                if end_date is not None and end_date < op_date:
+                    raise ValueError(_("End date cannot be before the start date"))
                 dr = RecurringDay(
                     op_date,
                     period_rd,
                     end_date,
                 )
+            elif end_date is not None:
+                raise ValueError(_("End date only applies to recurring operations"))
             else:
                 dr = SingleDay(op_date)
 

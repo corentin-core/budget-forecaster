@@ -76,8 +76,27 @@ async def _fill_and_save_periodic_op(
 class TestPlannedOpEditEndDateValidation:
     """Tests for end date validation on recurring planned operations."""
 
-    async def test_rejects_end_date_equal_to_start(self) -> None:
-        """End date equal to start date prevents recurrence."""
+    async def test_accepts_end_date_capturing_single_iteration(self) -> None:
+        """A yearly op ending before its second iteration keeps one occurrence."""
+        app = PlannedOpEditTestApp()
+        async with app.run_test(size=TEST_SIZE) as pilot:
+            app.open_modal()
+            await pilot.pause()
+
+            await _fill_and_save_periodic_op(
+                app,
+                pilot,
+                op_date="2026-01-19",
+                period="1",
+                period_unit="years",
+                end_date="2027-01-18",
+            )
+
+            assert app.modal_dismissed
+            assert app.modal_result is not None
+
+    async def test_rejects_end_date_before_start(self) -> None:
+        """End date earlier than the start date is invalid."""
         app = PlannedOpEditTestApp()
         async with app.run_test(size=TEST_SIZE) as pilot:
             app.open_modal()
@@ -88,14 +107,14 @@ class TestPlannedOpEditEndDateValidation:
                 pilot,
                 op_date="2025-02-09",
                 period="12",
-                end_date="2025-02-09",
+                end_date="2025-02-08",
             )
 
             assert not app.modal_dismissed
             modal = app.screen
             assert isinstance(modal, PlannedOperationEditModal)
             error = modal.query_one("#error-message", Static)
-            assert str(error.content) == "End date must allow at least two iterations"
+            assert str(error.content) == "End date cannot be before the start date"
 
     async def test_accepts_end_date_after_second_iteration(self) -> None:
         """End date allowing two iterations is valid."""
@@ -114,3 +133,28 @@ class TestPlannedOpEditEndDateValidation:
 
             assert app.modal_dismissed
             assert app.modal_result is not None
+
+    async def test_rejects_end_date_on_non_recurring_op(self) -> None:
+        """An end date on a one-time op is rejected instead of silently dropped."""
+        app = PlannedOpEditTestApp()
+        async with app.run_test(size=TEST_SIZE) as pilot:
+            app.open_modal()
+            await pilot.pause()
+
+            modal = app.screen
+            assert isinstance(modal, PlannedOperationEditModal)
+            modal.query_one("#input-description", Input).value = "Test op"
+            modal.query_one("#input-amount", Input).value = "-100"
+            modal.query_one("#input-date", Input).value = "2025-01-01"
+            modal.query_one("#select-periodic", Select).value = "no"
+            modal.query_one("#input-end-date", Input).value = "2026-01-01"
+            await pilot.pause()
+
+            save_btn = modal.query_one("#btn-save", Button)
+            save_btn.focus()
+            await pilot.press("enter")
+            await pilot.pause()
+
+            assert not app.modal_dismissed
+            error = modal.query_one("#error-message", Static)
+            assert str(error.content) == "End date only applies to recurring operations"

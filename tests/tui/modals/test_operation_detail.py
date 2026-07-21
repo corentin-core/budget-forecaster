@@ -18,7 +18,7 @@ from budget_forecaster.domain.operation.historic_operation import HistoricOperat
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.services.application_service import ApplicationService
-from budget_forecaster.tui.messages import SaveRequested
+from budget_forecaster.tui.messages import DataRefreshRequested, SaveRequested
 from budget_forecaster.tui.modals.operation_detail import OperationDetailModal
 
 
@@ -81,6 +81,10 @@ class OperationDetailTestApp(App[None]):
 
     def on_save_requested(self, event: SaveRequested) -> None:
         """Track SaveRequested messages."""
+        self.received_messages.append(event)
+
+    def on_data_refresh_requested(self, event: DataRefreshRequested) -> None:
+        """Track DataRefreshRequested messages."""
         self.received_messages.append(event)
 
 
@@ -368,3 +372,25 @@ class TestOperationDetailLinkButton:
             await pilot.pause()
 
             assert any(isinstance(m, SaveRequested) for m in app.received_messages)
+            assert any(
+                isinstance(m, DataRefreshRequested) for m in app.received_messages
+            )
+
+    @pytest.mark.asyncio
+    async def test_category_change_posts_save_and_refresh_messages(self) -> None:
+        """Changing category posts both SaveRequested and DataRefreshRequested."""
+        service = _make_app_service()
+
+        app = OperationDetailTestApp(service)
+        async with app.run_test() as pilot:
+            app.open_modal()
+            await pilot.pause()
+
+            app.screen._on_category_changed(Category.RENT)
+            await pilot.pause()
+
+            service.categorize_operations.assert_called_once()
+            assert any(isinstance(m, SaveRequested) for m in app.received_messages)
+            assert any(
+                isinstance(m, DataRefreshRequested) for m in app.received_messages
+            )

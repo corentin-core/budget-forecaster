@@ -542,8 +542,11 @@ msgstr "La date de début doit être au format AAAA-MM-JJ"
 msgid "End date:"
 msgstr "Date de fin :"
 
-msgid "End date must allow at least two iterations"
-msgstr "La date de fin doit permettre au moins deux itérations"
+msgid "End date cannot be before the start date"
+msgstr "La date de fin ne peut pas précéder la date de début"
+
+msgid "End date only applies to recurring operations"
+msgstr "La date de fin ne s'applique qu'aux opérations récurrentes"
 
 msgid "End date must be in YYYY-MM-DD format"
 msgstr "La date de fin doit être au format AAAA-MM-JJ"
@@ -1221,3 +1224,45 @@ msgstr "Moy/mois"
 
 msgid "Edit breakdown threshold"
 msgstr "Modifier le seuil de regroupement"
+
+msgid "yearly"
+msgstr "annuel"
+
+msgid "weekly"
+msgstr "hebdomadaire"
+
+msgid "daily"
+msgstr "quotidien"
+
+msgid "one-time"
+msgstr "ponctuel"
+
+msgid "week"
+msgstr "semaine"
+
+msgid "day"
+msgstr "jour"
+
+msgid "years"
+msgstr "ans"
+
+msgid "months"
+msgstr "mois"
+
+msgid "weeks"
+msgstr "semaines"
+
+msgid "days"
+msgstr "jours"
+
+msgid "every {count} years"
+msgstr "tous les {count} ans"
+
+msgid "every {count} months"
+msgstr "tous les {count} mois"
+
+msgid "every {count} weeks"
+msgstr "toutes les {count} semaines"
+
+msgid "every {count} days"
+msgstr "tous les {count} jours"

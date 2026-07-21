@@ -1143,3 +1143,21 @@ class TestSplitOperations:
         # The method finds the first future iteration without a link
         assert result is not None
         assert result not in {date(2025, 1, 1), date(2025, 2, 1)}
+
+
+class TestReloadForecast:
+    """Tests for forecast reload / report invalidation."""
+
+    def test_reload_forecast_delegates_to_forecast_service(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+    ) -> None:
+        """reload_forecast drops the cached report via the forecast service."""
+        reloaded = MagicMock()
+        mock_forecast_service.reload_forecast.return_value = reloaded
+
+        result = app_service.reload_forecast()
+
+        assert result is reloaded
+        mock_forecast_service.reload_forecast.assert_called_once_with()

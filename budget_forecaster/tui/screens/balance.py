@@ -17,6 +17,79 @@ from budget_forecaster.tui.symbols import DisplaySymbol
 logger = logging.getLogger(__name__)
 
 
+def _render_ascii_chart(  # pylint: disable=too-many-locals
+    data: list[tuple[date, float]], width: int = 70, height: int = 8
+) -> list[str]:
+    """Render an ASCII area chart anchored on a zero baseline.
+
+    Bars grow up from zero for positive balances and down from zero for
+    negative ones. Zero is always inside the visible range so the sign of
+    the balance and any crossing into the red stay readable.
+    """
+    if not data:
+        return [_("No data")]
+
+    values = [v for _d, v in data]
+    # Always keep zero in range so negative balances read as bars below it.
+    low = min(0.0, *values)
+    high = max(0.0, *values)
+
+    # Round to nice multiples of 100€ for Y-axis
+    min_val = (low // 100) * 100
+    max_val = ((high // 100) + 1) * 100
+    val_range = max_val - min_val if max_val != min_val else 100
+
+    # Fixed Y-axis label width
+    y_label_width = 12
+
+    # Sample data to fit width
+    step = max(1, len(data) // width)
+    display_data = [data[i] for i in range(0, len(data), step)]
+
+    lines = []
+
+    # Half the vertical span a single row covers, used for band overlap so
+    # bars stay continuous even when no row lands exactly on zero.
+    half_cell = val_range / (height - 1) / 2
+
+    # Chart body with Y-axis labels
+    for row in range(height - 1, -1, -1):
+        y_value = min_val + (val_range * row / (height - 1))
+        y_rounded = round(y_value / 100) * 100
+        y_label = f"{y_rounded:>10,.0f} {DisplaySymbol.EURO}"
+
+        line_chars = []
+        for _d, val in display_data:
+            # Fill the row if the zero-to-value span overlaps this row's band.
+            # Every column's span touches zero, so the row nearest zero fills
+            # across all columns and reads as the baseline.
+            if min(0.0, val) <= y_value + half_cell and max(0.0, val) >= (
+                y_value - half_cell
+            ):
+                line_chars.append("█")
+            else:
+                line_chars.append(" ")
+        lines.append(f"{y_label} │{''.join(line_chars)}")
+
+    # X-axis line
+    chart_len = len(display_data)
+    lines.append(" " * y_label_width + " └" + DisplaySymbol.SEPARATOR * chart_len)
+
+    # X-axis with dates - simple format below the chart
+    if len(display_data) >= 2:
+        first_date = display_data[0][0].strftime("%m/%Y")
+        last_date = display_data[-1][0].strftime("%m/%Y")
+        mid_idx = len(display_data) // 2
+        mid_date = display_data[mid_idx][0].strftime("%m/%Y")
+
+        # Build date line with proper spacing
+        spacing = max(1, (chart_len - 21) // 2)  # 21 = 3 dates * 7 chars
+        date_line = f"{first_date}{' ' * spacing}{mid_date}{' ' * spacing}{last_date}"
+        lines.append(" " * (y_label_width + 2) + date_line)
+
+    return lines
+
+
 class BalanceWidget(Vertical):
     """Balance tab: chart showing balance evolution over time."""
 
@@ -82,7 +155,7 @@ class BalanceWidget(Vertical):
     def refresh_data(self) -> None:
         """Refresh data — invalidate cached report so next tab open recomputes."""
         if self._app_service is not None:
-            self._app_service.load_forecast()
+            self._app_service.reload_forecast()
         self._update_export_button()
 
     def compute_and_display(self) -> None:
@@ -163,72 +236,10 @@ class BalanceWidget(Vertical):
         # Use available widget dimensions (minus border/padding)
         chart_height = max(8, chart.content_size.height - 2)  # -2 for axis + date line
         chart_width = max(20, chart.content_size.width - 15)  # -15 for Y-axis labels
-        chart_lines = self._render_ascii_chart(
+        chart_lines = _render_ascii_chart(
             balance_data, width=chart_width, height=chart_height
         )
         chart.update("\n".join(chart_lines))
-
-    def _render_ascii_chart(  # pylint: disable=too-many-locals
-        self, data: list[tuple[date, float]], width: int = 70, height: int = 8
-    ) -> list[str]:
-        """Render a simple ASCII line chart with axes."""
-        if not data:
-            return [_("No data")]
-
-        values = [v for _d, v in data]
-        raw_min = min(values)
-        raw_max = max(values)
-
-        # Round to nice multiples of 100€ for Y-axis
-        min_val = (raw_min // 100) * 100
-        max_val = ((raw_max // 100) + 1) * 100
-        val_range = max_val - min_val if max_val != min_val else 100
-
-        # Fixed Y-axis label width
-        y_label_width = 12
-
-        # Sample data to fit width
-        step = max(1, len(data) // width)
-        display_data = [data[i] for i in range(0, len(data), step)]
-
-        lines = []
-
-        # Chart body with Y-axis labels
-        for row in range(height - 1, -1, -1):
-            y_value = min_val + (val_range * row / (height - 1))
-            y_rounded = round(y_value / 100) * 100
-            y_label = f"{y_rounded:>10,.0f} {DisplaySymbol.EURO}"
-
-            threshold = y_value
-            line_chars = []
-            for _d, val in display_data:
-                if val >= threshold:
-                    line_chars.append("█")
-                elif val >= threshold - (val_range / height / 2):
-                    line_chars.append("▄")
-                else:
-                    line_chars.append(" ")
-            lines.append(f"{y_label} │{''.join(line_chars)}")
-
-        # X-axis line
-        chart_len = len(display_data)
-        lines.append(" " * y_label_width + " └" + DisplaySymbol.SEPARATOR * chart_len)
-
-        # X-axis with dates - simple format below the chart
-        if len(display_data) >= 2:
-            first_date = display_data[0][0].strftime("%m/%Y")
-            last_date = display_data[-1][0].strftime("%m/%Y")
-            mid_idx = len(display_data) // 2
-            mid_date = display_data[mid_idx][0].strftime("%m/%Y")
-
-            # Build date line with proper spacing
-            spacing = max(1, (chart_len - 21) // 2)  # 21 = 3 dates * 7 chars
-            date_line = (
-                f"{first_date}{' ' * spacing}{mid_date}{' ' * spacing}{last_date}"
-            )
-            lines.append(" " * (y_label_width + 2) + date_line)
-
-        return lines
 
     def on_resize(self) -> None:
         """Re-render chart when widget is resized."""
