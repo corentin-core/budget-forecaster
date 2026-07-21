@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
+from freezegun import freeze_time
 
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.infrastructure.persistence.repository_interface import (
@@ -95,6 +96,7 @@ class TestGetAvailableMargin:
         result = service.get_available_margin(date(2026, 3, 1), threshold=0)
         assert result is None
 
+    @freeze_time("2026-03-01")
     @patch("budget_forecaster.services.forecast.forecast_service.AccountAnalyzer")
     def test_basic_margin_no_threshold(
         self,
@@ -122,6 +124,7 @@ class TestGetAvailableMargin:
         assert result["lowest_balance_date"] == date(2026, 4, 15)
         assert result["threshold"] == 0
 
+    @freeze_time("2026-03-01")
     @patch("budget_forecaster.services.forecast.forecast_service.AccountAnalyzer")
     def test_margin_with_threshold(
         self,
@@ -145,6 +148,7 @@ class TestGetAvailableMargin:
         assert result["lowest_balance"] == 1500
         assert result["threshold"] == 500
 
+    @freeze_time("2026-03-01")
     @patch("budget_forecaster.services.forecast.forecast_service.AccountAnalyzer")
     def test_negative_margin_alert(
         self,
@@ -168,6 +172,7 @@ class TestGetAvailableMargin:
         assert result["lowest_balance"] == 300
         assert result["lowest_balance_date"] == date(2026, 4, 1)
 
+    @freeze_time("2026-03-01")
     @patch("budget_forecaster.services.forecast.forecast_service.AccountAnalyzer")
     def test_margin_from_future_month(
         self,
@@ -193,6 +198,34 @@ class TestGetAvailableMargin:
         assert result["available_margin"] == 2000
         assert result["balance_at_month_start"] == 2500
         assert result["lowest_balance_date"] == date(2026, 4, 15)
+
+    @freeze_time("2026-03-28")
+    @patch("budget_forecaster.services.forecast.forecast_service.AccountAnalyzer")
+    def test_excludes_past_dates_from_lowest_balance(
+        self,
+        mock_analyzer_class: MagicMock,
+        service: ForecastService,
+    ) -> None:
+        """Lowest balance ignores past dates within the current month."""
+        balance_df = _build_balance_df(
+            {
+                "2026-03-01": 3000,
+                "2026-03-24": 1000,  # past dip (before today 03-28)
+                "2026-03-28": 2500,
+                "2026-04-01": 2000,
+                "2026-04-15": 1800,
+            }
+        )
+        _compute_with_balance(service, mock_analyzer_class, balance_df)
+
+        result = service.get_available_margin(date(2026, 3, 1), threshold=0)
+
+        assert result is not None
+        # Past dip at 1000 on 03-24 should be ignored
+        assert result["lowest_balance"] == 1800
+        assert result["lowest_balance_date"] == date(2026, 4, 15)
+        # balance_at_start still reflects month start
+        assert result["balance_at_month_start"] == 3000
 
     @patch("budget_forecaster.services.forecast.forecast_service.AccountAnalyzer")
     def test_returns_none_for_empty_future(
