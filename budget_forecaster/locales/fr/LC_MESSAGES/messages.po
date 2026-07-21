@@ -1221,3 +1221,45 @@ msgstr "Moy/mois"
 
 msgid "Edit breakdown threshold"
 msgstr "Modifier le seuil de regroupement"
+
+msgid "yearly"
+msgstr "annuel"
+
+msgid "weekly"
+msgstr "hebdomadaire"
+
+msgid "daily"
+msgstr "quotidien"
+
+msgid "one-time"
+msgstr "ponctuel"
+
+msgid "week"
+msgstr "semaine"
+
+msgid "day"
+msgstr "jour"
+
+msgid "years"
+msgstr "ans"
+
+msgid "months"
+msgstr "mois"
+
+msgid "weeks"
+msgstr "semaines"
+
+msgid "days"
+msgstr "jours"
+
+msgid "every {count} years"
+msgstr "tous les {count} ans"
+
+msgid "every {count} months"
+msgstr "tous les {count} mois"
+
+msgid "every {count} weeks"
+msgstr "toutes les {count} semaines"
+
+msgid "every {count} days"
+msgstr "tous les {count} jours"
