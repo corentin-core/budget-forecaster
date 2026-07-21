@@ -8,6 +8,7 @@ and balances.
 import logging
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 
 import jwt
 import requests
@@ -33,15 +34,17 @@ class EnableBankingClient:
         session: requests.Session | None = None,
     ) -> None:
         self._application_id = application_id
-        self._private_key = Path(private_key_path).expanduser().read_bytes()
+        self._private_key = Path(private_key_path).read_bytes()
         self._redirect_url = redirect_url
         self._base_url = base_url.rstrip("/")
         self._session = session or requests.Session()
 
-    def list_aspsps(self, country: str = "FR") -> list[dict]:
+    def list_aspsps(self, country: str = "FR") -> tuple[dict[str, Any], ...]:
         """List the banks (ASPSPs) available in a country."""
-        return self._request("GET", "/aspsps", params={"country": country}).get(
-            "aspsps", []
+        return tuple(
+            self._request("GET", "/aspsps", params={"country": country}).get(
+                "aspsps", []
+            )
         )
 
     def start_authorization(
@@ -66,19 +69,19 @@ class EnableBankingClient:
         }
         return self._request("POST", "/auth", json_body=body)["url"]
 
-    def create_session(self, code: str) -> dict:
+    def create_session(self, code: str) -> dict[str, Any]:
         """Exchange an authorization code for a session with account uids."""
         return self._request("POST", "/sessions", json_body={"code": code})
 
     def get_transactions(
         self, account_uid: str, date_from: date | None = None
-    ) -> list[dict]:
+    ) -> tuple[dict[str, Any], ...]:
         """Fetch all transactions of an account, following pagination."""
         params: dict[str, str] = {}
         if date_from is not None:
             params["date_from"] = date_from.isoformat()
 
-        transactions: list[dict] = []
+        transactions: list[dict[str, Any]] = []
         continuation_key: str | None = None
         while True:
             page_params = dict(params)
@@ -89,12 +92,14 @@ class EnableBankingClient:
             )
             transactions.extend(page.get("transactions", []))
             if not (continuation_key := page.get("continuation_key")):
-                return transactions
+                return tuple(transactions)
 
-    def get_balances(self, account_uid: str) -> list[dict]:
+    def get_balances(self, account_uid: str) -> tuple[dict[str, Any], ...]:
         """Fetch the balances of an account."""
-        return self._request("GET", f"/accounts/{account_uid}/balances").get(
-            "balances", []
+        return tuple(
+            self._request("GET", f"/accounts/{account_uid}/balances").get(
+                "balances", []
+            )
         )
 
     def _build_jwt(self) -> str:
@@ -117,9 +122,9 @@ class EnableBankingClient:
         self,
         method: str,
         path: str,
-        params: dict | None = None,
-        json_body: dict | None = None,
-    ) -> dict:
+        params: dict[str, str] | None = None,
+        json_body: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Send an authenticated request and return the parsed JSON body."""
         headers = {"Authorization": f"Bearer {self._build_jwt()}"}
         response = self._session.request(

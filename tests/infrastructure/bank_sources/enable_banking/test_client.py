@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 
 import jwt
 import pytest
+import requests
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 
@@ -88,7 +89,7 @@ class TestEndpoints:
 
         aspsps = client.list_aspsps(country="FR")
 
-        assert aspsps == [{"name": "BNP", "country": "FR"}]
+        assert aspsps == ({"name": "BNP", "country": "FR"},)
         call = session.request.call_args
         assert call.args[0] == "GET"
         assert call.args[1].endswith("/aspsps")
@@ -142,7 +143,7 @@ class TestEndpoints:
 
         transactions = client.get_transactions("acc-1", date_from=date(2026, 1, 1))
 
-        assert transactions == [{"entry_reference": "a"}, {"entry_reference": "b"}]
+        assert transactions == ({"entry_reference": "a"}, {"entry_reference": "b"})
         first, second = session.request.call_args_list
         assert first.kwargs["params"] == {"date_from": "2026-01-01"}
         assert second.kwargs["params"] == {
@@ -160,5 +161,16 @@ class TestEndpoints:
 
         balances = client.get_balances("acc-1")
 
-        assert balances == [{"balance_type": "CLBD"}]
+        assert balances == ({"balance_type": "CLBD"},)
         assert session.request.call_args.args[1].endswith("/accounts/acc-1/balances")
+
+    def test_http_error_propagates(self, key_path: Path) -> None:
+        """A non-2xx response raises rather than returning partial data."""
+        session = MagicMock()
+        response = MagicMock()
+        response.raise_for_status.side_effect = requests.HTTPError("401")
+        session.request.return_value = response
+        client = _client(key_path, session)
+
+        with pytest.raises(requests.HTTPError):
+            client.list_aspsps()

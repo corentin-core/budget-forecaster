@@ -96,21 +96,44 @@ class TestMapTransaction:
         with pytest.raises(ValueError):
             map_transaction(raw, HistoricOperationFactory(0))
 
+    def test_missing_required_field_raises(self) -> None:
+        """A booked transaction missing a required field fails loud."""
+        raw = _transaction()
+        del raw["booking_date"]
+
+        with pytest.raises(KeyError):
+            map_transaction(raw, HistoricOperationFactory(0))
+
 
 class TestSelectClosingBookedBalance:
     """Tests for select_closing_booked_balance."""
 
     def test_selects_closing_booked_among_several(self) -> None:
         """The CLBD balance is picked among several balance types."""
-        balances = [
+        balances = (
             {"balance_type": "ITAV", "balance_amount": {"amount": "500.00"}},
             {"balance_type": "CLBD", "balance_amount": {"amount": "1234.56"}},
-        ]
+        )
 
         assert select_closing_booked_balance(balances) == 1234.56
 
+    def test_first_closing_booked_wins(self) -> None:
+        """With several CLBD entries, the first one is used."""
+        balances = (
+            {"balance_type": "CLBD", "balance_amount": {"amount": "10.00"}},
+            {"balance_type": "CLBD", "balance_amount": {"amount": "20.00"}},
+        )
+
+        assert select_closing_booked_balance(balances) == 10.00
+
+    def test_negative_closing_booked_keeps_sign(self) -> None:
+        """An overdraft balance is returned as a negative float."""
+        balances = ({"balance_type": "CLBD", "balance_amount": {"amount": "-42.50"}},)
+
+        assert select_closing_booked_balance(balances) == -42.50
+
     def test_returns_none_when_absent(self) -> None:
         """No CLBD entry yields a None balance."""
-        balances = [{"balance_type": "ITAV", "balance_amount": {"amount": "500.00"}}]
+        balances = ({"balance_type": "ITAV", "balance_amount": {"amount": "500.00"}},)
 
         assert select_closing_booked_balance(balances) is None

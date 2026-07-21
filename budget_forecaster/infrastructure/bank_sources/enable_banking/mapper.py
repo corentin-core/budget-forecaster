@@ -1,6 +1,7 @@
 """Mapping from Enable Banking payloads to domain objects."""
 
 from datetime import date
+from typing import Any
 
 from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.types import Category
@@ -17,7 +18,7 @@ _CLOSING_BOOKED = "CLBD"
 
 
 def map_transaction(
-    raw: dict, operation_factory: HistoricOperationFactory
+    raw: dict[str, Any], operation_factory: HistoricOperationFactory
 ) -> HistoricOperation | None:
     """Map one Enable Banking transaction to a HistoricOperation.
 
@@ -33,7 +34,7 @@ def map_transaction(
     )
 
 
-def select_closing_booked_balance(balances: list[dict]) -> float | None:
+def select_closing_booked_balance(balances: tuple[dict[str, Any], ...]) -> float | None:
     """Return the closing booked (CLBD) balance amount, or None if absent."""
     for balance in balances:
         if balance.get("balance_type") == _CLOSING_BOOKED:
@@ -48,7 +49,7 @@ def _remittance_description(remittance_information: list[str] | None) -> str:
     return " ".join(part.strip() for part in remittance_information if part).strip()
 
 
-def _signed_amount(raw: dict) -> Amount:
+def _signed_amount(raw: dict[str, Any]) -> Amount:
     """Build a signed amount: DBIT is an expense, CRDT an income."""
     transaction_amount = raw["transaction_amount"]
     value = float(transaction_amount["amount"])
