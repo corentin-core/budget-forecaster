@@ -111,8 +111,8 @@ class MarginInfo(TypedDict):
 class _PeriodicityInfo(NamedTuple):
     """Display period information extracted from a date range."""
 
-    label: str  # "monthly", "yearly", "one-time"
-    unit: str  # "month", "year", "" (empty for one-time)
+    label: str  # e.g. "monthly", "every 3 months", "one-time"
+    unit: str  # e.g. "month", "3 months", "" (empty for one-time)
 
 
 def _df_value(
@@ -139,15 +139,53 @@ def _ordinal(day: int) -> str:
             return _("{n}th").format(n=day)
 
 
+def _describe_period(period: relativedelta) -> _PeriodicityInfo:
+    """Build a readable label and unit for a recurrence period.
+
+    Unit detection mirrors the duration input: years, then months, then whole
+    weeks, then days. A singular period uses an adverb (monthly, weekly); a
+    larger one uses a count phrase (every 3 months). The count phrases stay
+    per-unit so translations keep the right gender and agreement.
+    """
+    if period.years:
+        count, adverb, singular, plural = (
+            period.years,
+            _("yearly"),
+            _("year"),
+            _("years"),
+        )
+        many = _("every {count} years")
+    elif period.months:
+        count, adverb, singular, plural = (
+            period.months,
+            _("monthly"),
+            _("month"),
+            _("months"),
+        )
+        many = _("every {count} months")
+    elif period.days and period.days % 7 == 0:
+        count, adverb, singular, plural = (
+            period.days // 7,
+            _("weekly"),
+            _("week"),
+            _("weeks"),
+        )
+        many = _("every {count} weeks")
+    elif period.days:
+        count, adverb, singular, plural = (period.days, _("daily"), _("day"), _("days"))
+        many = _("every {count} days")
+    else:
+        return _PeriodicityInfo(label=_("one-time"), unit="")
+
+    if count == 1:
+        return _PeriodicityInfo(label=adverb, unit=singular)
+    return _PeriodicityInfo(label=many.format(count=count), unit=f"{count} {plural}")
+
+
 def _periodicity_info(date_range: DateRangeInterface) -> _PeriodicityInfo:
     """Extract display period label and unit from a date range."""
     if isinstance(date_range, RecurringDateRange):
-        period = date_range.period
-        if period == relativedelta(months=1):
-            return _PeriodicityInfo(label=_("monthly"), unit=_("month"))
-        if period == relativedelta(years=1):
-            return _PeriodicityInfo(label=_("yearly"), unit=_("year"))
-        return _PeriodicityInfo(label=str(period), unit=str(period))
+        return _describe_period(date_range.period)
     return _PeriodicityInfo(label=_("one-time"), unit="")
 
 

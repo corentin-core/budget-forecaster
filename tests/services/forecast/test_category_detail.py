@@ -123,13 +123,40 @@ class TestFormatHelpers:
         )
         assert _format_periodicity(op) == "yearly, 15th"
 
-    def test_periodicity_info_non_standard_period(self) -> None:
-        """Non-standard period returns str representation for both fields."""
-        period = relativedelta(months=3)
-        date_range = RecurringDay(date(2025, 1, 1), period)
+    def test_periodicity_info_multi_month(self) -> None:
+        """A quarterly period reads as a count phrase, not a raw relativedelta."""
+        date_range = RecurringDay(date(2025, 1, 1), relativedelta(months=3))
         info = _periodicity_info(date_range)
-        assert info.label == str(period)
-        assert info.unit == str(period)
+        assert info.label == "every 3 months"
+        assert info.unit == "3 months"
+
+    def test_periodicity_info_multi_year(self) -> None:
+        """A period of several years reads as a count phrase."""
+        date_range = RecurringDay(date(2025, 1, 1), relativedelta(years=2))
+        info = _periodicity_info(date_range)
+        assert info.label == "every 2 years"
+        assert info.unit == "2 years"
+
+    def test_periodicity_info_weekly(self) -> None:
+        """A 7-day period reads as weekly, not '7 days'."""
+        date_range = RecurringDay(date(2025, 1, 1), relativedelta(days=7))
+        info = _periodicity_info(date_range)
+        assert info.label == "weekly"
+        assert info.unit == "week"
+
+    def test_periodicity_info_multi_week(self) -> None:
+        """A 14-day period reads as a count of weeks."""
+        date_range = RecurringDay(date(2025, 1, 1), relativedelta(days=14))
+        info = _periodicity_info(date_range)
+        assert info.label == "every 2 weeks"
+        assert info.unit == "2 weeks"
+
+    def test_periodicity_info_daily(self) -> None:
+        """A non-week day period reads in days."""
+        date_range = RecurringDay(date(2025, 1, 1), relativedelta(days=10))
+        info = _periodicity_info(date_range)
+        assert info.label == "every 10 days"
+        assert info.unit == "10 days"
 
     def test_format_periodicity_one_time(self) -> None:
         """Single-day operation formats as 'one-time, Nth'."""
