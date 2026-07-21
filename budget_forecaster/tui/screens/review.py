@@ -271,7 +271,7 @@ class ReviewWidget(Vertical):
     def refresh_data(self) -> None:
         """Refresh data — invalidate cached report so next tab open recomputes."""
         if self._app_service is not None:
-            self._app_service.load_forecast()
+            self._app_service.reload_forecast()
         self._summaries = []
 
     def compute_and_display(self) -> None:

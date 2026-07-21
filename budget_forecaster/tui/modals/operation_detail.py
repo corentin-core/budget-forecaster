@@ -234,6 +234,9 @@ class OperationDetailModal(ModalScreen[bool]):
         """Handle category change result."""
         if result is not None:
             self._app_service.categorize_operations((self._operation_id,), result)
+            # A category change moves the operation between report buckets, so
+            # the forecast views need to recompute, not only save.
+            self.post_message(DataRefreshRequested())
             self.post_message(SaveRequested())
             self._modified = True
 
