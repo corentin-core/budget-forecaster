@@ -8,7 +8,7 @@ from textual.app import App, ComposeResult
 from textual.widgets import Button
 
 from budget_forecaster.tui.modals.export_forecast import ExportForecastModal
-from budget_forecaster.tui.screens.balance import BalanceWidget
+from budget_forecaster.tui.screens.balance import BalanceWidget, _render_ascii_chart
 
 
 class BalanceTestApp(App[None]):
@@ -158,3 +158,44 @@ async def test_export_button_opens_modal() -> None:
         assert any(
             isinstance(screen, ExportForecastModal) for screen in app.screen_stack
         )
+
+
+def _chart_body(lines: list[str]) -> list[str]:
+    """Keep only the chart-body rows (those with a Y-axis label and a bar area)."""
+    return [line for line in lines if "│" in line]
+
+
+class TestRenderAsciiChart:
+    """Zero-baseline behavior of the balance chart."""
+
+    def test_zero_axis_present_with_negative_values(self) -> None:
+        """A balance that goes negative keeps a labeled 0 line on the axis."""
+        data = [
+            (date(2025, 1, 1), 500.0),
+            (date(2025, 2, 1), -300.0),
+            (date(2025, 3, 1), -800.0),
+        ]
+        lines = _render_ascii_chart(data)
+        assert any(line.strip().startswith("0 ") for line in lines)
+
+    def test_negative_only_range_spans_zero(self) -> None:
+        """All-negative data still puts zero at the top and the min below it."""
+        data = [
+            (date(2025, 1, 1), -100.0),
+            (date(2025, 2, 1), -250.0),
+        ]
+        lines = _render_ascii_chart(data)
+        labels = [line.split("│")[0] for line in _chart_body(lines)]
+        assert any("0 " in label for label in labels)
+        assert any("-300" in label.replace(",", "") for label in labels)
+
+    def test_positive_bars_grow_from_bottom(self) -> None:
+        """With only positive data the zero baseline sits at the bottom row."""
+        data = [
+            (date(2025, 1, 1), 200.0),
+            (date(2025, 2, 1), 900.0),
+        ]
+        body = _chart_body(_render_ascii_chart(data))
+        # Bottom body row is fully filled (the zero baseline), top row is not.
+        assert "█" in body[-1].split("│")[1]
+        assert body[0].split("│")[1].strip() != body[-1].split("│")[1].strip()
