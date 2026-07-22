@@ -232,6 +232,31 @@ class TestSqliteRepository:
         assert by_id[1].source_ref == "eb-ref-1"
         assert by_id[2].source_ref is None
 
+    def test_external_id_round_trip(self, temp_db_path: Path) -> None:
+        """A declared external id is persisted; an undeclared one stays None."""
+        with_id = Account(
+            name="bnp",
+            balance=1000.0,
+            currency="EUR",
+            balance_date=date(2026, 1, 31),
+            operations=(),
+            external_id="FR76",
+        )
+        without_id = Account(
+            name="swile",
+            balance=50.0,
+            currency="EUR",
+            balance_date=date(2026, 1, 31),
+            operations=(),
+        )
+        with SqliteRepository(temp_db_path) as repository:
+            repository.set_aggregated_account_name("Test")
+            repository.upsert_account(with_id)
+            repository.upsert_account(without_id)
+
+            assert repository.get_account_by_name("bnp").external_id == "FR76"
+            assert repository.get_account_by_name("swile").external_id is None
+
 
 class TestPersistentAccount:
     """Tests for the PersistentAccount class."""

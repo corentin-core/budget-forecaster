@@ -13,12 +13,21 @@ backup:
   enabled: true
   max_backups: 5
   directory: ~/.local/share/budget-forecaster/backups/
+# Optional - Account registry: the source-scoped external id of each account
+# (IBAN for banks, Swile wallet id). Ties file imports and API syncs to the
+# same local account. The name matches the adapter (bnp, swile).
+# accounts:
+#   - name: bnp
+#     external_id: "FR76..."      # IBAN
+#   - name: swile
+#     external_id: "..."          # Swile wallet id
 # Optional - Enable Banking API source (used by the `sync` command)
 # enable_banking:
 #   application_id: "your-application-id"
 #   private_key_path: ~/.config/budget-forecaster/enable_banking_key.pem
 #   redirect_url: "https://your-redirect-url"
 #   account_uid: "the-account-uid-from-a-prior-consent"
+#   local_account_name: bnp       # local account the sync merges into
 # logging:  # Override default logging (~/.local/share/budget-forecaster/budget-forecaster.log)
 #   version: 1
 #   disable_existing_loggers: false

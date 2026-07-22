@@ -11,6 +11,7 @@ from datetime import date
 
 from budget_forecaster.core.types import ImportStats
 from budget_forecaster.domain.account.account import AccountParameters
+from budget_forecaster.domain.account.account_registry import AccountRegistry
 from budget_forecaster.infrastructure.bank_sources.bank_source import ApiBankSource
 from budget_forecaster.infrastructure.persistence.persistent_account import (
     PersistentAccount,
@@ -26,9 +27,11 @@ class BankSyncService:  # pylint: disable=too-few-public-methods
         self,
         persistent_account: PersistentAccount,
         api_source: ApiBankSource,
+        account_registry: AccountRegistry | None = None,
     ) -> None:
         self._persistent_account = persistent_account
         self._api_source = api_source
+        self._account_registry = account_registry or AccountRegistry()
 
     def sync(self, account_uid: str, date_from: date | None = None) -> ImportStats:
         """Fetch the account from the API source and merge it locally.
@@ -57,6 +60,7 @@ class BankSyncService:  # pylint: disable=too-few-public-methods
             currency="EUR",
             balance_date=self._api_source.export_date or date.today(),
             operations=self._api_source.operations,
+            external_id=self._account_registry.external_id_for(self._api_source.name),
         )
 
         stats = self._persistent_account.upsert_account(account_params)

@@ -42,12 +42,21 @@ backup:
 # Optional - Language for the UI and exports (default: en)
 # language: fr
 
+# Optional - Account registry: external id of each account (IBAN for banks,
+# Swile wallet id). The name matches the adapter (bnp, swile).
+# accounts:
+#   - name: bnp
+#     external_id: "FR76..."      # IBAN
+#   - name: swile
+#     external_id: "..."          # Swile wallet id
+
 # Optional - Enable Banking API source (used by the `sync` command)
 # enable_banking:
 #   application_id: "your-application-id"
 #   private_key_path: ~/.config/budget-forecaster/enable_banking_key.pem
 #   redirect_url: "https://your-redirect-url"
 #   account_uid: "the-account-uid-from-a-prior-consent"
+#   local_account_name: bnp       # local account the sync merges into
 
 # Optional - Python dictConfig format for logging
 # logging:
@@ -76,6 +85,7 @@ backup:
 | `backup.directory`       | no       | _(database directory)_ | Where to store backup files                |
 | `language`               | no       | `en`                   | UI and export language (`en` or `fr`)      |
 | `logging`                | no       | basic INFO logging     | Python dictConfig format for logging setup |
+| `accounts`               | no       | _(none)_               | External id (IBAN / Swile id) per account  |
 | `enable_banking`         | no       | _(disabled)_           | Enable Banking credentials for `sync`      |
 
 ## Syncing bank data (Enable Banking)
@@ -88,9 +98,14 @@ budget-forecaster sync
 ```
 
 It reads the `enable_banking` section from the config, fetches the account identified by
-`account_uid`, and merges the operations into the local database. Re-running the command
-is safe: already-imported operations are skipped, and operations that overlap with a
-manual file import are reconciled rather than duplicated.
+`account_uid`, and merges the operations into the `local_account_name` account.
+Re-running the command is safe: already-imported operations are skipped, and operations
+that overlap with a manual file import are reconciled rather than duplicated.
+
+When an account is declared in the `accounts` registry, its external id (the IBAN)
+becomes its stable identity: file imports and API syncs of the same account reconcile by
+that id, and several accounts of the same bank stay distinct. Accounts left undeclared
+keep working, matched by their name.
 
 Obtaining the `application_id`, private key, `redirect_url`, and `account_uid` requires
 a one-time Enable Banking setup, documented separately.

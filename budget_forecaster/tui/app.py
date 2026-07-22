@@ -170,6 +170,7 @@ class BudgetApp(
             self._config.inbox_path,
             self._config.inbox_exclude_patterns,
             self._config.inbox_include_patterns,
+            self._config.accounts,
         )
         forecast_service = ForecastService(
             self._persistent_account,

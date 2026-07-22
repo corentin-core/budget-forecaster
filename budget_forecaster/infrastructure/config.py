@@ -8,6 +8,8 @@ from typing import Any, NamedTuple
 
 import yaml
 
+from budget_forecaster.domain.account.account_registry import AccountRegistry
+
 
 def _get_user_download_dir() -> Path:
     """Get the user's download directory using xdg-user-dir or fallback."""
@@ -47,6 +49,8 @@ class EnableBankingConfig(NamedTuple):
     redirect_url: str
     account_uid: str
     """Enable Banking account identifier to sync (from a prior consent)."""
+    local_account_name: str = "bnp"
+    """Local account the synced operations merge into."""
 
 
 class Config:  # pylint: disable=too-few-public-methods,too-many-instance-attributes
@@ -68,6 +72,8 @@ class Config:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
         self.language: str = "en"
         # Enable Banking API source (None = not configured)
         self.enable_banking: EnableBankingConfig | None = None
+        # Account registry (name -> external id); empty = none declared
+        self.accounts = AccountRegistry()
 
     def _parse_yaml(self, yaml_path: Path) -> None:
         """Parse a YAML configuration file."""
@@ -110,6 +116,15 @@ class Config:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
                     private_key_path=Path(eb_cfg["private_key_path"]).expanduser(),
                     redirect_url=eb_cfg["redirect_url"],
                     account_uid=eb_cfg["account_uid"],
+                    local_account_name=eb_cfg.get("local_account_name", "bnp"),
+                )
+            # Parse the account registry (local name -> external id)
+            if "accounts" in config:
+                self.accounts = AccountRegistry(
+                    {
+                        entry["name"]: entry["external_id"]
+                        for entry in config["accounts"] or []
+                    }
                 )
 
     def setup_logging(self) -> None:

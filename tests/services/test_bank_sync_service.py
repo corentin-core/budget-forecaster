@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.types import Category, ImportStats
+from budget_forecaster.domain.account.account_registry import AccountRegistry
 from budget_forecaster.services.bank_sync_service import BankSyncService
 from budget_forecaster.services.operation.historic_operation_factory import (
     HistoricOperationFactory,
@@ -40,12 +41,14 @@ def test_sync_fetches_source_and_merges_into_account() -> None:
     stats = ImportStats(total_in_file=2, new_operations=2, duplicates_skipped=0)
     persistent_account.upsert_account.return_value = stats
 
-    service = BankSyncService(persistent_account, source)
+    registry = AccountRegistry({"bnp": "FR76"})
+    service = BankSyncService(persistent_account, source, registry)
     result = service.sync("acc-1", date_from=date(2026, 1, 1))
 
     source.fetch.assert_called_once_with("acc-1", factory, date(2026, 1, 1))
     account_params = persistent_account.upsert_account.call_args.args[0]
     assert account_params.name == "bnp"
+    assert account_params.external_id == "FR76"
     assert account_params.balance == 1500.0
     assert account_params.currency == "EUR"
     assert account_params.balance_date == date(2026, 1, 15)
