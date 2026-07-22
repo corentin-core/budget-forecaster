@@ -18,7 +18,6 @@ from budget_forecaster.core.date_range import (
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.account.account import Account, AccountParameters
 from budget_forecaster.domain.operation.budget import Budget
-from budget_forecaster.domain.operation.content_ref import content_ref
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.exceptions import (
@@ -200,7 +199,7 @@ class TestSqliteRepository:
             assert repository.operation_exists(999) is False
 
     def test_source_ref_round_trip(self, temp_db_path: Path) -> None:
-        """API ops keep their reference; file ops get their content ref stored."""
+        """API ops keep their reference; file ops round-trip as None."""
         api_op = HistoricOperation(
             unique_id=1,
             description="MONOPRIX",
@@ -231,7 +230,7 @@ class TestSqliteRepository:
 
         by_id = {op.unique_id: op for op in retrieved.operations}
         assert by_id[1].source_ref == "eb-ref-1"
-        assert by_id[2].source_ref == content_ref("LOYER", -800.0, date(2026, 1, 5))
+        assert by_id[2].source_ref is None
 
 
 class TestPersistentAccount:
@@ -639,12 +638,13 @@ class TestSqliteRepositoryGaps:
 
 def _build_db_at_version(conn: sqlite3.Connection, version: int) -> None:
     """Apply migrations 1..version to stand up an old-schema database."""
+    conn.row_factory = sqlite3.Row
     for target in range(1, version + 1):
-        run = MIGRATIONS[target].run
-        if isinstance(run, str):
-            conn.executescript(run)
+        migration = MIGRATIONS[target]
+        if isinstance(migration, str):
+            conn.executescript(migration)
         else:
-            run(conn)
+            migration(conn)
     conn.execute("DELETE FROM schema_version")
     conn.execute("INSERT INTO schema_version (version) VALUES (?)", (version,))
     conn.commit()
@@ -753,8 +753,10 @@ class TestSchemaMigration:
             accounts = repository.get_all_accounts()
             assert accounts[0].operations[0].category == Category(expected_key)
 
-    def test_migration_v7_to_v8_backfills_source_ref(self, temp_db_path: Path) -> None:
-        """V8 adds source_ref and backfills existing rows with their content ref."""
+    def test_migration_v7_to_v8_adds_nullable_source_ref(
+        self, temp_db_path: Path
+    ) -> None:
+        """V8 adds the source_ref column; existing (file-origin) rows stay NULL."""
         conn = sqlite3.connect(temp_db_path)
         _build_db_at_version(conn, 7)
         conn.execute("INSERT INTO aggregated_accounts (name) VALUES ('Test')")
@@ -776,6 +778,4 @@ class TestSchemaMigration:
         with SqliteRepository(temp_db_path) as repository:
             operations = repository.get_all_accounts()[0].operations
 
-        by_id = {op.unique_id: op for op in operations}
-        assert by_id[1].source_ref == content_ref("MONOPRIX", -12.5, date(2026, 1, 10))
-        assert by_id[2].source_ref == content_ref("LOYER", -800.0, date(2026, 1, 5))
+        assert {op.source_ref for op in operations} == {None}

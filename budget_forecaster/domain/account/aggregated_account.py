@@ -67,8 +67,10 @@ class AggregatedAccount:
         Returns:
             UpdateResult containing the updated account and import statistics.
         """
-        # Dedup on the external reference when present (API/API idempotency),
-        # and always on the content ref (reconciles API vs file-imported ops).
+        # An op is a duplicate if its reference is already known (API/API
+        # idempotency) or its content ref matches an existing op. An incoming
+        # API op reconciles against an already-stored file op by content; the
+        # reverse (file op incoming, API op already stored) is not reconciled.
         existing_refs = {
             operation.source_ref or operation.content_ref
             for operation in current_account.operations

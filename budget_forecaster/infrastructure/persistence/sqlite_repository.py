@@ -82,24 +82,16 @@ class SqliteRepository(RepositoryInterface):
 
         conn = self._get_connection()
 
-        # Apply migrations in order
+        # Apply migrations in order. The registry is validated as a contiguous
+        # chain at import time, so every version in this range is present.
         for target_version in range(current_version + 1, CURRENT_SCHEMA_VERSION + 1):
-            if target_version not in MIGRATIONS:
-                raise ValueError(f"Missing migration for version {target_version}")
-
             migration = MIGRATIONS[target_version]
-            if migration.from_version != target_version - 1:
-                raise ValueError(
-                    f"Invalid migration chain: {migration.from_version}"
-                    f" -> {target_version}"
-                )
-
             logger.info("Applying migration to schema version %d", target_version)
 
-            if isinstance(migration.run, str):
-                conn.executescript(migration.run)
+            if isinstance(migration, str):
+                conn.executescript(migration)
             else:
-                migration.run(conn)
+                migration(conn)
 
             self._set_schema_version(target_version)
 
@@ -253,7 +245,7 @@ class SqliteRepository(RepositoryInterface):
                     op.operation_date.isoformat(),
                     op.amount,
                     op.currency,
-                    op.source_ref or op.content_ref,
+                    op.source_ref,
                 )
                 for op in operations
             ],

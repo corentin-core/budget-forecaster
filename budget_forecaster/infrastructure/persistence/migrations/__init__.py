@@ -9,18 +9,12 @@ import importlib
 import re
 import sqlite3
 from pathlib import Path
-from typing import Callable, NamedTuple
-
-
-class Migration(NamedTuple):
-    """A schema migration: the version it upgrades from and how to apply it."""
-
-    from_version: int
-    run: str | Callable[[sqlite3.Connection], None]
-
+from typing import Callable
 
 _MIGRATIONS_DIR = Path(__file__).parent
 _VERSION_PREFIX = re.compile(r"^v(\d+)_")
+
+Migration = str | Callable[[sqlite3.Connection], None]
 
 
 def _load() -> dict[int, Migration]:
@@ -29,15 +23,18 @@ def _load() -> dict[int, Migration]:
         match = _VERSION_PREFIX.match(path.name)
         if match is None or path.suffix not in (".sql", ".py"):
             continue
-        version = int(match.group(1))
+        if (version := int(match.group(1))) in migrations:
+            raise ValueError(f"Duplicate migration for version {version}")
         if path.suffix == ".sql":
-            run: str | Callable[[sqlite3.Connection], None] = path.read_text(
-                encoding="utf-8"
-            )
+            migrations[version] = path.read_text(encoding="utf-8")
         else:
             module = importlib.import_module(f"{__name__}.{path.stem}")
-            run = module.run
-        migrations[version] = Migration(from_version=version - 1, run=run)
+            migrations[version] = module.run
+    if sorted(migrations) != list(range(1, len(migrations) + 1)):
+        raise ValueError(
+            f"Migration versions must form a contiguous chain from 1: "
+            f"{sorted(migrations)}"
+        )
     return migrations
 
 

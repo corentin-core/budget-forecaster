@@ -258,6 +258,21 @@ class TestDedupWithSourceRef:
         assert result.stats.duplicates_skipped == 1
         assert len(result.account.operations) == 1
 
+    def test_file_op_incoming_after_api_op_is_not_reconciled(self) -> None:
+        """Accepted limitation: an incoming file op is not matched against an
+        existing API op, so re-importing a statement after API sync duplicates."""
+        api_op = _make_operation(
+            1, "MONOPRIX", -12.5, date(2025, 1, 10), source_ref="ref-1"
+        )
+        current = _make_account(operations=(api_op,))
+
+        file_op = _make_operation(2, "MONOPRIX", -12.5, date(2025, 1, 10))
+
+        result = AggregatedAccount.update_account(current, self._params((file_op,)))
+
+        assert result.stats.new_operations == 1
+        assert len(result.account.operations) == 2
+
 
 class TestUpsertAccount:
     """Tests for AggregatedAccount.upsert_account."""
@@ -283,6 +298,32 @@ class TestUpsertAccount:
             total_in_file=1, new_operations=1, duplicates_skipped=0
         )
         assert agg.accounts[0].operations == (op, new_op)
+
+    def test_source_ref_is_scoped_per_account(self) -> None:
+        """The same reference in another account is not a cross-account duplicate."""
+        existing = _make_operation(
+            1, "OP", -50.0, date(2025, 1, 10), source_ref="ref-1"
+        )
+        bnp = _make_account(name="BNP", operations=(existing,))
+        agg = AggregatedAccount("All", [bnp])
+
+        same_ref_other_account = _make_operation(
+            2, "OTHER", -20.0, date(2025, 1, 12), source_ref="ref-1"
+        )
+        params = AccountParameters(
+            name="Swile",
+            balance=500.0,
+            currency="EUR",
+            balance_date=date(2025, 1, 15),
+            operations=(same_ref_other_account,),
+        )
+
+        stats = agg.upsert_account(params)
+
+        assert stats == ImportStats(
+            total_in_file=1, new_operations=1, duplicates_skipped=0
+        )
+        assert len(agg.accounts) == 2
 
     def test_upsert_new_account(self) -> None:
         """Upserting a non-existing account name creates it with all operations."""

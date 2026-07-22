@@ -11,6 +11,9 @@ def content_ref(description: str, amount: float, operation_date: date) -> str:
 
     Stable across processes, unlike the builtin hash of a string. Two operations
     with the same description, amount and day collapse to the same key.
+
+    Currency is not part of the key: only use within a single-currency scope
+    (dedup is per account, and an account has one currency).
     """
     canonical = _SEP.join(
         (description, str(round(amount * 100)), operation_date.isoformat())
