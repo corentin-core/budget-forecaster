@@ -55,7 +55,9 @@ backup:
 #   application_id: "your-application-id"
 #   private_key_path: ~/.config/budget-forecaster/enable_banking_key.pem
 #   redirect_url: "https://your-redirect-url"
-#   account_uid: "the-account-uid-from-a-prior-consent"
+#   aspsp_name: "the-bank-name"   # bank to link (run `link` to authorize)
+#   aspsp_country: FR
+#   account_uid: "..."            # optional: pick one when a consent has several
 #   local_account_name: bnp       # local account the sync merges into
 
 # Optional - Python dictConfig format for logging
@@ -91,24 +93,35 @@ backup:
 ## Syncing bank data (Enable Banking)
 
 The `sync` command imports transactions and the account balance directly from the bank
-through Enable Banking, as an alternative to loading exported files:
+through Enable Banking, as an alternative to loading exported files.
+
+Linking a bank needs a consent that the bank issues after you authenticate in a browser
+(valid ~180 days for BNP; varies by bank). Authorize the bank once with `link`, then
+sync as often as you like:
 
 ```bash
-budget-forecaster sync
+budget-forecaster link            # prints a URL; authenticate, paste back the code
+budget-forecaster sync            # import transactions and balance
+budget-forecaster consent-status  # show whether the consent is valid/expiring/expired
 ```
 
-It reads the `enable_banking` section from the config, fetches the account identified by
-`account_uid`, and merges the operations into the `local_account_name` account.
-Re-running the command is safe: already-imported operations are skipped, and operations
-that overlap with a manual file import are reconciled rather than duplicated.
+`link` uses `aspsp_name`/`aspsp_country` to know which bank to authorize. It stores the
+resulting session and its expiry outside the repo, under
+`$XDG_STATE_HOME/budget-forecaster` (falling back to `~/.local/state`), readable only by
+you. `sync` reads that stored consent, so you never paste an account id by hand.
+`account_uid` is only needed to pick one account when a single consent unlocks several.
+When the consent expires, run `link` again to renew it.
+
+Re-running `sync` is safe: already-imported operations are skipped, and operations that
+overlap with a manual file import are reconciled rather than duplicated.
 
 When an account is declared in the `accounts` registry, its external id (the IBAN)
 becomes its stable identity: file imports and API syncs of the same account reconcile by
 that id, and several accounts of the same bank stay distinct. Accounts left undeclared
 keep working, matched by their name.
 
-Obtaining the `application_id`, private key, `redirect_url`, and `account_uid` requires
-a one-time Enable Banking setup, documented separately.
+Obtaining the `application_id`, private key and `redirect_url` requires a one-time
+Enable Banking setup, documented separately.
 
 ## Inbox Auto-Detection
 
