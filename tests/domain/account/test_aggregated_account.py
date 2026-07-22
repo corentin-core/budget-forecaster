@@ -529,17 +529,20 @@ class TestUpsertResolution:
         assert agg.accounts[0].external_id == "FR76"
         assert len(agg.accounts[0].operations) == 1
 
-    def test_distinct_external_ids_create_separate_accounts(self) -> None:
-        """Two ids under the same name stay distinct sub-accounts."""
-        first = _make_account(name="bnp", external_id="FR76")
+    def test_reidentification_updates_id_and_keeps_operations(self) -> None:
+        """A changed id for an existing name updates it in place, keeping ops."""
+        op1 = _make_operation(1, "O1", -10.0, date(2025, 2, 1), source_ref="r1")
+        first = _make_account(name="bnp", external_id="FR76", operations=(op1,))
         agg = AggregatedAccount("All", [first])
 
-        op = _make_operation(1, "OP", -10.0, date(2025, 2, 2), source_ref="r1")
+        op2 = _make_operation(2, "O2", -20.0, date(2025, 2, 2), source_ref="r2")
         agg.upsert_account(
-            self._params(name="bnp", external_id="FR99", operations=(op,))
+            self._params(name="bnp", external_id="FR99", operations=(op2,))
         )
 
-        assert {a.external_id for a in agg.accounts} == {"FR76", "FR99"}
+        assert len(agg.accounts) == 1
+        assert agg.accounts[0].external_id == "FR99"
+        assert {op.description for op in agg.accounts[0].operations} == {"O1", "O2"}
 
     def test_undeclared_account_matches_by_name(self) -> None:
         """An incoming account with no id merges into the name match."""

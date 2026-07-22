@@ -7,11 +7,6 @@ from budget_forecaster.domain.account.account import Account, AccountParameters
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 
 
-def _ids_conflict(left: str | None, right: str | None) -> bool:
-    """True when both external ids are set and differ."""
-    return left is not None and right is not None and left != right
-
-
 class UpdateResult(NamedTuple):
     """Result of updating an account with new operations."""
 
@@ -125,9 +120,10 @@ class AggregatedAccount:
                 else current_account.balance
             )
 
-        # Backfill the external id when the incoming source declares one and the
-        # stored account has none (first ingest of a pre-existing account).
-        external_id = current_account.external_id or new_account.external_id
+        # Adopt the external id the incoming source declares (backfill a
+        # pre-existing account, or reflect a config re-identification); keep the
+        # stored id when the source declares none.
+        external_id = new_account.external_id or current_account.external_id
 
         # Create the new account
         updated_account = current_account._replace(
@@ -166,17 +162,15 @@ class AggregatedAccount:
     def _find_match_index(self, account: AccountParameters) -> int | None:
         """Resolve the target sub-account: external id first, then name.
 
-        The name fallback skips an account already bound to a different external
-        id, so distinct ids under the same name stay separate.
+        Matching by id first recognizes a renamed account that kept its id; the
+        name fallback keeps file imports (no id) and pre-id databases working.
         """
         if account.external_id is not None:
             for index, current_account in enumerate(self._accounts):
                 if current_account.external_id == account.external_id:
                     return index
         for index, current_account in enumerate(self._accounts):
-            if current_account.name == account.name and not _ids_conflict(
-                current_account.external_id, account.external_id
-            ):
+            if current_account.name == account.name:
                 return index
         return None
 

@@ -258,6 +258,17 @@ class TestSqliteRepository:
             assert repository.get_account_by_name("swile").external_id is None
 
 
+def _external_id_op(unique_id: int, description: str, ref: str) -> HistoricOperation:
+    return HistoricOperation(
+        unique_id=unique_id,
+        description=description,
+        amount=Amount(-10.0, "EUR"),
+        category=Category.UNCATEGORIZED,
+        operation_date=date(2026, 1, 10),
+        source_ref=ref,
+    )
+
+
 class TestPersistentAccount:
     """Tests for the PersistentAccount class."""
 
@@ -282,6 +293,45 @@ class TestPersistentAccount:
             assert len(persistent.accounts) == 1
             assert persistent.accounts[0].name == "Compte courant"
             assert len(persistent.accounts[0].operations) == 3
+
+    def test_external_id_reidentification_survives_save_and_reload(
+        self, temp_db_path: Path
+    ) -> None:
+        """Re-ingesting an account with a new id keeps prior operations."""
+        with SqliteRepository(temp_db_path) as repository:
+            repository.set_aggregated_account_name("All")
+            persistent = PersistentAccount(repository)
+
+            persistent.upsert_account(
+                AccountParameters(
+                    name="bnp",
+                    balance=None,
+                    currency="EUR",
+                    balance_date=date(2026, 1, 10),
+                    operations=(_external_id_op(1, "O1", "r1"),),
+                    external_id="FR76",
+                )
+            )
+            persistent.save()
+            persistent.reload()
+
+            persistent.upsert_account(
+                AccountParameters(
+                    name="bnp",
+                    balance=None,
+                    currency="EUR",
+                    balance_date=date(2026, 1, 11),
+                    operations=(_external_id_op(2, "O2", "r2"),),
+                    external_id="FR99",
+                )
+            )
+            persistent.save()
+            persistent.reload()
+
+            assert len(persistent.accounts) == 1
+            account = persistent.accounts[0]
+            assert account.external_id == "FR99"
+            assert {op.description for op in account.operations} == {"O1", "O2"}
 
     def test_upsert_account(self, temp_db_path: Path, sample_account: Account) -> None:
         """Test upserting account through the interface."""
@@ -804,3 +854,44 @@ class TestSchemaMigration:
             operations = repository.get_all_accounts()[0].operations
 
         assert {op.source_ref for op in operations} == {None}
+
+    def test_migration_v8_to_v9_adds_nullable_external_id(
+        self, temp_db_path: Path
+    ) -> None:
+        """V9 adds the external_id column; existing accounts stay NULL."""
+        conn = sqlite3.connect(temp_db_path)
+        _build_db_at_version(conn, 8)
+        conn.execute("INSERT INTO aggregated_accounts (name) VALUES ('Test')")
+        conn.execute(
+            "INSERT INTO accounts (aggregated_account_id, name, balance, currency, "
+            "balance_date) VALUES (1, 'bnp', 1000.0, 'EUR', '2026-01-15')"
+        )
+        conn.commit()
+        conn.close()
+
+        with SqliteRepository(temp_db_path) as repository:
+            assert repository.get_account_by_name("bnp").external_id is None
+
+    def test_migration_v9_unique_index_rejects_duplicate_external_id(
+        self, temp_db_path: Path
+    ) -> None:
+        """The partial unique index forbids two accounts sharing an external id."""
+        with SqliteRepository(temp_db_path) as repository:
+            repository.initialize()
+
+        conn = sqlite3.connect(temp_db_path)
+        conn.execute("INSERT INTO aggregated_accounts (name) VALUES ('Test')")
+        conn.execute(
+            "INSERT INTO accounts (aggregated_account_id, name, balance, "
+            "currency, balance_date, external_id) "
+            "VALUES (1, 'a', 0.0, 'EUR', '2026-01-15', 'FR76')"
+        )
+        try:
+            with pytest.raises(sqlite3.IntegrityError):
+                conn.execute(
+                    "INSERT INTO accounts (aggregated_account_id, name, balance, "
+                    "currency, balance_date, external_id) "
+                    "VALUES (1, 'b', 0.0, 'EUR', '2026-01-15', 'FR76')"
+                )
+        finally:
+            conn.close()
