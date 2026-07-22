@@ -14,6 +14,7 @@ from budget_forecaster.services.use_cases.manage_targets_use_case import (
     ManageTargetsUseCase,
 )
 from budget_forecaster.services.use_cases.matcher_cache import MatcherCache
+from budget_forecaster.services.use_cases.sync_use_case import SyncUseCase
 
 __all__ = [
     "CategorizeUseCase",
@@ -22,4 +23,5 @@ __all__ = [
     "ManageLinksUseCase",
     "ManageTargetsUseCase",
     "MatcherCache",
+    "SyncUseCase",
 ]

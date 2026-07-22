@@ -8,6 +8,9 @@ from budget_forecaster.exceptions import AccountNotLoadedError
 from budget_forecaster.infrastructure.persistence.repository_interface import (
     RepositoryInterface,
 )
+from budget_forecaster.services.operation.historic_operation_factory import (
+    HistoricOperationFactory,
+)
 
 
 class PersistentAccount:
@@ -43,6 +46,14 @@ class PersistentAccount:
 
         accounts = self._repository.get_all_accounts()
         return AggregatedAccount(aggregated_name, accounts)
+
+    def next_operation_factory(self) -> HistoricOperationFactory:
+        """Create an operation factory seeded past the highest existing id.
+
+        Keeps operation ids unique whatever the source (file import, API sync).
+        """
+        last_id = max((op.unique_id for op in self.account.operations), default=0)
+        return HistoricOperationFactory(last_id)
 
     def save(self) -> None:
         """Save the accounts to the repository."""
