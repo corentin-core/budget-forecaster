@@ -121,3 +121,10 @@ sequenceDiagram
 
 BankAdapter auto-detects the file format (BNP Excel or Swile JSON). Operations are
 deduplicated against existing data before saving.
+
+Deduplication uses a two-level key. An operation with an external reference (the API
+entry_reference, absent for file imports) is a duplicate when that reference is already
+known, which makes repeated API syncs idempotent. Every operation also matches on a
+content ref (a stable hash of description, amount and day), so an API operation is
+reconciled against an overlapping file-imported one. Two same-day operations with
+distinct references are both kept.

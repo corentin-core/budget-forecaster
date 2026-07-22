@@ -26,14 +26,14 @@ from budget_forecaster.exceptions import (
     BudgetNotFoundError,
     PlannedOperationNotFoundError,
 )
+from budget_forecaster.infrastructure.persistence.migrations import MIGRATIONS
+from budget_forecaster.infrastructure.persistence.migrations.v005_french_categories import (
+    CATEGORY_MAP,
+)
 from budget_forecaster.infrastructure.persistence.persistent_account import (
     PersistentAccount,
 )
 from budget_forecaster.infrastructure.persistence.sqlite_repository import (
-    _CATEGORY_MIGRATION_MAP,
-    SCHEMA_V1,
-    SCHEMA_V2,
-    SCHEMA_V3,
     SqliteRepository,
 )
 
@@ -197,6 +197,40 @@ class TestSqliteRepository:
 
             assert repository.operation_exists(1) is True
             assert repository.operation_exists(999) is False
+
+    def test_source_ref_round_trip(self, temp_db_path: Path) -> None:
+        """API ops keep their reference; file ops round-trip as None."""
+        api_op = HistoricOperation(
+            unique_id=1,
+            description="MONOPRIX",
+            amount=Amount(-12.5, "EUR"),
+            category=Category.GROCERIES,
+            operation_date=date(2026, 1, 10),
+            source_ref="eb-ref-1",
+        )
+        file_op = HistoricOperation(
+            unique_id=2,
+            description="LOYER",
+            amount=Amount(-800.0, "EUR"),
+            category=Category.RENT,
+            operation_date=date(2026, 1, 5),
+        )
+        account = Account(
+            name="BNP",
+            balance=1000.0,
+            currency="EUR",
+            balance_date=date(2026, 1, 31),
+            operations=(api_op, file_op),
+        )
+        with SqliteRepository(temp_db_path) as repository:
+            repository.set_aggregated_account_name("Test")
+            repository.upsert_account(account)
+
+            retrieved = repository.get_account_by_name("BNP")
+
+        by_id = {op.unique_id: op for op in retrieved.operations}
+        assert by_id[1].source_ref == "eb-ref-1"
+        assert by_id[2].source_ref is None
 
 
 class TestPersistentAccount:
@@ -602,6 +636,20 @@ class TestSqliteRepositoryGaps:
             assert retrieved == op.replace(record_id=op_id)
 
 
+def _build_db_at_version(conn: sqlite3.Connection, version: int) -> None:
+    """Apply migrations 1..version to stand up an old-schema database."""
+    conn.row_factory = sqlite3.Row
+    for target in range(1, version + 1):
+        migration = MIGRATIONS[target]
+        if isinstance(migration, str):
+            conn.executescript(migration)
+        else:
+            migration(conn)
+    conn.execute("DELETE FROM schema_version")
+    conn.execute("INSERT INTO schema_version (version) VALUES (?)", (version,))
+    conn.commit()
+
+
 class TestSchemaMigration:
     """Tests for schema migration."""
 
@@ -634,10 +682,7 @@ class TestSchemaMigration:
         """Test that migration v4 converts datetime strings to date strings."""
         # Create a v3 database with datetime strings (old format)
         conn = sqlite3.connect(temp_db_path)
-        conn.executescript(SCHEMA_V1)
-        conn.executescript(SCHEMA_V2)
-        conn.executescript(SCHEMA_V3)
-        conn.execute("INSERT INTO schema_version (version) VALUES (3)")
+        _build_db_at_version(conn, 3)
         conn.execute("INSERT INTO aggregated_accounts (name) VALUES ('Test')")
         conn.execute(
             "INSERT INTO accounts (aggregated_account_id, name, balance, currency, "
@@ -681,18 +726,15 @@ class TestSchemaMigration:
 
     @pytest.mark.parametrize(
         ("french_value", "expected_key"),
-        list(_CATEGORY_MIGRATION_MAP.items()),
-        ids=list(_CATEGORY_MIGRATION_MAP.values()),
+        list(CATEGORY_MAP.items()),
+        ids=list(CATEGORY_MAP.values()),
     )
     def test_migration_v4_to_v5_converts_french_categories(
         self, temp_db_path: Path, french_value: str, expected_key: str
     ) -> None:
         """Test that migration v5 converts each French category to its English key."""
         conn = sqlite3.connect(temp_db_path)
-        conn.executescript(SCHEMA_V1)
-        conn.executescript(SCHEMA_V2)
-        conn.executescript(SCHEMA_V3)
-        conn.execute("INSERT INTO schema_version (version) VALUES (4)")
+        _build_db_at_version(conn, 4)
         conn.execute("INSERT INTO aggregated_accounts (name) VALUES ('Test')")
         conn.execute(
             "INSERT INTO accounts (aggregated_account_id, name, balance, currency, "
@@ -710,3 +752,30 @@ class TestSchemaMigration:
         with SqliteRepository(temp_db_path) as repository:
             accounts = repository.get_all_accounts()
             assert accounts[0].operations[0].category == Category(expected_key)
+
+    def test_migration_v7_to_v8_adds_nullable_source_ref(
+        self, temp_db_path: Path
+    ) -> None:
+        """V8 adds the source_ref column; existing (file-origin) rows stay NULL."""
+        conn = sqlite3.connect(temp_db_path)
+        _build_db_at_version(conn, 7)
+        conn.execute("INSERT INTO aggregated_accounts (name) VALUES ('Test')")
+        conn.execute(
+            "INSERT INTO accounts (aggregated_account_id, name, balance, currency, "
+            "balance_date) VALUES (1, 'Compte', 1000.0, 'EUR', '2026-01-15')"
+        )
+        conn.executemany(
+            "INSERT INTO operations (unique_id, account_id, description, category, "
+            "date, amount, currency) VALUES (?, 1, ?, 'groceries', ?, ?, 'EUR')",
+            [
+                (1, "MONOPRIX", "2026-01-10", -12.5),
+                (2, "LOYER", "2026-01-05", -800.0),
+            ],
+        )
+        conn.commit()
+        conn.close()
+
+        with SqliteRepository(temp_db_path) as repository:
+            operations = repository.get_all_accounts()[0].operations
+
+        assert {op.source_ref for op in operations} == {None}

@@ -8,7 +8,7 @@ import logging
 import sqlite3
 from datetime import date, timedelta
 from pathlib import Path
-from typing import Callable, Iterable, Self
+from typing import Iterable, Self
 
 from dateutil.relativedelta import relativedelta
 
@@ -32,211 +32,19 @@ from budget_forecaster.exceptions import (
     PersistenceError,
     PlannedOperationNotFoundError,
 )
+from budget_forecaster.infrastructure.persistence.migrations import (
+    CURRENT_SCHEMA_VERSION,
+    MIGRATIONS,
+)
 from budget_forecaster.infrastructure.persistence.repository_interface import (
     RepositoryInterface,
 )
 
 logger = logging.getLogger(__name__)
 
-# Current schema version
-CURRENT_SCHEMA_VERSION = 7
-
-# Base schema (version 0 -> 1)
-SCHEMA_V1 = """
-CREATE TABLE IF NOT EXISTS schema_version (
-    version INTEGER PRIMARY KEY
-);
-
-CREATE TABLE IF NOT EXISTS aggregated_accounts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE
-);
-
-CREATE TABLE IF NOT EXISTS accounts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    aggregated_account_id INTEGER NOT NULL REFERENCES aggregated_accounts(id),
-    name TEXT NOT NULL UNIQUE,
-    balance REAL NOT NULL,
-    currency TEXT NOT NULL DEFAULT 'EUR',
-    balance_date TIMESTAMP NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS operations (
-    unique_id INTEGER PRIMARY KEY,
-    account_id INTEGER NOT NULL REFERENCES accounts(id),
-    description TEXT NOT NULL,
-    category TEXT NOT NULL,
-    date TIMESTAMP NOT NULL,
-    amount REAL NOT NULL,
-    currency TEXT NOT NULL DEFAULT 'EUR'
-);
-
-CREATE INDEX IF NOT EXISTS idx_operations_account ON operations(account_id);
-CREATE INDEX IF NOT EXISTS idx_operations_date ON operations(date);
-CREATE INDEX IF NOT EXISTS idx_operations_category ON operations(category);
-"""
-
-# Schema migration v1 -> v2: add budgets and planned_operations tables
-SCHEMA_V2 = """
-CREATE TABLE IF NOT EXISTS budgets (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    description TEXT NOT NULL,
-    amount REAL NOT NULL,
-    currency TEXT NOT NULL DEFAULT 'EUR',
-    category TEXT NOT NULL,
-    start_date TIMESTAMP NOT NULL,
-    duration_value INTEGER,
-    duration_unit TEXT,
-    period_value INTEGER,
-    period_unit TEXT,
-    end_date TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS planned_operations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    description TEXT NOT NULL,
-    amount REAL NOT NULL,
-    currency TEXT NOT NULL DEFAULT 'EUR',
-    category TEXT NOT NULL,
-    start_date TIMESTAMP NOT NULL,
-    period_value INTEGER,
-    period_unit TEXT,
-    end_date TIMESTAMP,
-    description_hints TEXT,
-    approximation_date_days INTEGER DEFAULT 5,
-    approximation_amount_ratio REAL DEFAULT 0.05
-);
-
-CREATE INDEX IF NOT EXISTS idx_budgets_category ON budgets(category);
-CREATE INDEX IF NOT EXISTS idx_budgets_start_date ON budgets(start_date);
-CREATE INDEX IF NOT EXISTS idx_planned_operations_category ON planned_operations(category);
-CREATE INDEX IF NOT EXISTS idx_planned_operations_start_date ON planned_operations(start_date);
-"""
-
-# Schema migration v2 -> v3: add operation_links table
-SCHEMA_V3 = """
-CREATE TABLE IF NOT EXISTS operation_links (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    operation_unique_id INTEGER NOT NULL,
-    target_type TEXT NOT NULL,
-    target_id INTEGER NOT NULL,
-    iteration_date TIMESTAMP NOT NULL,
-    is_manual BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    notes TEXT,
-    UNIQUE(operation_unique_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_operation_links_operation ON operation_links(operation_unique_id);
-CREATE INDEX IF NOT EXISTS idx_operation_links_target ON operation_links(target_type, target_id);
-"""
-
-
-# Schema migration v3 -> v4: convert datetime strings to date strings
-SCHEMA_V4 = """
-UPDATE accounts SET balance_date = SUBSTR(balance_date, 1, 10)
-    WHERE LENGTH(balance_date) > 10;
-UPDATE operations SET date = SUBSTR(date, 1, 10)
-    WHERE LENGTH(date) > 10;
-UPDATE planned_operations SET start_date = SUBSTR(start_date, 1, 10)
-    WHERE LENGTH(start_date) > 10;
-UPDATE planned_operations SET end_date = SUBSTR(end_date, 1, 10)
-    WHERE end_date IS NOT NULL AND LENGTH(end_date) > 10;
-UPDATE budgets SET start_date = SUBSTR(start_date, 1, 10)
-    WHERE LENGTH(start_date) > 10;
-UPDATE budgets SET end_date = SUBSTR(end_date, 1, 10)
-    WHERE end_date IS NOT NULL AND LENGTH(end_date) > 10;
-UPDATE operation_links SET iteration_date = SUBSTR(iteration_date, 1, 10)
-    WHERE LENGTH(iteration_date) > 10;
-"""
-
-
-# Schema migration v4 -> v5: convert French category values to language-neutral keys
-# Maps old French enum values to new lowercase English keys
-_CATEGORY_MIGRATION_MAP: dict[str, str] = {
-    "Non catégorisé": "uncategorized",
-    "Salaire": "salary",
-    "Crédit d'impot": "tax_credit",
-    "Allocations": "benefits",
-    "Prêt maison": "house_loan",
-    "Prêt travaux": "works_loan",
-    "Loyer": "rent",
-    "Assurance prêt": "loan_insurance",
-    "Travaux": "house_works",
-    "Mobilier, electromenager, deco.": "furniture",
-    "Epargne": "savings",
-    "Assurance auto": "car_insurance",
-    "Assurance habitation": "house_insurance",
-    "Autre assurance": "other_insurance",
-    "Enfants": "childcare",
-    "Pension alimentaire": "child_support",
-    "Divertissement": "entertainment",
-    "Loisirs": "leisure",
-    "Voyages, vacances": "holidays",
-    "Electricité": "electricity",
-    "Eau": "water",
-    "Internet": "internet",
-    "Téléphone": "phone",
-    "Courses": "groceries",
-    "Habillement": "clothing",
-    "Santé": "health_care",
-    "Coiffeur, cosmétique, soins": "care",
-    "Transports publics": "public_transport",
-    "Carburant": "car_fuel",
-    "Stationnement": "parking",
-    "Péage": "toll",
-    "Entretien automobile": "car_maintenance",
-    "Crédit auto": "car_loan",
-    "Cadeaux": "gifts",
-    "Frais professionnels": "professional_expenses",
-    "Autre": "other",
-    "Dons": "charity",
-    "Commissions bancaires": "bank_fees",
-    "Impôts, taxes": "taxes",
-}
-
-
-# Schema migration v5 -> v6: add settings key-value table
-SCHEMA_V6 = """
-CREATE TABLE IF NOT EXISTS settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-);
-INSERT INTO settings (key, value) VALUES ('margin_threshold', '0');
-"""
-
-
-def _migrate_v5(conn: sqlite3.Connection) -> None:
-    """Migrate category values from French to language-neutral keys."""
-    for old_value, new_value in _CATEGORY_MIGRATION_MAP.items():
-        for table in ("operations", "budgets", "planned_operations"):
-            conn.execute(
-                f"UPDATE {table} SET category = ? WHERE category = ?",  # noqa: S608
-                (new_value, old_value),
-            )
-    conn.commit()
-
-
-# Schema migration v6 -> v7: add expense_breakdown_threshold setting
-SCHEMA_V7 = """
-INSERT OR IGNORE INTO settings (key, value) VALUES ('expense_breakdown_threshold', '2');
-"""
-
 
 class SqliteRepository(RepositoryInterface):
     """Repository for persisting account data in SQLite."""
-
-    # Migration functions: version -> (from_version, migration_sql_or_callable)
-    # Add new migrations here when schema evolves
-    _migrations: dict[int, tuple[int, str | Callable[[sqlite3.Connection], None]]] = {
-        1: (0, SCHEMA_V1),
-        2: (1, SCHEMA_V2),
-        3: (2, SCHEMA_V3),
-        4: (3, SCHEMA_V4),
-        5: (4, _migrate_v5),
-        6: (5, SCHEMA_V6),
-        7: (6, SCHEMA_V7),
-    }
 
     def __init__(self, db_path: Path) -> None:
         self._db_path = db_path
@@ -274,17 +82,10 @@ class SqliteRepository(RepositoryInterface):
 
         conn = self._get_connection()
 
-        # Apply migrations in order
+        # Apply migrations in order. The registry is validated as a contiguous
+        # chain at import time, so every version in this range is present.
         for target_version in range(current_version + 1, CURRENT_SCHEMA_VERSION + 1):
-            if target_version not in self._migrations:
-                raise ValueError(f"Missing migration for version {target_version}")
-
-            from_version, migration = self._migrations[target_version]
-            if from_version != target_version - 1:
-                raise ValueError(
-                    f"Invalid migration chain: {from_version} -> {target_version}"
-                )
-
+            migration = MIGRATIONS[target_version]
             logger.info("Applying migration to schema version %d", target_version)
 
             if isinstance(migration, str):
@@ -432,8 +233,9 @@ class SqliteRepository(RepositoryInterface):
         conn = self._get_connection()
         conn.executemany(
             """INSERT INTO operations
-               (unique_id, account_id, description, category, date, amount, currency)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+               (unique_id, account_id, description, category, date, amount, currency,
+                source_ref)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             [
                 (
                     op.unique_id,
@@ -443,6 +245,7 @@ class SqliteRepository(RepositoryInterface):
                     op.operation_date.isoformat(),
                     op.amount,
                     op.currency,
+                    op.source_ref,
                 )
                 for op in operations
             ],
@@ -452,7 +255,8 @@ class SqliteRepository(RepositoryInterface):
         """Get all operations for an account."""
         conn = self._get_connection()
         cursor = conn.execute(
-            """SELECT unique_id, description, category, date, amount, currency
+            """SELECT unique_id, description, category, date, amount, currency,
+                      source_ref
                FROM operations WHERE account_id = ?
                ORDER BY date DESC""",
             (account_id,),
@@ -464,6 +268,7 @@ class SqliteRepository(RepositoryInterface):
                 category=Category(row["category"]),
                 operation_date=date.fromisoformat(row["date"]),
                 amount=Amount(row["amount"], row["currency"]),
+                source_ref=row["source_ref"],
             )
             for row in cursor.fetchall()
         ]

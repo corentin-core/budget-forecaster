@@ -31,6 +31,7 @@ def map_transaction(
         amount=_signed_amount(raw),
         category=Category.UNCATEGORIZED,
         operation_date=date.fromisoformat(raw["booking_date"]),
+        source_ref=raw.get("entry_reference"),
     )
 
 

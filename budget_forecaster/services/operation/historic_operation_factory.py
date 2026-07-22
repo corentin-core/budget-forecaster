@@ -18,6 +18,7 @@ class HistoricOperationFactory:  # pylint: disable=too-few-public-methods
         amount: Amount,
         category: Category,
         operation_date: date,
+        source_ref: str | None = None,
     ) -> HistoricOperation:
         """Create a historic operation"""
         self._operation_id += 1
@@ -27,4 +28,5 @@ class HistoricOperationFactory:  # pylint: disable=too-few-public-methods
             amount=amount,
             category=category,
             operation_date=operation_date,
+            source_ref=source_ref,
         )
