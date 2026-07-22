@@ -27,11 +27,9 @@ from budget_forecaster.exceptions import (
     BudgetNotFoundError,
     PlannedOperationNotFoundError,
 )
-from budget_forecaster.infrastructure.persistence.migrations import (
-    _CATEGORY_MIGRATION_MAP,
-    SCHEMA_V1,
-    SCHEMA_V2,
-    SCHEMA_V3,
+from budget_forecaster.infrastructure.persistence.migrations import MIGRATIONS
+from budget_forecaster.infrastructure.persistence.migrations.v005_french_categories import (
+    CATEGORY_MAP,
 )
 from budget_forecaster.infrastructure.persistence.persistent_account import (
     PersistentAccount,
@@ -639,6 +637,19 @@ class TestSqliteRepositoryGaps:
             assert retrieved == op.replace(record_id=op_id)
 
 
+def _build_db_at_version(conn: sqlite3.Connection, version: int) -> None:
+    """Apply migrations 1..version to stand up an old-schema database."""
+    for target in range(1, version + 1):
+        run = MIGRATIONS[target].run
+        if isinstance(run, str):
+            conn.executescript(run)
+        else:
+            run(conn)
+    conn.execute("DELETE FROM schema_version")
+    conn.execute("INSERT INTO schema_version (version) VALUES (?)", (version,))
+    conn.commit()
+
+
 class TestSchemaMigration:
     """Tests for schema migration."""
 
@@ -671,10 +682,7 @@ class TestSchemaMigration:
         """Test that migration v4 converts datetime strings to date strings."""
         # Create a v3 database with datetime strings (old format)
         conn = sqlite3.connect(temp_db_path)
-        conn.executescript(SCHEMA_V1)
-        conn.executescript(SCHEMA_V2)
-        conn.executescript(SCHEMA_V3)
-        conn.execute("INSERT INTO schema_version (version) VALUES (3)")
+        _build_db_at_version(conn, 3)
         conn.execute("INSERT INTO aggregated_accounts (name) VALUES ('Test')")
         conn.execute(
             "INSERT INTO accounts (aggregated_account_id, name, balance, currency, "
@@ -718,18 +726,15 @@ class TestSchemaMigration:
 
     @pytest.mark.parametrize(
         ("french_value", "expected_key"),
-        list(_CATEGORY_MIGRATION_MAP.items()),
-        ids=list(_CATEGORY_MIGRATION_MAP.values()),
+        list(CATEGORY_MAP.items()),
+        ids=list(CATEGORY_MAP.values()),
     )
     def test_migration_v4_to_v5_converts_french_categories(
         self, temp_db_path: Path, french_value: str, expected_key: str
     ) -> None:
         """Test that migration v5 converts each French category to its English key."""
         conn = sqlite3.connect(temp_db_path)
-        conn.executescript(SCHEMA_V1)
-        conn.executescript(SCHEMA_V2)
-        conn.executescript(SCHEMA_V3)
-        conn.execute("INSERT INTO schema_version (version) VALUES (4)")
+        _build_db_at_version(conn, 4)
         conn.execute("INSERT INTO aggregated_accounts (name) VALUES ('Test')")
         conn.execute(
             "INSERT INTO accounts (aggregated_account_id, name, balance, currency, "
@@ -751,8 +756,7 @@ class TestSchemaMigration:
     def test_migration_v7_to_v8_backfills_source_ref(self, temp_db_path: Path) -> None:
         """V8 adds source_ref and backfills existing rows with their content ref."""
         conn = sqlite3.connect(temp_db_path)
-        conn.executescript(SCHEMA_V1)
-        conn.execute("INSERT INTO schema_version (version) VALUES (7)")
+        _build_db_at_version(conn, 7)
         conn.execute("INSERT INTO aggregated_accounts (name) VALUES ('Test')")
         conn.execute(
             "INSERT INTO accounts (aggregated_account_id, name, balance, currency, "
