@@ -70,7 +70,8 @@ categorizes transactions, and generates balance forecasts.
 
 The **Presentation** layer provides user interfaces: a Terminal UI for interactive use
 and a CLI for scripted operations. Both delegate to **Services**, which orchestrate
-business logic.
+business logic. The CLI launches the TUI by default, or runs the `sync` command to pull
+transactions and balance from an API bank source into the local database.
 
 The **Services** layer coordinates domain objects and implements use cases.
 `ApplicationService` is a thin facade that delegates orchestration to focused use cases:
@@ -82,6 +83,10 @@ The **Services** layer coordinates domain objects and implements use cases.
 - `ManageLinksUseCase`: Manual link creation
 - `ComputeForecastUseCase`: Forecast report computation
 - `MatcherCache`: Shared lazy-loaded cache of operation matchers
+
+The `sync` CLI command uses `SyncUseCase` directly (outside `ApplicationService`): it
+fetches operations and balance from an API bank source, merges them through the same
+deduplicating path as file import, then creates heuristic links.
 
 Lower-level services handle specific concerns:
 
@@ -100,7 +105,7 @@ The **Core** layer provides foundational types (Amount, DateRange, Category) wit
 external dependencies.
 
 The **Infrastructure** layer handles external concerns: SQLite persistence, bank file
-parsing (BNP, Swile), configuration, and rendering.
+parsing (BNP, Swile), the Enable Banking API source, configuration, and rendering.
 
 ## Documentation Index
 
