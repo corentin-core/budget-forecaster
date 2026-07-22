@@ -24,17 +24,13 @@ from budget_forecaster.domain.operation.historic_operation import HistoricOperat
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.exceptions import (
     AccountNotLoadedError,
-    BackupError,
     BudgetForecasterError,
 )
 from budget_forecaster.i18n import _, setup_i18n
-from budget_forecaster.infrastructure.backup import BackupService
+from budget_forecaster.infrastructure.bootstrap import open_repository
 from budget_forecaster.infrastructure.config import Config
 from budget_forecaster.infrastructure.persistence.persistent_account import (
     PersistentAccount,
-)
-from budget_forecaster.infrastructure.persistence.sqlite_repository import (
-    SqliteRepository,
 )
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.forecast.forecast_service import ForecastService
@@ -161,28 +157,7 @@ class BudgetApp(
         self._config.setup_logging()
         logger.info("Starting Budget Forecaster TUI")
 
-        # Create backup before any database access
-        if self._config.backup.enabled:
-            backup_service = BackupService(
-                database_path=self._config.database_path,
-                backup_directory=self._config.backup.directory,
-                max_backups=self._config.backup.max_backups,
-            )
-            try:
-                backup_path = backup_service.create_backup()
-                logger.info("Database backup created: %s", backup_path)
-            except BackupError:
-                logger.exception("Backup failed")
-            backup_service.rotate_backups()
-
-        repository = SqliteRepository(self._config.database_path)
-        repository.initialize()
-
-        # Bootstrap empty database with aggregated account name from config
-        if repository.get_aggregated_account_name() is None:
-            logger.info("Empty database detected, initializing aggregated account")
-            repository.set_aggregated_account_name(self._config.account.name)
-
+        repository = open_repository(self._config)
         self._persistent_account = PersistentAccount(repository)
 
         # Create individual services

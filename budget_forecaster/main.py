@@ -5,20 +5,16 @@ import logging
 import sys
 from pathlib import Path
 
-from budget_forecaster.exceptions import BackupError
-from budget_forecaster.infrastructure.backup import BackupService
 from budget_forecaster.infrastructure.bank_sources.enable_banking.client import (
     EnableBankingClient,
 )
 from budget_forecaster.infrastructure.bank_sources.enable_banking.source import (
     EnableBankingSource,
 )
+from budget_forecaster.infrastructure.bootstrap import open_repository
 from budget_forecaster.infrastructure.config import Config
 from budget_forecaster.infrastructure.persistence.persistent_account import (
     PersistentAccount,
-)
-from budget_forecaster.infrastructure.persistence.sqlite_repository import (
-    SqliteRepository,
 )
 from budget_forecaster.services.bank_sync_service import BankSyncService
 from budget_forecaster.services.forecast.forecast_service import ForecastService
@@ -48,27 +44,6 @@ def _create_default_config(config_path: Path) -> None:
     config_path.write_text(template_content, encoding="utf-8")
 
 
-def _open_repository(config: Config) -> SqliteRepository:
-    """Open the database, backing it up first and bootstrapping if empty."""
-    if config.backup.enabled:
-        backup_service = BackupService(
-            database_path=config.database_path,
-            backup_directory=config.backup.directory,
-            max_backups=config.backup.max_backups,
-        )
-        try:
-            backup_service.create_backup()
-        except BackupError:
-            logger.exception("Backup failed")
-        backup_service.rotate_backups()
-
-    repository = SqliteRepository(config.database_path)
-    repository.initialize()
-    if repository.get_aggregated_account_name() is None:
-        repository.set_aggregated_account_name(config.account.name)
-    return repository
-
-
 def _run_sync(config_path: Path) -> None:
     """Sync the configured Enable Banking account into the local database."""
     config = Config()
@@ -83,9 +58,10 @@ def _run_sync(config_path: Path) -> None:
         )
         sys.exit(1)
 
-    repository = _open_repository(config)
-    persistent_account = PersistentAccount(repository)
+    repository = None
     try:
+        repository = open_repository(config)
+        persistent_account = PersistentAccount(repository)
         client = EnableBankingClient(
             enable_banking.application_id,
             enable_banking.private_key_path,
@@ -99,19 +75,19 @@ def _run_sync(config_path: Path) -> None:
             MatcherCache(ForecastService(persistent_account, repository)),
         )
         stats = sync_use_case.sync(enable_banking.account_uid)
+        account = persistent_account.account
+        print(
+            f"Synced {source.name}: {stats.new_operations} new, "
+            f"{stats.duplicates_skipped} duplicates skipped. "
+            f"Balance: {account.balance:.2f} {account.currency}"
+        )
     except Exception:  # pylint: disable=broad-except
         logger.exception("Sync failed")
         print("Sync failed. See the log for details.", file=sys.stderr)
         sys.exit(1)
     finally:
-        repository.close()
-
-    account = persistent_account.account
-    print(
-        f"Synced {source.name}: {stats.new_operations} new, "
-        f"{stats.duplicates_skipped} duplicates skipped. "
-        f"Balance: {account.balance:.2f} {account.currency}"
-    )
+        if repository is not None:
+            repository.close()
 
 
 def main() -> None:

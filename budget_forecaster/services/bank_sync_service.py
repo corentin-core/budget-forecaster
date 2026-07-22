@@ -45,6 +45,12 @@ class BankSyncService:  # pylint: disable=too-few-public-methods
         operation_factory = self._persistent_account.next_operation_factory()
         self._api_source.fetch(account_uid, operation_factory, date_from)
 
+        if self._api_source.balance is None:
+            logger.warning(
+                "No closing booked (CLBD) balance returned for %s",
+                self._api_source.name,
+            )
+
         account_params = AccountParameters(
             name=self._api_source.name,
             balance=self._api_source.balance,

@@ -10,10 +10,13 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
+from budget_forecaster.core.date_range import RecurringDay
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.account.account import Account
+from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.infrastructure.bank_sources.enable_banking.source import (
     EnableBankingSource,
 )
@@ -172,3 +175,25 @@ class TestSyncIntegration:
         assert len(account.operations) == 3
         coffee_ops = [op for op in account.operations if op.description == "COFFEE"]
         assert len(coffee_ops) == 1
+
+    def test_sync_creates_heuristic_links(self, repository: SqliteRepository) -> None:
+        """A synced operation matching a planned operation gets linked."""
+        # RENT (-800 on 2026-01-02) matches this monthly planned operation.
+        repository.upsert_planned_operation(
+            PlannedOperation(
+                record_id=None,
+                description="Rent",
+                amount=Amount(-800.0),
+                category=Category.UNCATEGORIZED,
+                date_range=RecurringDay(date(2026, 1, 1), relativedelta(months=1)),
+            )
+        )
+        _seed_account(repository)
+        persistent_account = PersistentAccount(repository)
+        use_case, _ = _build_use_case(repository, persistent_account)
+
+        use_case.sync("acc-1")
+
+        links = repository.get_all_links()
+        assert len(links) > 0
+        assert all(not link.is_manual for link in links)
