@@ -141,7 +141,8 @@ class SqliteRepository(RepositoryInterface):
         """Get all accounts with their operations."""
         conn = self._get_connection()
         cursor = conn.execute(
-            "SELECT id, name, balance, currency, balance_date FROM accounts"
+            "SELECT id, name, balance, currency, balance_date, external_id "
+            "FROM accounts"
         )
         accounts = []
         for row in cursor.fetchall():
@@ -153,6 +154,7 @@ class SqliteRepository(RepositoryInterface):
                     currency=row["currency"],
                     balance_date=date.fromisoformat(row["balance_date"]),
                     operations=tuple(operations),
+                    external_id=row["external_id"],
                 )
             )
         return tuple(accounts)
@@ -161,7 +163,8 @@ class SqliteRepository(RepositoryInterface):
         """Get an account by name."""
         conn = self._get_connection()
         cursor = conn.execute(
-            "SELECT id, name, balance, currency, balance_date FROM accounts WHERE name = ?",
+            "SELECT id, name, balance, currency, balance_date, external_id "
+            "FROM accounts WHERE name = ?",
             (name,),
         )
         if (row := cursor.fetchone()) is None:
@@ -173,6 +176,7 @@ class SqliteRepository(RepositoryInterface):
             currency=row["currency"],
             balance_date=date.fromisoformat(row["balance_date"]),
             operations=tuple(operations),
+            external_id=row["external_id"],
         )
 
     def _get_account_id(self, name: str) -> int | None:
@@ -194,14 +198,16 @@ class SqliteRepository(RepositoryInterface):
 
             cursor = conn.execute(
                 """INSERT INTO accounts
-                   (aggregated_account_id, name, balance, currency, balance_date)
-                   VALUES (?, ?, ?, ?, ?)""",
+                   (aggregated_account_id, name, balance, currency, balance_date,
+                    external_id)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
                 (
                     agg_id,
                     account.name,
                     account.balance,
                     account.currency,
                     account.balance_date.isoformat(),
+                    account.external_id,
                 ),
             )
             if cursor.lastrowid is None:
@@ -209,12 +215,14 @@ class SqliteRepository(RepositoryInterface):
             account_id = cursor.lastrowid
         else:
             conn.execute(
-                """UPDATE accounts SET balance = ?, currency = ?, balance_date = ?
+                """UPDATE accounts
+                   SET balance = ?, currency = ?, balance_date = ?, external_id = ?
                    WHERE id = ?""",
                 (
                     account.balance,
                     account.currency,
                     account.balance_date.isoformat(),
+                    account.external_id,
                     existing_id,
                 ),
             )

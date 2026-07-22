@@ -104,7 +104,37 @@ class TestConfigParseYaml:
             ).expanduser(),
             redirect_url="https://localhost:8080/callback",
             account_uid="acc-uid-1234",
+            local_account_name="bnp",
         )
+        assert config.accounts.external_id_for("bnp") == "FR7612345"
+        assert config.accounts.external_id_for("swile") == "wallet-42"
+
+    def test_default_accounts_registry_is_empty(self) -> None:
+        """An undeclared account resolves to no external id."""
+        config = Config()
+
+        assert config.accounts.external_id_for("bnp") is None
+
+    def test_enable_banking_local_account_name_defaults_to_bnp(
+        self, tmp_path: Path
+    ) -> None:
+        """local_account_name defaults when the enable_banking block omits it."""
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text(
+            "database_path: ./budget.db\n"
+            "account_name: A\n"
+            "account_currency: EUR\n"
+            "enable_banking:\n"
+            "  application_id: app\n"
+            "  private_key_path: ./key.pem\n"
+            "  redirect_url: https://localhost\n"
+            "  account_uid: uid\n"
+        )
+        config = Config()
+        config.parse(config_path)
+
+        assert config.enable_banking is not None
+        assert config.enable_banking.local_account_name == "bnp"
 
     def test_parse_backup_partial_config(self) -> None:
         """Test parsing backup config with only some fields set."""

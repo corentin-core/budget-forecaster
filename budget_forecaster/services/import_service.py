@@ -12,6 +12,7 @@ from typing import NamedTuple
 
 from budget_forecaster.core.types import ImportProgressCallback, ImportStats
 from budget_forecaster.domain.account.account import AccountParameters
+from budget_forecaster.domain.account.account_registry import AccountRegistry
 from budget_forecaster.exceptions import UnsupportedExportError
 from budget_forecaster.infrastructure.bank_sources.file_export_adapter_factory import (
     FileExportAdapterFactory,
@@ -58,6 +59,7 @@ class ImportService:
         inbox_path: Path,
         exclude_patterns: list[str] | None = None,
         include_patterns: list[str] | None = None,
+        account_registry: AccountRegistry | None = None,
     ) -> None:
         """Initialize the service.
 
@@ -67,12 +69,15 @@ class ImportService:
             exclude_patterns: List of glob patterns to exclude from inbox.
             include_patterns: List of glob patterns to include in inbox.
                 If specified, only files matching at least one pattern are included.
+            account_registry: Resolves the external id of an imported account
+                from its adapter name.
         """
         self._persistent_account = persistent_account
         self._inbox_path = inbox_path
         self._exclude_patterns = exclude_patterns or []
         self._include_patterns = include_patterns or []
         self._file_export_adapter_factory = FileExportAdapterFactory()
+        self._account_registry = account_registry or AccountRegistry()
 
     def is_excluded(self, path: Path) -> bool:
         """Check if a path matches any exclusion pattern.
@@ -172,6 +177,7 @@ class ImportService:
                 currency="EUR",
                 balance_date=adapter.export_date or date.today(),
                 operations=adapter.operations,
+                external_id=self._account_registry.external_id_for(adapter.name),
             )
 
             stats = self._persistent_account.upsert_account(account_params)

@@ -23,8 +23,14 @@ logging:
     level: DEBUG
     handlers:
       - console
+accounts:
+  - name: bnp
+    external_id: FR7612345
+  - name: swile
+    external_id: wallet-42
 enable_banking:
   application_id: app-1234
   private_key_path: ~/.config/budget-forecaster/eb_private_key.pem
   redirect_url: https://localhost:8080/callback
   account_uid: acc-uid-1234
+  local_account_name: bnp

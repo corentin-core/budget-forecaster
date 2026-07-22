@@ -120,54 +120,73 @@ class AggregatedAccount:
                 else current_account.balance
             )
 
+        # Adopt the external id the incoming source declares (backfill a
+        # pre-existing account, or reflect a config re-identification); keep the
+        # stored id when the source declares none.
+        external_id = new_account.external_id or current_account.external_id
+
         # Create the new account
         updated_account = current_account._replace(
             balance=balance,
             balance_date=balance_date,
             operations=tuple(operations),
+            external_id=external_id,
         )
         return UpdateResult(account=updated_account, stats=stats)
 
     def upsert_account(self, account: AccountParameters) -> ImportStats:
         """Add or update an account.
 
+        The target is resolved external-id-first, then by name; a new account is
+        created when neither matches.
+
         Returns:
             ImportStats with the number of new and duplicate operations.
         """
-        updated_accounts: list[Account] = []
-        stats: ImportStats | None = None
-
-        for current_account in self._accounts:
-            if current_account.name == account.name:
-                result = self.update_account(current_account, account)
-                updated_accounts.append(result.account)
-                stats = result.stats
-            else:
-                updated_accounts.append(current_account)
-
-        # If no matching account was found, create a new one
-        if stats is None:
-            balance_date = account.balance_date or max(
-                op.operation_date for op in account.operations
-            )
-            new_account = Account(
-                name=account.name,
-                balance=account.balance or 0.0,
-                currency=account.currency,
-                balance_date=balance_date,
-                operations=account.operations,
-            )
-            updated_accounts.append(new_account)
+        if (match_index := self._find_match_index(account)) is None:
+            self._accounts = (*self._accounts, self._create_account(account))
             total = len(account.operations)
-            stats = ImportStats(
+            return ImportStats(
                 total_in_file=total,
                 new_operations=total,
                 duplicates_skipped=0,
             )
 
-        self._accounts = tuple(updated_accounts)
+        result = self.update_account(self._accounts[match_index], account)
+        self._accounts = tuple(
+            result.account if index == match_index else current_account
+            for index, current_account in enumerate(self._accounts)
+        )
+        return result.stats
 
-        return stats
+    def _find_match_index(self, account: AccountParameters) -> int | None:
+        """Resolve the target sub-account: external id first, then name.
+
+        Matching by id first recognizes a renamed account that kept its id; the
+        name fallback keeps file imports (no id) and pre-id databases working.
+        """
+        if account.external_id is not None:
+            for index, current_account in enumerate(self._accounts):
+                if current_account.external_id == account.external_id:
+                    return index
+        for index, current_account in enumerate(self._accounts):
+            if current_account.name == account.name:
+                return index
+        return None
+
+    @staticmethod
+    def _create_account(account: AccountParameters) -> Account:
+        balance_date = account.balance_date or max(
+            op.operation_date for op in account.operations
+        )
+        return Account(
+            name=account.name,
+            balance=account.balance or 0.0,
+            currency=account.currency,
+            balance_date=balance_date,
+            operations=account.operations,
+            external_id=account.external_id,
+        )
 
     def replace_account(self, new_account: Account) -> None:
         """Replace an account in the aggregated account."""

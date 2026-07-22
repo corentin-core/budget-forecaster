@@ -13,6 +13,8 @@ class AccountParameters(NamedTuple):
     currency: str
     balance_date: date | None
     operations: tuple[HistoricOperation, ...]
+    external_id: str | None = None
+    """Source-scoped external id (IBAN, Swile id); None for undeclared accounts."""
 
 
 class Account(NamedTuple):
@@ -23,3 +25,5 @@ class Account(NamedTuple):
     currency: str
     balance_date: date
     operations: tuple[HistoricOperation, ...]
+    external_id: str | None = None
+    """Source-scoped external id (IBAN, Swile id); None for undeclared accounts."""

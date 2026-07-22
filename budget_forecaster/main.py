@@ -26,10 +26,6 @@ from budget_forecaster.tui.app import run_app
 
 logger = logging.getLogger(__name__)
 
-# Local account name for the Enable Banking source. Must match the BNP file
-# adapter so xls and API operations reconcile into the same sub-account.
-_BNP_ACCOUNT_NAME = "bnp"
-
 
 def _create_default_config(config_path: Path) -> None:
     """Create a default configuration file from the template."""
@@ -67,9 +63,9 @@ def _run_sync(config_path: Path) -> None:
             enable_banking.private_key_path,
             enable_banking.redirect_url,
         )
-        source = EnableBankingSource(client, name=_BNP_ACCOUNT_NAME)
+        source = EnableBankingSource(client, name=enable_banking.local_account_name)
         sync_use_case = SyncUseCase(
-            BankSyncService(persistent_account, source),
+            BankSyncService(persistent_account, source, config.accounts),
             persistent_account,
             OperationLinkService(repository),
             MatcherCache(ForecastService(persistent_account, repository)),

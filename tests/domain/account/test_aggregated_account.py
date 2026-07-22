@@ -34,6 +34,7 @@ def _make_account(
     balance: float = 1000.0,
     balance_date: date = date(2025, 1, 15),
     operations: tuple[HistoricOperation, ...] = (),
+    external_id: str | None = None,
 ) -> Account:
     return Account(
         name=name,
@@ -41,6 +42,7 @@ def _make_account(
         currency="EUR",
         balance_date=balance_date,
         operations=operations,
+        external_id=external_id,
     )
 
 
@@ -477,3 +479,79 @@ class TestAggregation:
         agg = AggregatedAccount("All", [acc1, acc2])
 
         assert agg.account.balance_date == date(2025, 1, 20)
+
+
+class TestUpsertResolution:
+    """Tests for external-id-first / name-fallback account resolution."""
+
+    @staticmethod
+    def _params(
+        name: str = "bnp",
+        external_id: str | None = None,
+        operations: tuple[HistoricOperation, ...] = (),
+    ) -> AccountParameters:
+        return AccountParameters(
+            name=name,
+            balance=None,
+            currency="EUR",
+            balance_date=date(2025, 2, 1),
+            operations=operations,
+            external_id=external_id,
+        )
+
+    def test_matches_by_external_id_over_name(self) -> None:
+        """An account matching by external id wins over a name collision."""
+        by_name = _make_account(name="bnp", external_id=None)
+        by_id = _make_account(name="other", external_id="FR76")
+        agg = AggregatedAccount("All", [by_name, by_id])
+
+        op = _make_operation(1, "OP", -10.0, date(2025, 2, 2), source_ref="r1")
+        agg.upsert_account(
+            self._params(name="bnp", external_id="FR76", operations=(op,))
+        )
+
+        # The op lands on the external-id match, not the name match.
+        matched = next(a for a in agg.accounts if a.external_id == "FR76")
+        assert len(matched.operations) == 1
+        assert next(a for a in agg.accounts if a.name == "bnp").operations == ()
+
+    def test_falls_back_to_name_and_backfills_external_id(self) -> None:
+        """A pre-existing account matched by name is stamped with the id."""
+        existing = _make_account(name="bnp", external_id=None)
+        agg = AggregatedAccount("All", [existing])
+
+        op = _make_operation(1, "OP", -10.0, date(2025, 2, 2), source_ref="r1")
+        agg.upsert_account(
+            self._params(name="bnp", external_id="FR76", operations=(op,))
+        )
+
+        assert len(agg.accounts) == 1
+        assert agg.accounts[0].external_id == "FR76"
+        assert len(agg.accounts[0].operations) == 1
+
+    def test_reidentification_updates_id_and_keeps_operations(self) -> None:
+        """A changed id for an existing name updates it in place, keeping ops."""
+        op1 = _make_operation(1, "O1", -10.0, date(2025, 2, 1), source_ref="r1")
+        first = _make_account(name="bnp", external_id="FR76", operations=(op1,))
+        agg = AggregatedAccount("All", [first])
+
+        op2 = _make_operation(2, "O2", -20.0, date(2025, 2, 2), source_ref="r2")
+        agg.upsert_account(
+            self._params(name="bnp", external_id="FR99", operations=(op2,))
+        )
+
+        assert len(agg.accounts) == 1
+        assert agg.accounts[0].external_id == "FR99"
+        assert {op.description for op in agg.accounts[0].operations} == {"O1", "O2"}
+
+    def test_undeclared_account_matches_by_name(self) -> None:
+        """An incoming account with no id merges into the name match."""
+        existing = _make_account(name="bnp", external_id="FR76")
+        agg = AggregatedAccount("All", [existing])
+
+        op = _make_operation(1, "OP", -10.0, date(2025, 2, 2), source_ref="r1")
+        agg.upsert_account(self._params(name="bnp", external_id=None, operations=(op,)))
+
+        assert len(agg.accounts) == 1
+        assert agg.accounts[0].external_id == "FR76"
+        assert len(agg.accounts[0].operations) == 1

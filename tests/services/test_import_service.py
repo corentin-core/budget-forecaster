@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from budget_forecaster.core.types import ImportStats
+from budget_forecaster.domain.account.account_registry import AccountRegistry
 from budget_forecaster.services.import_service import (
     ImportResult,
     ImportService,
@@ -287,6 +288,40 @@ class TestImportFile:
         assert result.error_message is None
         mock_persistent_account.upsert_account.assert_called_once()
         mock_persistent_account.save.assert_called_once()
+
+    @patch("budget_forecaster.services.import_service.FileExportAdapterFactory")
+    def test_import_resolves_external_id_from_registry(
+        self,
+        mock_factory_class: MagicMock,
+        mock_persistent_account: MagicMock,
+        temp_inbox: Path,
+    ) -> None:
+        """The imported account carries the registry external id for its adapter."""
+        mock_adapter = MagicMock()
+        mock_adapter.name = "bnp"
+        mock_adapter.balance = 1000.0
+        mock_adapter.export_date = None
+        mock_adapter.operations = [MagicMock()]
+
+        mock_factory = MagicMock()
+        mock_factory.create_adapter.return_value = mock_adapter
+        mock_factory_class.return_value = mock_factory
+        mock_persistent_account.upsert_account.return_value = ImportStats(
+            total_in_file=1, new_operations=1, duplicates_skipped=0
+        )
+
+        service = ImportService(
+            mock_persistent_account,
+            temp_inbox,
+            account_registry=AccountRegistry({"bnp": "FR76"}),
+        )
+        test_file = temp_inbox / "bank.xlsx"
+        test_file.write_bytes(b"fake xlsx")
+
+        service.import_file(test_file)
+
+        account_params = mock_persistent_account.upsert_account.call_args.args[0]
+        assert account_params.external_id == "FR76"
 
     @patch("budget_forecaster.services.import_service.FileExportAdapterFactory")
     def test_import_moves_to_processed(
