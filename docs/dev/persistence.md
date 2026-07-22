@@ -70,6 +70,7 @@ erDiagram
         timestamp date
         real amount
         text currency
+        text source_ref "nullable dedup key"
     }
 
     planned_operations {
@@ -113,6 +114,31 @@ erDiagram
     planned_operations ||--o{ operation_links : "targeted by"
     budgets ||--o{ operation_links : "targeted by"
 ```
+
+## Schema Migrations
+
+The schema is versioned. On open, `initialize()` applies each pending migration in order
+up to the current version, so an older database is upgraded transparently. Migrations
+are ordered steps held in a single registry.
+
+Version 8 added the `source_ref` column on operations, the natural deduplication key.
+
+## Deduplication
+
+An operation carries a `source_ref` when its source provides a stable reference:
+
+- API operations use the bank's entry reference.
+- File imports (BNP, Swile) leave it NULL; a content reference (a hash of date, amount
+  and description) is derived on the fly instead.
+
+An incoming operation is a duplicate when either:
+
+- it has a reference and that reference is already stored for the account, or
+- it has no reference and its content reference matches a stored reference-less
+  operation.
+
+Two identical same-day API operations are both kept (distinct references); the content
+hash only collapses duplicates between file imports.
 
 ## Service Layer
 

@@ -103,6 +103,7 @@ class TestConfigParseYaml:
                 "~/.config/budget-forecaster/eb_private_key.pem"
             ).expanduser(),
             redirect_url="https://localhost:8080/callback",
+            account_uid="acc-uid-1234",
         )
 
     def test_parse_backup_partial_config(self) -> None:

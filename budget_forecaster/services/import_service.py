@@ -19,9 +19,6 @@ from budget_forecaster.infrastructure.bank_sources.file_export_adapter_factory i
 from budget_forecaster.infrastructure.persistence.persistent_account import (
     PersistentAccount,
 )
-from budget_forecaster.services.operation.historic_operation_factory import (
-    HistoricOperationFactory,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -114,16 +111,6 @@ class ImportService:
 
         return True
 
-    def _get_last_operation_id(self) -> int:
-        """Get the last operation id."""
-        if not (operations := self._persistent_account.account.operations):
-            return 0
-        return max(op.unique_id for op in operations)
-
-    def _create_operation_factory(self) -> HistoricOperationFactory:
-        """Create an operation factory with the next available ID."""
-        return HistoricOperationFactory(self._get_last_operation_id())
-
     def get_supported_exports_in_inbox(self) -> list[Path]:
         """Get all supported bank exports in the inbox folder.
 
@@ -173,7 +160,7 @@ class ImportService:
         Returns:
             ImportResult with the outcome and import statistics.
         """
-        operation_factory = self._create_operation_factory()
+        operation_factory = self._persistent_account.next_operation_factory()
 
         try:
             adapter = self._file_export_adapter_factory.create_adapter(path)

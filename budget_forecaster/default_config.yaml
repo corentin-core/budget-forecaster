@@ -13,6 +13,12 @@ backup:
   enabled: true
   max_backups: 5
   directory: ~/.local/share/budget-forecaster/backups/
+# Optional - Enable Banking API source (used by the `sync` command)
+# enable_banking:
+#   application_id: "your-application-id"
+#   private_key_path: ~/.config/budget-forecaster/enable_banking_key.pem
+#   redirect_url: "https://your-redirect-url"
+#   account_uid: "the-account-uid-from-a-prior-consent"
 # logging:  # Override default logging (~/.local/share/budget-forecaster/budget-forecaster.log)
 #   version: 1
 #   disable_existing_loggers: false

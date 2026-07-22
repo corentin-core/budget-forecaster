@@ -27,3 +27,4 @@ enable_banking:
   application_id: app-1234
   private_key_path: ~/.config/budget-forecaster/eb_private_key.pem
   redirect_url: https://localhost:8080/callback
+  account_uid: acc-uid-1234

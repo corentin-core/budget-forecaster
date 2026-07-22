@@ -42,6 +42,13 @@ backup:
 # Optional - Language for the UI and exports (default: en)
 # language: fr
 
+# Optional - Enable Banking API source (used by the `sync` command)
+# enable_banking:
+#   application_id: "your-application-id"
+#   private_key_path: ~/.config/budget-forecaster/enable_banking_key.pem
+#   redirect_url: "https://your-redirect-url"
+#   account_uid: "the-account-uid-from-a-prior-consent"
+
 # Optional - Python dictConfig format for logging
 # logging:
 #   version: 1
@@ -69,6 +76,24 @@ backup:
 | `backup.directory`       | no       | _(database directory)_ | Where to store backup files                |
 | `language`               | no       | `en`                   | UI and export language (`en` or `fr`)      |
 | `logging`                | no       | basic INFO logging     | Python dictConfig format for logging setup |
+| `enable_banking`         | no       | _(disabled)_           | Enable Banking credentials for `sync`      |
+
+## Syncing bank data (Enable Banking)
+
+The `sync` command imports transactions and the account balance directly from the bank
+through Enable Banking, as an alternative to loading exported files:
+
+```bash
+budget-forecaster sync
+```
+
+It reads the `enable_banking` section from the config, fetches the account identified by
+`account_uid`, and merges the operations into the local database. Re-running the command
+is safe: already-imported operations are skipped, and operations that overlap with a
+manual file import are reconciled rather than duplicated.
+
+Obtaining the `application_id`, private key, `redirect_url`, and `account_uid` requires
+a one-time Enable Banking setup, documented separately.
 
 ## Inbox Auto-Detection
 

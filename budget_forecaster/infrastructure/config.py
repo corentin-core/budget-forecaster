@@ -40,11 +40,13 @@ class BackupConfig(NamedTuple):
 
 
 class EnableBankingConfig(NamedTuple):
-    """Credentials for the Enable Banking API source."""
+    """Credentials and target account for the Enable Banking API source."""
 
     application_id: str
     private_key_path: Path
     redirect_url: str
+    account_uid: str
+    """Enable Banking account identifier to sync (from a prior consent)."""
 
 
 class Config:  # pylint: disable=too-few-public-methods,too-many-instance-attributes
@@ -107,6 +109,7 @@ class Config:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
                     application_id=eb_cfg["application_id"],
                     private_key_path=Path(eb_cfg["private_key_path"]).expanduser(),
                     redirect_url=eb_cfg["redirect_url"],
+                    account_uid=eb_cfg["account_uid"],
                 )
 
     def setup_logging(self) -> None:
