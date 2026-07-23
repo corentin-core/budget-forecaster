@@ -1266,3 +1266,213 @@ msgstr "toutes les {count} semaines"
 
 msgid "every {count} days"
 msgstr "tous les {count} jours"
+
+# ============================================================
+# Web app strings
+# ============================================================
+
+msgid "All categories"
+msgstr "Toutes les catégories"
+
+msgid "Available this month"
+msgstr "Disponible ce mois-ci"
+
+msgid "Bank connection"
+msgstr "Connexion bancaire"
+
+msgid "Bank connection expired"
+msgstr "Connexion bancaire expirée"
+
+msgid "Bank connection expiring"
+msgstr "Connexion bancaire bientôt expirée"
+
+msgid "Highest"
+msgstr "Plus haut"
+
+msgid "Home"
+msgstr "Accueil"
+
+msgid "Imports"
+msgstr "Imports"
+
+msgid "Inbox"
+msgstr "Dossier d'import"
+
+msgid "linked"
+msgstr "lié"
+
+msgid "Log out"
+msgstr "Déconnexion"
+
+msgid "Lowest"
+msgstr "Plus bas"
+
+msgid "Lowest balance"
+msgstr "Solde le plus bas"
+
+msgid "m"
+msgstr "m"
+
+msgid "Margin threshold"
+msgstr "Seuil de marge"
+
+msgid "Month"
+msgstr "Mois"
+
+msgid "No data for this month"
+msgstr "Aucune donnée pour ce mois"
+
+msgid "No expenses over this period"
+msgstr "Aucune dépense sur cette période"
+
+msgid "No operations"
+msgstr "Aucune opération"
+
+msgid "No pending files"
+msgstr "Aucun fichier en attente"
+
+msgid "Not configured"
+msgstr "Non configuré"
+
+msgid "Not enough data"
+msgstr "Données insuffisantes"
+
+msgid "Nothing upcoming"
+msgstr "Rien à venir"
+
+msgid "Password"
+msgstr "Mot de passe"
+
+msgid "Renew"
+msgstr "Renouveler"
+
+msgid "Sections"
+msgstr "Sections"
+
+msgid "See the month"
+msgstr "Voir le mois"
+
+msgid "Settings"
+msgstr "Réglages"
+
+msgid "Sign in"
+msgstr "Se connecter"
+
+msgid "Status"
+msgstr "Statut"
+
+msgid "Sync history coming soon"
+msgstr "Historique de synchro à venir"
+
+msgid "This month"
+msgstr "Ce mois-ci"
+
+msgid "to categorize"
+msgstr "à classer"
+
+msgid "Trends"
+msgstr "Tendances"
+
+msgid "Upcoming"
+msgstr "À venir"
+
+msgid "Valid until"
+msgstr "Valide jusqu'au"
+
+msgid "Wrong password"
+msgstr "Mot de passe incorrect"
+
+msgid "Other categories"
+msgstr "Autres catégories"
+
+msgid "per month"
+msgstr "par mois"
+
+msgid "Hover a segment for details"
+msgstr "Survolez un segment pour le détail"
+
+msgid "Show more"
+msgstr "Voir plus"
+
+msgid "Available margin this month"
+msgstr "Marge disponible ce mois-ci"
+
+msgid "Planned expenses this month"
+msgstr "Dépenses prévues ce mois-ci"
+
+msgid "Operations to categorize"
+msgstr "Opérations à catégoriser"
+
+msgid "What you can still spend this month after remaining budgets and planned operations, keeping your safety threshold."
+msgstr "Ce qu'il te reste à dépenser ce mois-ci une fois déduits les budgets et opérations planifiés restants, en gardant ton seuil de sécurité."
+
+msgid "Imported operations without a category. Click to classify them."
+msgstr "Opérations importées sans catégorie. Clique pour les classer."
+
+
+msgid "Largest items"
+msgstr "Plus gros postes"
+
+msgid "Safety threshold"
+msgstr "Seuil de sécurité"
+
+msgid "Lowest projected balance this month"
+msgstr "Solde le plus bas prévu ce mois-ci"
+
+msgid "Expense or income category"
+msgstr "Catégorie de dépense ou de revenu"
+
+msgid "Amount budgeted for this month"
+msgstr "Montant budgété pour ce mois"
+
+msgid "Amount actually spent or received so far"
+msgstr "Montant réellement dépensé ou reçu à ce jour"
+
+msgid "End-of-month projection (actual plus remaining planned)"
+msgstr "Projection de fin de mois (réel + planifié restant)"
+
+msgid "Left before reaching the forecast (Forecast minus Actual)"
+msgstr "Ce qu'il reste avant d'atteindre la prévision (Prévision − Réel)"
+
+msgid "Share of the budget already used (Actual / Planned)"
+msgstr "Part du budget déjà consommée (Réel / Prévu)"
+
+
+msgid "What you can spend without your projected balance dropping below the safety threshold, over the whole forecast horizon."
+msgstr "Ce que tu peux dépenser sans que le solde projeté passe sous ton seuil de sécurité, sur tout l'horizon de prévision."
+
+msgid "Lowest projected balance"
+msgstr "Solde le plus bas projeté"
+
+msgid "Categories with a budget set for this month"
+msgstr "Catégories avec un budget défini pour ce mois"
+
+msgid "Categories with activity but no budget set"
+msgstr "Catégories avec de l'activité mais sans budget défini"
+
+
+msgid "Updated on"
+msgstr "Mis à jour le"
+
+msgid "Planned expenses"
+msgstr "Dépenses prévues"
+
+msgid "Planned income"
+msgstr "Recettes prévues"
+
+msgid "Expense categories with a budget this month"
+msgstr "Catégories de dépense avec un budget ce mois"
+
+msgid "Income categories with a budget this month"
+msgstr "Catégories de revenu avec un budget ce mois"
+
+
+msgid "operations"
+msgstr "opérations"
+
+
+msgid "Valid"
+msgstr "Valide"
+
+msgid "Expiring"
+msgstr "Expire bientôt"

@@ -1,0 +1,832 @@
+/* Budget Forecaster web — single hand-written responsive stylesheet.
+   Mobile-first: bottom nav bar; a left sidebar takes over on wide screens. */
+
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --text: #1c1f26;
+  --muted: #6b7280;
+  --border: #e3e6ea;
+  --accent: #2f6df6;
+  --good: #1f9d55;
+  --bad: #d64545;
+  --income: #1f9d55;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --nav-h: 56px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --surface: #1e2127;
+    --text: #e6e8ec;
+    --muted: #9aa1ac;
+    --border: #2c313a;
+    --accent: #5b8dff;
+    --good: #3fce7c;
+    --bad: #f0736f;
+    --income: #3fce7c;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.4;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 0.5rem 0;
+}
+
+/* --- Navigation --- */
+.sidebar {
+  display: none;
+}
+
+.bottombar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--nav-h);
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 10;
+}
+
+.bottombar .nav-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.bottombar .nav-item.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.content {
+  padding: 1rem;
+  padding-bottom: calc(var(--nav-h) + 1rem);
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* --- Banner --- */
+.banner {
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+.banner a {
+  margin-left: 0.5rem;
+  font-weight: 600;
+}
+.banner-expiring {
+  background: #fff3cd;
+  color: #7a5b00;
+}
+.banner-expired {
+  background: #fbe0e0;
+  color: #7a1616;
+}
+
+/* --- Cards --- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card-head h2 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+}
+.card-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-weight: 600;
+}
+
+.highlight,
+.margin-card {
+  text-align: center;
+}
+.metric-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.metric-value {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0.2rem 0;
+}
+.metric-value.big {
+  font-size: 2.8rem;
+}
+.metric-sub {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* Balance is the headline number; the two secondary stats sit below it. */
+.stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.stat {
+  flex: 1;
+  min-width: 8rem;
+  margin-bottom: 0;
+  text-align: center;
+}
+.stat .metric-value {
+  font-size: 1.6rem;
+}
+.stat-link {
+  color: inherit;
+  display: block;
+}
+.stat-link:hover {
+  border-color: var(--accent);
+}
+.info {
+  cursor: help;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.pill {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Overall consumption bar on the home month summary. */
+.overall-bar {
+  position: relative;
+  height: 1.5rem;
+  background: var(--bg);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  cursor: help;
+}
+.overall-fill {
+  position: absolute;
+  inset: 0;
+  width: 0;
+}
+.overall-bar.good .overall-fill {
+  background: color-mix(in srgb, var(--good) 40%, transparent);
+}
+.overall-bar.bad .overall-fill {
+  background: color-mix(in srgb, var(--bad) 40%, transparent);
+}
+.overall-pct {
+  position: relative;
+  margin-left: auto;
+  padding: 0 0.6rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.subhead {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0.9rem 0 0.3rem;
+}
+
+/* Readable Actual/Planned columns on the home month summary. */
+.mini {
+  font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+.mini th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.8rem;
+  text-align: left;
+  padding: 0.2rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.mini th.num {
+  text-align: right;
+}
+.mini td {
+  padding: 0.3rem 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.more-btn {
+  margin-top: 0.6rem;
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* --- Lists --- */
+.cat-list,
+.upcoming-list,
+.file-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cat-list li,
+.upcoming-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.cat-figures,
+.up-amount {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.up-date {
+  color: var(--muted);
+  min-width: 5.5rem;
+}
+.up-desc {
+  flex: 1;
+  padding: 0 0.5rem;
+}
+.positive {
+  color: var(--good);
+}
+.negative {
+  color: var(--bad);
+}
+.empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* --- Month navigation --- */
+.month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.month-nav h1 {
+  font-size: 1.2rem;
+  margin: 0;
+}
+.month-nav a {
+  font-size: 1.5rem;
+  padding: 0 0.8rem;
+}
+
+/* --- Tables --- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.review,
+.ledger {
+  font-size: 0.9rem;
+}
+.review th,
+.review td,
+.ledger th,
+.ledger td {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+/* Right-align numeric cells; overrides the table's default-left above. */
+.review th.num,
+.review td.num,
+.ledger th.num,
+.ledger td.num,
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.review th[data-tip],
+.review .section-row td[data-tip] {
+  text-decoration: underline dotted var(--muted);
+  text-underline-offset: 3px;
+}
+[data-tip] {
+  cursor: help;
+}
+.tip-bubble {
+  position: absolute;
+  z-index: 50;
+  max-width: 16rem;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.75rem;
+  line-height: 1.3;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  pointer-events: none;
+}
+.section-row td {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding-top: 0.7rem;
+}
+.total-row td {
+  font-weight: 700;
+  border-top: 2px solid var(--border);
+}
+
+/* Wide tables scroll inside their card, never the page. */
+.card {
+  overflow-x: auto;
+}
+
+/* --- Consumption bar --- */
+.bar {
+  position: relative;
+  background: var(--bg);
+  border-radius: 6px;
+  height: 1.1rem;
+  min-width: 90px;
+  overflow: hidden;
+}
+.bar-fill {
+  position: absolute;
+  inset: 0;
+  width: 0;
+}
+.bar.good .bar-fill {
+  background: color-mix(in srgb, var(--good) 45%, transparent);
+}
+.bar.bad .bar-fill {
+  background: color-mix(in srgb, var(--bad) 45%, transparent);
+}
+.bar-pct {
+  position: relative;
+  font-size: 0.75rem;
+  padding-left: 0.4rem;
+}
+
+/* --- Filters --- */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+.filters input,
+.filters select {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+.filters input[type='search'] {
+  flex: 1;
+  min-width: 140px;
+}
+.check,
+.date-field {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.date-field input {
+  color: var(--text);
+}
+.ledger-count {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0 0 0.5rem;
+}
+.load-more-cell {
+  text-align: center;
+}
+.link-tag {
+  font-size: 0.7rem;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 0 0.3rem;
+  margin-left: 0.3rem;
+}
+
+/* --- Trends: balance curve --- */
+.chart {
+  position: relative;
+  height: 300px;
+  padding-left: 4.5rem;
+}
+.x-axis {
+  display: flex;
+  justify-content: space-between;
+  padding-left: 4.5rem;
+  margin-top: 0.3rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+.sparkline {
+  width: 100%;
+  height: 100%;
+  color: var(--accent);
+  display: block;
+}
+.sparkline polyline {
+  stroke: currentColor;
+}
+.zero-line {
+  stroke: var(--muted);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+.threshold-line {
+  stroke: var(--bad);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  opacity: 0.85;
+}
+.y-axis {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4.5rem;
+}
+.y-label {
+  position: absolute;
+  right: 0.4rem;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.y-label.zero {
+  color: var(--text);
+}
+.y-label.threshold {
+  color: var(--bad);
+}
+.threshold-tag {
+  position: absolute;
+  right: 0.3rem;
+  transform: translateY(-50%);
+  font-size: 0.65rem;
+  color: var(--bad);
+  background: var(--surface);
+  padding: 0 0.25rem;
+  border-radius: 4px;
+  pointer-events: none;
+}
+.chart-cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+  pointer-events: none;
+  transform: translateX(-0.5px);
+}
+.chart-dot {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border-radius: 50%;
+  background: var(--accent);
+  pointer-events: none;
+}
+.chart-tooltip {
+  position: absolute;
+  top: -0.4rem;
+  transform: translate(-50%, -100%);
+  background: var(--text);
+  color: var(--bg);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  pointer-events: none;
+}
+.period-switch a {
+  padding: 0 0.4rem;
+  color: var(--muted);
+}
+.period-switch a.active {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* --- Trends: expense donut --- */
+.breakdown-chart {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.donut {
+  width: 260px;
+  height: 260px;
+  max-width: 100%;
+}
+.donut-total {
+  fill: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+}
+.slice {
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.slices.faded .slice {
+  opacity: 0.3;
+}
+.slices .slice.active {
+  opacity: 1;
+}
+.donut-tooltip {
+  position: absolute;
+  transform: translate(-50%, -110%);
+  background: var(--text);
+  color: var(--bg);
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  text-align: center;
+  pointer-events: none;
+}
+.donut-tooltip .tt-muted {
+  opacity: 0.75;
+  font-size: 0.75rem;
+}
+.chart-hint {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-style: italic;
+  margin: 0;
+}
+
+/* --- Key/value + settings --- */
+.kv {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.3rem 0;
+}
+.kv code {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+.status-valid {
+  color: var(--good);
+}
+.status-expiring {
+  color: #b8860b;
+}
+.status-expired {
+  color: var(--bad);
+}
+
+/* --- Login --- */
+.login-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1rem;
+}
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 320px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.login-card input {
+  padding: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+}
+.login-card button {
+  padding: 0.6rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.login-error {
+  color: var(--bad);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* --- Desktop: sidebar replaces the bottom bar --- */
+@media (min-width: 1024px) {
+  .bottombar {
+    display: none;
+  }
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 200px;
+    padding: 1rem;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+  }
+  .sidebar .nav-item {
+    padding: 0.6rem 0.5rem;
+    border-radius: 8px;
+    color: var(--muted);
+  }
+  .sidebar .nav-item.active {
+    background: var(--bg);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .sidebar .logout {
+    margin-top: auto;
+  }
+  .content {
+    margin-left: 200px;
+    margin-right: 0;
+    max-width: 1500px;
+    padding: 1.5rem 2rem;
+  }
+  /* Tile the two lower home cards side by side on wide screens. */
+  .home-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+}
+
+/* --- Mobile: drop secondary table columns so the essentials fit --- */
+@media (max-width: 1023px) {
+  .review,
+  .ledger {
+    font-size: 0.8rem;
+  }
+  /* Month review: a card per category with every figure labelled, so nothing
+     is lost to a hidden column or off-screen scroll. */
+  .review,
+  .review tbody {
+    display: block;
+  }
+  .review thead {
+    display: none;
+  }
+  .review tr.income,
+  .review tr.expense {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.15rem 0.8rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .review tr.income td,
+  .review tr.expense td {
+    border: none;
+    padding: 0;
+    text-align: left;
+  }
+  .review .cat {
+    grid-column: 1 / -1;
+    font-weight: 600;
+  }
+  .review td[data-label]::before {
+    content: attr(data-label) ' : ';
+    color: var(--muted);
+    font-size: 0.72rem;
+  }
+  .review .bar-cell {
+    grid-column: 1 / -1;
+  }
+  .review .bar-cell::before {
+    content: none;
+  }
+  .review .section-row td {
+    display: block;
+  }
+  .review .total-row {
+    display: block;
+    padding-top: 0.5rem;
+  }
+  .review .total-row td {
+    display: block;
+    border: none;
+    text-align: left;
+  }
+  /* Operations ledger becomes a stacked card per row: date + amount on top,
+     description full-width below. Keeps the amount always visible. */
+  .ledger,
+  .ledger tbody {
+    display: block;
+  }
+  .ledger thead {
+    display: none;
+  }
+  .ledger tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .ledger td {
+    border: none;
+    padding: 0;
+  }
+  .ledger .date {
+    color: var(--muted);
+  }
+  .ledger .num {
+    margin-left: auto;
+  }
+  .ledger .desc {
+    flex-basis: 100%;
+    margin-top: 0.15rem;
+  }
+  .ledger .cat {
+    display: none;
+  }
+  .ledger .load-more-cell,
+  .ledger .empty {
+    flex-basis: 100%;
+    text-align: center;
+  }
+}
+
+/* Long bank references must break instead of widening their column. */
+.desc {
+  overflow-wrap: anywhere;
+}
+
+/* Landscape phone: let the balance curve fill the wider screen. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .chart {
+    height: 78vh;
+  }
+}

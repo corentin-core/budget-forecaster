@@ -1,0 +1,14 @@
+<p class="ledger-count">{{ total }} {{ _("operations") }}</p>
+<table class="ledger">
+  <thead>
+    <tr>
+      <th>{{ _("Date") }}</th>
+      <th>{{ _("Description") }}</th>
+      <th class="num">{{ _("Amount") }}</th>
+      <th>{{ _("Category") }}</th>
+    </tr>
+  </thead>
+  <tbody id="ledger-body">
+    {% include "fragments/ledger_rows.html" %}
+  </tbody>
+</table>

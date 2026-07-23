@@ -1,0 +1,39 @@
+<section class="card" id="breakdown">
+  <div class="card-head">
+    <h2>{{ _("Expense breakdown") }}</h2>
+    <div class="period-switch">
+      {% for option in periods %}
+        <a hx-get="/trends?months={{ option }}"
+           hx-target="#breakdown" hx-swap="outerHTML" hx-push-url="true"
+           class="{{ 'active' if option == period }}">{{ option }}{{ _("m") }}</a>
+      {% endfor %}
+    </div>
+  </div>
+  {% if breakdown.slices %}
+    <div class="breakdown-chart" id="expense-donut">
+      <svg class="donut" viewBox="0 0 200 200" role="img"
+           aria-label="{{ _('Expense breakdown') }}">
+        <g class="slices" transform="rotate(-90 100 100)">
+          {% for slice in breakdown.slices %}
+            <circle class="slice" cx="100" cy="100" r="{{ breakdown.radius }}" fill="none"
+                    stroke="{{ slice.color }}" stroke-width="28"
+                    stroke-dasharray="{{ slice.dash }} {{ breakdown.circumference }}"
+                    stroke-dashoffset="{{ slice.offset }}"
+                    data-label="{{ slice.label }}"
+                    data-detail="{{ slice.fraction | pct }} · {{ slice.amount | eur(currency) }}"
+                    data-average="{{ slice.average | eur(currency) }} {{ _('per month') }}">
+              <title>{{ slice.label }} — {{ slice.amount | eur(currency) }}</title>
+            </circle>
+          {% endfor %}
+        </g>
+        <text x="100" y="104" text-anchor="middle" class="donut-total">
+          {{ breakdown.total | eur0(currency) }}
+        </text>
+      </svg>
+      <div class="donut-tooltip" hidden></div>
+      <p class="chart-hint">{{ _("Hover a segment for details") }}</p>
+    </div>
+  {% else %}
+    <p class="empty">{{ _("No expenses over this period") }}</p>
+  {% endif %}
+</section>

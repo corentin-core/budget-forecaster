@@ -244,6 +244,11 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         """Get the account currency."""
         return self._operation_service.currency
 
+    @property
+    def balance_date(self) -> date:
+        """Get the date the balance was last updated."""
+        return self._operation_service.balance_date
+
     def get_operations(
         self, filter_: OperationFilter | None = None
     ) -> tuple[HistoricOperation, ...]:
@@ -363,10 +368,13 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         return self._forecast_uc.compute_report(start_date, end_date)
 
     def get_balance_evolution_summary(
-        self,
+        self, frequency: str | None = "W"
     ) -> list[tuple[date, float]]:
-        """Get balance evolution from the last computed report."""
-        return self._forecast_service.get_balance_evolution_summary()
+        """Get balance evolution from the last computed report.
+
+        frequency is a pandas resample rule; None keeps daily granularity.
+        """
+        return self._forecast_service.get_balance_evolution_summary(frequency)
 
     def get_monthly_summary(self) -> list[MonthlySummary]:
         """Get monthly summary from the last computed report."""

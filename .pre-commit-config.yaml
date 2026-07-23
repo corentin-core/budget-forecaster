@@ -49,6 +49,8 @@ repos:
     hooks:
       - id: prettier
         args: ["--config", ".prettierrc"]
+        # Prettier is not Jinja-aware; the vendored htmx is minified on purpose.
+        exclude: ^budget_forecaster/web/(templates/|static/htmx\.min\.js)
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.19.0
     hooks:
@@ -67,6 +69,9 @@ repos:
           - python-dateutil
           - pyjwt
           - types-requests
+          - fastapi
+          - jinja2
+          - itsdangerous
   - repo: local
     hooks:
       - id: pylint

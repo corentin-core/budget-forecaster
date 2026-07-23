@@ -1,0 +1,30 @@
+{% if rows %}
+  {% for row in rows %}
+    <tr>
+      <td class="date">{{ row.operation.operation_date | frdate }}</td>
+      <td class="desc">
+        {{ row.operation.description }}
+        {% if row.linked %}
+          <span class="link-tag" title="{{ row.target_name }}">{{ _("linked") }}</span>
+        {% endif %}
+      </td>
+      <td class="num {{ 'positive' if row.operation.amount > 0 else 'negative' }}">
+        {{ row.operation.amount | signed_eur(currency) }}
+      </td>
+      <td class="cat">{{ row.operation.category.value | category_name }}</td>
+    </tr>
+  {% endfor %}
+  {% if next_offset is not none %}
+    <tr id="load-more-row">
+      <td colspan="4" class="load-more-cell">
+        <button class="more-btn"
+                hx-get="/operations?{{ query }}&offset={{ next_offset }}"
+                hx-target="#load-more-row" hx-swap="outerHTML">
+          {{ _("Show more") }}
+        </button>
+      </td>
+    </tr>
+  {% endif %}
+{% else %}
+  <tr><td colspan="4" class="empty">{{ _("No operations") }}</td></tr>
+{% endif %}
