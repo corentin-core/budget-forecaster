@@ -4,15 +4,23 @@ import argparse
 import logging
 import sys
 from pathlib import Path
+from typing import Any
 
 from budget_forecaster.infrastructure.bank_sources.enable_banking.client import (
     EnableBankingClient,
+)
+from budget_forecaster.infrastructure.bank_sources.enable_banking.consent_service import (
+    ConsentService,
+    NoConsentError,
+)
+from budget_forecaster.infrastructure.bank_sources.enable_banking.consent_store import (
+    ConsentStore,
 )
 from budget_forecaster.infrastructure.bank_sources.enable_banking.source import (
     EnableBankingSource,
 )
 from budget_forecaster.infrastructure.bootstrap import open_repository
-from budget_forecaster.infrastructure.config import Config
+from budget_forecaster.infrastructure.config import Config, EnableBankingConfig
 from budget_forecaster.infrastructure.persistence.persistent_account import (
     PersistentAccount,
 )
@@ -40,29 +48,41 @@ def _create_default_config(config_path: Path) -> None:
     config_path.write_text(template_content, encoding="utf-8")
 
 
-def _run_sync(config_path: Path) -> None:
-    """Sync the configured Enable Banking account into the local database."""
-    config = Config()
-    config.parse(config_path)
-    config.setup_logging()
-
-    if (enable_banking := config.enable_banking) is None:
+def _require_enable_banking(config: Config) -> EnableBankingConfig:
+    """Return the Enable Banking config or exit with a helpful message."""
+    if config.enable_banking is None:
         print(
             "Enable Banking is not configured. "
             "Add an 'enable_banking' section to your config file.",
             file=sys.stderr,
         )
         sys.exit(1)
+    return config.enable_banking
+
+
+def _build_client(enable_banking: EnableBankingConfig) -> EnableBankingClient:
+    """Build the Enable Banking client from the configured credentials."""
+    return EnableBankingClient(
+        enable_banking.application_id,
+        enable_banking.private_key_path,
+        enable_banking.redirect_url,
+    )
+
+
+def _run_sync(config_path: Path) -> None:
+    """Sync the consented Enable Banking account into the local database."""
+    config = Config()
+    config.parse(config_path)
+    config.setup_logging()
+    enable_banking = _require_enable_banking(config)
+    client = _build_client(enable_banking)
+    consent_service = ConsentService(client, ConsentStore.default())
 
     repository = None
     try:
+        account_uid = consent_service.resolve_account_uid(enable_banking.account_uid)
         repository = open_repository(config)
         persistent_account = PersistentAccount(repository)
-        client = EnableBankingClient(
-            enable_banking.application_id,
-            enable_banking.private_key_path,
-            enable_banking.redirect_url,
-        )
         source = EnableBankingSource(client, name=enable_banking.local_account_name)
         sync_use_case = SyncUseCase(
             BankSyncService(persistent_account, source, config.accounts),
@@ -70,13 +90,16 @@ def _run_sync(config_path: Path) -> None:
             OperationLinkService(repository),
             MatcherCache(ForecastService(persistent_account, repository)),
         )
-        stats = sync_use_case.sync(enable_banking.account_uid)
+        stats = sync_use_case.sync(account_uid)
         account = persistent_account.account
         print(
             f"Synced {source.name}: {stats.new_operations} new, "
             f"{stats.duplicates_skipped} duplicates skipped. "
             f"Balance: {account.balance:.2f} {account.currency}"
         )
+    except NoConsentError as error:
+        print(f"{error}", file=sys.stderr)
+        sys.exit(1)
     except Exception:  # pylint: disable=broad-except
         logger.exception("Sync failed")
         print("Sync failed. See the log for details.", file=sys.stderr)
@@ -84,6 +107,74 @@ def _run_sync(config_path: Path) -> None:
     finally:
         if repository is not None:
             repository.close()
+
+
+def _choose_aspsp_name(banks: tuple[dict[str, Any], ...], selection: str) -> str:
+    """Return the bank name for a 1-based selection string, raising on a bad one."""
+    try:
+        index = int(selection)
+    except ValueError as error:
+        raise ValueError(f"Not a number: {selection!r}") from error
+    if not 1 <= index <= len(banks):
+        raise ValueError(f"Selection out of range: {index}")
+    return banks[index - 1]["name"]
+
+
+def _select_bank(consent_service: ConsentService, country: str) -> str:
+    """List the banks and prompt the user to pick one; return its name."""
+    if not (banks := consent_service.list_banks(country)):
+        print(f"No banks available for {country}.", file=sys.stderr)
+        sys.exit(1)
+    print(f"Available banks ({country}):")
+    for position, bank in enumerate(banks, start=1):
+        print(f"  {position}. {bank['name']}")
+    try:
+        return _choose_aspsp_name(banks, input(f"Select a bank [1-{len(banks)}]: "))
+    except ValueError as error:
+        print(str(error), file=sys.stderr)
+        sys.exit(1)
+
+
+def _run_link(config_path: Path) -> None:
+    """Link a bank via manual copy-paste: pick the bank, print the URL, read the code."""
+    config = Config()
+    config.parse(config_path)
+    config.setup_logging()
+    enable_banking = _require_enable_banking(config)
+    consent_service = ConsentService(
+        _build_client(enable_banking), ConsentStore.default()
+    )
+    country = enable_banking.aspsp_country
+    aspsp_name = enable_banking.aspsp_name or _select_bank(consent_service, country)
+
+    url = consent_service.start_enrollment(aspsp_name, country)
+    print("Open this URL, authenticate at your bank, then paste the returned code:")
+    print(url)
+    if not (code := input("code: ").strip()):
+        print("No code provided.", file=sys.stderr)
+        sys.exit(1)
+
+    consent = consent_service.complete_enrollment(code, aspsp_name, country)
+    print(
+        f"Linked {consent.aspsp_name}: {len(consent.account_uids)} account(s), "
+        f"consent valid until {consent.valid_until.date()}."
+    )
+
+
+def _run_consent_status(config_path: Path) -> None:
+    """Print the current consent status and expiry date."""
+    config = Config()
+    config.parse(config_path)
+    config.setup_logging()
+    enable_banking = _require_enable_banking(config)
+    consent_service = ConsentService(
+        _build_client(enable_banking), ConsentStore.default()
+    )
+    state = consent_service.state()
+    if state.valid_until is None:
+        print("No consent stored. Run 'link' to authorize a bank.")
+        return
+    print(f"Consent {state.status.value}, valid until {state.valid_until.date()}.")
 
 
 def main() -> None:
@@ -102,6 +193,12 @@ def main() -> None:
     )
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("sync", help="Sync a linked bank account via Enable Banking")
+    subparsers.add_parser(
+        "link", help="Link a bank via Enable Banking (manual code copy-paste)"
+    )
+    subparsers.add_parser(
+        "consent-status", help="Show the Enable Banking consent status and expiry"
+    )
     args = parser.parse_args()
 
     config_path = args.config.expanduser()
@@ -114,6 +211,10 @@ def main() -> None:
 
     if args.command == "sync":
         _run_sync(config_path)
+    elif args.command == "link":
+        _run_link(config_path)
+    elif args.command == "consent-status":
+        _run_consent_status(config_path)
     else:
         run_app(config_path)
 

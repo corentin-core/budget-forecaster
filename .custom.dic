@@ -6,8 +6,10 @@ ajusté
 al
 alimentaires
 alimentation
+api's
 args
 au
+backend
 backfill
 backfills
 bnp
@@ -30,6 +32,7 @@ dataclass
 dataframe
 daterange
 datetime
+datetimes
 dedup
 deduping
 deduplicates
@@ -106,7 +109,9 @@ textual's
 timedelta
 trimestriel
 tui
+tz
 ui
+uid
 uids
 uncategorized
 unconfigured

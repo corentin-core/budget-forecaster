@@ -42,13 +42,17 @@ class BackupConfig(NamedTuple):
 
 
 class EnableBankingConfig(NamedTuple):
-    """Credentials and target account for the Enable Banking API source."""
+    """Credentials and enrollment target for the Enable Banking API source."""
 
     application_id: str
     private_key_path: Path
     redirect_url: str
-    account_uid: str
-    """Enable Banking account identifier to sync (from a prior consent)."""
+    aspsp_name: str | None = None
+    """Bank to enroll (Enable Banking ASPSP name); required to link a consent."""
+    aspsp_country: str = "FR"
+    account_uid: str | None = None
+    """Account to sync when a consent unlocks several; the persisted consent is
+    the source of truth otherwise."""
     local_account_name: str = "bnp"
     """Local account the synced operations merge into."""
 
@@ -115,7 +119,9 @@ class Config:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
                     application_id=eb_cfg["application_id"],
                     private_key_path=Path(eb_cfg["private_key_path"]).expanduser(),
                     redirect_url=eb_cfg["redirect_url"],
-                    account_uid=eb_cfg["account_uid"],
+                    aspsp_name=eb_cfg.get("aspsp_name"),
+                    aspsp_country=eb_cfg.get("aspsp_country", "FR"),
+                    account_uid=eb_cfg.get("account_uid"),
                     local_account_name=eb_cfg.get("local_account_name", "bnp"),
                 )
             # Parse the account registry (local name -> external id)
