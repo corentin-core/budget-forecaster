@@ -29,6 +29,7 @@ nav:
   - Home: index.md
   - User Guide:
       - Configuration: user/configuration.md
+      - Enable Banking: user/enable-banking.md
       - Backup: user/backup.md
       - Forecast: user/forecast.md
       - Operation Links: user/operation-links.md

@@ -93,36 +93,24 @@ backup:
 ## Syncing bank data (Enable Banking)
 
 The `sync` command imports transactions and the account balance directly from the bank
-through Enable Banking, as an alternative to loading exported files.
+through Enable Banking, as an alternative to loading exported files. Setup and usage are
+covered in the [Enable Banking guide](enable-banking.md); this section documents the
+`enable_banking` configuration keys.
 
-Linking a bank needs a consent that the bank issues after you authenticate in a browser
-(valid ~180 days for BNP; varies by bank). Authorize the bank once with `link`, then
-sync as often as you like:
-
-```bash
-budget-forecaster link            # prints a URL; authenticate, paste back the code
-budget-forecaster sync            # import transactions and balance
-budget-forecaster consent-status  # show whether the consent is valid/expiring/expired
-```
-
-`link` lists the banks available in `aspsp_country` and lets you pick yours, so you
-never type an exact bank name (set `aspsp_name` to skip the picker). It stores the
-resulting session and its expiry outside the repo, under
-`$XDG_STATE_HOME/budget-forecaster` (falling back to `~/.local/state`), readable only by
-you. `sync` reads that stored consent, so you never paste an account id by hand.
-`account_uid` is only needed to pick one account when a single consent unlocks several.
-When the consent expires, run `link` again to renew it.
-
-Re-running `sync` is safe: already-imported operations are skipped, and operations that
-overlap with a manual file import are reconciled rather than duplicated.
+| Key                  | Required | Default          | Description                                              |
+| -------------------- | -------- | ---------------- | -------------------------------------------------------- |
+| `application_id`     | yes      | -                | Enable Banking application id (also the JWT key id)      |
+| `private_key_path`   | yes      | -                | Path to the RS256 private key (PEM), stored outside repo |
+| `redirect_url`       | yes      | -                | Redirect URL registered on the application               |
+| `aspsp_country`      | no       | `FR`             | Country of the bank to link                              |
+| `aspsp_name`         | no       | _(picker)_       | Bank name; skips the interactive picker in `link`        |
+| `account_uid`        | no       | _(from consent)_ | Account to sync when a consent unlocks several           |
+| `local_account_name` | no       | `bnp`            | Local account the synced operations merge into           |
 
 When an account is declared in the `accounts` registry, its external id (the IBAN)
 becomes its stable identity: file imports and API syncs of the same account reconcile by
 that id, and several accounts of the same bank stay distinct. Accounts left undeclared
 keep working, matched by their name.
-
-Obtaining the `application_id`, private key and `redirect_url` requires a one-time
-Enable Banking setup, documented separately.
 
 ## Inbox Auto-Detection
 
