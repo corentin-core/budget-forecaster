@@ -1,0 +1,48 @@
+{% extends "base.html" %} {% block title %}{{ _("Settings") }} — Budget Forecaster{% endblock %} {% block content %}
+<section class="card">
+  <div class="card-head"><h2>{{ _("Bank connection") }}</h2></div>
+  {% if connection.configured %}
+  <div class="kv">
+    <span>{{ _("Status") }}</span>
+    <strong class="status-{{ connection.status.value }}">
+      {% if connection.status.value == "valid" %}{{ _("Valid") }}
+      {% elif connection.status.value == "expiring" %}{{ _("Expiring") }}
+      {% else %}{{ _("Expired") }}{% endif %}
+    </strong>
+  </div>
+  {% if connection.valid_until %}
+  <div class="kv">
+    <span>{{ _("Valid until") }}</span>
+    <strong>{{ connection.valid_until | frdate }}</strong>
+  </div>
+  {% endif %} {% else %}
+  <p class="empty">{{ _("Not configured") }}</p>
+  {% endif %}
+  <p class="hint">{{ _("Sync history coming soon") }}</p>
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>{{ _("Imports") }}</h2></div>
+  <div class="kv">
+    <span>{{ _("Inbox") }}</span>
+    <code>{{ inbox_path }}</code>
+  </div>
+  {% if pending %}
+  <ul class="file-list">
+    {% for path in pending %}
+    <li>{{ path.name }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">{{ _("No pending files") }}</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <div class="card-head"><h2>{{ _("Margin threshold") }}</h2></div>
+  <div class="kv">
+    <span>{{ _("Threshold") }}</span>
+    <strong>{{ margin_threshold | eur(currency) }}</strong>
+  </div>
+</section>
+{% endblock %}

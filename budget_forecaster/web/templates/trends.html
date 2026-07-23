@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Trends") }} — Budget Forecaster{% endblock %}
+{% block content %}
+<div class="trends-grid">
+  <section class="card">
+    <div class="card-head"><h2>{{ _("Balance evolution") }}</h2></div>
+    {% if sparkline %}
+      <div class="chart" id="balance-chart"
+           data-width="{{ sparkline.width }}" data-height="{{ sparkline.height }}">
+        <div class="y-axis">
+          {% for mark in sparkline.labels %}
+            <span class="y-label" style="top: {{ mark.top_pct }}%">{{ mark.text }}</span>
+          {% endfor %}
+          {% if sparkline.zero %}
+            <span class="y-label zero" style="top: {{ sparkline.zero.top_pct }}%">{{ sparkline.zero.text }}</span>
+          {% endif %}
+          <span class="y-label threshold" style="top: {{ sparkline.threshold.top_pct }}%">{{ sparkline.threshold.text }}</span>
+        </div>
+        <svg class="sparkline" viewBox="0 0 {{ sparkline.width }} {{ sparkline.height }}"
+             preserveAspectRatio="none" role="img" aria-label="{{ _('Balance evolution') }}">
+          {% if sparkline.zero %}
+            <line class="zero-line" x1="0" y1="{{ sparkline.zero.y }}"
+                  x2="{{ sparkline.width }}" y2="{{ sparkline.zero.y }}" />
+          {% endif %}
+          <line class="threshold-line" x1="0" y1="{{ sparkline.threshold.y }}"
+                x2="{{ sparkline.width }}" y2="{{ sparkline.threshold.y }}" />
+          <polyline points="{{ sparkline.polyline }}" fill="none" stroke-width="2" />
+        </svg>
+        <span class="threshold-tag" style="top: {{ sparkline.threshold.top_pct }}%">
+          {{ _("Minimum threshold") }}
+        </span>
+        <div class="chart-cursor" hidden></div>
+        <div class="chart-dot" hidden></div>
+        <div class="chart-tooltip" hidden></div>
+        <script type="application/json" id="balance-data">{{ spark_points | tojson }}</script>
+      </div>
+      <div class="x-axis">
+        {% for label in sparkline.x_labels %}<span>{{ label }}</span>{% endfor %}
+      </div>
+    {% else %}
+      <p class="empty">{{ _("Not enough data") }}</p>
+    {% endif %}
+  </section>
+
+  {% include "fragments/breakdown.html" %}
+</div>
+
+<script src="/static/charts.js" defer></script>
+{% endblock %}

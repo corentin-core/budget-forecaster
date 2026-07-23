@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Budget Forecaster{% endblock %}</title>
+    <link rel="stylesheet" href="/static/app.css" />
+    <script src="/static/htmx.min.js" defer></script>
+  </head>
+  <body>
+    {% set sections = [ ("home", "/", _("Home")), ("month", "/month", _("Month")), ("operations", "/operations",
+    _("Operations")), ("trends", "/trends", _("Trends")), ("settings", "/settings", _("Settings")), ] %}
+    <nav class="sidebar" aria-label="{{ _('Sections') }}">
+      <div class="brand">Foyer</div>
+      {% for key, url, label in sections %}
+      <a href="{{ url }}" class="nav-item {{ 'active' if active == key }}"> {{ label }} </a>
+      {% endfor %}
+      <a href="/logout" class="nav-item logout">{{ _("Log out") }}</a>
+    </nav>
+
+    <main class="content">
+      {% if alert %}
+      <div class="banner banner-{{ alert.status.value }}">
+        {% if alert.status.value == "expired" %}
+          {{ _("Bank connection expired") }}
+        {% else %}
+          {{ _("Bank connection expiring") }}
+          {% if alert.valid_until %}({{ alert.valid_until | frdate }}){% endif %}
+        {% endif %}
+        <a href="/settings">{{ _("Renew") }}</a>
+      </div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+
+    <nav class="bottombar" aria-label="{{ _('Sections') }}">
+      {% for key, url, label in sections %}
+      <a href="{{ url }}" class="nav-item {{ 'active' if active == key }}"> {{ label }} </a>
+      {% endfor %}
+    </nav>
+    <script src="/static/tooltips.js" defer></script>
+  </body>
+</html>

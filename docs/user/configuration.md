@@ -60,6 +60,11 @@ backup:
 #   account_uid: "..."            # optional: pick one when a consent has several
 #   local_account_name: bnp       # local account the sync merges into
 
+# Optional - Web app secrets (local-dev fallback; env vars override these)
+# web:
+#   secret_key: "a-long-random-string"      # signs the session cookie
+#   password_hash: "pbkdf2_sha256$480000$..." # shared login password hash
+
 # Optional - Python dictConfig format for logging
 # logging:
 #   version: 1
@@ -89,6 +94,8 @@ backup:
 | `logging`                | no       | basic INFO logging     | Python dictConfig format for logging setup |
 | `accounts`               | no       | _(none)_               | External id (IBAN / Swile id) per account  |
 | `enable_banking`         | no       | _(disabled)_           | Enable Banking credentials for `sync`      |
+| `web.secret_key`         | no       | _(env var)_            | Session cookie signing key for the web app |
+| `web.password_hash`      | no       | _(env var)_            | Shared login password hash for the web app |
 
 ## Syncing bank data (Enable Banking)
 

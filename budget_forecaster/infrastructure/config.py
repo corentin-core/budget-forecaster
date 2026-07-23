@@ -57,6 +57,13 @@ class EnableBankingConfig(NamedTuple):
     """Local account the synced operations merge into."""
 
 
+class WebConfig(NamedTuple):
+    """Server-side web secrets; optional, since the environment can supply them."""
+
+    secret_key: str | None = None
+    password_hash: str | None = None
+
+
 class Config:  # pylint: disable=too-few-public-methods,too-many-instance-attributes
     """A class to store the configuration."""
 
@@ -76,6 +83,8 @@ class Config:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
         self.language: str = "en"
         # Enable Banking API source (None = not configured)
         self.enable_banking: EnableBankingConfig | None = None
+        # Web app secrets (None = rely on the environment)
+        self.web = WebConfig()
         # Account registry (name -> external id); empty = none declared
         self.accounts = AccountRegistry()
 
@@ -123,6 +132,13 @@ class Config:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
                     aspsp_country=eb_cfg.get("aspsp_country", "FR"),
                     account_uid=eb_cfg.get("account_uid"),
                     local_account_name=eb_cfg.get("local_account_name", "bnp"),
+                )
+            # Parse web secrets (local-dev fallback; env overrides these)
+            if "web" in config:
+                web_cfg = config["web"] or {}
+                self.web = WebConfig(
+                    secret_key=web_cfg.get("secret_key"),
+                    password_hash=web_cfg.get("password_hash"),
                 )
             # Parse the account registry (local name -> external id)
             if "accounts" in config:
