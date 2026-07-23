@@ -55,8 +55,8 @@ backup:
 #   application_id: "your-application-id"
 #   private_key_path: ~/.config/budget-forecaster/enable_banking_key.pem
 #   redirect_url: "https://your-redirect-url"
-#   aspsp_name: "the-bank-name"   # bank to link (run `link` to authorize)
 #   aspsp_country: FR
+#   aspsp_name: "the-bank-name"   # optional: skip the bank picker in `link`
 #   account_uid: "..."            # optional: pick one when a consent has several
 #   local_account_name: bnp       # local account the sync merges into
 
@@ -105,7 +105,8 @@ budget-forecaster sync            # import transactions and balance
 budget-forecaster consent-status  # show whether the consent is valid/expiring/expired
 ```
 
-`link` uses `aspsp_name`/`aspsp_country` to know which bank to authorize. It stores the
+`link` lists the banks available in `aspsp_country` and lets you pick yours, so you
+never type an exact bank name (set `aspsp_name` to skip the picker). It stores the
 resulting session and its expiry outside the repo, under
 `$XDG_STATE_HOME/budget-forecaster` (falling back to `~/.local/state`), readable only by
 you. `sync` reads that stored consent, so you never paste an account id by hand.

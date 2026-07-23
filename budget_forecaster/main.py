@@ -4,6 +4,7 @@ import argparse
 import logging
 import sys
 from pathlib import Path
+from typing import Any
 
 from budget_forecaster.infrastructure.bank_sources.enable_banking.client import (
     EnableBankingClient,
@@ -108,34 +109,52 @@ def _run_sync(config_path: Path) -> None:
             repository.close()
 
 
+def _choose_aspsp_name(banks: tuple[dict[str, Any], ...], selection: str) -> str:
+    """Return the bank name for a 1-based selection string, raising on a bad one."""
+    try:
+        index = int(selection)
+    except ValueError as error:
+        raise ValueError(f"Not a number: {selection!r}") from error
+    if not 1 <= index <= len(banks):
+        raise ValueError(f"Selection out of range: {index}")
+    return banks[index - 1]["name"]
+
+
+def _select_bank(consent_service: ConsentService, country: str) -> str:
+    """List the banks and prompt the user to pick one; return its name."""
+    if not (banks := consent_service.list_banks(country)):
+        print(f"No banks available for {country}.", file=sys.stderr)
+        sys.exit(1)
+    print(f"Available banks ({country}):")
+    for position, bank in enumerate(banks, start=1):
+        print(f"  {position}. {bank['name']}")
+    try:
+        return _choose_aspsp_name(banks, input(f"Select a bank [1-{len(banks)}]: "))
+    except ValueError as error:
+        print(str(error), file=sys.stderr)
+        sys.exit(1)
+
+
 def _run_link(config_path: Path) -> None:
-    """Link a bank via manual copy-paste: print the URL, read the code, persist."""
+    """Link a bank via manual copy-paste: pick the bank, print the URL, read the code."""
     config = Config()
     config.parse(config_path)
     config.setup_logging()
     enable_banking = _require_enable_banking(config)
-    if enable_banking.aspsp_name is None:
-        print(
-            "No bank to link. Set 'aspsp_name' in the enable_banking config.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
     consent_service = ConsentService(
         _build_client(enable_banking), ConsentStore.default()
     )
-    url = consent_service.start_enrollment(
-        enable_banking.aspsp_name, enable_banking.aspsp_country
-    )
+    country = enable_banking.aspsp_country
+    aspsp_name = enable_banking.aspsp_name or _select_bank(consent_service, country)
+
+    url = consent_service.start_enrollment(aspsp_name, country)
     print("Open this URL, authenticate at your bank, then paste the returned code:")
     print(url)
     if not (code := input("code: ").strip()):
         print("No code provided.", file=sys.stderr)
         sys.exit(1)
 
-    consent = consent_service.complete_enrollment(
-        code, enable_banking.aspsp_name, enable_banking.aspsp_country
-    )
+    consent = consent_service.complete_enrollment(code, aspsp_name, country)
     print(
         f"Linked {consent.aspsp_name}: {len(consent.account_uids)} account(s), "
         f"consent valid until {consent.valid_until.date()}."
