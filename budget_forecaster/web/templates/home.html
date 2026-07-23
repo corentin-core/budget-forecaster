@@ -1,0 +1,53 @@
+{% extends "base.html" %} {% block title %}{{ _("Home") }} — Budget Forecaster{% endblock %} {% block content %}
+<section class="card highlight">
+  {% if margin %}
+  <div class="metric-label">{{ _("Available this month") }}</div>
+  <div class="metric-value">{{ margin.available_margin | eur(currency) }}</div>
+  {% endif %}
+  <div class="metric-sub">{{ _("Balance") }} <strong>{{ balance | eur(currency) }}</strong></div>
+</section>
+
+{% if health %}
+<section class="card">
+  <div class="card-head">
+    <h2>{{ _("This month") }}</h2>
+    {% if health.ratio is not none %}
+    <span class="pill">{{ health.ratio | pct }}</span>
+    {% endif %}
+  </div>
+  <ul class="cat-list">
+    {% for row in health.rows[:5] %}
+    <li>
+      <span class="cat-name">{{ row.key | category_name }}</span>
+      <span class="cat-figures"> {{ row.actual | eur(currency) }} / {{ row.planned | eur(currency) }} </span>
+    </li>
+    {% endfor %}
+  </ul>
+  <a class="card-link" href="/mois">{{ _("See the month") }} ›</a>
+</section>
+{% endif %}
+
+<section class="card">
+  <div class="card-head"><h2>{{ _("Upcoming") }}</h2></div>
+  {% if upcoming %}
+  <ul class="upcoming-list">
+    {% for item in upcoming %}
+    <li>
+      <span class="up-date">{{ item.iteration_date | frdate }}</span>
+      <span class="up-desc">{{ item.description }}</span>
+      <span class="up-amount {{ 'positive' if item.amount > 0 else 'negative' }}">
+        {{ item.amount | signed_eur(item.currency) }}
+      </span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">{{ _("Nothing upcoming") }}</p>
+  {% endif %}
+</section>
+
+{% if uncategorized %}
+<section class="card">
+  <a class="card-link" href="/operations?uncategorized=true"> {{ uncategorized }} {{ _("to categorize") }} › </a>
+</section>
+{% endif %} {% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %} {% block title %}{{ _("Trends") }} — Budget Forecaster{% endblock %} {% block content %}
+<section class="card">
+  <div class="card-head"><h2>{{ _("Balance evolution") }}</h2></div>
+  {% if sparkline %}
+  <svg
+    class="sparkline"
+    viewBox="0 0 {{ sparkline.width }} {{ sparkline.height }}"
+    preserveAspectRatio="none"
+    role="img"
+    aria-label="{{ _('Balance evolution') }}"
+  >
+    <polyline points="{{ sparkline.polyline }}" fill="none" stroke-width="2" />
+  </svg>
+  <div class="spark-legend">
+    <span>{{ _("Lowest") }} {{ sparkline.lowest | eur(currency) }}</span>
+    <span>{{ _("Highest") }} {{ sparkline.highest | eur(currency) }}</span>
+  </div>
+  {% else %}
+  <p class="empty">{{ _("Not enough data") }}</p>
+  {% endif %}
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>{{ _("Expense breakdown") }}</h2>
+    <div class="period-switch">
+      {% for option in periods %}
+      <a href="/tendances?months={{ option }}" class="{{ 'active' if option == period }}">{{ option }}{{ _("m") }}</a>
+      {% endfor %}
+    </div>
+  </div>
+  {% if expenses %}
+  <ul class="breakdown">
+    {% for slice in expenses %}
+    <li>
+      <span class="bd-name">{{ slice.key | category_name }}</span>
+      <span class="bd-bar">
+        <span class="bd-fill" style="width: {{ (slice.ratio * 100) | round(1) }}%"></span>
+      </span>
+      <span class="bd-amount">{{ slice.amount | eur(currency) }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">{{ _("No expenses over this period") }}</p>
+  {% endif %}
+</section>
+{% endblock %}

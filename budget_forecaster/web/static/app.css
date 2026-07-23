@@ -1,0 +1,473 @@
+/* Budget Forecaster web — single hand-written responsive stylesheet.
+   Mobile-first: bottom nav bar; a left sidebar takes over on wide screens. */
+
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --text: #1c1f26;
+  --muted: #6b7280;
+  --border: #e3e6ea;
+  --accent: #2f6df6;
+  --good: #1f9d55;
+  --bad: #d64545;
+  --income: #1f9d55;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --nav-h: 56px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --surface: #1e2127;
+    --text: #e6e8ec;
+    --muted: #9aa1ac;
+    --border: #2c313a;
+    --accent: #5b8dff;
+    --good: #3fce7c;
+    --bad: #f0736f;
+    --income: #3fce7c;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.4;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 1.1rem;
+  padding: 0.5rem 0;
+}
+
+/* --- Navigation --- */
+.sidebar {
+  display: none;
+}
+
+.bottombar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--nav-h);
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 10;
+}
+
+.bottombar .nav-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.bottombar .nav-item.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.content {
+  padding: 1rem;
+  padding-bottom: calc(var(--nav-h) + 1rem);
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* --- Banner --- */
+.banner {
+  border-radius: 8px;
+  padding: 0.7rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+.banner a {
+  margin-left: 0.5rem;
+  font-weight: 600;
+}
+.banner-expiring {
+  background: #fff3cd;
+  color: #7a5b00;
+}
+.banner-expired {
+  background: #fbe0e0;
+  color: #7a1616;
+}
+
+/* --- Cards --- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.card-head h2 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+}
+.card-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-weight: 600;
+}
+
+.highlight {
+  text-align: center;
+}
+.metric-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.metric-value {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0.2rem 0;
+}
+.metric-sub {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.pill {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* --- Lists --- */
+.cat-list,
+.upcoming-list,
+.file-list,
+.breakdown {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cat-list li,
+.upcoming-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.cat-figures,
+.up-amount {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.up-date {
+  color: var(--muted);
+  min-width: 5.5rem;
+}
+.up-desc {
+  flex: 1;
+  padding: 0 0.5rem;
+}
+.positive {
+  color: var(--good);
+}
+.negative {
+  color: var(--bad);
+}
+.empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* --- Month navigation --- */
+.month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.month-nav h1 {
+  font-size: 1.2rem;
+  margin: 0;
+}
+.month-nav a {
+  font-size: 1.5rem;
+  padding: 0 0.8rem;
+}
+
+/* --- Tables --- */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.review,
+.ledger {
+  font-size: 0.9rem;
+}
+.review th,
+.review td,
+.ledger th,
+.ledger td {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.section-row td {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+  padding-top: 0.7rem;
+}
+.total-row td {
+  font-weight: 700;
+  border-top: 2px solid var(--border);
+}
+.income .cat {
+  color: var(--income);
+}
+
+/* Wide tables scroll inside their card, never the page. */
+.card {
+  overflow-x: auto;
+}
+
+/* --- Consumption bar --- */
+.bar {
+  position: relative;
+  background: var(--bg);
+  border-radius: 6px;
+  height: 1.1rem;
+  min-width: 90px;
+  overflow: hidden;
+}
+.bar-fill {
+  position: absolute;
+  inset: 0;
+  width: 0;
+}
+.bar.good .bar-fill {
+  background: color-mix(in srgb, var(--good) 45%, transparent);
+}
+.bar.bad .bar-fill {
+  background: color-mix(in srgb, var(--bad) 45%, transparent);
+}
+.bar-pct {
+  position: relative;
+  font-size: 0.75rem;
+  padding-left: 0.4rem;
+}
+
+/* --- Filters --- */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+.filters input,
+.filters select {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+.filters input[type='search'] {
+  flex: 1;
+  min-width: 140px;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--muted);
+}
+.link-tag {
+  font-size: 0.7rem;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 0 0.3rem;
+  margin-left: 0.3rem;
+}
+
+/* --- Trends --- */
+.sparkline {
+  width: 100%;
+  height: 140px;
+  color: var(--accent);
+}
+.sparkline polyline {
+  stroke: currentColor;
+}
+.spark-legend {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.period-switch a {
+  padding: 0 0.4rem;
+  color: var(--muted);
+}
+.period-switch a.active {
+  color: var(--accent);
+  font-weight: 700;
+}
+.breakdown li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0;
+}
+.bd-name {
+  min-width: 8rem;
+}
+.bd-bar {
+  flex: 1;
+  background: var(--bg);
+  border-radius: 6px;
+  height: 0.9rem;
+  overflow: hidden;
+}
+.bd-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.bd-amount {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Key/value + settings --- */
+.kv {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.3rem 0;
+}
+.kv code {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+.status-valid {
+  color: var(--good);
+}
+.status-expiring {
+  color: #b8860b;
+}
+.status-expired {
+  color: var(--bad);
+}
+
+/* --- Login --- */
+.login-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1rem;
+}
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 320px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.login-card input {
+  padding: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+}
+.login-card button {
+  padding: 0.6rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.login-error {
+  color: var(--bad);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* --- Desktop: sidebar replaces the bottom bar --- */
+@media (min-width: 768px) {
+  .bottombar {
+    display: none;
+  }
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 200px;
+    padding: 1rem;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+  }
+  .sidebar .nav-item {
+    padding: 0.6rem 0.5rem;
+    border-radius: 8px;
+    color: var(--muted);
+  }
+  .sidebar .nav-item.active {
+    background: var(--bg);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .sidebar .logout {
+    margin-top: auto;
+  }
+  .content {
+    margin-left: 200px;
+    padding-bottom: 1rem;
+    max-width: 1000px;
+  }
+}

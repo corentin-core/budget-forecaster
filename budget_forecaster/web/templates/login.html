@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{ _("Sign in") }} — Budget Forecaster</title>
+    <link rel="stylesheet" href="/static/app.css" />
+  </head>
+  <body class="login-body">
+    <form class="login-card" method="post" action="/login">
+      <div class="brand">Foyer</div>
+      {% if error %}
+      <p class="login-error">{{ _("Wrong password") }}</p>
+      {% endif %}
+      <label for="password">{{ _("Password") }}</label>
+      <input type="password" id="password" name="password" autofocus required />
+      <button type="submit">{{ _("Sign in") }}</button>
+    </form>
+  </body>
+</html>

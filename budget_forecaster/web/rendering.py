@@ -1,0 +1,29 @@
+"""Template rendering helper injecting the nav section and consent alert
+that every page's base layout needs."""
+
+from datetime import date
+from typing import Any
+
+from fastapi import Request
+from fastapi.responses import Response
+
+from budget_forecaster.web.alerts import consent_alert
+
+
+def render_template(
+    request: Request,
+    name: str,
+    *,
+    active: str,
+    status_code: int = 200,
+    **context: Any,
+) -> Response:
+    """Render a template with the shared nav + consent-banner context."""
+    templates = request.app.state.templates
+    ctx = {
+        "active": active,
+        "alert": consent_alert(request.app.state.consent_service),
+        "today": date.today(),
+        **context,
+    }
+    return templates.TemplateResponse(request, name, ctx, status_code=status_code)

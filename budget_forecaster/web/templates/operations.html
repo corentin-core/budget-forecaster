@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Operations") }} — Budget Forecaster{% endblock %}
+{% block content %}
+<section class="card">
+  <form class="filters"
+        hx-get="/operations"
+        hx-target="#ledger"
+        hx-trigger="submit, change from:select, keyup changed delay:300ms from:input[name=search]">
+    <input type="search" name="search" placeholder="{{ _('Search...') }}"
+           value="{{ filters.search }}" />
+    <select name="category">
+      <option value="">{{ _("All categories") }}</option>
+      {% for category in categories %}
+        <option value="{{ category.value }}"
+                {{ 'selected' if filters.category == category.value }}>
+          {{ category.value | category_name }}
+        </option>
+      {% endfor %}
+    </select>
+    <input type="month" name="month" value="{{ filters.month }}" />
+    <label class="check">
+      <input type="checkbox" name="uncategorized" value="true"
+             {{ 'checked' if filters.uncategorized }} />
+      {{ _("Uncategorized") }}
+    </label>
+    <noscript><button type="submit">{{ _("Filter") }}</button></noscript>
+  </form>
+
+  <table class="ledger">
+    <thead>
+      <tr>
+        <th>{{ _("Date") }}</th>
+        <th>{{ _("Description") }}</th>
+        <th class="num">{{ _("Amount") }}</th>
+        <th>{{ _("Category") }}</th>
+      </tr>
+    </thead>
+    <tbody id="ledger">
+      {% include "fragments/operation_rows.html" %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
