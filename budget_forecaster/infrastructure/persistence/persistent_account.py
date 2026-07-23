@@ -38,6 +38,7 @@ class PersistentAccount:
         """
         self._repository = repository
         self._aggregated_account = self._load()
+        self._pending_reconciliations: tuple[Reconciliation, ...] = ()
 
     def _load(self) -> AggregatedAccount:
         """Load accounts from the repository.
@@ -63,10 +64,17 @@ class PersistentAccount:
         return HistoricOperationFactory(last_id)
 
     def save(self) -> None:
-        """Save the accounts to the repository."""
+        """Save the accounts, then move links for any cross-source reconciliation.
+
+        Links are moved only after the operations are persisted, so a failed
+        save leaves the stored links untouched rather than orphaning them.
+        """
         self._repository.set_aggregated_account_name(self.account.name)
         for acc in self.accounts:
             self._repository.upsert_account(acc)
+        for reconciliation in self._pending_reconciliations:
+            self._move_link(reconciliation)
+        self._pending_reconciliations = ()
 
     def reload(self) -> None:
         """Reload the accounts from the repository."""
@@ -85,16 +93,15 @@ class PersistentAccount:
     def upsert_account(self, account: AccountParameters) -> ImportStats:
         """Add or update an account.
 
-        Moves the link off each file op collapsed into an API op onto the
-        surviving API op, so a cross-source reconciliation keeps the forecast's
-        actual attributions and never loses a user-set link.
+        Records the cross-source pairs collapsed during the upsert; their links
+        are moved onto the surviving API op by the next save, once the ops are
+        persisted.
 
         Returns:
             ImportStats with the number of new and duplicate operations.
         """
         result = self._aggregated_account.upsert_account(account)
-        for reconciliation in result.reconciliations:
-            self._move_link(reconciliation)
+        self._pending_reconciliations += result.reconciliations
         return result.stats
 
     def _move_link(self, reconciliation: Reconciliation) -> None:

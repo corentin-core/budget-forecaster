@@ -3,7 +3,8 @@
 The same transaction gets a different description from a file export and from
 the API, so a file op and an API op are matched by signed amount and a small
 date window rather than by content. The ingest-time dedup and the purge
-migration both build on these primitives, so their pairing can never drift.
+migration share these primitives and both drive their greedy match in
+(date, id) order, so they resolve an ambiguous cluster the same way.
 """
 from datetime import date
 

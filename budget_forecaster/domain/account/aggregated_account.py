@@ -156,7 +156,8 @@ class AggregatedAccount:
         amount and date. A reconciled pair keeps the API op (dropping the file
         op) and the API op adopts the file's category. Cross-source matching is
         one-to-one, so distinct transactions sharing an amount and date are not
-        collapsed.
+        collapsed. Incoming ops are processed in (date, id) order so an
+        ambiguous cluster resolves the same way as the purge migration.
         """
         existing_refs = {op.source_ref or op.content_ref for op in existing}
         reconciled: set[int] = set()
@@ -166,7 +167,9 @@ class AggregatedAccount:
         reconciliations: list[Reconciliation] = []
         new_count = 0
 
-        for operation in incoming:
+        for operation in sorted(
+            incoming, key=lambda op: (op.operation_date, op.unique_id)
+        ):
             if _matches_known_ref(operation, existing_refs):
                 continue
             candidates = [
