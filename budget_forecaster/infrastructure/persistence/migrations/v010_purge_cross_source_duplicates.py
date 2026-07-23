@@ -12,20 +12,19 @@ import logging
 import sqlite3
 from datetime import date
 from functools import partial
+from typing import NamedTuple
+
+from budget_forecaster.domain.operation import cross_source
 
 logger = logging.getLogger(__name__)
 
-# Kept in sync with the ingest-time reconciliation window.
-_RECONCILE_WINDOW_DAYS = 3
 
-
-class _Op:  # pylint: disable=too-few-public-methods
+class _Op(NamedTuple):
     """An operation row reduced to the fields the pairing needs."""
 
-    def __init__(self, unique_id: int, op_date: date, amount_cents: int) -> None:
-        self.unique_id = unique_id
-        self.op_date = op_date
-        self.amount_cents = amount_cents
+    unique_id: int
+    op_date: date
+    amount_cents: int
 
 
 def run(conn: sqlite3.Connection) -> None:
@@ -45,11 +44,12 @@ def run(conn: sqlite3.Connection) -> None:
 
 def _pairs_for_account(
     conn: sqlite3.Connection, account_id: int
-) -> list[tuple[int, int]]:
+) -> tuple[tuple[int, int], ...]:
     """Greedily pair each API op with a file op of matching amount and date.
 
     Returns (api_unique_id, file_unique_id) pairs; matching is one-to-one so
-    distinct transactions sharing an amount and date are never collapsed.
+    distinct transactions sharing an amount and date are never collapsed. The
+    nearest date wins, mirroring the ingest-time reconciliation.
     """
     file_ops = _load_ops(conn, account_id, with_source_ref=False)
     api_ops = _load_ops(conn, account_id, with_source_ref=True)
@@ -61,25 +61,26 @@ def _pairs_for_account(
             file_op
             for file_op in file_ops
             if file_op.unique_id not in matched_files
-            and file_op.amount_cents == api.amount_cents
-            and abs((api.op_date - file_op.op_date).days) <= _RECONCILE_WINDOW_DAYS
+            and cross_source.is_amount_date_match(
+                file_op.amount_cents, file_op.op_date, api.amount_cents, api.op_date
+            )
         ]
         if not candidates:
             continue
         best = min(candidates, key=partial(_match_key, api.op_date))
         matched_files.add(best.unique_id)
         pairs.append((api.unique_id, best.unique_id))
-    return pairs
+    return tuple(pairs)
 
 
-def _match_key(api_date: date, file_op: "_Op") -> tuple[int, int]:
+def _match_key(api_date: date, file_op: _Op) -> tuple[int, int]:
     """Rank file candidates: nearest date first, lowest id to break ties."""
-    return (abs((api_date - file_op.op_date).days), file_op.unique_id)
+    return (cross_source.date_gap(api_date, file_op.op_date), file_op.unique_id)
 
 
 def _load_ops(
     conn: sqlite3.Connection, account_id: int, with_source_ref: bool
-) -> list[_Op]:
+) -> tuple[_Op, ...]:
     """Load the file ops (no source_ref) or API ops (with source_ref)."""
     predicate = "IS NOT NULL" if with_source_ref else "IS NULL"
     cursor = conn.execute(
@@ -88,34 +89,45 @@ def _load_ops(
         f"ORDER BY date, unique_id",
         (account_id,),
     )
-    return [
+    return tuple(
         _Op(
             unique_id=row["unique_id"],
             op_date=date.fromisoformat(row["date"]),
-            amount_cents=round(row["amount"] * 100),
+            amount_cents=cross_source.amount_cents(row["amount"]),
         )
         for row in cursor.fetchall()
-    ]
+    )
 
 
 def _reassign_manual_link(conn: sqlite3.Connection, from_op: int, to_op: int) -> None:
-    """Move a manual link off the doomed op, unless the survivor already has one.
+    """Move a manual link off the doomed op onto the survivor.
 
-    Automatic links are left to be recomputed by the categorizer.
+    Skips when the doomed op has no manual link. A manual link on the survivor
+    wins and is kept; an automatic one is overwritten, since manual intent
+    outranks a categorizer-derived link.
     """
-    row = conn.execute(
-        "SELECT is_manual FROM operation_links WHERE operation_unique_id = ?",
-        (from_op,),
-    ).fetchone()
-    if row is None or not row["is_manual"]:
+    if not _has_manual_link(conn, from_op):
         return
-    survivor_has_link = conn.execute(
-        "SELECT 1 FROM operation_links WHERE operation_unique_id = ?", (to_op,)
-    ).fetchone()
-    if survivor_has_link is not None:
+    if _has_manual_link(conn, to_op):
+        logger.warning(
+            "Discarding manual link on op %d: survivor op %d is already "
+            "manually linked",
+            from_op,
+            to_op,
+        )
         return
+    conn.execute("DELETE FROM operation_links WHERE operation_unique_id = ?", (to_op,))
     conn.execute(
         "UPDATE operation_links SET operation_unique_id = ? "
         "WHERE operation_unique_id = ?",
         (to_op, from_op),
     )
+
+
+def _has_manual_link(conn: sqlite3.Connection, operation_id: int) -> bool:
+    """Whether the operation carries a manual (user-set) link."""
+    row = conn.execute(
+        "SELECT is_manual FROM operation_links WHERE operation_unique_id = ?",
+        (operation_id,),
+    ).fetchone()
+    return row is not None and bool(row["is_manual"])

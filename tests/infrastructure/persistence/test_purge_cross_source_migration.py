@@ -129,3 +129,48 @@ def test_automatic_link_is_not_repointed(conn: sqlite3.Connection) -> None:
     v010.run(conn)
 
     assert conn.execute("SELECT COUNT(*) FROM operation_links").fetchone()[0] == 0
+
+
+def test_manual_link_wins_over_survivor_automatic_link(
+    conn: sqlite3.Connection,
+) -> None:
+    """A manual link on the API op overwrites an automatic link on the survivor."""
+    _insert_op(conn, 1, "2025-01-10", 3574.0, source_ref=None)  # file, auto link
+    _insert_op(conn, 2, "2025-01-12", 3574.0, source_ref="ref-1")  # API, manual link
+    conn.executemany(
+        "INSERT INTO operation_links (operation_unique_id, target_type, target_id, "
+        "iteration_date, is_manual) VALUES (?, 'budget', ?, '2025-01-12', ?)",
+        [(1, 5, 0), (2, 9, 1)],
+    )
+
+    v010.run(conn)
+
+    rows = conn.execute(
+        "SELECT operation_unique_id, target_id, is_manual FROM operation_links"
+    ).fetchall()
+    assert [
+        (r["operation_unique_id"], r["target_id"], r["is_manual"]) for r in rows
+    ] == [(1, 9, 1)]
+
+
+def test_migration_is_idempotent(conn: sqlite3.Connection) -> None:
+    """Running the purge twice leaves the same rows the second time."""
+    _insert_op(conn, 1, "2025-01-10", 3574.0, source_ref=None)
+    _insert_op(conn, 2, "2025-01-12", 3574.0, source_ref="ref-1")
+
+    v010.run(conn)
+    v010.run(conn)
+
+    assert _op_ids(conn) == {1}
+
+
+def test_multiple_pairs_matched_by_nearest_date(conn: sqlite3.Connection) -> None:
+    """Each API op pairs with the nearest file op, so none is stranded."""
+    _insert_op(conn, 1, "2025-01-10", -3.5, source_ref=None)
+    _insert_op(conn, 2, "2025-01-11", -3.5, source_ref=None)
+    _insert_op(conn, 3, "2025-01-11", -3.5, source_ref="ref-a")  # nearest to op 2
+    _insert_op(conn, 4, "2025-01-07", -3.5, source_ref="ref-b")  # falls back to op 1
+
+    v010.run(conn)
+
+    assert _op_ids(conn) == {1, 2}

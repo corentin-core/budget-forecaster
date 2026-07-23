@@ -380,6 +380,27 @@ class TestCrossSourceReconciliation:
         assert second.stats.duplicates_skipped == 1
         assert len(second.account.operations) == 1
 
+    def test_nearest_existing_candidate_is_reconciled(self) -> None:
+        """The nearest existing op is paired, freeing the far one for a later op.
+
+        Two file ops one day apart. The first incoming op matches both; pairing
+        it with the nearest keeps the far file op available for the second
+        incoming, which would otherwise fall outside the window and duplicate.
+        """
+        file_1 = _make_operation(1, "COFFEE", -3.5, date(2025, 1, 10))
+        file_2 = _make_operation(2, "COFFEE", -3.5, date(2025, 1, 11))
+        current = _make_account(operations=(file_1, file_2))
+
+        api_near = _make_operation(3, "CB", -3.5, date(2025, 1, 11), source_ref="a")
+        api_far = _make_operation(4, "CB", -3.5, date(2025, 1, 7), source_ref="b")
+
+        result = AggregatedAccount.update_account(
+            current, self._params((api_near, api_far))
+        )
+
+        assert result.stats.new_operations == 0
+        assert len(result.account.operations) == 2
+
 
 class TestUpsertAccount:
     """Tests for AggregatedAccount.upsert_account."""

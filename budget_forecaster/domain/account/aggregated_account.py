@@ -1,14 +1,12 @@
 """Module for aggregating multiple accounts into a single account."""
 from datetime import date
+from functools import partial
 from typing import Iterable, NamedTuple
 
 from budget_forecaster.core.types import ImportStats
 from budget_forecaster.domain.account.account import Account, AccountParameters
+from budget_forecaster.domain.operation import cross_source
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
-
-# Max day gap between a file op and an API op recognised as the same
-# transaction, absorbing the booking-date vs value-date drift.
-_RECONCILE_WINDOW_DAYS = 3
 
 
 def _is_cross_source_duplicate(
@@ -23,10 +21,23 @@ def _is_cross_source_duplicate(
     """
     if (incoming.source_ref is None) == (existing.source_ref is None):
         return False
-    if round(incoming.amount * 100) != round(existing.amount * 100):
-        return False
-    gap = abs((incoming.operation_date - existing.operation_date).days)
-    return gap <= _RECONCILE_WINDOW_DAYS
+    return cross_source.is_amount_date_match(
+        cross_source.amount_cents(incoming.amount),
+        incoming.operation_date,
+        cross_source.amount_cents(existing.amount),
+        existing.operation_date,
+    )
+
+
+def _reconcile_rank(
+    incoming_date: date, existing: tuple[HistoricOperation, ...], index: int
+) -> tuple[int, int]:
+    """Rank a candidate existing op: nearest date first, lowest id to break ties."""
+    candidate = existing[index]
+    return (
+        cross_source.date_gap(incoming_date, candidate.operation_date),
+        candidate.unique_id,
+    )
 
 
 class UpdateResult(NamedTuple):
@@ -103,16 +114,17 @@ class AggregatedAccount:
                 keys.add(operation.source_ref)
             if not keys.isdisjoint(existing_refs):
                 continue
-            match_index = next(
-                (
-                    index
-                    for index, candidate in enumerate(existing)
-                    if index not in reconciled
-                    and _is_cross_source_duplicate(operation, candidate)
-                ),
-                None,
-            )
-            if match_index is not None:
+            candidates = [
+                index
+                for index, candidate in enumerate(existing)
+                if index not in reconciled
+                and _is_cross_source_duplicate(operation, candidate)
+            ]
+            if candidates:
+                match_index = min(
+                    candidates,
+                    key=partial(_reconcile_rank, operation.operation_date, existing),
+                )
                 reconciled.add(match_index)
                 continue
             merged.append(operation)
