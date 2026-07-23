@@ -6,6 +6,28 @@ from budget_forecaster.core.types import ImportStats
 from budget_forecaster.domain.account.account import Account, AccountParameters
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 
+# Max day gap between a file op and an API op recognised as the same
+# transaction, absorbing the booking-date vs value-date drift.
+_RECONCILE_WINDOW_DAYS = 3
+
+
+def _is_cross_source_duplicate(
+    incoming: HistoricOperation, existing: HistoricOperation
+) -> bool:
+    """Whether a file op and an API op describe the same transaction.
+
+    Falls back to signed amount and a small date window, since the same
+    transaction gets a different description (hence a different content ref)
+    from each source. Cross-source only: exactly one op must carry a
+    source_ref, so two same-source ops sharing amount and date stay distinct.
+    """
+    if (incoming.source_ref is None) == (existing.source_ref is None):
+        return False
+    if round(incoming.amount * 100) != round(existing.amount * 100):
+        return False
+    gap = abs((incoming.operation_date - existing.operation_date).days)
+    return gap <= _RECONCILE_WINDOW_DAYS
+
 
 class UpdateResult(NamedTuple):
     """Result of updating an account with new operations."""
@@ -59,6 +81,44 @@ class AggregatedAccount:
         return self._accounts
 
     @staticmethod
+    def _merge_operations(
+        existing: tuple[HistoricOperation, ...],
+        incoming: tuple[HistoricOperation, ...],
+    ) -> list[HistoricOperation]:
+        """Append the incoming ops that are not duplicates of an existing one.
+
+        An op is a duplicate when its reference or content ref matches an
+        existing op (exact key), or when it reconciles with a cross-source op by
+        amount and date. Cross-source matching is one-to-one: each existing op
+        absorbs at most one incoming op, so distinct transactions sharing an
+        amount and date are not collapsed.
+        """
+        existing_refs = {op.source_ref or op.content_ref for op in existing}
+        reconciled: set[int] = set()
+
+        merged = list(existing)
+        for operation in incoming:
+            keys = {operation.content_ref}
+            if operation.source_ref is not None:
+                keys.add(operation.source_ref)
+            if not keys.isdisjoint(existing_refs):
+                continue
+            match_index = next(
+                (
+                    index
+                    for index, candidate in enumerate(existing)
+                    if index not in reconciled
+                    and _is_cross_source_duplicate(operation, candidate)
+                ),
+                None,
+            )
+            if match_index is not None:
+                reconciled.add(match_index)
+                continue
+            merged.append(operation)
+        return merged
+
+    @staticmethod
     def update_account(
         current_account: Account, new_account: AccountParameters
     ) -> UpdateResult:
@@ -67,23 +127,10 @@ class AggregatedAccount:
         Returns:
             UpdateResult containing the updated account and import statistics.
         """
-        # An op is a duplicate if its reference is already known (API/API
-        # idempotency) or its content ref matches an existing op. An incoming
-        # API op reconciles against an already-stored file op by content; the
-        # reverse (file op incoming, API op already stored) is not reconciled.
-        existing_refs = {
-            operation.source_ref or operation.content_ref
-            for operation in current_account.operations
-        }
-        operations = list(current_account.operations)
-        new_count = 0
-        for operation in new_account.operations:
-            keys = {operation.content_ref}
-            if operation.source_ref is not None:
-                keys.add(operation.source_ref)
-            if keys.isdisjoint(existing_refs):
-                operations.append(operation)
-                new_count += 1
+        operations = AggregatedAccount._merge_operations(
+            current_account.operations, new_account.operations
+        )
+        new_count = len(operations) - len(current_account.operations)
 
         total_in_file = len(new_account.operations)
         stats = ImportStats(

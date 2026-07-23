@@ -131,14 +131,22 @@ An operation carries a `source_ref` when its source provides a stable reference:
 - File imports (BNP, Swile) leave it NULL; a content reference (a hash of date, amount
   and description) is derived on the fly instead.
 
-An incoming operation is a duplicate when either:
+An incoming operation is a duplicate when any of these hold:
 
 - it has a reference and that reference is already stored for the account, or
-- it has no reference and its content reference matches a stored reference-less
-  operation.
+- its content reference matches a stored operation, or
+- it reconciles with a cross-source operation by signed amount and a date within a few
+  days.
 
-Two identical same-day API operations are both kept (distinct references); the content
-hash only collapses duplicates between file imports.
+The last rule handles the real cross-source case: the same transaction gets a different
+description from a file export and from the API, so the content references differ and
+only amount and date line up. Cross-source matching is one-to-one and fires only between
+a file operation and an API operation, so two same-source operations sharing an amount
+and date stay distinct (two identical same-day API operations are both kept).
+
+Version 10 purges cross-source duplicates already stored in existing databases, keeping
+the file operation and dropping the API copy; a manual link carried only by the API copy
+moves to the survivor.
 
 ## Service Layer
 

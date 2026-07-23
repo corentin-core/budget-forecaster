@@ -260,9 +260,8 @@ class TestDedupWithSourceRef:
         assert result.stats.duplicates_skipped == 1
         assert len(result.account.operations) == 1
 
-    def test_file_op_incoming_after_api_op_is_not_reconciled(self) -> None:
-        """Accepted limitation: an incoming file op is not matched against an
-        existing API op, so re-importing a statement after API sync duplicates."""
+    def test_file_op_incoming_after_api_op_is_reconciled(self) -> None:
+        """An incoming file op reconciles against an existing API op."""
         api_op = _make_operation(
             1, "MONOPRIX", -12.5, date(2025, 1, 10), source_ref="ref-1"
         )
@@ -272,8 +271,114 @@ class TestDedupWithSourceRef:
 
         result = AggregatedAccount.update_account(current, self._params((file_op,)))
 
+        assert result.stats.duplicates_skipped == 1
+        assert len(result.account.operations) == 1
+
+
+class TestCrossSourceReconciliation:
+    """Reconcile a file op and an API op that share amount and date but not
+    description (the real cross-source duplicate case)."""
+
+    @staticmethod
+    def _params(operations: tuple[HistoricOperation, ...]) -> AccountParameters:
+        return AccountParameters(
+            name="BNP",
+            balance=None,
+            currency="EUR",
+            balance_date=date(2025, 1, 15),
+            operations=operations,
+        )
+
+    def test_api_op_reconciles_file_op_despite_different_wording(self) -> None:
+        """Incoming API op collapses onto a stored file op of the same amount."""
+        file_op = _make_operation(1, "VIREMENT DE ELUM", 3574.0, date(2025, 1, 10))
+        current = _make_account(operations=(file_op,))
+
+        api_op = _make_operation(
+            2, "VIR SEPA RECU /DE ELUM", 3574.0, date(2025, 1, 12), source_ref="ref-1"
+        )
+
+        result = AggregatedAccount.update_account(current, self._params((api_op,)))
+
+        assert result.stats.duplicates_skipped == 1
+        assert result.account.operations == (file_op,)
+
+    def test_file_op_reconciles_api_op_despite_different_wording(self) -> None:
+        """The reverse order deduplicates just as well."""
+        api_op = _make_operation(
+            1, "VIR SEPA RECU /DE ELUM", 3574.0, date(2025, 1, 12), source_ref="ref-1"
+        )
+        current = _make_account(operations=(api_op,))
+
+        file_op = _make_operation(2, "VIREMENT DE ELUM", 3574.0, date(2025, 1, 10))
+
+        result = AggregatedAccount.update_account(current, self._params((file_op,)))
+
+        assert result.stats.duplicates_skipped == 1
+        assert result.account.operations == (api_op,)
+
+    @pytest.mark.parametrize(
+        "api_date,expected_skipped",
+        [
+            (date(2025, 1, 13), 1),  # +3 days, inside window
+            (date(2025, 1, 7), 1),  # -3 days, inside window
+            (date(2025, 1, 14), 0),  # +4 days, outside window
+        ],
+        ids=["plus-3", "minus-3", "plus-4"],
+    )
+    def test_date_window_boundary(self, api_date: date, expected_skipped: int) -> None:
+        """The pair matches within a 3-day window and not beyond it."""
+        file_op = _make_operation(1, "PAYROLL", 3574.0, date(2025, 1, 10))
+        current = _make_account(operations=(file_op,))
+
+        api_op = _make_operation(2, "SALARY", 3574.0, api_date, source_ref="ref-1")
+
+        result = AggregatedAccount.update_account(current, self._params((api_op,)))
+
+        assert result.stats.duplicates_skipped == expected_skipped
+
+    def test_amount_must_match(self) -> None:
+        """A different amount is a distinct transaction, not a duplicate."""
+        file_op = _make_operation(1, "PAYROLL", 3574.0, date(2025, 1, 10))
+        current = _make_account(operations=(file_op,))
+
+        api_op = _make_operation(2, "SALARY", 3575.0, date(2025, 1, 10), source_ref="r")
+
+        result = AggregatedAccount.update_account(current, self._params((api_op,)))
+
         assert result.stats.new_operations == 1
         assert len(result.account.operations) == 2
+
+    def test_matching_is_one_to_one(self) -> None:
+        """One API op absorbs a single file op; a second same-amount file op stays."""
+        file_a = _make_operation(1, "COFFEE", -3.5, date(2025, 1, 10))
+        file_b = _make_operation(2, "COFFEE", -3.5, date(2025, 1, 10))
+        current = _make_account(operations=(file_a, file_b))
+
+        api_op = _make_operation(
+            3, "CB COFFEE", -3.5, date(2025, 1, 10), source_ref="r"
+        )
+
+        result = AggregatedAccount.update_account(current, self._params((api_op,)))
+
+        assert result.stats.duplicates_skipped == 1
+        assert len(result.account.operations) == 2
+
+    def test_re_sync_is_idempotent(self) -> None:
+        """Re-syncing the same API op after reconciliation adds nothing."""
+        file_op = _make_operation(1, "VIREMENT DE ELUM", 3574.0, date(2025, 1, 10))
+        current = _make_account(operations=(file_op,))
+        api_op = _make_operation(
+            2, "VIR SEPA RECU /DE ELUM", 3574.0, date(2025, 1, 12), source_ref="ref-1"
+        )
+
+        first = AggregatedAccount.update_account(current, self._params((api_op,)))
+        second = AggregatedAccount.update_account(
+            first.account, self._params((api_op,))
+        )
+
+        assert second.stats.duplicates_skipped == 1
+        assert len(second.account.operations) == 1
 
 
 class TestUpsertAccount:
