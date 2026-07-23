@@ -1,4 +1,4 @@
-# Syncing bank data (Enable Banking)
+# Enable Banking
 
 Enable Banking imports your transactions and account balance directly from your bank
 over Open Banking (PSD2), as an alternative to loading exported files. Once set up, a
