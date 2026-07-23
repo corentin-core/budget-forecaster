@@ -3,9 +3,11 @@
 Databases populated from a file export and later synced from the Enable Banking
 API hold the same transaction twice: the two sources give it different
 descriptions, so the content-ref dedup never recognised the pair. Each pair is
-collapsed here by keeping the file op and deleting the API copy, matching on
-signed amount and a small date window. A manual link carried only by the API
-copy is repointed to the surviving file op so no user intent is lost.
+collapsed here by keeping the API op (cleaner description and source_ref) and
+deleting the file copy, matching on signed amount and a small date window. The
+API op adopts the file's category, and the file copy's link is repointed to the
+surviving API op so the forecast keeps its actual attributions and no user
+intent is lost.
 """
 
 import logging
@@ -14,9 +16,12 @@ from datetime import date
 from functools import partial
 from typing import NamedTuple
 
+from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation import cross_source
 
 logger = logging.getLogger(__name__)
+
+_UNCATEGORIZED = Category.UNCATEGORIZED.value
 
 
 class _Op(NamedTuple):
@@ -25,18 +30,23 @@ class _Op(NamedTuple):
     unique_id: int
     op_date: date
     amount_cents: int
+    category: str
 
 
 def run(conn: sqlite3.Connection) -> None:
     """Collapse cross-source duplicate operations across every account."""
     purged = 0
     for (account_id,) in conn.execute("SELECT id FROM accounts").fetchall():
-        for api_id, file_id in _pairs_for_account(conn, account_id):
-            _reassign_manual_link(conn, from_op=api_id, to_op=file_id)
+        for api_op, file_op in _pairs_for_account(conn, account_id):
+            if file_op.category != _UNCATEGORIZED:
+                conn.execute(
+                    "UPDATE operations SET category = ? WHERE unique_id = ?",
+                    (file_op.category, api_op.unique_id),
+                )
+            _move_link(conn, from_op=file_op.unique_id, to_op=api_op.unique_id)
             conn.execute(
-                "DELETE FROM operation_links WHERE operation_unique_id = ?", (api_id,)
+                "DELETE FROM operations WHERE unique_id = ?", (file_op.unique_id,)
             )
-            conn.execute("DELETE FROM operations WHERE unique_id = ?", (api_id,))
             purged += 1
     conn.commit()
     logger.info("Purged %d cross-source duplicate operations", purged)
@@ -44,18 +54,18 @@ def run(conn: sqlite3.Connection) -> None:
 
 def _pairs_for_account(
     conn: sqlite3.Connection, account_id: int
-) -> tuple[tuple[int, int], ...]:
-    """Greedily pair each API op with a file op of matching amount and date.
+) -> tuple[tuple[_Op, _Op], ...]:
+    """Greedily pair each API op with the nearest matching file op.
 
-    Returns (api_unique_id, file_unique_id) pairs; matching is one-to-one so
-    distinct transactions sharing an amount and date are never collapsed. The
-    nearest date wins, mirroring the ingest-time reconciliation.
+    Returns (api_op, file_op) pairs; matching is one-to-one so distinct
+    transactions sharing an amount and date are never collapsed. The nearest
+    date wins, mirroring the ingest-time reconciliation.
     """
     file_ops = _load_ops(conn, account_id, with_source_ref=False)
     api_ops = _load_ops(conn, account_id, with_source_ref=True)
 
     matched_files: set[int] = set()
-    pairs: list[tuple[int, int]] = []
+    pairs: list[tuple[_Op, _Op]] = []
     for api in api_ops:
         candidates = [
             file_op
@@ -69,7 +79,7 @@ def _pairs_for_account(
             continue
         best = min(candidates, key=partial(_match_key, api.op_date))
         matched_files.add(best.unique_id)
-        pairs.append((api.unique_id, best.unique_id))
+        pairs.append((api, best))
     return tuple(pairs)
 
 
@@ -84,7 +94,7 @@ def _load_ops(
     """Load the file ops (no source_ref) or API ops (with source_ref)."""
     predicate = "IS NOT NULL" if with_source_ref else "IS NULL"
     cursor = conn.execute(
-        f"SELECT unique_id, date, amount FROM operations "  # noqa: S608
+        f"SELECT unique_id, date, amount, category FROM operations "  # noqa: S608
         f"WHERE account_id = ? AND source_ref {predicate} "
         f"ORDER BY date, unique_id",
         (account_id,),
@@ -94,26 +104,31 @@ def _load_ops(
             unique_id=row["unique_id"],
             op_date=date.fromisoformat(row["date"]),
             amount_cents=cross_source.amount_cents(row["amount"]),
+            category=row["category"],
         )
         for row in cursor.fetchall()
     )
 
 
-def _reassign_manual_link(conn: sqlite3.Connection, from_op: int, to_op: int) -> None:
-    """Move a manual link off the doomed op onto the survivor.
+def _move_link(conn: sqlite3.Connection, from_op: int, to_op: int) -> None:
+    """Move the doomed op's link onto the survivor.
 
-    Skips when the doomed op has no manual link. A manual link on the survivor
-    wins and is kept; an automatic one is overwritten, since manual intent
-    outranks a categorizer-derived link.
+    Both operations describe the same transaction, so the link stays valid. A
+    manual link already on the survivor wins and is kept; otherwise the doomed
+    op's link overwrites whatever the survivor had.
     """
-    if not _has_manual_link(conn, from_op):
+    if not _has_link(conn, from_op):
         return
     if _has_manual_link(conn, to_op):
-        logger.warning(
-            "Discarding manual link on op %d: survivor op %d is already "
-            "manually linked",
-            from_op,
-            to_op,
+        if _has_manual_link(conn, from_op):
+            logger.warning(
+                "Discarding manual link on op %d: survivor op %d is already "
+                "manually linked",
+                from_op,
+                to_op,
+            )
+        conn.execute(
+            "DELETE FROM operation_links WHERE operation_unique_id = ?", (from_op,)
         )
         return
     conn.execute("DELETE FROM operation_links WHERE operation_unique_id = ?", (to_op,))
@@ -122,6 +137,14 @@ def _reassign_manual_link(conn: sqlite3.Connection, from_op: int, to_op: int) ->
         "WHERE operation_unique_id = ?",
         (to_op, from_op),
     )
+
+
+def _has_link(conn: sqlite3.Connection, operation_id: int) -> bool:
+    """Whether the operation carries any link."""
+    row = conn.execute(
+        "SELECT 1 FROM operation_links WHERE operation_unique_id = ?", (operation_id,)
+    ).fetchone()
+    return row is not None
 
 
 def _has_manual_link(conn: sqlite3.Connection, operation_id: int) -> bool:

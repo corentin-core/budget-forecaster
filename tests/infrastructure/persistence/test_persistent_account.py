@@ -15,10 +15,11 @@ from budget_forecaster.core.date_range import (
     RecurringDay,
     SingleDay,
 )
-from budget_forecaster.core.types import Category
+from budget_forecaster.core.types import Category, LinkType
 from budget_forecaster.domain.account.account import Account, AccountParameters
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.exceptions import (
     AccountNotFoundError,
@@ -367,6 +368,67 @@ class TestPersistentAccount:
 
             account = persistent2.accounts[0]
             assert len(account.operations) == 4
+
+    def test_manual_link_follows_cross_source_reconciliation(
+        self, temp_db_path: Path
+    ) -> None:
+        """A manual link on a file op moves to the API op that replaces it."""
+        file_op = HistoricOperation(
+            unique_id=1,
+            description="VIREMENT DE ELUM",
+            amount=Amount(3574.0, "EUR"),
+            category=Category.SALARY,
+            operation_date=date(2025, 1, 10),
+        )
+        account = Account(
+            name="BNP",
+            balance=3574.0,
+            currency="EUR",
+            balance_date=date(2025, 1, 10),
+            operations=(file_op,),
+        )
+        with SqliteRepository(temp_db_path) as repository:
+            repository.set_aggregated_account_name("All")
+            repository.upsert_account(account)
+            repository.upsert_link(
+                OperationLink(
+                    operation_unique_id=1,
+                    target_type=LinkType.PLANNED_OPERATION,
+                    target_id=7,
+                    iteration_date=date(2025, 1, 10),
+                    is_manual=True,
+                )
+            )
+
+        with SqliteRepository(temp_db_path) as repository:
+            persistent = PersistentAccount(repository)
+            api_op = HistoricOperation(
+                unique_id=2,
+                description="VIR SEPA RECU /DE ELUM",
+                amount=Amount(3574.0, "EUR"),
+                category=Category.UNCATEGORIZED,
+                operation_date=date(2025, 1, 12),
+                source_ref="ref-1",
+            )
+            params = AccountParameters(
+                name="BNP",
+                balance=3574.0,
+                currency="EUR",
+                balance_date=date(2025, 1, 12),
+                operations=(api_op,),
+            )
+            persistent.upsert_account(params)
+            persistent.save()
+
+        with SqliteRepository(temp_db_path) as repository:
+            persistent = PersistentAccount(repository)
+            operations = persistent.accounts[0].operations
+            assert {op.unique_id for op in operations} == {2}
+            assert repository.get_link_for_operation(1) is None
+            link = repository.get_link_for_operation(2)
+            assert link is not None
+            assert link.is_manual
+            assert link.target_id == 7
 
 
 class TestBudgetRepository:

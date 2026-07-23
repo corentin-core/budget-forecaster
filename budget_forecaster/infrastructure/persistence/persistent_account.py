@@ -1,8 +1,13 @@
 """Module for the PersistentAccount class."""
 
+import logging
+
 from budget_forecaster.core.types import ImportStats
 from budget_forecaster.domain.account.account import Account, AccountParameters
-from budget_forecaster.domain.account.aggregated_account import AggregatedAccount
+from budget_forecaster.domain.account.aggregated_account import (
+    AggregatedAccount,
+    Reconciliation,
+)
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.exceptions import AccountNotLoadedError
 from budget_forecaster.infrastructure.persistence.repository_interface import (
@@ -11,6 +16,8 @@ from budget_forecaster.infrastructure.persistence.repository_interface import (
 from budget_forecaster.services.operation.historic_operation_factory import (
     HistoricOperationFactory,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class PersistentAccount:
@@ -78,10 +85,44 @@ class PersistentAccount:
     def upsert_account(self, account: AccountParameters) -> ImportStats:
         """Add or update an account.
 
+        Moves the link off each file op collapsed into an API op onto the
+        surviving API op, so a cross-source reconciliation keeps the forecast's
+        actual attributions and never loses a user-set link.
+
         Returns:
             ImportStats with the number of new and duplicate operations.
         """
-        return self._aggregated_account.upsert_account(account)
+        result = self._aggregated_account.upsert_account(account)
+        for reconciliation in result.reconciliations:
+            self._move_link(reconciliation)
+        return result.stats
+
+    def _move_link(self, reconciliation: Reconciliation) -> None:
+        """Move the dropped op's link onto the surviving API op.
+
+        Both ops describe the same transaction, so the link stays valid. A
+        manual link already on the survivor wins; otherwise the dropped op's
+        link overwrites whatever the survivor had.
+        """
+        if (
+            link := self._repository.get_link_for_operation(reconciliation.dropped_id)
+        ) is None:
+            return
+        survivor = self._repository.get_link_for_operation(reconciliation.kept_id)
+        if survivor is not None and survivor.is_manual:
+            if link.is_manual:
+                logger.warning(
+                    "Discarding manual link on op %d: survivor op %d is already "
+                    "manually linked",
+                    reconciliation.dropped_id,
+                    reconciliation.kept_id,
+                )
+            self._repository.delete_link(reconciliation.dropped_id)
+            return
+        self._repository.delete_link(reconciliation.dropped_id)
+        self._repository.upsert_link(
+            link._replace(operation_unique_id=reconciliation.kept_id, link_id=None)
+        )
 
     def replace_account(self, new_account: Account) -> None:
         """Replace an existing account."""

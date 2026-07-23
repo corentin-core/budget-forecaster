@@ -144,9 +144,13 @@ only amount and date line up. Cross-source matching is one-to-one and fires only
 a file operation and an API operation, so two same-source operations sharing an amount
 and date stay distinct (two identical same-day API operations are both kept).
 
-Version 10 purges cross-source duplicates already stored in existing databases, keeping
-the file operation and dropping the API copy; a manual link carried only by the API copy
-moves to the survivor.
+When a file operation and an API operation reconcile, the API operation is kept (cleaner
+description and stable reference) and the file operation is dropped. The API source
+carries no category, so the surviving operation adopts the file's category; the file
+operation's link moves to the survivor, keeping the forecast's actual attributions
+without waiting for a link recompute.
+
+Version 10 applies the same collapse to duplicates already stored in existing databases.
 
 ## Service Layer
 

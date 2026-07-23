@@ -129,4 +129,5 @@ description, amount and day). Because the same transaction gets a different desc
 from a file export and from the API, a final fallback reconciles a file operation and an
 API operation by signed amount and a date within a few days. That cross-source match is
 one-to-one, so two same-day operations from the same source with distinct references are
-both kept.
+both kept. On a match, the API operation is kept and the file operation dropped; the
+survivor adopts the file's category and inherits its link.
