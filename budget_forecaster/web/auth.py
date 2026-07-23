@@ -5,6 +5,7 @@ The tailnet is the primary trust boundary; this password is defense-in-depth.
 """
 
 import base64
+import binascii
 import hashlib
 import hmac
 import os
@@ -24,7 +25,8 @@ _SESSION_VALUE = "authenticated"
 _PBKDF2_ALGO = "pbkdf2_sha256"
 _PBKDF2_ITERATIONS = 480_000
 
-_PUBLIC_PREFIXES = ("/login", "/health", "/static")
+_PUBLIC_PATHS = frozenset({"/login", "/health"})
+_STATIC_PREFIX = "/static/"
 
 
 def hash_password(
@@ -41,16 +43,19 @@ def hash_password(
 
 
 def verify_password(password: str, encoded: str) -> bool:
-    """Check a password against a hash produced by hash_password."""
+    """Check a password against a hash produced by hash_password.
+
+    Any malformed hash string is rejected rather than raising.
+    """
     try:
         algo, iterations, salt_b64, digest_b64 = encoded.split("$")
-    except ValueError:
+        if algo != _PBKDF2_ALGO:
+            return False
+        salt = base64.b64decode(salt_b64)
+        expected = base64.b64decode(digest_b64)
+        digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, int(iterations))
+    except (ValueError, binascii.Error):
         return False
-    if algo != _PBKDF2_ALGO:
-        return False
-    salt = base64.b64decode(salt_b64)
-    expected = base64.b64decode(digest_b64)
-    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, int(iterations))
     return hmac.compare_digest(digest, expected)
 
 
@@ -74,7 +79,11 @@ def is_valid_session(serializer: URLSafeTimedSerializer, token: str) -> bool:
 
 
 def _is_public(path: str) -> bool:
-    return any(path == prefix or path.startswith(prefix) for prefix in _PUBLIC_PREFIXES)
+    """Public paths need no session: login, health, and the static mount.
+
+    Exact matches (not prefixes) so a future /login-history stays protected.
+    """
+    return path in _PUBLIC_PATHS or path.startswith(_STATIC_PREFIX)
 
 
 async def require_session(

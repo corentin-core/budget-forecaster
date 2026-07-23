@@ -4,7 +4,11 @@
   {% if connection.configured %}
   <div class="kv">
     <span>{{ _("Status") }}</span>
-    <strong class="status-{{ connection.status.value }}"> {{ connection.status.value }} </strong>
+    <strong class="status-{{ connection.status.value }}">
+      {% if connection.status.value == "valid" %}{{ _("Valid") }}
+      {% elif connection.status.value == "expiring" %}{{ _("Expiring") }}
+      {% else %}{{ _("Expired") }}{% endif %}
+    </strong>
   </div>
   {% if connection.valid_until %}
   <div class="kv">

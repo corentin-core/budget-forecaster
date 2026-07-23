@@ -1,0 +1,10 @@
+{% include "fragments/upcoming_items.html" %}
+{% if upcoming_next is not none %}
+  <button id="upcoming-more" class="more-btn" hx-swap-oob="true"
+          hx-get="/upcoming?offset={{ upcoming_next }}"
+          hx-target="#upcoming-list" hx-swap="beforeend">
+    {{ _("Show more") }}
+  </button>
+{% else %}
+  <span id="upcoming-more" hx-swap-oob="true"></span>
+{% endif %}

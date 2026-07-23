@@ -1,68 +1,107 @@
-{% extends "base.html" %} {% block title %}{{ view.month | month_label }} — Budget Forecaster{% endblock %} {% macro
-consumption_bar(c) %} {% if c %}
-<div class="bar {{ 'bad' if c.bad else 'good' }}" title="{{ c.ratio | pct }}">
-  <span class="bar-fill" style="width: {{ ((c.ratio if c.ratio < 1.0 else 1.0) * 100) | round(1) }}%"></span>
-  <span class="bar-pct">{{ c.ratio | pct }}</span>
-</div>
-{% endif %} {% endmacro %} {% macro cat_row(row) %}
-<tr class="{{ 'income' if row.is_income else 'expense' }}">
-  <td class="cat">{{ row.key | category_name }}</td>
-  <td class="num">{% if row.is_forecasted %}{{ row.planned | signed_eur(currency) }}{% else %}—{% endif %}</td>
-  <td class="num">{{ row.actual | signed_eur(currency) }}</td>
-  <td class="num">{{ row.forecast | signed_eur(currency) }}</td>
-  <td class="num">{{ row.remaining | signed_eur(currency) }}</td>
-  <td class="bar-cell">{{ consumption_bar(row.consumption) }}</td>
-</tr>
-{% endmacro %} {% block content %}
-<section class="month-nav">
-  <a href="/mois/{{ view.prev_month.strftime('%Y-%m') }}">‹</a>
+{% extends "base.html" %}
+{% block title %}{{ view.month | month_label }} — Budget Forecaster{% endblock %}
+
+{% macro consumption_bar(c) %}
+  {% if c %}
+    <div class="bar {{ 'bad' if c.bad else 'good' }}" title="{{ c.ratio | pct }}">
+      <span class="bar-fill" style="width: {{ ((c.ratio if c.ratio < 1.0 else 1.0) * 100) | round(1) }}%"></span>
+      <span class="bar-pct">{{ c.ratio | pct }}</span>
+    </div>
+  {% endif %}
+{% endmacro %}
+
+{% macro amount(value, label) %}
+  <td class="num" data-label="{{ label }}">{{ value | signed_eur(currency) }}</td>
+{% endmacro %}
+
+{% macro cat_row(row) %}
+  <tr class="{{ 'income' if row.is_income else 'expense' }}">
+    <td class="cat">{{ row.key | category_name }}</td>
+    {% if row.is_forecasted %}
+      {{ amount(row.planned, _("Planned")) }}
+    {% else %}
+      <td class="num" data-label="{{ _('Planned') }}">—</td>
+    {% endif %}
+    {{ amount(row.actual, _("Actual")) }}
+    {{ amount(row.forecast, _("Forecast")) }}
+    {{ amount(row.remaining, _("Remaining")) }}
+    <td class="bar-cell" data-label="{{ _('Consumption') }}">
+      {{ consumption_bar(row.consumption) }}
+    </td>
+  </tr>
+{% endmacro %}
+
+{% block content %}
+<section class="month-nav"
+         data-prev-url="/month/{{ view.prev_month.strftime('%Y-%m') }}"
+         data-next-url="/month/{{ view.next_month.strftime('%Y-%m') }}">
+  <a href="/month/{{ view.prev_month.strftime('%Y-%m') }}">‹</a>
   <h1>{{ view.month | month_label }}</h1>
-  <a href="/mois/{{ view.next_month.strftime('%Y-%m') }}">›</a>
+  <a href="/month/{{ view.next_month.strftime('%Y-%m') }}">›</a>
 </section>
 
 {% if view.show_margin and view.margin %}
 <section class="card margin-card">
-  <div class="metric-label">{{ _("Available margin") }}</div>
+  <div class="metric-label">
+    {{ _("Available margin") }}
+    <span class="info" tabindex="0"
+          data-tip="{{ _('What you can spend without your projected balance dropping below the safety threshold, over the whole forecast horizon.') }} — {{ _('Safety threshold') }}: {{ view.margin.threshold | eur(currency) }}">ⓘ</span>
+  </div>
   <div class="metric-value">{{ view.margin.available_margin | eur(currency) }}</div>
   <div class="metric-sub">
-    {{ _("Lowest balance") }} {{ view.margin.lowest_balance | eur(currency) }} ({{ view.margin.lowest_balance_date |
-    frdate }})
+    {{ _("Lowest projected balance") }}:
+    {{ view.margin.lowest_balance | eur(currency) }}
+    ({{ view.margin.lowest_balance_date | frdate }})
   </div>
 </section>
-{% endif %} {% if not view.forecasted and not view.unforecasted %}
-<p class="empty">{{ _("No data for this month") }}</p>
+{% endif %}
+
+{% if not view.planned_expenses and not view.planned_income and not view.unforecasted %}
+  <p class="empty">{{ _("No data for this month") }}</p>
 {% else %}
 <section class="card">
   <table class="review">
     <thead>
       <tr>
-        <th>{{ _("Category") }}</th>
-        <th class="num">{{ _("Planned") }}</th>
-        <th class="num">{{ _("Actual") }}</th>
-        <th class="num">{{ _("Forecast") }}</th>
-        <th class="num">{{ _("Remaining") }}</th>
-        <th>{{ _("Consumption") }}</th>
+        <th data-tip="{{ _('Expense or income category') }}">{{ _("Category") }}</th>
+        <th class="num" data-tip="{{ _('Amount budgeted for this month') }}">{{ _("Planned") }}</th>
+        <th class="num" data-tip="{{ _('Amount actually spent or received so far') }}">{{ _("Actual") }}</th>
+        <th class="num" data-tip="{{ _('End-of-month projection (actual plus remaining planned)') }}">{{ _("Forecast") }}</th>
+        <th class="num" data-tip="{{ _('Left before reaching the forecast (Forecast minus Actual)') }}">{{ _("Remaining") }}</th>
+        <th class="num" data-tip="{{ _('Share of the budget already used (Actual / Planned)') }}">{{ _("Consumption") }}</th>
       </tr>
     </thead>
     <tbody>
-      {% if view.forecasted %}
-      <tr class="section-row">
-        <td colspan="6">{{ _("Forecasted") }}</td>
-      </tr>
-      {% for row in view.forecasted %}{{ cat_row(row) }}{% endfor %} {% endif %} {% if view.unforecasted %}
-      <tr class="section-row">
-        <td colspan="6">{{ _("Unforecasted") }}</td>
-      </tr>
-      {% for row in view.unforecasted %}{{ cat_row(row) }}{% endfor %} {% endif %}
+      {% if view.planned_expenses %}
+        <tr class="section-row">
+          <td colspan="6" data-tip="{{ _('Expense categories with a budget this month') }}">{{ _("Planned expenses") }}</td>
+        </tr>
+        {% for row in view.planned_expenses %}{{ cat_row(row) }}{% endfor %}
+      {% endif %}
+      {% if view.planned_income %}
+        <tr class="section-row">
+          <td colspan="6" data-tip="{{ _('Income categories with a budget this month') }}">{{ _("Planned income") }}</td>
+        </tr>
+        {% for row in view.planned_income %}{{ cat_row(row) }}{% endfor %}
+      {% endif %}
+      {% if view.unforecasted %}
+        <tr class="section-row">
+          <td colspan="6" data-tip="{{ _('Categories with activity but no budget set') }}">{{ _("Unforecasted") }}</td>
+        </tr>
+        {% for row in view.unforecasted %}{{ cat_row(row) }}{% endfor %}
+      {% endif %}
       <tr class="total-row">
         <td>{{ _("TOTAL") }}</td>
-        <td class="num">{{ view.total_planned | signed_eur(currency) }}</td>
-        <td class="num">{{ view.total_actual | signed_eur(currency) }}</td>
-        <td class="num">{{ view.total_forecast | signed_eur(currency) }}</td>
-        <td class="num">{{ view.total_remaining | signed_eur(currency) }}</td>
+        {{ amount(view.total_planned, _("Planned")) }}
+        {{ amount(view.total_actual, _("Actual")) }}
+        {{ amount(view.total_forecast, _("Forecast")) }}
+        {{ amount(view.total_remaining, _("Remaining")) }}
         <td></td>
       </tr>
     </tbody>
   </table>
 </section>
-{% endif %} {% endblock %}
+{% endif %}
+
+<script src="/static/month.js" defer></script>
+{% endblock %}

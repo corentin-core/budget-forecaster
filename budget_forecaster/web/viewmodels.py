@@ -85,7 +85,8 @@ class MonthView(NamedTuple):
     month: date
     prev_month: date
     next_month: date
-    forecasted: tuple[CategoryRow, ...]
+    planned_expenses: tuple[CategoryRow, ...]
+    planned_income: tuple[CategoryRow, ...]
     unforecasted: tuple[CategoryRow, ...]
     total_planned: float
     total_actual: float
@@ -140,7 +141,9 @@ def build_month_view(app: ApplicationService, month: date) -> MonthView:
     categories = summary["categories"] if summary else {}
     rows = [_row(key, data) for key, data in categories.items()]
 
-    forecasted = _sorted_rows([r for r in rows if r.is_forecasted])
+    forecasted = [r for r in rows if r.is_forecasted]
+    planned_expenses = _sorted_rows([r for r in forecasted if not r.is_income])
+    planned_income = _sorted_rows([r for r in forecasted if r.is_income])
     unforecasted = _sorted_rows([r for r in rows if not r.is_forecasted])
 
     total_planned = sum(r.planned for r in rows)
@@ -154,7 +157,8 @@ def build_month_view(app: ApplicationService, month: date) -> MonthView:
         month=month,
         prev_month=add_months(month, -1),
         next_month=add_months(month, 1),
-        forecasted=forecasted,
+        planned_expenses=planned_expenses,
+        planned_income=planned_income,
         unforecasted=unforecasted,
         total_planned=total_planned,
         total_actual=total_actual,
@@ -174,10 +178,12 @@ def build_month_health(app: ApplicationService, month: date) -> MonthHealth | No
     planned = sum(r.planned for r in expenses)
     actual = sum(r.actual for r in expenses)
     ratio = abs(actual) / abs(planned) if planned else None
+    # Heaviest budgets first, so the home glance surfaces what matters.
+    by_weight = tuple(sorted(expenses, key=lambda r: abs(r.planned), reverse=True))
     return MonthHealth(
         month=month,
         planned=planned,
         actual=actual,
         ratio=ratio,
-        rows=_sorted_rows(expenses),
+        rows=by_weight,
     )

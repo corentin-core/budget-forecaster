@@ -21,14 +21,14 @@ def _parse_month(value: str) -> date | None:
         return None
 
 
-@router.get("/mois")
+@router.get("/month")
 def current_month() -> Response:
     """Redirect to the current month."""
     today = date.today()
-    return RedirectResponse(url=f"/mois/{today:%Y-%m}", status_code=307)
+    return RedirectResponse(url=f"/month/{today:%Y-%m}", status_code=307)
 
 
-@router.get("/mois/{month}")
+@router.get("/month/{month}")
 async def month_view(
     month: str,
     request: Request,
@@ -36,7 +36,7 @@ async def month_view(
 ) -> Response:
     """Render the month review for a yyyy-mm path segment."""
     if (parsed := _parse_month(month)) is None:
-        return RedirectResponse(url="/mois", status_code=307)
+        return RedirectResponse(url="/month", status_code=307)
     return render_template(
         request,
         "month.html",

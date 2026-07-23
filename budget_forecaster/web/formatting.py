@@ -30,6 +30,13 @@ def format_eur(amount: float, currency: str = "EUR") -> str:
     return f"{sign}{_group_thousands(whole)},{frac}{_NBSP}{currency}"
 
 
+def format_eur_rounded(amount: float, currency: str = "EUR") -> str:
+    """Format an amount without decimals, for at-a-glance large figures."""
+    rounded = round(amount)
+    sign = "-" if rounded < 0 else ""
+    return f"{sign}{_group_thousands(str(abs(rounded)))}{_NBSP}{currency}"
+
+
 def format_signed_eur(amount: float, currency: str = "EUR") -> str:
     """Format an amount with an explicit sign, e.g. '+2 600,00 EUR'."""
     whole, frac = f"{abs(amount):.2f}".split(".")
@@ -63,6 +70,7 @@ def category_name(key: str) -> str:
 def register_filters(env: Environment) -> None:
     """Register the formatting filters on a Jinja environment."""
     env.filters["eur"] = format_eur
+    env.filters["eur0"] = format_eur_rounded
     env.filters["signed_eur"] = format_signed_eur
     env.filters["frdate"] = format_date
     env.filters["month_label"] = format_month

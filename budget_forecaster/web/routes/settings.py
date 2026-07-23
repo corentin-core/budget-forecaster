@@ -34,7 +34,7 @@ def _connection_status(consent_service: ConsentService | None) -> ConnectionStat
     return ConnectionStatus(True, state.status, valid_until)
 
 
-@router.get("/reglages")
+@router.get("/settings")
 async def settings(
     request: Request,
     app: ApplicationService = Depends(get_app_service),

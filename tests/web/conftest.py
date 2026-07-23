@@ -8,11 +8,20 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from budget_forecaster.i18n import setup_i18n
 from budget_forecaster.web.app import create_app
 from budget_forecaster.web.auth import hash_password
 
 PASSWORD = "test-pass"
 _DEMO_DB = Path(__file__).resolve().parents[2] / "examples" / "demo.db"
+
+
+@pytest.fixture(autouse=True)
+def _restore_i18n() -> Iterator[None]:
+    """Building the app sets the global language to French; restore it after
+    each test so other suites keep the default English passthrough."""
+    yield
+    setup_i18n("en")
 
 
 @pytest.fixture(name="config_path")

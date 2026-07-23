@@ -1,0 +1,9 @@
+{% for item in upcoming %}
+  <li>
+    <span class="up-date">{{ item.iteration_date | frdate }}</span>
+    <span class="up-desc">{{ item.description }}</span>
+    <span class="up-amount {{ 'positive' if item.amount > 0 else 'negative' }}">
+      {{ item.amount | signed_eur(item.currency) }}
+    </span>
+  </li>
+{% endfor %}

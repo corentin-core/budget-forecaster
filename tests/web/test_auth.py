@@ -3,10 +3,10 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from budget_forecaster.web.auth import hash_password, verify_password
+from budget_forecaster.web.auth import _is_public, hash_password, verify_password
 from tests.web.conftest import PASSWORD
 
-PROTECTED_PATHS = ["/", "/mois", "/operations", "/tendances", "/reglages"]
+PROTECTED_PATHS = ["/", "/month", "/operations", "/trends", "/settings"]
 PUBLIC_PATHS = ["/health", "/login", "/static/app.css"]
 
 
@@ -58,6 +58,32 @@ class TestPasswordHashing:
         assert verify_password(PASSWORD, encoded)
         assert not verify_password("other", encoded)
 
-    def test_rejects_malformed_hash(self) -> None:
-        """A malformed hash string fails verification without raising."""
-        assert not verify_password("x", "not-a-valid-hash")
+    @pytest.mark.parametrize(
+        "bad_hash",
+        [
+            "not-a-valid-hash",
+            "pbkdf2_sha256$notanumber$c2FsdA==$ZGln",
+            "pbkdf2_sha256$1000$not!base64$ZGln",
+            "wrongalgo$1000$c2FsdA==$ZGln",
+            "",
+        ],
+    )
+    def test_rejects_malformed_hash(self, bad_hash: str) -> None:
+        """Any malformed hash fails verification without raising."""
+        assert not verify_password("x", bad_hash)
+
+
+class TestPublicPaths:
+    """The auth bypass list is anchored, not a loose prefix match."""
+
+    @pytest.mark.parametrize("path", ["/login", "/health", "/static/app.css"])
+    def test_public(self, path: str) -> None:
+        """Login, health and static assets bypass auth."""
+        assert _is_public(path)
+
+    @pytest.mark.parametrize(
+        "path", ["/login-history", "/healthcheck", "/static", "/staticx", "/", "/month"]
+    )
+    def test_not_public(self, path: str) -> None:
+        """Look-alike or private paths still require a session."""
+        assert not _is_public(path)

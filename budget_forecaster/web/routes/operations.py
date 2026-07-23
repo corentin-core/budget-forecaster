@@ -1,7 +1,8 @@
-"""Opérations: the filterable ledger (read-only)."""
+"""Opérations: the filterable, paginated ledger (read-only)."""
 
-from datetime import date, timedelta
+from datetime import date
 from typing import NamedTuple
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
@@ -12,9 +13,10 @@ from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.operation.operation_service import OperationFilter
 from budget_forecaster.web.dependencies import get_app_service
 from budget_forecaster.web.rendering import render_template
-from budget_forecaster.web.viewmodels import add_months
 
 router = APIRouter()
+
+_PAGE_SIZE = 50
 
 
 class OperationRow(NamedTuple):
@@ -30,20 +32,17 @@ class LedgerFilters(NamedTuple):
 
     search: str
     category: str
-    month: str
+    date_from: str
+    date_to: str
     uncategorized: bool
     criteria: OperationFilter
 
 
-def _month_bounds(month: str) -> tuple[date | None, date | None]:
-    if not month:
-        return None, None
+def _date(value: str) -> date | None:
     try:
-        year, num = month.split("-")
-        start = date(int(year), int(num), 1)
-    except (ValueError, TypeError):
-        return None, None
-    return start, add_months(start, 1) - timedelta(days=1)
+        return date.fromisoformat(value) if value else None
+    except ValueError:
+        return None
 
 
 def _category(value: str) -> Category | None:
@@ -58,19 +57,35 @@ def _category(value: str) -> Category | None:
 def get_filters(
     search: str = "",
     category: str = "",
-    month: str = "",
+    date_from: str = "",
+    date_to: str = "",
     uncategorized: bool = False,
 ) -> LedgerFilters:
     """Parse the ledger query parameters into filter criteria."""
-    date_from, date_to = _month_bounds(month)
     criteria = OperationFilter(
         search_text=search or None,
         category=_category(category),
-        date_from=date_from,
-        date_to=date_to,
+        date_from=_date(date_from),
+        date_to=_date(date_to),
         uncategorized_only=uncategorized,
     )
-    return LedgerFilters(search, category, month, uncategorized, criteria)
+    return LedgerFilters(search, category, date_from, date_to, uncategorized, criteria)
+
+
+def _query(filters: LedgerFilters) -> str:
+    """Serialize the active filters for the 'show more' link (offset excluded)."""
+    params = {}
+    if filters.search:
+        params["search"] = filters.search
+    if filters.category:
+        params["category"] = filters.category
+    if filters.date_from:
+        params["date_from"] = filters.date_from
+    if filters.date_to:
+        params["date_to"] = filters.date_to
+    if filters.uncategorized:
+        params["uncategorized"] = "true"
+    return urlencode(params)
 
 
 def _rows(
@@ -97,14 +112,21 @@ async def list_operations(
     request: Request,
     app: ApplicationService = Depends(get_app_service),
     filters: LedgerFilters = Depends(get_filters),
+    offset: int = 0,
 ) -> Response:
-    """Render the ledger, filtered by the query parameters."""
-    rows = _rows(app, app.get_operations(filters.criteria))
-    template = (
-        "fragments/operation_rows.html"
-        if request.headers.get("HX-Request")
-        else "operations.html"
-    )
+    """Render the ledger page, or a fragment for filter/pagination requests."""
+    matches = app.get_operations(filters.criteria)
+    total = len(matches)
+    rows = _rows(app, matches[offset : offset + _PAGE_SIZE])
+    next_offset = offset + _PAGE_SIZE
+    if request.headers.get("HX-Request"):
+        # offset > 0 is a "show more" (append rows only); offset 0 is a filter
+        # change (replace the whole ledger area, so the count refreshes too).
+        template = (
+            "fragments/ledger_rows.html" if offset else "fragments/ledger_area.html"
+        )
+    else:
+        template = "operations.html"
     return render_template(
         request,
         template,
@@ -113,4 +135,7 @@ async def list_operations(
         categories=tuple(Category),
         filters=filters,
         currency=app.currency,
+        total=total,
+        query=_query(filters),
+        next_offset=next_offset if next_offset < total else None,
     )

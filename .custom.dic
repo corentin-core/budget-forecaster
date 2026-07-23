@@ -40,6 +40,7 @@ dedup
 deduping
 deduplicates
 deletable
+desc
 deserialization
 deserialize
 deserialized
@@ -47,6 +48,8 @@ dev
 dialogs
 dicts
 dir
+donut
+downsample
 edf
 enum
 enums
@@ -85,14 +88,17 @@ mtimes
 mypy
 nav
 nullable
+oob
 opérations
 orchestrator
 params
 paribas
 parseable
+passthrough
 polyline
 pragma
 pre
+preformatted
 prs
 prévu
 pytest
@@ -125,6 +131,7 @@ tailnet
 tendances
 textual's
 timedelta
+tooltip
 trimestriel
 tui
 tz

@@ -525,22 +525,29 @@ class ForecastService:  # pylint: disable=too-many-public-methods
     def expense_breakdown_threshold(self, threshold: float) -> None:
         self._repository.set_setting("expense_breakdown_threshold", str(threshold))
 
-    def get_balance_evolution_summary(self) -> list[tuple[date, float]]:
-        """Get a summary of balance evolution for display.
+    def get_balance_evolution_summary(
+        self, frequency: str | None = "W"
+    ) -> list[tuple[date, float]]:
+        """Get balance evolution for display.
+
+        Args:
+            frequency: pandas resample rule to downsample the daily series
+                (e.g. "W" for weekly). None keeps full daily granularity.
 
         Returns:
-            List of (date, balance) tuples sampled for display.
+            List of (date, balance) tuples.
         """
         if self._report is None:
             return []
 
         df = self._report.balance_evolution_per_day
-        # Sample to reduce data points for display (weekly)
-        sampled = df.resample("W").last()
+        if frequency is not None:
+            df = df.resample(frequency).last()
 
         return [
             (d.to_pydatetime().date(), float(row["Balance"]))  # type: ignore[attr-defined]
-            for d, row in sampled.iterrows()
+            for d, row in df.iterrows()
+            if not pd.isna(row["Balance"])
         ]
 
     def get_available_margin(self, month: date, threshold: float) -> MarginInfo | None:

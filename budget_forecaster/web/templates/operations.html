@@ -4,8 +4,9 @@
 <section class="card">
   <form class="filters"
         hx-get="/operations"
-        hx-target="#ledger"
-        hx-trigger="submit, change from:select, keyup changed delay:300ms from:input[name=search]">
+        hx-target="#ledger-area"
+        hx-swap="innerHTML"
+        hx-trigger="submit, change, keyup changed delay:300ms from:input[name=search]">
     <input type="search" name="search" placeholder="{{ _('Search...') }}"
            value="{{ filters.search }}" />
     <select name="category">
@@ -17,7 +18,14 @@
         </option>
       {% endfor %}
     </select>
-    <input type="month" name="month" value="{{ filters.month }}" />
+    <label class="date-field">
+      {{ _("From") }}
+      <input type="date" name="date_from" value="{{ filters.date_from }}" />
+    </label>
+    <label class="date-field">
+      {{ _("To") }}
+      <input type="date" name="date_to" value="{{ filters.date_to }}" />
+    </label>
     <label class="check">
       <input type="checkbox" name="uncategorized" value="true"
              {{ 'checked' if filters.uncategorized }} />
@@ -26,18 +34,8 @@
     <noscript><button type="submit">{{ _("Filter") }}</button></noscript>
   </form>
 
-  <table class="ledger">
-    <thead>
-      <tr>
-        <th>{{ _("Date") }}</th>
-        <th>{{ _("Description") }}</th>
-        <th class="num">{{ _("Amount") }}</th>
-        <th>{{ _("Category") }}</th>
-      </tr>
-    </thead>
-    <tbody id="ledger">
-      {% include "fragments/operation_rows.html" %}
-    </tbody>
-  </table>
+  <div id="ledger-area">
+    {% include "fragments/ledger_area.html" %}
+  </div>
 </section>
 {% endblock %}
