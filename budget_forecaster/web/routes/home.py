@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 
 from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.services.forecast.forecast_service import MarginInfo
 from budget_forecaster.web.dependencies import get_app_service
 from budget_forecaster.web.rendering import render_template
 from budget_forecaster.web.viewmodels import build_month_health
@@ -14,6 +15,18 @@ router = APIRouter()
 
 _PAGE_SIZE = 10
 _HORIZON_DAYS = 90
+
+
+def _margin_status(margin: MarginInfo | None) -> str | None:
+    """Colour bucket for the available margin: bad below the threshold, warn
+    when the buffer is thin, good otherwise."""
+    if margin is None:
+        return None
+    if margin["available_margin"] < 0:
+        return "bad"
+    if margin["available_margin"] < margin["threshold"]:
+        return "warn"
+    return "good"
 
 
 @router.get("/")
@@ -30,7 +43,8 @@ async def home(
         balance=app.balance,
         balance_date=app.balance_date,
         currency=app.currency,
-        margin=app.get_available_margin(month_start),
+        margin=(margin := app.get_available_margin(month_start)),
+        margin_status=_margin_status(margin),
         health=build_month_health(app, month_start),
         uncategorized=len(app.get_uncategorized_operations()),
         upcoming=upcoming[:_PAGE_SIZE],

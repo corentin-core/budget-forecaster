@@ -1,31 +1,35 @@
 {% extends "base.html" %}
 {% block title %}{{ _("Home") }} — Budget Forecaster{% endblock %}
 {% block content %}
+{% if margin %}
+<section class="card highlight margin-hero margin-{{ margin_status }}">
+  <div class="metric-label">
+    {{ _("Available margin") }}
+    <span class="info" tabindex="0"
+          data-tip="{{ _('What you can spend without your projected balance dropping below the safety threshold, over the whole forecast horizon.') }} — {{ _('Safety threshold') }}: {{ margin.threshold | eur(currency) }}">ⓘ</span>
+  </div>
+  <div class="metric-value big">{{ margin.available_margin | eur(currency) }}</div>
+  {% if margin_status == "bad" %}
+    <div class="metric-sub warn-text">{{ _("Projected below your safety threshold") }}</div>
+  {% endif %}
+</section>
+{% endif %}
+
 <section class="card highlight balance-card">
   <div class="metric-label">{{ _("Balance") }}</div>
-  <div class="metric-value big">{{ balance | eur(currency) }}</div>
+  <div class="metric-value {{ 'big' if not margin }}">{{ balance | eur(currency) }}</div>
   <div class="metric-sub">{{ _("Updated on") }} {{ balance_date | frdate }}</div>
 </section>
 
+{% if uncategorized %}
 <div class="stat-row">
-  {% if margin %}
-    <section class="card stat">
-      <div class="metric-label">
-        {{ _("Available margin") }}
-        <span class="info" tabindex="0"
-              data-tip="{{ _('What you can spend without your projected balance dropping below the safety threshold, over the whole forecast horizon.') }} — {{ _('Safety threshold') }}: {{ margin.threshold | eur(currency) }}">ⓘ</span>
-      </div>
-      <div class="metric-value">{{ margin.available_margin | eur(currency) }}</div>
-    </section>
-  {% endif %}
-  {% if uncategorized %}
-    <a class="card stat stat-link" href="/operations?uncategorized=true"
-       title="{{ _('Imported operations without a category. Click to classify them.') }}">
-      <div class="metric-label">{{ _("Operations to categorize") }}</div>
-      <div class="metric-value">{{ uncategorized }}</div>
-    </a>
-  {% endif %}
+  <a class="card stat stat-link" href="/operations?uncategorized=true"
+     title="{{ _('Imported operations without a category. Click to classify them.') }}">
+    <div class="metric-label">{{ _("Operations to categorize") }}</div>
+    <div class="metric-value">{{ uncategorized }}</div>
+  </a>
 </div>
+{% endif %}
 
 <div class="home-grid">
 {% if health %}
