@@ -18,6 +18,7 @@ bool
 budgetinterface
 cancelled
 cancelling
+categorizer
 cli
 clôturé
 codecov
@@ -43,6 +44,7 @@ deserialized
 dialogs
 dicts
 dir
+dup
 edf
 enum
 enums
@@ -83,6 +85,7 @@ pre
 prs
 prévu
 pytest
+recognised
 recomputation
 recurringdaterange
 relativedelta
@@ -90,6 +93,7 @@ renderable
 renderer
 renderers
 repo
+repointed
 repr
 reproducibility
 revenus

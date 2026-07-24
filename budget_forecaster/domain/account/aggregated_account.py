@@ -1,10 +1,88 @@
 """Module for aggregating multiple accounts into a single account."""
 from datetime import date
+from functools import partial
 from typing import Iterable, NamedTuple
 
-from budget_forecaster.core.types import ImportStats
+from budget_forecaster.core.types import Category, ImportStats, OperationId
 from budget_forecaster.domain.account.account import Account, AccountParameters
+from budget_forecaster.domain.operation import cross_source
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+
+
+class Reconciliation(NamedTuple):
+    """A cross-source pair collapsed to one op: the dropped op and the kept one.
+
+    The API op is always the one kept; the file op is dropped. Callers use this
+    to move the dropped op's link onto the survivor.
+    """
+
+    dropped_id: OperationId
+    kept_id: OperationId
+
+
+def _is_cross_source_duplicate(
+    incoming: HistoricOperation, existing: HistoricOperation
+) -> bool:
+    """Whether a file op and an API op describe the same transaction.
+
+    Falls back to signed amount and a small date window, since the same
+    transaction gets a different description (hence a different content ref)
+    from each source. Cross-source only: exactly one op must carry a
+    source_ref, so two same-source ops sharing amount and date stay distinct.
+    """
+    if (incoming.source_ref is None) == (existing.source_ref is None):
+        return False
+    return cross_source.is_amount_date_match(
+        cross_source.amount_cents(incoming.amount),
+        incoming.operation_date,
+        cross_source.amount_cents(existing.amount),
+        existing.operation_date,
+    )
+
+
+def _matches_known_ref(operation: HistoricOperation, existing_refs: set[str]) -> bool:
+    """Whether the op's reference or content ref already exists (exact dedup)."""
+    keys = {operation.content_ref}
+    if operation.source_ref is not None:
+        keys.add(operation.source_ref)
+    return not keys.isdisjoint(existing_refs)
+
+
+def _reconcile_rank(
+    incoming_date: date, existing: tuple[HistoricOperation, ...], index: int
+) -> tuple[int, int]:
+    """Rank a candidate existing op: nearest date first, lowest id to break ties."""
+    candidate = existing[index]
+    return (
+        cross_source.date_gap(incoming_date, candidate.operation_date),
+        candidate.unique_id,
+    )
+
+
+def _kept_api_op(
+    file_op: HistoricOperation, api_op: HistoricOperation
+) -> HistoricOperation:
+    """The API op that survives a reconciliation, adopting the file's category.
+
+    The API source carries no category, so the file's is kept; when the file is
+    uncategorized the API's own value stands.
+    """
+    category = (
+        file_op.category
+        if file_op.category != Category.UNCATEGORIZED
+        else api_op.category
+    )
+    if category == api_op.category:
+        return api_op
+    return api_op.replace(category=category)
+
+
+class _MergeResult(NamedTuple):
+    """Merged operations, the reconciled pairs, and the count of genuinely new ops."""
+
+    operations: tuple[HistoricOperation, ...]
+    reconciliations: tuple[Reconciliation, ...]
+    new_count: int
 
 
 class UpdateResult(NamedTuple):
@@ -12,6 +90,14 @@ class UpdateResult(NamedTuple):
 
     account: Account
     stats: ImportStats
+    reconciliations: tuple[Reconciliation, ...] = ()
+
+
+class UpsertResult(NamedTuple):
+    """Import statistics plus the cross-source pairs collapsed during the upsert."""
+
+    stats: ImportStats
+    reconciliations: tuple[Reconciliation, ...] = ()
 
 
 class AggregatedAccount:
@@ -59,37 +145,94 @@ class AggregatedAccount:
         return self._accounts
 
     @staticmethod
+    def _merge_operations(
+        existing: tuple[HistoricOperation, ...],
+        incoming: tuple[HistoricOperation, ...],
+    ) -> _MergeResult:
+        """Merge incoming ops into the existing ones, collapsing duplicates.
+
+        An op is a duplicate when its reference or content ref matches an
+        existing op (exact key), or when it reconciles with a cross-source op by
+        amount and date. A reconciled pair keeps the API op (dropping the file
+        op) and the API op adopts the file's category. Cross-source matching is
+        one-to-one, so distinct transactions sharing an amount and date are not
+        collapsed. Incoming ops are processed in (date, id) order so an
+        ambiguous cluster resolves the same way as the purge migration.
+        """
+        existing_refs = {op.source_ref or op.content_ref for op in existing}
+        reconciled: set[int] = set()
+        replacements: dict[int, HistoricOperation] = {}
+        dropped: set[int] = set()
+        appended: list[HistoricOperation] = []
+        reconciliations: list[Reconciliation] = []
+        new_count = 0
+
+        for operation in sorted(
+            incoming, key=lambda op: (op.operation_date, op.unique_id)
+        ):
+            if _matches_known_ref(operation, existing_refs):
+                continue
+            candidates = [
+                index
+                for index, candidate in enumerate(existing)
+                if index not in reconciled
+                and _is_cross_source_duplicate(operation, candidate)
+            ]
+            if not candidates:
+                appended.append(operation)
+                new_count += 1
+                continue
+            match_index = min(
+                candidates,
+                key=partial(_reconcile_rank, operation.operation_date, existing),
+            )
+            reconciled.add(match_index)
+            existing_op = existing[match_index]
+            if existing_op.source_ref is not None:
+                # Existing op is the API record we keep; the incoming file copy
+                # only lends its category.
+                if (
+                    kept := _kept_api_op(file_op=operation, api_op=existing_op)
+                ) is not existing_op:
+                    replacements[match_index] = kept
+                reconciliations.append(
+                    Reconciliation(operation.unique_id, existing_op.unique_id)
+                )
+            else:
+                # Existing op is the file copy we drop; the incoming API op wins.
+                dropped.add(match_index)
+                appended.append(_kept_api_op(file_op=existing_op, api_op=operation))
+                reconciliations.append(
+                    Reconciliation(existing_op.unique_id, operation.unique_id)
+                )
+
+        merged = [
+            replacements.get(index, op)
+            for index, op in enumerate(existing)
+            if index not in dropped
+        ]
+        merged.extend(appended)
+        return _MergeResult(tuple(merged), tuple(reconciliations), new_count)
+
+    @staticmethod
     def update_account(
         current_account: Account, new_account: AccountParameters
     ) -> UpdateResult:
         """Update an existing account with new operations.
 
         Returns:
-            UpdateResult containing the updated account and import statistics.
+            UpdateResult with the updated account, import statistics, and the
+            cross-source pairs collapsed during the merge.
         """
-        # An op is a duplicate if its reference is already known (API/API
-        # idempotency) or its content ref matches an existing op. An incoming
-        # API op reconciles against an already-stored file op by content; the
-        # reverse (file op incoming, API op already stored) is not reconciled.
-        existing_refs = {
-            operation.source_ref or operation.content_ref
-            for operation in current_account.operations
-        }
-        operations = list(current_account.operations)
-        new_count = 0
-        for operation in new_account.operations:
-            keys = {operation.content_ref}
-            if operation.source_ref is not None:
-                keys.add(operation.source_ref)
-            if keys.isdisjoint(existing_refs):
-                operations.append(operation)
-                new_count += 1
+        merge = AggregatedAccount._merge_operations(
+            current_account.operations, new_account.operations
+        )
 
         total_in_file = len(new_account.operations)
         stats = ImportStats(
             total_in_file=total_in_file,
-            new_operations=new_count,
-            duplicates_skipped=total_in_file - new_count,
+            new_operations=merge.new_count,
+            duplicates_skipped=total_in_file - merge.new_count,
         )
 
         # Get balance date
@@ -129,27 +272,34 @@ class AggregatedAccount:
         updated_account = current_account._replace(
             balance=balance,
             balance_date=balance_date,
-            operations=tuple(operations),
+            operations=merge.operations,
             external_id=external_id,
         )
-        return UpdateResult(account=updated_account, stats=stats)
+        return UpdateResult(
+            account=updated_account,
+            stats=stats,
+            reconciliations=merge.reconciliations,
+        )
 
-    def upsert_account(self, account: AccountParameters) -> ImportStats:
+    def upsert_account(self, account: AccountParameters) -> UpsertResult:
         """Add or update an account.
 
         The target is resolved external-id-first, then by name; a new account is
         created when neither matches.
 
         Returns:
-            ImportStats with the number of new and duplicate operations.
+            UpsertResult with import statistics and the cross-source pairs
+            collapsed during the upsert.
         """
         if (match_index := self._find_match_index(account)) is None:
             self._accounts = (*self._accounts, self._create_account(account))
             total = len(account.operations)
-            return ImportStats(
-                total_in_file=total,
-                new_operations=total,
-                duplicates_skipped=0,
+            return UpsertResult(
+                ImportStats(
+                    total_in_file=total,
+                    new_operations=total,
+                    duplicates_skipped=0,
+                )
             )
 
         result = self.update_account(self._accounts[match_index], account)
@@ -157,7 +307,7 @@ class AggregatedAccount:
             result.account if index == match_index else current_account
             for index, current_account in enumerate(self._accounts)
         )
-        return result.stats
+        return UpsertResult(result.stats, result.reconciliations)
 
     def _find_match_index(self, account: AccountParameters) -> int | None:
         """Resolve the target sub-account: external id first, then name.
