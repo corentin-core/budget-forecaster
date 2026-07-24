@@ -1674,3 +1674,42 @@ msgstr "Dernière synchronisation en échec"
 
 msgid "Details"
 msgstr "Détails"
+
+msgid "Link a bank"
+msgstr "Lier une banque"
+
+msgid "Renew bank connection"
+msgstr "Renouveler la connexion bancaire"
+
+msgid "You'll be sent to your bank's website to sign in and authorize access to your accounts, then brought back here automatically. Your password stays with your bank; this app never sees it."
+msgstr "Vous allez être redirigé vers le site de votre banque pour vous connecter et autoriser l'accès à vos comptes, puis ramené ici automatiquement. Votre mot de passe reste chez votre banque, l'application ne le voit jamais."
+
+msgid "Bank"
+msgstr "Banque"
+
+msgid "Continue"
+msgstr "Continuer"
+
+msgid "Filter banks"
+msgstr "Filtrer les banques"
+
+msgid "Search your bank…"
+msgstr "Cherchez votre banque…"
+
+msgid "Choose your bank"
+msgstr "Choisissez votre banque"
+
+msgid "No banks available right now. Try again in a moment."
+msgstr "Aucune banque disponible pour le moment. Réessayez dans un instant."
+
+msgid "Bank linked."
+msgstr "Banque liée."
+
+msgid "Linking cancelled. You can try again."
+msgstr "Liaison annulée. Vous pouvez réessayer."
+
+msgid "Linking failed. Please try again."
+msgstr "Échec de la liaison. Veuillez réessayer."
+
+msgid "No bank linked yet."
+msgstr "Aucune banque liée pour le moment."

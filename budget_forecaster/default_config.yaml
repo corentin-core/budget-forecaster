@@ -25,9 +25,9 @@ backup:
 # enable_banking:
 #   application_id: "your-application-id"
 #   private_key_path: ~/.config/budget-forecaster/enable_banking_key.pem
-#   redirect_url: "https://your-redirect-url"
+#   redirect_url: "https://<your-host>.ts.net/settings/bank/callback"
 #   aspsp_country: FR
-#   aspsp_name: "the-bank-name"   # optional: skip the bank picker in `link`
+#   aspsp_name: "the-bank-name"   # optional: skip the bank picker (web app)
 #   account_uid: "..."            # optional: pick one when a consent has several
 #   local_account_name: bnp       # local account the sync merges into
 # logging:  # Override default logging (~/.local/share/budget-forecaster/budget-forecaster.log)

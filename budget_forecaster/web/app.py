@@ -54,9 +54,13 @@ from budget_forecaster.web import formatting
 from budget_forecaster.web.auth import make_serializer, require_session
 from budget_forecaster.web.auth import router as auth_router
 from budget_forecaster.web.config import resolve_web_secrets
+from budget_forecaster.web.enrollment import (
+    make_flash_serializer,
+    make_pending_serializer,
+)
 from budget_forecaster.web.rendering import render_template
-from budget_forecaster.web.routes import health as health_route
 from budget_forecaster.web.routes import (
+    bank,
     home,
     month,
     operations,
@@ -64,6 +68,7 @@ from budget_forecaster.web.routes import (
     targets,
     trends,
 )
+from budget_forecaster.web.routes import health as health_route
 
 logger = logging.getLogger("budget_forecaster")
 
@@ -147,6 +152,10 @@ def create_app(config_path: Path | None = None) -> FastAPI:
     app.state.consent_service = _build_consent_service(config)
     app.state.web_secrets = resolve_web_secrets(config)
     app.state.serializer = make_serializer(app.state.web_secrets.secret_key)
+    app.state.pending_serializer = make_pending_serializer(
+        app.state.web_secrets.secret_key
+    )
+    app.state.flash_serializer = make_flash_serializer(app.state.web_secrets.secret_key)
     app.state.templates = _build_templates()
 
     app.add_middleware(BaseHTTPMiddleware, dispatch=require_session)
@@ -169,6 +178,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
     app.include_router(targets.router)
     app.include_router(trends.router)
     app.include_router(settings.router)
+    app.include_router(bank.router)
     return app
 
 

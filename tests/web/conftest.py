@@ -32,6 +32,8 @@ def config_path_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path
     """
     monkeypatch.delenv("BUDGET_WEB_SECRET_KEY", raising=False)
     monkeypatch.delenv("BUDGET_WEB_PASSWORD_HASH", raising=False)
+    # A stray Secure flag would drop cookies over the TestClient's http.
+    monkeypatch.delenv("BUDGET_WEB_SECURE_COOKIES", raising=False)
     database = tmp_path / "demo.db"
     shutil.copy(_DEMO_DB, database)
     config = tmp_path / "config.yaml"
