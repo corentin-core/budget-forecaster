@@ -1,8 +1,23 @@
 {% extends "base.html" %} {% block title %}{{ _("Settings") }} — Budget Forecaster{% endblock %} {% block content %}
+{% if flash %}
+<div class="banner banner-{{ flash.value }}" role="status">
+  {% if flash.value == "linked" %}
+    {{ _("Bank linked.") }}
+    <form method="post" action="/settings/sync" class="inline-cta"
+          onsubmit="var b=this.querySelector('button'); b.disabled=true; b.textContent='…';">
+      <button type="submit" class="link-button">{{ _("Sync now") }}</button>
+    </form>
+  {% elif flash.value == "cancelled" %}
+    {{ _("Linking cancelled. You can try again.") }}
+  {% else %}
+    {{ _("Linking failed. Please try again.") }}
+  {% endif %}
+</div>
+{% endif %}
 <section class="card">
   <div class="card-head">
     <h2>{{ _("Bank connection") }}</h2>
-    {% if connection.configured %}
+    {% if connection.has_consent %}
     <form method="post" action="/settings/sync"
           onsubmit="var b=this.querySelector('button'); b.disabled=true; b.textContent='…';">
       <button type="submit" class="btn">{{ _("Sync now") }}</button>
@@ -10,20 +25,29 @@
     {% endif %}
   </div>
   {% if connection.configured %}
-  <div class="kv">
-    <span>{{ _("Status") }}</span>
-    <strong class="status-{{ connection.status.value }}">
-      {% if connection.status.value == "valid" %}{{ _("Valid") }}
-      {% elif connection.status.value == "expiring" %}{{ _("Expiring") }}
-      {% else %}{{ _("Expired") }}{% endif %}
-    </strong>
-  </div>
-  {% if connection.valid_until %}
-  <div class="kv">
-    <span>{{ _("Valid until") }}</span>
-    <strong>{{ connection.valid_until | frdate }}</strong>
-  </div>
-  {% endif %} {% else %}
+    {% if connection.has_consent %}
+    <div class="kv">
+      <span>{{ _("Status") }}</span>
+      <span class="status-with-action">
+        <strong class="status-{{ connection.status.value }}">
+          {% if connection.status.value == "valid" %}{{ _("Valid") }}
+          {% elif connection.status.value == "expiring" %}{{ _("Expiring") }}
+          {% else %}{{ _("Expired") }}{% endif %}
+        </strong>
+        <a class="btn small" href="/settings/bank/link">{{ _("Renew") }}</a>
+      </span>
+    </div>
+    {% if connection.valid_until %}
+    <div class="kv">
+      <span>{{ _("Valid until") }}</span>
+      <strong>{{ connection.valid_until | frdate }}</strong>
+    </div>
+    {% endif %}
+    {% else %}
+    <p class="empty">{{ _("No bank linked yet.") }}</p>
+    <a class="btn primary" href="/settings/bank/link">{{ _("Link a bank") }}</a>
+    {% endif %}
+  {% else %}
   <p class="empty">{{ _("Not configured") }}</p>
   {% endif %} {% if connection.configured %}
   <h3 class="subhead">{{ _("Recent syncs") }}</h3>

@@ -54,9 +54,9 @@ backup:
 # enable_banking:
 #   application_id: "your-application-id"
 #   private_key_path: ~/.config/budget-forecaster/enable_banking_key.pem
-#   redirect_url: "https://your-redirect-url"
+#   redirect_url: "https://<your-host>.ts.net/settings/bank/callback"
 #   aspsp_country: FR
-#   aspsp_name: "the-bank-name"   # optional: skip the bank picker in `link`
+#   aspsp_name: "the-bank-name"   # optional: skip the bank picker (web app)
 #   account_uid: "..."            # optional: pick one when a consent has several
 #   local_account_name: bnp       # local account the sync merges into
 
@@ -104,15 +104,15 @@ through Enable Banking, as an alternative to loading exported files. Setup and u
 covered in the [Enable Banking guide](enable-banking.md); this section documents the
 `enable_banking` configuration keys.
 
-| Key                  | Required | Default          | Description                                              |
-| -------------------- | -------- | ---------------- | -------------------------------------------------------- |
-| `application_id`     | yes      | -                | Enable Banking application id (also the JWT key id)      |
-| `private_key_path`   | yes      | -                | Path to the RS256 private key (PEM), stored outside repo |
-| `redirect_url`       | yes      | -                | Redirect URL registered on the application               |
-| `aspsp_country`      | no       | `FR`             | Country of the bank to link                              |
-| `aspsp_name`         | no       | _(picker)_       | Bank name; skips the interactive picker in `link`        |
-| `account_uid`        | no       | _(from consent)_ | Account to sync when a consent unlocks several           |
-| `local_account_name` | no       | `bnp`            | Local account the synced operations merge into           |
+| Key                  | Required | Default          | Description                                                               |
+| -------------------- | -------- | ---------------- | ------------------------------------------------------------------------- |
+| `application_id`     | yes      | -                | Enable Banking application id (also the JWT key id)                       |
+| `private_key_path`   | yes      | -                | Path to the RS256 private key (PEM), stored outside repo                  |
+| `redirect_url`       | yes      | -                | Web app callback registered on the application (see Enable Banking guide) |
+| `aspsp_country`      | no       | `FR`             | Country of the bank to link                                               |
+| `aspsp_name`         | no       | _(picker)_       | Bank name; skips the picker in the web app                                |
+| `account_uid`        | no       | _(from consent)_ | Account to sync when a consent unlocks several                            |
+| `local_account_name` | no       | `bnp`            | Local account the synced operations merge into                            |
 
 When an account is declared in the `accounts` registry, its external id (the IBAN)
 becomes its stable identity: file imports and API syncs of the same account reconcile by

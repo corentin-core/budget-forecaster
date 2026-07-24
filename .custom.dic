@@ -67,6 +67,7 @@ gettext
 hh
 historicoperation
 honour
+http
 hx
 idempotency
 impl
@@ -98,6 +99,7 @@ mtimes
 mypy
 nav
 nullable
+oauth
 oob
 opérations
 orchestrator

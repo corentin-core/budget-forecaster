@@ -37,7 +37,7 @@
           {{ _("Bank connection expiring") }}
           {% if alert.valid_until %}({{ alert.valid_until | frdate }}){% endif %}
         {% endif %}
-        <a href="/settings">{{ _("Renew") }}</a>
+        <a href="/settings/bank/link">{{ _("Renew") }}</a>
       </div>
       {% endif %}
       {% if sync_alert %}

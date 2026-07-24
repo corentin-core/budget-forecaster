@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ (_("Renew bank connection") if renew else _("Link a bank")) }} — Budget Forecaster{% endblock %}
+
+{% block content %}
+<section class="card form-page">
+  <p class="back-link"><a href="/settings">← {{ _("Settings") }}</a></p>
+  <h1>{{ (_("Renew bank connection") if renew else _("Link a bank")) }}</h1>
+
+  <p class="hint">
+    {{ _("You'll be sent to your bank's website to sign in and authorize access to your accounts, then brought back here automatically. Your password stays with your bank; this app never sees it.") }}
+  </p>
+
+  {% if renew or bank_name %}
+    {# Renewal or a single configured bank: no picker, just confirm. #}
+    <form method="post" action="{{ '/settings/bank/renew' if renew else '/settings/bank/link' }}">
+      {% if not renew %}
+      <input type="hidden" name="aspsp_name" value="{{ bank_name }}" />
+      <input type="hidden" name="country" value="{{ country }}" />
+      {% endif %}
+      <div class="kv">
+        <span>{{ _("Bank") }}</span>
+        <strong>{{ bank_name }}</strong>
+      </div>
+      <div class="form-actions">
+        <span class="actions-spacer"></span>
+        <a class="btn" href="/settings">{{ _("Cancel") }}</a>
+        <button type="submit" class="btn primary">{{ _("Continue") }} →</button>
+      </div>
+    </form>
+  {% elif banks %}
+    <form id="bank-form" method="post" action="/settings/bank/link">
+      <input type="hidden" name="country" value="{{ country }}" />
+      <label class="field">
+        <span class="sr-only">{{ _("Filter banks") }}</span>
+        <input type="search" id="bank-filter" placeholder="{{ _('Search your bank…') }}"
+               aria-label="{{ _('Filter banks') }}" autocomplete="off" />
+      </label>
+      <fieldset class="bank-list">
+        <legend class="sr-only">{{ _("Choose your bank") }}</legend>
+        {% for bank in banks %}
+        <label class="bank-option" data-name="{{ bank.name | lower }}">
+          <input type="radio" name="aspsp_name" value="{{ bank.name }}" required />
+          <span>{{ bank.name }}</span>
+        </label>
+        {% endfor %}
+      </fieldset>
+      <div class="form-actions">
+        <span class="actions-spacer"></span>
+        <a class="btn" href="/settings">{{ _("Cancel") }}</a>
+        <button type="submit" class="btn primary" id="bank-submit" disabled>{{ _("Continue") }} →</button>
+      </div>
+    </form>
+    <script src="/static/bank.js" defer></script>
+  {% else %}
+    <p class="empty">{{ _("No banks available right now. Try again in a moment.") }}</p>
+    <div class="form-actions">
+      <span class="actions-spacer"></span>
+      <a class="btn" href="/settings">{{ _("Back") }}</a>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

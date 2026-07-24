@@ -27,6 +27,7 @@ from budget_forecaster.web.dependencies import (
     get_repository,
     refresh_forecast,
 )
+from budget_forecaster.web.enrollment import clear_flash, read_flash
 from budget_forecaster.web.rendering import render_template
 
 router = APIRouter()
@@ -38,16 +39,18 @@ class ConnectionStatus(NamedTuple):
     """The bank connection state shown in Réglages."""
 
     configured: bool
+    has_consent: bool
     status: ConsentStatus | None
     valid_until: date | None
 
 
 def _connection_status(consent_service: ConsentService | None) -> ConnectionStatus:
     if consent_service is None:
-        return ConnectionStatus(False, None, None)
+        return ConnectionStatus(False, False, None, None)
     state = consent_service.state()
     valid_until = state.valid_until.date() if state.valid_until else None
-    return ConnectionStatus(True, state.status, valid_until)
+    has_consent = consent_service.current_consent() is not None
+    return ConnectionStatus(True, has_consent, state.status, valid_until)
 
 
 def _consent_created_at(consent_service: ConsentService | None) -> datetime | None:
@@ -67,13 +70,18 @@ async def settings(
     consent_service: ConsentService | None = Depends(get_consent_service),
     repository: RepositoryInterface = Depends(get_repository),
 ) -> Response:
-    """Render the operational settings page."""
+    """Render the operational settings page.
+
+    Any enrollment outcome left in the flash cookie is shown once, then cleared.
+    """
     connection = _connection_status(consent_service)
-    return render_template(
+    flash = read_flash(request, request.app.state.flash_serializer)
+    response = render_template(
         request,
         "settings.html",
         active="settings",
         connection=connection,
+        flash=flash,
         sync_runs=repository.get_recent_sync_runs(_SYNC_HISTORY_LIMIT),
         consent_created_at=_consent_created_at(consent_service),
         inbox_path=app.inbox_path,
@@ -81,6 +89,9 @@ async def settings(
         margin_threshold=app.margin_threshold,
         currency=app.currency,
     )
+    if flash is not None:
+        clear_flash(response)
+    return response
 
 
 @router.post("/settings/sync")

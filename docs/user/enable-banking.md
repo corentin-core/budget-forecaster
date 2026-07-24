@@ -31,10 +31,11 @@ three things from it: an application id, an RS256 key pair, and a redirect URL.
    machine; upload the **public key** to the application. The private key never leaves
    your machine and is what the app signs its requests with.
 4. **Set a redirect URL** on the application. The bank sends you back to it with an
-   authorization code after you authenticate. With the current CLI flow you copy that
-   code by hand (see [Linking a bank](#linking-a-bank)), so any URL registered here
-   works — it does not need to point at a running server. A dedicated web callback is
-   planned separately.
+   authorization code after you authenticate. Point it at the web app's callback, so the
+   browser hands the code straight back to the app with no copy-paste:
+   `https://<your-host>.ts.net/settings/bank/callback`. This must be a URL the web app
+   actually serves; see [Linking a bank](#linking-a-bank) and the
+   [web app guide](web-app.md).
 
 Store the private key outside the repository, for example at
 `~/.config/budget-forecaster/enable_banking_key.pem`, readable only by you
@@ -50,7 +51,7 @@ enable_banking:
   private_key_path: ~/.config/budget-forecaster/enable_banking_key.pem
   redirect_url: "https://your-redirect-url"
   aspsp_country: FR
-  aspsp_name: "the-bank-name" # optional: skip the bank picker in `link`
+  aspsp_name: "the-bank-name" # optional: skip the bank picker in the web app
   account_uid: "..." # optional: pick one when a consent has several
   local_account_name: bnp # local account the sync merges into
 ```
@@ -60,34 +61,31 @@ what each key means and its default.
 
 ## Usage
 
-Three commands cover the whole lifecycle:
+You link and renew a bank in the **web app**; two CLI commands cover the rest:
 
 ```bash
-budget-forecaster link            # authorize a bank (once per consent period)
 budget-forecaster sync            # import transactions and balance
 budget-forecaster consent-status  # show whether the consent is valid, expiring, or expired
 ```
 
 ### Linking a bank
 
-`link` lists the banks available in `aspsp_country` and lets you pick yours, so you
-never type an exact bank name (set `aspsp_name` to skip the picker). It then prints an
-authorization URL:
+Linking happens in the web app, under **Réglages → Bank connection**. Because the bank
+redirects your browser to the web app's callback, there is no code to copy by hand.
 
-1. Open the URL and authenticate at your bank.
-2. Your bank redirects to the `redirect_url` with a `code` parameter in it.
-3. Copy that code and paste it back into the prompt.
+1. Open the web app and go to Réglages. With Enable Banking configured but no bank
+   linked yet, a **Link a bank** button appears.
+2. Pick your bank from the list (a filter box helps). If you set `aspsp_name` in the
+   config, the picker is skipped.
+3. You're sent to your bank to sign in and authorize access, then brought back
+   automatically. A confirmation appears once you return.
 
-The command confirms the link, how many accounts the consent unlocks, and the expiry
-date:
-
-```
-Linked BNP Paribas: 1 account(s), consent valid until 2026-12-15.
-```
-
-The session and its expiry are stored outside the repository, under
+Your bank password stays with your bank; the app never sees it. The session and its
+expiry are stored outside the repository, under
 `$XDG_STATE_HOME/budget-forecaster/enable_banking/` (falling back to
 `~/.local/state/...`), readable only by you.
+
+See the [web app guide](web-app.md) for how the flow looks on the connection page.
 
 ### Syncing
 
@@ -115,15 +113,17 @@ registry.
 Consent valid, valid until 2026-12-15.
 ```
 
-When the consent is expired (or `sync` reports no valid consent), run `link` again to
-renew it. Nothing else changes — the same bank and account are reused.
+When the consent is expiring or expired (or `sync` reports no valid consent), open the
+web app and use **Renew** on the Réglages connection card, or the link in the expiry
+banner. The same bank and account are reused.
 
 ## Troubleshooting
 
 | Symptom                                                    | Cause                                                             | Fix                                                                      |
 | ---------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `No consent stored. Run 'link' to authorize a bank.`       | No bank linked yet                                                | Run `link`                                                               |
-| `sync` fails with an expired-consent message               | Consent past its expiry                                           | Run `link` to renew                                                      |
+| No bank linked yet                                         | Consent never created                                             | Link a bank from Réglages in the web app                                 |
+| `sync` fails with an expired-consent message               | Consent past its expiry                                           | Renew from Réglages in the web app                                       |
 | Sync picks the wrong account, or a consent unlocks several | Ambiguous account                                                 | Set `account_uid` to the account to sync                                 |
 | Authentication errors                                      | Wrong `private_key_path`, or public key not uploaded / mismatched | Check the path and that the uploaded public key matches your private key |
-| `link` shows no banks                                      | Wrong `aspsp_country`                                             | Set it to your bank's country (default `FR`)                             |
+| The bank list is empty when linking                        | Wrong `aspsp_country`                                             | Set it to your bank's country (default `FR`)                             |
+| Linking never returns / the callback errors                | `redirect_url` does not match the web app's callback              | Set it to `https://<your-host>.ts.net/settings/bank/callback`            |
