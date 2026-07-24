@@ -6,7 +6,7 @@
 import json
 import logging
 import sqlite3
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Iterable, Self
 
@@ -20,7 +20,14 @@ from budget_forecaster.core.date_range import (
     RecurringDay,
     SingleDay,
 )
-from budget_forecaster.core.types import Category, LinkType, OperationId, TargetId
+from budget_forecaster.core.types import (
+    Category,
+    LinkType,
+    OperationId,
+    SyncRun,
+    SyncRunStatus,
+    TargetId,
+)
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
@@ -797,6 +804,46 @@ class SqliteRepository(RepositoryInterface):
             (key, value),
         )
         conn.commit()
+
+    # Sync-run methods
+
+    def add_sync_run(self, run: SyncRun) -> None:
+        """Record one bank-sync run (success or failure)."""
+        conn = self._get_connection()
+        conn.execute(
+            """INSERT INTO sync_runs
+                   (ran_at, status, new_count, duplicate_count, balance, error)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                run.ran_at.isoformat(),
+                run.status.value,
+                run.new_count,
+                run.duplicate_count,
+                run.balance,
+                run.error,
+            ),
+        )
+        conn.commit()
+
+    def get_recent_sync_runs(self, limit: int) -> tuple[SyncRun, ...]:
+        """Get the most recent sync runs, newest first."""
+        conn = self._get_connection()
+        cursor = conn.execute(
+            """SELECT ran_at, status, new_count, duplicate_count, balance, error
+               FROM sync_runs ORDER BY id DESC LIMIT ?""",
+            (limit,),
+        )
+        return tuple(
+            SyncRun(
+                ran_at=datetime.fromisoformat(row["ran_at"]),
+                status=SyncRunStatus(row["status"]),
+                new_count=row["new_count"],
+                duplicate_count=row["duplicate_count"],
+                balance=row["balance"],
+                error=row["error"],
+            )
+            for row in cursor.fetchall()
+        )
 
     # Private helpers
 

@@ -373,6 +373,14 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         """
         return self._forecast_service.reload_forecast()
 
+    def reload_account(self) -> None:
+        """Re-read the account from storage.
+
+        Needed after a write that bypassed the in-memory account (a bank sync
+        persists through its own account instance), so the cached one catches up.
+        """
+        self._persistent_account.reload()
+
     def compute_report(
         self,
         start_date: date | None = None,

@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import Request
 from fastapi.responses import Response
 
-from budget_forecaster.web.alerts import consent_alert
+from budget_forecaster.web.alerts import consent_alert, sync_failure_alert
 
 
 def render_template(
@@ -23,6 +23,9 @@ def render_template(
     ctx = {
         "active": active,
         "alert": consent_alert(request.app.state.consent_service),
+        "sync_alert": sync_failure_alert(
+            request.app.state.repository, request.app.state.consent_service
+        ),
         "today": date.today(),
         "uncat_count": request.app.state.app_service.count_uncategorized_operations(),
         **context,
