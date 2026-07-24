@@ -1,0 +1,10 @@
+# Daily trigger for budget-sync.service. Persistent catches up a missed run after downtime.
+[Unit]
+Description=Daily Budget Forecaster bank sync
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target
