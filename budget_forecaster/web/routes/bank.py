@@ -47,6 +47,13 @@ def _secure(request: Request) -> bool:
     return request.app.state.web_secrets.secure_cookies
 
 
+def _flash_redirect(request: Request, flash: Flash) -> Response:
+    """Redirect to Réglages carrying a one-shot flash outcome."""
+    response = RedirectResponse(url="/settings", status_code=303)
+    set_flash(response, _flash_serializer(request), flash, secure=_secure(request))
+    return response
+
+
 @router.get("/settings/bank/link")
 async def link_page(
     request: Request,
@@ -77,9 +84,13 @@ async def link_page(
             bank_name=config.enable_banking.aspsp_name,
             country=country,
         )
-    return _render_link(
-        request, renew=False, banks=consent_service.list_banks(country), country=country
-    )
+    try:
+        banks = consent_service.list_banks(country)
+    except RequestException:
+        # A transient API error renders the empty state, not a 500.
+        logger.exception("Listing banks failed")
+        banks = ()
+    return _render_link(request, renew=False, banks=banks, country=country)
 
 
 def _render_link(
@@ -116,7 +127,11 @@ async def start_link(
     aspsp_name = str(form.get("aspsp_name", "")).strip()
     country = str(form.get("country", config.enable_banking.aspsp_country)).strip()
 
-    known = {bank["name"] for bank in consent_service.list_banks(country)}
+    try:
+        known = {bank["name"] for bank in consent_service.list_banks(country)}
+    except RequestException:
+        logger.exception("Listing banks failed during enrollment")
+        return _flash_redirect(request, Flash.ERROR)
     if aspsp_name not in known:
         logger.warning("Rejected enrollment for unknown bank %r", aspsp_name)
         return RedirectResponse(url="/settings/bank/link", status_code=303)
@@ -148,7 +163,11 @@ def _redirect_to_bank(
 ) -> Response:
     """Start the authorization and stash the pending state for the callback."""
     state = secrets.token_urlsafe(16)
-    url = consent_service.start_enrollment(aspsp_name, country, state=state)
+    try:
+        url = consent_service.start_enrollment(aspsp_name, country, state=state)
+    except RequestException:
+        logger.exception("Starting authorization failed")
+        return _flash_redirect(request, Flash.ERROR)
     response = RedirectResponse(url=url, status_code=303)
     set_pending(
         response,
@@ -186,7 +205,7 @@ async def callback(
         consent_service is None
         or not state
         or pending is None
-        or not hmac.compare_digest(pending.state, state)
+        or not hmac.compare_digest(pending.state.encode(), state.encode())
     ):
         logger.warning("Enrollment callback rejected: missing or mismatched state")
         set_flash(response, flash_serializer, Flash.ERROR, secure=secure)
@@ -194,7 +213,7 @@ async def callback(
 
     try:
         consent_service.complete_enrollment(code, pending.aspsp_name, pending.country)
-    except (RequestException, KeyError, ValueError):
+    except (RequestException, KeyError, ValueError, TypeError, AttributeError):
         logger.exception("Enrollment completion failed")
         set_flash(response, flash_serializer, Flash.ERROR, secure=secure)
         return response

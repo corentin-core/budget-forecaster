@@ -6,6 +6,7 @@ from unittest.mock import Mock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from requests import RequestException
 
 from budget_forecaster.web.enrollment import PENDING_COOKIE
 
@@ -188,3 +189,50 @@ class TestCallback:
         )
         service.complete_enrollment.assert_not_called()
         assert "Liaison annulée" in client.get("/settings").text
+
+    def test_completion_failure_flashes_error(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """A matching state but a failing exchange flashes an error, not a 500."""
+        service = _service()
+        service.complete_enrollment.side_effect = RequestException("boom")
+        _connect(app, service)
+        self._set_pending(client, app, "s")
+        response = client.get(
+            "/settings/bank/callback",
+            params={"code": "auth-code", "state": "s"},
+            follow_redirects=False,
+        )
+        assert response.status_code == 303
+        assert "Échec de la liaison" in client.get("/settings").text
+
+
+class TestApiErrors:
+    """A transient Enable Banking API error degrades gracefully, never 500s."""
+
+    def test_start_link_flashes_error_on_api_failure(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """A bank-list failure during enrollment flashes an error."""
+        service = _service()
+        service.list_banks.side_effect = RequestException("boom")
+        _connect(app, service)
+        response = client.post(
+            "/settings/bank/link",
+            data={"aspsp_name": "BNP Paribas"},
+            follow_redirects=False,
+        )
+        assert response.status_code == 303
+        assert response.headers["location"] == "/settings"
+        service.start_enrollment.assert_not_called()
+        assert "Échec de la liaison" in client.get("/settings").text
+
+    def test_link_page_shows_empty_state_on_api_failure(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """A bank-list failure renders the empty state instead of crashing."""
+        service = _service()
+        service.list_banks.side_effect = RequestException("boom")
+        _connect(app, service)
+        html = client.get("/settings/bank/link").text
+        assert "Aucune banque disponible" in html

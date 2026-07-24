@@ -1,5 +1,6 @@
 """Signed enrollment cookies: round-trips, tamper and cross-cookie rejection."""
 
+import itsdangerous.timed
 import pytest
 from starlette.requests import Request
 
@@ -50,6 +51,15 @@ class TestPendingCookie:
         token = make_pending_serializer("attacker").dumps(["state", "BNP", "FR"])
         request = _request_with_cookie("budget_enroll", token)
         assert read_pending(request, make_pending_serializer(_SECRET)) is None
+
+    def test_expired_cookie_is_rejected(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        """A cookie older than its max age decodes to None."""
+        serializer = make_pending_serializer(_SECRET)
+        monkeypatch.setattr(itsdangerous.timed.time, "time", lambda: 1000.0)
+        token = serializer.dumps(["state", "BNP", "FR"])
+        monkeypatch.undo()  # read back at the real (much later) time
+        request = _request_with_cookie("budget_enroll", token)
+        assert read_pending(request, serializer) is None
 
 
 class TestFlashCookie:
