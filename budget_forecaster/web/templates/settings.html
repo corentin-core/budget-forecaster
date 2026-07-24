@@ -1,6 +1,14 @@
 {% extends "base.html" %} {% block title %}{{ _("Settings") }} — Budget Forecaster{% endblock %} {% block content %}
 <section class="card">
-  <div class="card-head"><h2>{{ _("Bank connection") }}</h2></div>
+  <div class="card-head">
+    <h2>{{ _("Bank connection") }}</h2>
+    {% if connection.configured %}
+    <form method="post" action="/settings/sync"
+          onsubmit="var b=this.querySelector('button'); b.disabled=true; b.textContent='…';">
+      <button type="submit" class="btn">{{ _("Sync now") }}</button>
+    </form>
+    {% endif %}
+  </div>
   {% if connection.configured %}
   <div class="kv">
     <span>{{ _("Status") }}</span>
@@ -17,8 +25,44 @@
   </div>
   {% endif %} {% else %}
   <p class="empty">{{ _("Not configured") }}</p>
-  {% endif %}
-  <p class="hint">{{ _("Sync history coming soon") }}</p>
+  {% endif %} {% if connection.configured %}
+  <h3 class="subhead">{{ _("Recent syncs") }}</h3>
+  {% if sync_runs %}
+  <table class="sync-runs">
+    <thead>
+      <tr>
+        <th scope="col">{{ _("When") }}</th>
+        <th scope="col">{{ _("Result") }}</th>
+        <th scope="col" class="num">{{ _("Added") }}</th>
+        <th scope="col" class="num">{{ _("Dupes") }}</th>
+        <th scope="col">{{ _("Detail") }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for run in sync_runs %}
+      {% set resolved = run.status.value == "FAILED" and consent_created_at and run.ran_at < consent_created_at %}
+      <tr{% if resolved %} class="resolved"{% endif %}>
+        <td data-label="{{ _('When') }}">{{ run.ran_at | frdatetime }}</td>
+        <td data-label="{{ _('Result') }}" class="status-{{ run.status.value }}">
+          {% if run.status.value == "OK" %}{{ _("OK") }}{% else %}{{ _("Failed") }}{% endif %}
+          {% if resolved %}<span class="tag">{{ _("before renewal") }}</span>{% endif %}
+        </td>
+        <td data-label="{{ _('Added') }}" class="num">{{ run.new_count if run.new_count is not none else "–" }}</td>
+        <td data-label="{{ _('Dupes') }}" class="num">{{ run.duplicate_count if run.duplicate_count is not none else "–" }}</td>
+        <td data-label="{{ _('Detail') }}">
+          {% if run.status.value == "OK" %}
+            {{ _("Balance") }} {{ run.balance | eur }}
+          {% else %}
+            {{ run.error | sync_error }}
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty">{{ _("No sync yet") }}</p>
+  {% endif %} {% endif %}
 </section>
 
 <section class="card">

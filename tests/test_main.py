@@ -6,6 +6,10 @@ from unittest.mock import MagicMock
 import pytest
 
 from budget_forecaster import main
+from budget_forecaster.core.types import SyncRunStatus
+from budget_forecaster.infrastructure.persistence.sqlite_repository import (
+    SqliteRepository,
+)
 
 _BANKS = ({"name": "BNP Paribas"}, {"name": "Boursorama"})
 
@@ -49,6 +53,30 @@ def _write_eb_config(tmp_path: Path) -> Path:
         encoding="utf-8",
     )
     return config_file
+
+
+def test_sync_records_failed_run_when_no_consent(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A sync with no stored consent exits 1 and records a FAILED run."""
+    monkeypatch.setattr(main.Config, "setup_logging", lambda self: None)
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    monkeypatch.setattr(main, "_build_client", lambda _config: MagicMock())
+    config_file = _write_eb_config(tmp_path)
+    monkeypatch.setattr(
+        "sys.argv", ["budget-forecaster", "-c", str(config_file), "sync"]
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main.main()
+
+    assert exc_info.value.code == 1
+    assert capsys.readouterr().err
+    with SqliteRepository(tmp_path / "x.db") as repo:
+        (run,) = repo.get_recent_sync_runs(1)
+    assert run.status is SyncRunStatus.FAILED
 
 
 def _prime_link(

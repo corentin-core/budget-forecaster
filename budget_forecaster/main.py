@@ -6,30 +6,21 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from budget_forecaster.core.types import SyncRunStatus
 from budget_forecaster.infrastructure.bank_sources.enable_banking.client import (
     EnableBankingClient,
 )
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent_service import (
     ConsentService,
-    NoConsentError,
 )
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent_store import (
     ConsentStore,
 )
-from budget_forecaster.infrastructure.bank_sources.enable_banking.source import (
-    EnableBankingSource,
+from budget_forecaster.infrastructure.bank_sources.enable_banking.sync_runner import (
+    perform_sync,
 )
 from budget_forecaster.infrastructure.bootstrap import open_repository
 from budget_forecaster.infrastructure.config import Config, EnableBankingConfig
-from budget_forecaster.infrastructure.persistence.persistent_account import (
-    PersistentAccount,
-)
-from budget_forecaster.services.bank_sync_service import BankSyncService
-from budget_forecaster.services.forecast.forecast_service import ForecastService
-from budget_forecaster.services.operation.operation_link_service import (
-    OperationLinkService,
-)
-from budget_forecaster.services.use_cases import MatcherCache, SyncUseCase
 from budget_forecaster.tui.app import run_app
 
 logger = logging.getLogger(__name__)
@@ -70,7 +61,7 @@ def _build_client(enable_banking: EnableBankingConfig) -> EnableBankingClient:
 
 
 def _run_sync(config_path: Path) -> None:
-    """Sync the consented Enable Banking account into the local database."""
+    """Sync the consented Enable Banking account, recording the run."""
     config = Config()
     config.parse(config_path)
     config.setup_logging()
@@ -78,35 +69,19 @@ def _run_sync(config_path: Path) -> None:
     client = _build_client(enable_banking)
     consent_service = ConsentService(client, ConsentStore.default())
 
-    repository = None
+    repository = open_repository(config)
     try:
-        account_uid = consent_service.resolve_account_uid(enable_banking.account_uid)
-        repository = open_repository(config)
-        persistent_account = PersistentAccount(repository)
-        source = EnableBankingSource(client, name=enable_banking.local_account_name)
-        sync_use_case = SyncUseCase(
-            BankSyncService(persistent_account, source, config.accounts),
-            persistent_account,
-            OperationLinkService(repository),
-            MatcherCache(ForecastService(persistent_account, repository)),
-        )
-        stats = sync_use_case.sync(account_uid)
-        account = persistent_account.account
-        print(
-            f"Synced {source.name}: {stats.new_operations} new, "
-            f"{stats.duplicates_skipped} duplicates skipped. "
-            f"Balance: {account.balance:.2f} {account.currency}"
-        )
-    except NoConsentError as error:
-        print(f"{error}", file=sys.stderr)
-        sys.exit(1)
-    except Exception:  # pylint: disable=broad-except
-        logger.exception("Sync failed")
-        print("Sync failed. See the log for details.", file=sys.stderr)
-        sys.exit(1)
+        run = perform_sync(repository, consent_service, enable_banking, config.accounts)
     finally:
-        if repository is not None:
-            repository.close()
+        repository.close()
+
+    if run.status is SyncRunStatus.FAILED:
+        print(run.error, file=sys.stderr)
+        sys.exit(1)
+    print(
+        f"Synced {enable_banking.local_account_name}: {run.new_count} new, "
+        f"{run.duplicate_count} duplicates skipped. Balance: {run.balance:.2f}"
+    )
 
 
 def _choose_aspsp_name(banks: tuple[dict[str, Any], ...], selection: str) -> str:

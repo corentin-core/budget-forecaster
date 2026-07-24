@@ -61,7 +61,7 @@ to start if neither source provides both secrets.
 | Budgets    | All budgets and planned operations, whatever month they fall in; create, edit, split, delete |
 | Opérations | The full ledger, filterable by search text, category, month, and "uncategorized"             |
 | Tendances  | Balance evolution over time and expense breakdown by category                                |
-| Réglages   | Bank connection status, import inbox, and the margin threshold                               |
+| Réglages   | Bank connection status and sync history, import inbox, and the margin threshold              |
 
 Navigation is a bottom bar on phones and a left sidebar on wider screens, each tab with
 an icon.
@@ -114,3 +114,21 @@ from.
 When a bank connection is configured and its consent is expiring (within 14 days) or
 already expired, a banner appears on every page with a link to Réglages. No banner shows
 when the connection is valid or when Enable Banking is not configured.
+
+## Sync history and failures
+
+The bank data refreshes on its own through a background sync that runs while the host is
+on. Réglages lists the recent runs — when each ran, whether it succeeded, how many
+operations were new or duplicates, and the resulting balance (or the error, for a failed
+run). Because that sync runs outside the app, a failure would otherwise go unnoticed:
+when the most recent run failed, a red banner appears on every page pointing to
+Réglages.
+
+The banner clears once a later sync succeeds. It also stays silent for a failure that
+predates your current bank authorization — if a sync failed because the consent had
+expired and you have since renewed it, that old failure is treated as resolved and no
+banner shows. A failure that happened under the current authorization (a bank outage,
+say) still raises the banner.
+
+"Sync now" in Réglages triggers a sync immediately, without waiting for the next
+scheduled run. It records a run just like the background sync does.

@@ -1,18 +1,30 @@
-"""Consent banner: shown when expiring/expired, silent otherwise."""
+"""Banners: consent state and last-sync failure; shown only when relevant."""
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from budget_forecaster.core.types import SyncRun, SyncRunStatus
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent import (
     ConsentStatus,
 )
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent_service import (
     ConsentState,
 )
-from budget_forecaster.web.alerts import consent_alert
+from budget_forecaster.web.alerts import consent_alert, sync_failure_alert
+
+
+def _repo_with_runs(*runs: SyncRun) -> Mock:
+    """A repository double whose get_recent_sync_runs returns the given runs."""
+    repo = Mock()
+    repo.get_recent_sync_runs.return_value = tuple(runs)
+    return repo
+
+
+def _run(status: SyncRunStatus, **kwargs: object) -> SyncRun:
+    return SyncRun(datetime(2026, 7, 23, 6, 0, tzinfo=timezone.utc), status, **kwargs)
 
 
 def _consent_stub(state: ConsentState) -> Mock:
@@ -74,3 +86,87 @@ class TestBannerRendering:
         app.state.consent_service = None
         html = client.get("/").text
         assert 'class="banner' not in html
+
+
+def _consent_service(
+    created_at: datetime, status: ConsentStatus = ConsentStatus.VALID
+) -> Mock:
+    """A consent-service double whose stored consent was granted at created_at."""
+    consent = Mock(created_at=created_at)
+    consent.status.return_value = status
+    service = Mock()
+    service.current_consent.return_value = consent
+    return service
+
+
+# Reference failure time used across the supersession tests.
+_FAILED_AT = datetime(2026, 7, 23, 6, 0, tzinfo=timezone.utc)
+
+
+class TestSyncFailureAlert:
+    """sync_failure_alert surfaces the latest failure, unless a newer consent
+    supersedes it."""
+
+    def test_none_when_no_runs(self) -> None:
+        """No recorded run yields no alert."""
+        assert sync_failure_alert(_repo_with_runs(), None) is None
+
+    def test_none_when_latest_ok(self) -> None:
+        """A successful latest run yields no alert."""
+        assert sync_failure_alert(_repo_with_runs(_run(SyncRunStatus.OK)), None) is None
+
+    def test_alert_when_latest_failed_and_no_consent_service(self) -> None:
+        """A failed latest run with Enable Banking off still alerts."""
+        run = _run(SyncRunStatus.FAILED, error="NoConsentError: expired")
+        alert = sync_failure_alert(_repo_with_runs(run), None)
+        assert alert is not None
+        assert alert.error == "NoConsentError: expired"
+
+    def test_alert_when_no_stored_consent(self) -> None:
+        """A configured service with no stored consent still alerts."""
+        service = Mock()
+        service.current_consent.return_value = None
+        run = _run(SyncRunStatus.FAILED, error="boom")
+        assert sync_failure_alert(_repo_with_runs(run), service) is not None
+
+    def test_stale_failure_hidden_when_consent_is_newer(self) -> None:
+        """A failure predating the current consent is stale: re-authorized since."""
+        run = SyncRun(_FAILED_AT, SyncRunStatus.FAILED, error="NoConsentError")
+        consent = _consent_service(_FAILED_AT + timedelta(days=1))
+        assert sync_failure_alert(_repo_with_runs(run), consent) is None
+
+    def test_failure_under_current_consent_still_shows(self) -> None:
+        """A failure after the consent was granted (e.g. API down) still alerts."""
+        run = SyncRun(_FAILED_AT, SyncRunStatus.FAILED, error="HTTPError: 503")
+        consent = _consent_service(_FAILED_AT - timedelta(days=1))
+        assert sync_failure_alert(_repo_with_runs(run), consent) is not None
+
+    def test_hidden_when_consent_expired(self) -> None:
+        """An expired consent already raises its own banner: no double alert."""
+        run = SyncRun(_FAILED_AT, SyncRunStatus.FAILED, error="NoConsentError")
+        consent = _consent_service(
+            _FAILED_AT - timedelta(days=1), status=ConsentStatus.EXPIRED
+        )
+        assert sync_failure_alert(_repo_with_runs(run), consent) is None
+
+
+class TestSyncFailureBanner:
+    """The failed-sync banner renders across pages when the last run failed."""
+
+    def test_banner_rendered_when_last_sync_failed(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """A failed last run renders the banner."""
+        app.state.repository = _repo_with_runs(
+            _run(SyncRunStatus.FAILED, error="NoConsentError: expired")
+        )
+        html = client.get("/").text
+        assert "banner-failed" in html
+        assert "Dernière synchronisation en échec" in html
+
+    def test_no_banner_when_last_sync_ok(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """A successful last run renders no failed-sync banner."""
+        app.state.repository = _repo_with_runs(_run(SyncRunStatus.OK))
+        assert "banner-failed" not in client.get("/").text

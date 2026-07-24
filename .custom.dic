@@ -57,12 +57,14 @@ dropdown
 dropdowns
 dup
 edf
+entrypoint
 enum
 enums
 env
 focusable
 forecasted
 gettext
+hh
 historicoperation
 honour
 hx
@@ -99,6 +101,7 @@ nullable
 oob
 opérations
 orchestrator
+overridable
 params
 paribas
 parseable
@@ -139,6 +142,7 @@ subcommand
 submodules
 supermarche
 supermarché
+supersession
 svg
 swile
 sys

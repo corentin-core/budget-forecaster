@@ -1,6 +1,6 @@
 """Module containing custom types for the budget_forecaster package."""
 import enum
-from datetime import date
+from datetime import date, datetime
 from typing import Callable, NamedTuple
 
 from budget_forecaster.i18n import _
@@ -68,6 +68,34 @@ class ImportStats(NamedTuple):
 
     duplicates_skipped: int
     """Number of duplicate operations that were already in the database."""
+
+
+class SyncRunStatus(enum.StrEnum):
+    """Outcome of a bank-sync run."""
+
+    OK = "OK"
+    FAILED = "FAILED"
+
+
+class SyncRun(NamedTuple):
+    """One recorded bank-sync run, for in-app alerting and history."""
+
+    ran_at: datetime
+    """When the run happened (aware UTC)."""
+
+    status: SyncRunStatus
+
+    new_count: int | None = None
+    """New operations added; set on success."""
+
+    duplicate_count: int | None = None
+    """Duplicate operations skipped; set on success."""
+
+    balance: float | None = None
+    """Account balance after the run; set on success."""
+
+    error: str | None = None
+    """Failure description ("ClassName: message"); set on failure."""
 
 
 class BudgetColumn(enum.StrEnum):
