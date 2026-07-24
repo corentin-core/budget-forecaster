@@ -31,7 +31,16 @@
         </text>
       </svg>
       <div class="donut-tooltip" hidden></div>
-      <p class="chart-hint">{{ _("Hover a segment for details") }}</p>
+      <ul class="donut-legend">
+        {% for slice in breakdown.slices %}
+          <li>
+            <span class="swatch" style="background: {{ slice.color }}"></span>
+            <span class="legend-label">{{ slice.label }}</span>
+            <span class="legend-value">{{ slice.fraction | pct }} · {{ slice.amount | eur(currency) }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="chart-hint">{{ _("Tap or hover a segment for details") }}</p>
     </div>
   {% else %}
     <p class="empty">{{ _("No expenses over this period") }}</p>
