@@ -3,6 +3,7 @@
 French conventions: narrow no-break space for thousands, comma decimal.
 """
 
+import unicodedata
 from datetime import date
 
 from jinja2 import Environment
@@ -65,6 +66,23 @@ def category_name(key: str) -> str:
         return Category(key).display_name
     except ValueError:
         return key
+
+
+def _fold(text: str) -> str:
+    """Accent- and case-insensitive sort key, so 'Épargne' sorts with the E's."""
+    stripped = "".join(
+        c for c in unicodedata.normalize("NFD", text) if not unicodedata.combining(c)
+    )
+    return stripped.casefold()
+
+
+def sorted_categories() -> tuple[Category, ...]:
+    """Categories ordered by display name for dropdowns, accents folded.
+
+    Sorted per call: display_name is locale-aware, so the order must follow the
+    active language, not whatever was active at import time.
+    """
+    return tuple(sorted(Category, key=lambda c: _fold(c.display_name)))
 
 
 def register_filters(env: Environment) -> None:

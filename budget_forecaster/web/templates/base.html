@@ -8,13 +8,23 @@
     <script src="/static/htmx.min.js" defer></script>
   </head>
   <body>
-    {% set sections = [ ("home", "/", _("Home")), ("month", "/month", _("Month")), ("operations", "/operations",
-    _("Operations")), ("trends", "/trends", _("Trends")), ("settings", "/settings", _("Settings")), ] %}
+    {% set sections = [ ("home", "/", _("Home"), "🏠"), ("month", "/month", _("Month"), "📅"), ("targets",
+    "/targets", _("Budgets"), "💰"), ("operations", "/operations", _("Operations"), "🧾"), ("trends", "/trends",
+    _("Trends"), "📈"), ("settings", "/settings", _("Settings"), "⚙️"), ] %}
+    {% macro navlinks(suffix) %}
+      {% for key, url, label, icon in sections %}
+      <a href="{{ url }}" class="nav-item {{ 'active' if active == key }}">
+        <span class="nav-icon" aria-hidden="true">{{ icon }}</span>
+        <span class="nav-label">{{ label }}</span>
+        {% if key == "operations" %}
+        <span id="uncat-badge-{{ suffix }}" class="badge" {{ 'hidden' if not uncat_count }}>{{ uncat_count or '' }}</span>
+        {% endif %}
+      </a>
+      {% endfor %}
+    {% endmacro %}
     <nav class="sidebar" aria-label="{{ _('Sections') }}">
       <div class="brand">Foyer</div>
-      {% for key, url, label in sections %}
-      <a href="{{ url }}" class="nav-item {{ 'active' if active == key }}"> {{ label }} </a>
-      {% endfor %}
+      {{ navlinks("side") }}
       <a href="/logout" class="nav-item logout">{{ _("Log out") }}</a>
     </nav>
 
@@ -34,9 +44,7 @@
     </main>
 
     <nav class="bottombar" aria-label="{{ _('Sections') }}">
-      {% for key, url, label in sections %}
-      <a href="{{ url }}" class="nav-item {{ 'active' if active == key }}"> {{ label }} </a>
-      {% endfor %}
+      {{ navlinks("bottom") }}
     </nav>
     <script src="/static/tooltips.js" defer></script>
   </body>

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Budgets & planned") }} — Budget Forecaster{% endblock %}
+
+{% block content %}
+{% set kind = "planned" if view == "planned" else "budget" %}
+{% set base = "/targets?view=planned" if view == "planned" else "/targets" %}
+{% set add_label = _("+ Planned") if view == "planned" else _("+ Budget") %}
+<section class="targets-page">
+  <nav class="seg" aria-label="{{ _('Budgets & planned') }}">
+    <a class="{{ 'active' if view != 'planned' }}" href="/targets">{{ _("Budgets") }}</a>
+    <a class="{{ 'active' if view == 'planned' }}" href="/targets?view=planned">{{ _("Planned operations") }}</a>
+  </nav>
+
+  <form class="filters" method="get" action="/targets">
+    <input type="hidden" name="view" value="{{ view }}" />
+    <input type="hidden" name="submitted" value="1" />
+    <input type="search" name="q" placeholder="{{ _('Search...') }}" value="{{ query }}" />
+    <select name="category">
+      <option value="">{{ _("All categories") }}</option>
+      {% for c in categories %}
+        <option value="{{ c.value }}" {{ 'selected' if category == c.value }}>{{ c.value | category_name }}</option>
+      {% endfor %}
+    </select>
+    <label class="check">
+      <input type="checkbox" name="active" value="true" {{ 'checked' if active_only }} />
+      {{ _("Active only") }}
+    </label>
+    <button type="submit" class="btn">{{ _("Filter") }}</button>
+  </form>
+
+  <div class="card">
+    <div class="list-head">
+      <a class="btn primary" href="/targets/{{ kind }}/new?return_to={{ base | urlencode }}">{{ add_label }}</a>
+    </div>
+    {% if rows %}
+    <table class="review targets">
+      <thead>
+        <tr>
+          <th>{{ _("Description") }}</th>
+          <th class="num">{{ _("Amount") }}</th>
+          <th>{{ _("Category") }}</th>
+          <th>{{ _("Period") }}</th>
+          <th>{{ _("Range") }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        {% set target_url = "/targets/" ~ row.kind ~ "/" ~ row.id ~ "?return_to=" ~ (base | urlencode) %}
+        <tr class="target-row {{ '' if row.active else 'inactive' }}" tabindex="0" role="link"
+            data-href="{{ target_url }}">
+          <td data-label="{{ _('Description') }}"><a href="{{ target_url }}">{{ row.description }}</a></td>
+          <td class="num {{ 'positive' if row.amount > 0 else 'negative' }}"
+              data-label="{{ _('Amount') }}">{{ row.amount | signed_eur(currency) }}</td>
+          <td data-label="{{ _('Category') }}">{{ row.category | category_name }}</td>
+          <td data-label="{{ _('Period') }}">{{ row.period_label }}</td>
+          <td data-label="{{ _('Range') }}">{{ row.range_label }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">{{ _("Nothing yet") }}</p>
+    {% endif %}
+  </div>
+</section>
+<script src="/static/targets.js" defer></script>
+{% endblock %}

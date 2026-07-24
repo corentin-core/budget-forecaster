@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Not found") }} — Budget Forecaster{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>{{ _("Not found") }}</h1>
+  <p class="empty">{{ _("This item no longer exists — it may have been deleted.") }}</p>
+  <p><a class="btn" href="/">{{ _("Back to home") }}</a></p>
+</section>
+{% endblock %}

@@ -150,6 +150,10 @@ class OperationService:
             filter_criteria=OperationFilter(uncategorized_only=True)
         )
 
+    def count_uncategorized(self) -> int:
+        """Count operations needing categorization, without sorting or copying."""
+        return sum(1 for op in self.operations if op.category == Category.UNCATEGORIZED)
+
     def update_operation(
         self,
         operation_id: int,

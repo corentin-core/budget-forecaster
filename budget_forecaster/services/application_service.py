@@ -168,10 +168,20 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         )
 
         # Direct service references for pure delegations
+        self._persistent_account = persistent_account
         self._operation_service = operation_service
         self._forecast_service = forecast_service
         self._import_service = import_service
         self._operation_link_service = operation_link_service
+
+    def save_operation_changes(self) -> None:
+        """Persist in-memory operation edits (e.g. categorization) and reload.
+
+        Categorization mutates the in-memory account; without this the change is
+        neither stored nor reflected by the account's aggregated operations.
+        """
+        self._persistent_account.save()
+        self._persistent_account.reload()
 
     # -------------------------------------------------------------------------
     # Import operations (delegated to ImportUseCase)
@@ -258,6 +268,10 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
     def get_uncategorized_operations(self) -> tuple[HistoricOperation, ...]:
         """Get all uncategorized operations."""
         return tuple(self._operation_service.get_uncategorized_operations())
+
+    def count_uncategorized_operations(self) -> int:
+        """Count uncategorized operations, without sorting or copying the list."""
+        return self._operation_service.count_uncategorized()
 
     def get_operation_by_id(self, operation_id: int) -> HistoricOperation:
         """Get a single operation by its ID."""

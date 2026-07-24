@@ -44,7 +44,7 @@ class TestPages:
         """The first page shows at most one page of rows and the true total."""
         total = len(app.state.app_service.get_operations())
         html = client.get("/operations").text
-        assert html.count('<td class="date">') == min(total, _PAGE_SIZE)
+        assert html.count('id="op-row-') == min(total, _PAGE_SIZE)
         assert "ledger-count" in html
         assert str(total) in html
 
@@ -54,7 +54,7 @@ class TestPages:
         """The uncategorized filter narrows the ledger to uncategorized rows."""
         uncategorized = len(app.state.app_service.get_uncategorized_operations())
         html = client.get("/operations?uncategorized=true").text
-        assert html.count('<td class="date">') == min(uncategorized, _PAGE_SIZE)
+        assert html.count('id="op-row-') == min(uncategorized, _PAGE_SIZE)
 
     def test_operations_filter_returns_area_fragment(self, client: TestClient) -> None:
         """A filter HX-Request returns the ledger area fragment, not the layout."""

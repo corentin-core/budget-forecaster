@@ -1,6 +1,5 @@
 """Reusable duration input widget (number + unit selector)."""
 
-from enum import StrEnum
 from typing import Any
 
 from dateutil.relativedelta import relativedelta
@@ -8,45 +7,19 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.widgets import Input, Select
 
+from budget_forecaster.core.duration import (
+    DurationUnit,
+    relativedelta_to_unit,
+    unit_to_relativedelta,
+)
 from budget_forecaster.i18n import _
 
-
-class DurationUnit(StrEnum):
-    """Available duration units."""
-
-    DAYS = "days"
-    WEEKS = "weeks"
-    MONTHS = "months"
-    YEARS = "years"
-
-
-def relativedelta_to_unit(rd: relativedelta) -> tuple[int, DurationUnit]:
-    """Extract (value, unit) from a relativedelta.
-
-    Detection priority: years > months > weeks > days, fallback to 1 month.
-    """
-    if rd.years and rd.years > 0:
-        return rd.years, DurationUnit.YEARS
-    if rd.months and rd.months > 0:
-        return rd.months, DurationUnit.MONTHS
-    if rd.days and rd.days > 0:
-        if rd.days % 7 == 0:
-            return rd.days // 7, DurationUnit.WEEKS
-        return rd.days, DurationUnit.DAYS
-    return 1, DurationUnit.MONTHS
-
-
-def unit_to_relativedelta(value: int, unit: DurationUnit) -> relativedelta:
-    """Convert (value, unit) to a relativedelta."""
-    match unit:
-        case DurationUnit.DAYS:
-            return relativedelta(days=value)
-        case DurationUnit.WEEKS:
-            return relativedelta(weeks=value)
-        case DurationUnit.MONTHS:
-            return relativedelta(months=value)
-        case DurationUnit.YEARS:
-            return relativedelta(years=value)
+__all__ = [
+    "DurationUnit",
+    "relativedelta_to_unit",
+    "unit_to_relativedelta",
+    "DurationInput",
+]
 
 
 def _unit_options() -> list[tuple[str, str]]:

@@ -651,7 +651,7 @@ msgid "Invalid target"
 msgstr "Cible invalide"
 
 msgid "Please select a target"
-msgstr "Veuillez sélectionner une cible"
+msgstr "Veuillez sélectionner un budget ou une opération"
 
 msgid "Operation linked to '{}'"
 msgstr "Opération liée à '{}'"
@@ -1476,3 +1476,156 @@ msgstr "Valide"
 
 msgid "Expiring"
 msgstr "Expire bientôt"
+
+# --- Web editing (#305) ---
+
+msgid "+ Budget"
+msgstr "+ Budget"
+
+msgid "+ Planned"
+msgstr "+ Planifié"
+
+msgid "Amount tolerance"
+msgstr "Tolérance de montant"
+
+msgid "Amount tolerance must be a number"
+msgstr "La tolérance de montant doit être un nombre"
+
+msgid "Attributed operations"
+msgstr "Opérations rattachées"
+
+msgid "Budgets & planned"
+msgstr "Budgets & planifiés"
+
+msgid "Clear"
+msgstr "Effacer"
+
+msgid "Confirm"
+msgstr "Confirmer"
+
+msgid "Currently linked to"
+msgstr "Actuellement lié à"
+
+msgid "Date tolerance (days)"
+msgstr "Tolérance de date (jours)"
+
+msgid "Delete?"
+msgstr "Supprimer ?"
+
+msgid "Link…"
+msgstr "Lier…"
+
+
+msgid "Matching (advanced)"
+msgstr "Correspondance (avancé)"
+
+msgid "New"
+msgstr "Nouveau"
+
+msgid "New amount"
+msgstr "Nouveau montant"
+
+msgid "New duration"
+msgstr "Nouvelle durée"
+
+msgid "New period"
+msgstr "Nouvelle période"
+
+msgid "New values apply from the split date onward."
+msgstr "Les nouvelles valeurs s'appliquent à partir de la date de scission."
+
+msgid "No budget or planned operation in this category"
+msgstr "Aucun budget ou opération planifiée dans cette catégorie"
+
+msgid "No candidate"
+msgstr "Aucun candidat"
+
+msgid "No operation attributed this month"
+msgstr "Aucune opération rattachée ce mois-ci"
+
+msgid "Not linked"
+msgstr "Non lié"
+
+msgid "Nothing yet"
+msgstr "Rien pour l'instant"
+
+msgid "Pick a target to choose an iteration."
+msgstr "Choisissez un budget ou une opération, puis une échéance."
+
+msgid "Range"
+msgstr "Plage"
+
+msgid "Recurring"
+msgstr "Récurrent"
+
+msgid "Split date"
+msgstr "Date de scission"
+
+msgid "close amount"
+msgstr "montant proche"
+
+msgid "link"
+msgstr "lier"
+
+msgid "one-off"
+msgstr "ponctuel"
+
+msgid "optional"
+msgstr "optionnel"
+
+msgid "planned operation"
+msgstr "opération planifiée"
+
+msgid "same amount"
+msgstr "même montant"
+
+msgid "selected"
+msgstr "sélectionnée(s)"
+
+msgid "since {}"
+msgstr "depuis {}"
+
+msgid "Back"
+msgstr "Retour"
+
+msgid "Not found"
+msgstr "Introuvable"
+
+msgid "This item no longer exists — it may have been deleted."
+msgstr "Cet élément n'existe plus — il a peut-être été supprimé."
+
+msgid "Back to home"
+msgstr "Retour à l'accueil"
+
+msgid "Select operation"
+msgstr "Sélectionner l'opération"
+
+msgid "Active only"
+msgstr "Actifs seulement"
+
+msgid "Net"
+msgstr "Net"
+
+msgid "Pick a budget or operation, then an occurrence."
+msgstr "Choisissez un budget ou une opération, puis une échéance."
+
+msgid "Projected below your safety threshold"
+msgstr "Projeté sous votre seuil de sécurité"
+
+msgid "Show all targets"
+msgstr "Tout afficher"
+
+msgid "Tap or hover a segment for details"
+msgstr "Touchez ou survolez un segment pour le détail"
+
+msgid "The available margin turns red when your projected balance would drop below this."
+msgstr "La marge disponible passe au rouge si votre solde projeté descendrait sous ce seuil."
+
+msgid "Total expenses"
+msgstr "Total dépenses"
+
+msgid "Total income"
+msgstr "Total recettes"
+
+msgid "Search a budget or operation…"
+msgstr "Rechercher un budget ou une opération…"
