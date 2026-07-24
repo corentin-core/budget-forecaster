@@ -131,6 +131,7 @@ def login_submit(request: Request, password: str = Form("")) -> Response:
         max_age=_SESSION_MAX_AGE,
         httponly=True,
         samesite="lax",
+        secure=request.app.state.web_secrets.secure_cookies,
     )
     return response
 

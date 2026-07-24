@@ -109,10 +109,23 @@ category, dates, and recurrence, split a recurring item from a chosen date, or d
 (deletion asks for a confirmation inline first). Saving returns you to wherever you came
 from.
 
+## Linking a bank
+
+When Enable Banking is configured but no bank is linked yet, Réglages shows a **Link a
+bank** button. It opens a page listing the banks in your country, with a filter box;
+pick yours and continue. You're sent to your bank to sign in and authorize access, then
+brought back automatically, and a confirmation appears on Réglages. Your bank password
+stays with your bank.
+
+Once a bank is linked, the same page offers **Renew** to re-authorize before the consent
+expires — the expiry banner links straight to it. The
+[Enable Banking guide](enable-banking.md) covers the portal setup and the `redirect_url`
+the callback needs.
+
 ## Consent banner
 
 When a bank connection is configured and its consent is expiring (within 14 days) or
-already expired, a banner appears on every page with a link to Réglages. No banner shows
+already expired, a banner appears on every page with a link to renew it. No banner shows
 when the connection is valid or when Enable Banking is not configured.
 
 ## Sync history and failures
