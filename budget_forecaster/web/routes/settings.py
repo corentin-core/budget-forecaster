@@ -3,7 +3,7 @@
 from typing import NamedTuple
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import Response
+from fastapi.responses import RedirectResponse, Response
 
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent import (
     ConsentStatus,
@@ -12,7 +12,11 @@ from budget_forecaster.infrastructure.bank_sources.enable_banking.consent_servic
     ConsentService,
 )
 from budget_forecaster.services.application_service import ApplicationService
-from budget_forecaster.web.dependencies import get_app_service, get_consent_service
+from budget_forecaster.web.dependencies import (
+    get_app_service,
+    get_consent_service,
+    refresh_forecast,
+)
 from budget_forecaster.web.rendering import render_template
 
 router = APIRouter()
@@ -51,3 +55,19 @@ async def settings(
         margin_threshold=app.margin_threshold,
         currency=app.currency,
     )
+
+
+@router.post("/settings/threshold")
+async def set_threshold(
+    request: Request,
+    app: ApplicationService = Depends(get_app_service),
+) -> Response:
+    """Update the safety margin threshold that colours the available margin."""
+    form = await request.form()
+    raw = str(form.get("threshold", "")).replace(",", ".").strip()
+    try:
+        app.margin_threshold = float(raw)
+    except ValueError:
+        return RedirectResponse(url="/settings", status_code=303)
+    refresh_forecast(app)
+    return RedirectResponse(url="/settings", status_code=303)

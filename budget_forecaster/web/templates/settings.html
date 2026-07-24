@@ -40,9 +40,19 @@
 
 <section class="card">
   <div class="card-head"><h2>{{ _("Margin threshold") }}</h2></div>
-  <div class="kv">
-    <span>{{ _("Threshold") }}</span>
-    <strong>{{ margin_threshold | eur(currency) }}</strong>
-  </div>
+  <form method="post" action="/settings/threshold" class="threshold-form">
+    <label class="field">
+      <span>{{ _("Threshold") }} ({{ currency }})</span>
+      <input type="number" name="threshold" step="0.01" value="{{ '%.2f' | format(margin_threshold) }}" />
+    </label>
+    <p class="hint">{{ _("The available margin turns red when your projected balance would drop below this.") }}</p>
+    <div class="form-actions">
+      <button type="submit" class="btn primary">{{ _("Save") }}</button>
+    </div>
+  </form>
+</section>
+
+<section class="card">
+  <a class="btn" href="/logout">{{ _("Log out") }}</a>
 </section>
 {% endblock %}
