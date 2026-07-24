@@ -2,7 +2,7 @@
 {% block title %}{{ _("Operations") }} — Budget Forecaster{% endblock %}
 {% block content %}
 <section class="card">
-  <form class="filters"
+  <form class="filters" id="filter-form"
         hx-get="/operations"
         hx-target="#ledger-area"
         hx-swap="innerHTML"
@@ -38,4 +38,22 @@
     {% include "fragments/ledger_area.html" %}
   </div>
 </section>
+
+<div id="bulk-bar" class="bulk-bar" hidden role="region" aria-label="{{ _('Bulk actions') }}">
+  <span class="bulk-count"><span data-bulk-count>0</span> {{ _("selected") }}</span>
+  <select id="bulk-category" name="bulk_category" aria-label="{{ _('Category') }}">
+    {% for category in categories %}
+      <option value="{{ category.value }}">{{ category.value | category_name }}</option>
+    {% endfor %}
+  </select>
+  <button type="button" class="btn primary"
+          hx-post="/operations/categorize"
+          hx-include="[name='ids']:checked, #bulk-category, #filter-form"
+          hx-target="#ledger-area" hx-swap="innerHTML">
+    {{ _("Categorize") }}
+  </button>
+  <button type="button" class="btn" data-bulk-clear>{{ _("Clear") }}</button>
+</div>
+
+<script src="/static/operations.js" defer></script>
 {% endblock %}

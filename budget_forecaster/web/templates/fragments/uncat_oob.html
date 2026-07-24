@@ -1,0 +1,3 @@
+{# Out-of-band refresh of the "N to categorize" nav badges after a categorize. #}
+<span id="uncat-badge-side" class="badge" {{ 'hidden' if not uncat_count }} hx-swap-oob="true">{{ uncat_count or '' }}</span>
+<span id="uncat-badge-bottom" class="badge" {{ 'hidden' if not uncat_count }} hx-swap-oob="true">{{ uncat_count or '' }}</span>

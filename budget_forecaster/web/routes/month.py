@@ -8,7 +8,7 @@ from fastapi.responses import RedirectResponse, Response
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.web.dependencies import get_app_service
 from budget_forecaster.web.rendering import render_template
-from budget_forecaster.web.viewmodels import build_month_view
+from budget_forecaster.web.viewmodels import build_category_detail, build_month_view
 
 router = APIRouter()
 
@@ -42,5 +42,24 @@ async def month_view(
         "month.html",
         active="month",
         view=build_month_view(app, parsed),
+        currency=app.currency,
+    )
+
+
+@router.get("/month/{month}/{category}")
+async def category_detail(
+    month: str,
+    category: str,
+    request: Request,
+    app: ApplicationService = Depends(get_app_service),
+) -> Response:
+    """Render the category drill-down (an HTMX fragment expanded under a row)."""
+    if (parsed := _parse_month(month)) is None:
+        return RedirectResponse(url="/month", status_code=307)
+    return render_template(
+        request,
+        "fragments/category_detail.html",
+        active="month",
+        detail=build_category_detail(app, category, parsed),
         currency=app.currency,
     )

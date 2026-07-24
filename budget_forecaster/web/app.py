@@ -13,12 +13,18 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from budget_forecaster.exceptions import BudgetForecasterError
+from budget_forecaster.exceptions import (
+    BudgetForecasterError,
+    BudgetNotFoundError,
+    OperationNotFoundError,
+    PlannedOperationNotFoundError,
+)
 from budget_forecaster.i18n import _, setup_i18n
 from budget_forecaster.infrastructure.bank_sources.enable_banking.client import (
     EnableBankingClient,
@@ -45,12 +51,14 @@ from budget_forecaster.web import formatting
 from budget_forecaster.web.auth import make_serializer, require_session
 from budget_forecaster.web.auth import router as auth_router
 from budget_forecaster.web.config import resolve_web_secrets
+from budget_forecaster.web.rendering import render_template
 from budget_forecaster.web.routes import health as health_route
 from budget_forecaster.web.routes import (
     home,
     month,
     operations,
     settings,
+    targets,
     trends,
 )
 
@@ -140,11 +148,24 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         "/static", StaticFiles(directory=str(_PACKAGE_DIR / "static")), name="static"
     )
 
+    for not_found in (
+        BudgetNotFoundError,
+        PlannedOperationNotFoundError,
+        OperationNotFoundError,
+    ):
+        app.add_exception_handler(not_found, _handle_not_found)
+
     app.include_router(health_route.router)
     app.include_router(auth_router)
     app.include_router(home.router)
     app.include_router(month.router)
     app.include_router(operations.router)
+    app.include_router(targets.router)
     app.include_router(trends.router)
     app.include_router(settings.router)
     return app
+
+
+async def _handle_not_found(request: Request, _exc: Exception) -> Response:
+    """Render a 404 page (e.g. a stale link to a deleted budget or operation)."""
+    return render_template(request, "not_found.html", active="", status_code=404)

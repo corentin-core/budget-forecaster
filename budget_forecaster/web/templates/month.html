@@ -15,8 +15,16 @@
 {% endmacro %}
 
 {% macro cat_row(row) %}
+  {% set month_str = view.month.strftime('%Y-%m') %}
   <tr class="{{ 'income' if row.is_income else 'expense' }}">
-    <td class="cat">{{ row.key | category_name }}</td>
+    <td class="cat">
+      <button type="button" class="cat-toggle" aria-expanded="false"
+              data-target="detail-{{ row.key }}"
+              data-cat="{{ row.key }}"
+              data-url="/month/{{ month_str }}/{{ row.key }}">
+        {{ row.key | category_name }}
+      </button>
+    </td>
     {% if row.is_forecasted %}
       {{ amount(row.planned, _("Planned")) }}
     {% else %}
@@ -28,6 +36,9 @@
     <td class="bar-cell" data-label="{{ _('Consumption') }}">
       {{ consumption_bar(row.consumption) }}
     </td>
+  </tr>
+  <tr class="cat-detail-row" id="detail-{{ row.key }}" hidden>
+    <td colspan="6"><div class="detail-slot" tabindex="-1"></div></td>
   </tr>
 {% endmacro %}
 
@@ -90,8 +101,24 @@
         </tr>
         {% for row in view.unforecasted %}{{ cat_row(row) }}{% endfor %}
       {% endif %}
+      <tr class="subtotal-row">
+        <td>{{ _("Total expenses") }}</td>
+        {{ amount(view.exp_planned, _("Planned")) }}
+        {{ amount(view.exp_actual, _("Actual")) }}
+        {{ amount(view.exp_forecast, _("Forecast")) }}
+        {{ amount(view.exp_remaining, _("Remaining")) }}
+        <td></td>
+      </tr>
+      <tr class="subtotal-row">
+        <td>{{ _("Total income") }}</td>
+        {{ amount(view.inc_planned, _("Planned")) }}
+        {{ amount(view.inc_actual, _("Actual")) }}
+        {{ amount(view.inc_forecast, _("Forecast")) }}
+        {{ amount(view.inc_remaining, _("Remaining")) }}
+        <td></td>
+      </tr>
       <tr class="total-row">
-        <td>{{ _("TOTAL") }}</td>
+        <td>{{ _("Net") }}</td>
         {{ amount(view.total_planned, _("Planned")) }}
         {{ amount(view.total_actual, _("Actual")) }}
         {{ amount(view.total_forecast, _("Forecast")) }}

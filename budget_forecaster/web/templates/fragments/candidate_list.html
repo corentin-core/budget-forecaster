@@ -1,0 +1,24 @@
+{% set op_id = operation.unique_id %}
+<ul class="candidate-list">
+  {% for c in candidates %}
+  <li>
+    <button type="button" class="candidate"
+            hx-get="/operations/{{ op_id }}/link/iterations?target_type={{ c.kind }}&target_id={{ c.target_id }}&offset=0"
+            hx-target="#iter-slot" hx-swap="innerHTML">
+      <span class="cand-score">{{ (c.score / 100) | pct if c.score else '—' }}</span>
+      <span class="cand-desc">{{ c.description }}</span>
+      <span class="cand-amount {{ 'positive' if c.amount > 0 else 'negative' }}">{{ c.amount | signed_eur(currency) }}</span>
+      {% if c.reason %}<span class="cand-reason">{{ c.reason }}</span>{% endif %}
+    </button>
+  </li>
+  {% else %}
+  <li class="empty">{{ _("No candidate") }}</li>
+  {% endfor %}
+</ul>
+{% if hidden_count %}
+<button type="button" class="btn small show-all"
+        hx-get="/operations/{{ op_id }}/link/candidates?target_type={{ target_type }}&all=true"
+        hx-target="#candidate-list" hx-swap="innerHTML">
+  {{ _("Show all targets") }} ({{ hidden_count }})
+</button>
+{% endif %}

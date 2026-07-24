@@ -83,10 +83,10 @@ class TestConsumption:
             ratio=1.2, over=True, bad=True
         )
 
-    def test_income_under_expected_is_bad(self) -> None:
-        """Income well below expected is flagged bad, not over."""
+    def test_income_under_expected_is_not_bad(self) -> None:
+        """Under-realized income (salary not received yet) is normal, not bad."""
         result = consumption(50.0, 100.0, is_income=True)
-        assert result is not None and result.bad and not result.over
+        assert result is not None and not result.bad and not result.over
 
     def test_sign_mismatch_is_bad(self) -> None:
         """An expense where income was planned is always bad."""

@@ -1,9 +1,11 @@
 # Web app
 
-A mobile-first web interface over the same budget database as the TUI. This first
-version is read-only: it shows your balance, monthly review, operations ledger, trends,
-and connection status. Editing, sync controls, and remote access over Tailscale come in
-later versions.
+A mobile-first web interface over the same budget database as the TUI. It shows your
+balance, monthly review, operations ledger, trends, and connection status, and lets you
+categorize operations, link them to budgets or planned operations, and manage budgets
+and planned operations. Every interaction stays on the page or opens a dedicated page —
+there are no blocking pop-up dialogs. Sync controls and remote access over Tailscale
+come in later versions.
 
 ## Running the app
 
@@ -52,15 +54,60 @@ to start if neither source provides both secrets.
 
 ## Sections
 
-| Section    | What it shows                                                                           |
-| ---------- | --------------------------------------------------------------------------------------- |
-| Accueil    | Balance, available margin for the month, this-month expense health, upcoming operations |
-| Mois       | Per-category planned vs actual for one month; switch months from the URL or the arrows  |
-| Opérations | The full ledger, filterable by search text, category, month, and "uncategorized"        |
-| Tendances  | Balance evolution over time and expense breakdown by category                           |
-| Réglages   | Bank connection status, import inbox, and the margin threshold                          |
+| Section    | What it shows                                                                                |
+| ---------- | -------------------------------------------------------------------------------------------- |
+| Accueil    | Balance, available margin for the month, this-month expense health, upcoming operations      |
+| Mois       | Per-category planned vs actual for one month; switch months from the URL or the arrows       |
+| Budgets    | All budgets and planned operations, whatever month they fall in; create, edit, split, delete |
+| Opérations | The full ledger, filterable by search text, category, month, and "uncategorized"             |
+| Tendances  | Balance evolution over time and expense breakdown by category                                |
+| Réglages   | Bank connection status, import inbox, and the margin threshold                               |
 
-Navigation is a bottom bar on phones and a left sidebar on wider screens.
+Navigation is a bottom bar on phones and a left sidebar on wider screens, each tab with
+an icon.
+
+Accueil leads with the **available margin**, coloured green / amber / red against your
+safety threshold, so an at-a-glance screen tells you whether you are within budget.
+Réglages lets you edit that threshold, and holds the log-out action (reachable on
+mobile, where there is no sidebar).
+
+## Categorizing operations
+
+In Opérations, each row carries a category dropdown: change it and the row updates on
+the spot. The "N to categorize" badge on the Operations tab counts what is still
+uncategorized and drops as you go.
+
+To categorize several at once, tick the rows you want. A bar appears at the bottom with
+a category picker; choose one and apply it to the whole selection. While rows are
+selected the per-row dropdowns are disabled, so you always categorize one way at a time.
+Clear the selection to go back to per-row editing.
+
+## Linking an operation
+
+Open an operation, then "Lier…". A search box narrows the candidates, and weak matches
+stay behind a "show all" toggle so the list is short by default. The link page lists
+candidate targets ranked by how well they match, each with its match score and a hint
+such as "même montant". Pick a target and its dated occurrences appear below; the best
+match is preselected. Step the window with the arrows when the occurrence you want is
+further out. Confirm to create the link, or use "Délier" on an already-linked operation
+to remove it.
+
+## Budgets and planned operations
+
+The month drill-down and the Budgets tab both edit the same items.
+
+- **In context**: in Mois, tap a category to expand its budgets, planned operations, and
+  the operations attributed to them. Tap any of them to edit it.
+- **All of them**: the Budgets tab lists every budget and planned operation, whatever
+  month they fall in — the place to reach items that don't appear in the current month
+  (an annual budget, say). Budgets and planned operations sit under their own sub-tabs;
+  each list has a search box, a category filter, and shows only active items by default
+  (untick "active only" to see expired ones).
+
+Editing opens on its own page with a working back button. From there you set the amount,
+category, dates, and recurrence, split a recurring item from a chosen date, or delete it
+(deletion asks for a confirmation inline first). Saving returns you to wherever you came
+from.
 
 ## Consent banner
 

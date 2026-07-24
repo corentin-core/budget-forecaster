@@ -24,6 +24,7 @@ def render_template(
         "active": active,
         "alert": consent_alert(request.app.state.consent_service),
         "today": date.today(),
+        "uncat_count": request.app.state.app_service.count_uncategorized_operations(),
         **context,
     }
     return templates.TemplateResponse(request, name, ctx, status_code=status_code)
