@@ -40,6 +40,9 @@ from budget_forecaster.infrastructure.config import Config
 from budget_forecaster.infrastructure.persistence.persistent_account import (
     PersistentAccount,
 )
+from budget_forecaster.infrastructure.persistence.repository_interface import (
+    RepositoryInterface,
+)
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.forecast.forecast_service import ForecastService
 from budget_forecaster.services.import_service import ImportService
@@ -68,9 +71,10 @@ _ENV_CONFIG = "BUDGET_CONFIG"
 _PACKAGE_DIR = Path(__file__).parent
 
 
-def _build_app_service(config: Config) -> ApplicationService:
+def _build_app_service(
+    config: Config, repository: RepositoryInterface
+) -> ApplicationService:
     """Wire the services and ApplicationService (mirror of the TUI)."""
-    repository = open_repository(config)
     persistent_account = PersistentAccount(repository)
     return ApplicationService(
         persistent_account=persistent_account,
@@ -131,8 +135,10 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         # Build the repository on the serving thread so the single shared
         # SQLite connection is created and used from the same thread.
         logger.info("Starting Budget Forecaster web app")
-        app_service = _build_app_service(config)
+        repository = open_repository(config)
+        app_service = _build_app_service(config, repository)
         _compute_report(app_service)
+        app.state.repository = repository
         app.state.app_service = app_service
         yield
 

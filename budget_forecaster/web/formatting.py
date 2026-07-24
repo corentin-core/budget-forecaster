@@ -4,7 +4,7 @@ French conventions: narrow no-break space for thousands, comma decimal.
 """
 
 import unicodedata
-from datetime import date
+from datetime import date, datetime
 
 from jinja2 import Environment
 
@@ -50,6 +50,22 @@ def format_date(value: date) -> str:
     return value.strftime("%d/%m/%Y")
 
 
+def format_datetime(value: datetime) -> str:
+    """Format an aware datetime in local time as dd/mm/YYYY HH:MM."""
+    return value.astimezone().strftime("%d/%m/%Y %H:%M")
+
+
+def format_sync_error(error: str | None) -> str:
+    """Turn a recorded sync error into a short user-facing message.
+
+    The raw error ("ClassName: message") stays in storage for debugging; the UI
+    shows a translated summary, never the raw exception text.
+    """
+    if error and error.startswith("NoConsentError"):
+        return _("Consent expired or missing")
+    return _("Sync failed")
+
+
 def format_month(value: date) -> str:
     """Format a month as a translated 'Month YYYY' label."""
     return f"{_(value.strftime('%B'))} {value.year}"
@@ -91,6 +107,8 @@ def register_filters(env: Environment) -> None:
     env.filters["eur0"] = format_eur_rounded
     env.filters["signed_eur"] = format_signed_eur
     env.filters["frdate"] = format_date
+    env.filters["frdatetime"] = format_datetime
+    env.filters["sync_error"] = format_sync_error
     env.filters["month_label"] = format_month
     env.filters["pct"] = format_pct
     env.filters["category_name"] = category_name

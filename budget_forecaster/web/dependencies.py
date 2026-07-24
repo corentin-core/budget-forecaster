@@ -8,6 +8,10 @@ from budget_forecaster.exceptions import BudgetForecasterError
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent_service import (
     ConsentService,
 )
+from budget_forecaster.infrastructure.config import Config
+from budget_forecaster.infrastructure.persistence.repository_interface import (
+    RepositoryInterface,
+)
 from budget_forecaster.services.application_service import ApplicationService
 
 logger = logging.getLogger("budget_forecaster")
@@ -35,3 +39,13 @@ def refresh_forecast(app: ApplicationService) -> None:
 def get_consent_service(request: Request) -> ConsentService | None:
     """Return the consent service, or None when Enable Banking is not configured."""
     return request.app.state.consent_service
+
+
+def get_repository(request: Request) -> RepositoryInterface:
+    """Return the shared repository."""
+    return request.app.state.repository
+
+
+def get_config(request: Request) -> Config:
+    """Return the loaded configuration."""
+    return request.app.state.config

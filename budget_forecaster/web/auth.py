@@ -15,8 +15,6 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from starlette.middleware.base import RequestResponseEndpoint
 
-from budget_forecaster.web.rendering import render_template
-
 SESSION_COOKIE = "budget_session"
 _SESSION_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
 _SESSION_SALT = "budget-web-session"
@@ -102,10 +100,21 @@ async def require_session(
 router = APIRouter()
 
 
+def _render_login(request: Request, *, error: bool, status_code: int = 200) -> Response:
+    """Render the standalone login page.
+
+    Bypasses render_template: the login shell has no nav or banners, and this
+    page is pre-auth, so it must not touch the account database.
+    """
+    return request.app.state.templates.TemplateResponse(
+        request, "login.html", {"error": error}, status_code=status_code
+    )
+
+
 @router.get("/login", response_class=HTMLResponse)
 def login_form(request: Request, error: bool = False) -> Response:
     """Render the login form."""
-    return render_template(request, "login.html", active="", error=error)
+    return _render_login(request, error=error)
 
 
 @router.post("/login")
@@ -113,9 +122,7 @@ def login_submit(request: Request, password: str = Form("")) -> Response:
     """Verify the shared password and start a session on success."""
     password_hash: str = request.app.state.web_secrets.password_hash
     if not verify_password(password, password_hash):
-        return render_template(
-            request, "login.html", active="", error=True, status_code=401
-        )
+        return _render_login(request, error=True, status_code=401)
     token = issue_session(request.app.state.serializer)
     response = RedirectResponse(url="/", status_code=303)
     response.set_cookie(

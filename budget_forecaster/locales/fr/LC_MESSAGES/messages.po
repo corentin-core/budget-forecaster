@@ -1629,3 +1629,48 @@ msgstr "Total recettes"
 
 msgid "Search a budget or operation…"
 msgstr "Rechercher un budget ou une opération…"
+
+msgid "Sync now"
+msgstr "Synchroniser"
+
+msgid "Recent syncs"
+msgstr "Synchronisations récentes"
+
+msgid "When"
+msgstr "Quand"
+
+msgid "Result"
+msgstr "Résultat"
+
+msgid "Dupes"
+msgstr "Doublons"
+
+msgid "Detail"
+msgstr "Détail"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Failed"
+msgstr "Échec"
+
+msgid "Added"
+msgstr "Ajouts"
+
+msgid "before renewal"
+msgstr "avant renouvellement"
+
+msgid "Consent expired or missing"
+msgstr "Consentement expiré ou absent"
+
+msgid "Sync failed"
+msgstr "Échec de la synchronisation"
+
+msgid "No sync yet"
+msgstr "Aucune synchronisation"
+
+msgid "Last sync failed"
+msgstr "Dernière synchronisation en échec"
+
+msgid "Details"
+msgstr "Détails"

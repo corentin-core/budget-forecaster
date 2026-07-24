@@ -40,6 +40,12 @@
         <a href="/settings">{{ _("Renew") }}</a>
       </div>
       {% endif %}
+      {% if sync_alert %}
+      <div class="banner banner-failed">
+        {{ _("Last sync failed") }} ({{ sync_alert.ran_at | frdatetime }})
+        <a href="/settings">{{ _("Details") }}</a>
+      </div>
+      {% endif %}
       {% block content %}{% endblock %}
     </main>
 
