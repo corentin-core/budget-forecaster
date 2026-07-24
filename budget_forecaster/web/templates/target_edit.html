@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% set is_planned = form.is_planned %}
+{% set label = _("planned operation") if is_planned else _("budget") %}
+{% block title %}{{ (_("New") if form.is_new else _("Edit")) }} — {{ label }}{% endblock %}
+
+{% macro duration_fields(name, value, unit) %}
+  <div class="duration">
+    <input type="number" name="{{ name }}_value" min="1" value="{{ value }}"
+           aria-label="{{ _('Value') }}" />
+    <select name="{{ name }}_unit" aria-label="{{ _('Unit') }}">
+      <option value="days"   {{ 'selected' if unit == 'days' }}>{{ _("Days") }}</option>
+      <option value="weeks"  {{ 'selected' if unit == 'weeks' }}>{{ _("Weeks") }}</option>
+      <option value="months" {{ 'selected' if unit == 'months' }}>{{ _("Months") }}</option>
+      <option value="years"  {{ 'selected' if unit == 'years' }}>{{ _("Years") }}</option>
+    </select>
+  </div>
+{% endmacro %}
+
+{% block content %}
+<section class="card form-page">
+  <h1>{{ (_("New") if form.is_new else _("Edit")) }} — {{ label }}</h1>
+
+  {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
+
+  <form id="target-form" method="post"
+        action="/targets/{{ form.kind }}{{ ('/' ~ form.target_id) if not form.is_new }}">
+    <input type="hidden" name="return_to" value="{{ return_to }}" />
+
+    <label class="field">
+      <span>{{ _("Description") }}</span>
+      <input type="text" name="description" required value="{{ form.description }}" />
+    </label>
+
+    <label class="field">
+      <span>{{ _("Amount") }} ({{ currency }})</span>
+      <input type="number" name="amount" step="0.01" required value="{{ form.amount }}" />
+    </label>
+
+    <label class="field">
+      <span>{{ _("Category") }}</span>
+      <select name="category">
+        {% for name, display in categories %}
+          <option value="{{ name }}" {{ 'selected' if form.category == name }}>{{ display }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label class="field">
+      <span>{{ _("Start date") }}</span>
+      <input type="date" name="start_date" required value="{{ form.start_date }}" />
+    </label>
+
+    {% if form.has_duration %}
+    <div class="field">
+      <span>{{ _("Duration") }}</span>
+      {{ duration_fields("duration", form.duration_value, form.duration_unit) }}
+    </div>
+    {% endif %}
+
+    <div class="check-field">
+      <label>
+        <input type="checkbox" name="recurring" id="recurring-toggle" value="yes"
+               data-toggles=".recurring-only" {{ 'checked' if form.recurring }} />
+        {{ _("Recurring") }}
+      </label>
+    </div>
+
+    <div class="field recurring-only">
+      <span>{{ _("Period") }}</span>
+      {{ duration_fields("period", form.period_value, form.period_unit) }}
+    </div>
+
+    <label class="field recurring-only">
+      <span>{{ _("End date") }}</span>
+      <input type="date" name="end_date" value="{{ form.end_date }}" />
+    </label>
+
+    {% if is_planned %}
+    <details class="advanced">
+      <summary>{{ _("Matching (advanced)") }}</summary>
+      <label class="field">
+        <span>{{ _("Keywords") }}</span>
+        <input type="text" name="keywords" value="{{ form.keywords }}"
+               placeholder="{{ _('Comma separated') }}" />
+      </label>
+      <label class="field">
+        <span>{{ _("Date tolerance (days)") }}</span>
+        <input type="number" name="approx_days" min="0" value="{{ form.approx_days }}" />
+      </label>
+      <label class="field">
+        <span>{{ _("Amount tolerance") }}</span>
+        <input type="number" name="approx_ratio" min="0" step="0.01" value="{{ form.approx_ratio }}" />
+      </label>
+    </details>
+    {% endif %}
+
+  </form>
+
+  {% if not form.is_new and form.can_split %}
+  <details class="split">
+    <summary class="btn">{{ _("Split from a date") }}</summary>
+    <form method="post" action="/targets/{{ form.kind }}/{{ form.target_id }}/split">
+      <input type="hidden" name="return_to" value="{{ return_to }}" />
+      <p class="hint">{{ _("New values apply from the split date onward.") }}</p>
+      <label class="field">
+        <span>{{ _("Split date") }}</span>
+        <input type="date" name="split_date" required />
+      </label>
+      <label class="field">
+        <span>{{ _("New amount") }} ({{ _("optional") }})</span>
+        <input type="number" name="split_amount" step="0.01" />
+      </label>
+      <div class="field">
+        <span>{{ _("New period") }}</span>
+        {{ duration_fields("split_period", form.period_value, form.period_unit) }}
+      </div>
+      {% if form.has_duration %}
+      <div class="field">
+        <span>{{ _("New duration") }}</span>
+        {{ duration_fields("split_duration", form.duration_value, form.duration_unit) }}
+      </div>
+      {% endif %}
+      <button type="submit" class="btn">{{ _("Split") }}</button>
+    </form>
+  </details>
+  {% endif %}
+
+  <div class="form-actions">
+    {% if not form.is_new %}
+    <form method="post" action="/targets/{{ form.kind }}/{{ form.target_id }}/delete"
+          class="delete-form" data-confirm>
+      <input type="hidden" name="return_to" value="{{ return_to }}" />
+      <button type="button" class="btn danger" data-delete-trigger>{{ _("Delete") }}</button>
+      <span class="confirm-cluster" hidden>
+        <span>{{ _("Delete?") }}</span>
+        <button type="button" class="btn" data-delete-cancel>{{ _("Cancel") }}</button>
+        <button type="submit" class="btn danger">{{ _("Confirm") }}</button>
+      </span>
+    </form>
+    {% endif %}
+    <span class="actions-spacer"></span>
+    <a class="btn" href="{{ return_to }}">{{ _("Cancel") }}</a>
+    <button type="submit" class="btn primary" form="target-form">{{ _("Save") }}</button>
+  </div>
+</section>
+
+<script src="/static/targets.js" defer></script>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Link operation") }} — Budget Forecaster{% endblock %}
+{% block content %}
+<section class="card link-page">
+  <p class="back"><a href="{{ return_to }}">‹ {{ _("Back") }}</a></p>
+  <h1>{{ _("Link operation") }}</h1>
+
+  <div class="op-summary">
+    <span class="op-date">{{ operation.operation_date | frdate }}</span>
+    <span class="op-desc">{{ operation.description }}</span>
+    <span class="op-amount {{ 'positive' if operation.amount > 0 else 'negative' }}">
+      {{ operation.amount | signed_eur(currency) }}</span>
+  </div>
+
+  {% if current %}
+  <div class="current-link">
+    {{ _("Currently linked to") }}: <strong>{{ current.target_name }}</strong>
+    <form method="post" action="/operations/{{ operation.unique_id }}/unlink" class="inline">
+      <button type="submit" class="btn danger small">{{ _("Unlink") }}</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <div class="type-toggle" role="tablist">
+    <a role="tab" class="btn {{ 'primary' if target_type == 'planned' }}"
+       href="/operations/{{ operation.unique_id }}/link?target_type=planned&return_to={{ return_to | urlencode }}">{{ _("Planned operations") }}</a>
+    <a role="tab" class="btn {{ 'primary' if target_type == 'budget' }}"
+       href="/operations/{{ operation.unique_id }}/link?target_type=budget&return_to={{ return_to | urlencode }}">{{ _("Budgets") }}</a>
+  </div>
+
+  <input type="search" class="candidate-search" name="q"
+         placeholder="{{ _('Search a budget or operation…') }}"
+         hx-get="/operations/{{ operation.unique_id }}/link/candidates?target_type={{ target_type }}"
+         hx-target="#candidate-list" hx-swap="innerHTML"
+         hx-trigger="keyup changed delay:300ms, search" />
+
+  <div class="link-cols">
+    <div id="candidate-list">
+      {% include "fragments/candidate_list.html" %}
+    </div>
+
+    <div id="iter-slot" class="iter-slot" tabindex="-1">
+      <p class="hint">{{ _("Pick a budget or operation, then an occurrence.") }}</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

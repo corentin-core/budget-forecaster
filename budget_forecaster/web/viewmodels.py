@@ -8,14 +8,27 @@ from datetime import date, datetime
 from typing import NamedTuple
 
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 
+from budget_forecaster.core.date_range import (
+    DateRangeInterface,
+    RecurringDateRange,
+    RecurringDay,
+)
+from budget_forecaster.core.duration import DurationUnit, relativedelta_to_unit
+from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.forecast.forecast_service import (
     CategoryBudget,
+    ForecastSourceType,
     MarginInfo,
     MonthlySummary,
 )
 from budget_forecaster.web.formatting import category_name
+
+Target = Budget | PlannedOperation
 
 _CONSUMPTION_TOLERANCE = 1.01  # 1% over before it counts as over budget
 
@@ -59,10 +72,11 @@ def consumption(
     over = ratio > _CONSUMPTION_TOLERANCE
     if (planned > 0) != (actual > 0) and actual != 0:
         bad = planned > 0 > actual
+    elif is_income:
+        # Under-realized income (salary not received yet) is normal, not "bad".
+        bad = False
     else:
-        bad = (over and not is_income) or (
-            not over and is_income and ratio < 1.0 / _CONSUMPTION_TOLERANCE
-        )
+        bad = over
     return Consumption(ratio=ratio, over=over, bad=bad)
 
 
@@ -88,6 +102,14 @@ class MonthView(NamedTuple):
     planned_expenses: tuple[CategoryRow, ...]
     planned_income: tuple[CategoryRow, ...]
     unforecasted: tuple[CategoryRow, ...]
+    exp_planned: float
+    exp_actual: float
+    exp_forecast: float
+    exp_remaining: float
+    inc_planned: float
+    inc_actual: float
+    inc_forecast: float
+    inc_remaining: float
     total_planned: float
     total_actual: float
     total_forecast: float
@@ -135,6 +157,23 @@ def _find_summary(
     return None
 
 
+class _SideTotals(NamedTuple):
+    planned: float
+    actual: float
+    forecast: float
+    remaining: float
+
+
+def _side_totals(rows: list[CategoryRow], *, is_income: bool) -> _SideTotals:
+    side = [r for r in rows if r.is_income == is_income]
+    return _SideTotals(
+        planned=sum(r.planned for r in side),
+        actual=sum(r.actual for r in side),
+        forecast=sum(r.forecast for r in side),
+        remaining=sum(r.remaining for r in side),
+    )
+
+
 def build_month_view(app: ApplicationService, month: date) -> MonthView:
     """Assemble the month review for the given first-of-month date."""
     summary = _find_summary(app.get_monthly_summary(), month)
@@ -146,9 +185,9 @@ def build_month_view(app: ApplicationService, month: date) -> MonthView:
     planned_income = _sorted_rows([r for r in forecasted if r.is_income])
     unforecasted = _sorted_rows([r for r in rows if not r.is_forecasted])
 
-    total_planned = sum(r.planned for r in rows)
-    total_actual = sum(r.actual for r in rows)
-    total_forecast = sum(r.forecast for r in rows)
+    exp = _side_totals(rows, is_income=False)
+    inc = _side_totals(rows, is_income=True)
+    total_forecast = exp.forecast + inc.forecast
 
     show_margin = month >= date.today().replace(day=1)
     margin = app.get_available_margin(month) if show_margin else None
@@ -160,12 +199,295 @@ def build_month_view(app: ApplicationService, month: date) -> MonthView:
         planned_expenses=planned_expenses,
         planned_income=planned_income,
         unforecasted=unforecasted,
-        total_planned=total_planned,
-        total_actual=total_actual,
+        exp_planned=exp.planned,
+        exp_actual=exp.actual,
+        exp_forecast=exp.forecast,
+        exp_remaining=exp.remaining,
+        inc_planned=inc.planned,
+        inc_actual=inc.actual,
+        inc_forecast=inc.forecast,
+        inc_remaining=inc.remaining,
+        total_planned=exp.planned + inc.planned,
+        total_actual=exp.actual + inc.actual,
         total_forecast=total_forecast,
-        total_remaining=total_forecast - total_actual,
+        total_remaining=total_forecast - exp.actual - inc.actual,
         margin=margin,
         show_margin=show_margin and margin is not None,
+    )
+
+
+class TargetFormView(NamedTuple):
+    """Edit-form field values for a budget or planned operation."""
+
+    kind: str  # "budget" | "planned"
+    is_new: bool
+    is_planned: bool
+    has_duration: bool  # budgets carry an occurrence duration; planned ops don't
+    target_id: int | None
+    description: str
+    amount: str
+    category: str  # Category member name
+    start_date: str
+    duration_value: str
+    duration_unit: str
+    recurring: bool
+    period_value: str
+    period_unit: str
+    end_date: str
+    can_split: bool
+    keywords: str
+    approx_days: str
+    approx_ratio: str
+
+
+def _amount_field(value: float) -> str:
+    return f"{float(value):g}"
+
+
+def _duration_fields(rd: relativedelta | None) -> tuple[str, str]:
+    value, unit = relativedelta_to_unit(rd or relativedelta(months=1))
+    return str(value), unit.value
+
+
+def _end_date_field(range_: DateRangeInterface) -> str:
+    if isinstance(range_, (RecurringDateRange, RecurringDay)):
+        if range_.last_date != date.max:
+            return range_.last_date.strftime("%Y-%m-%d")
+    return ""
+
+
+def build_target_form(
+    kind: str, target: Target | None, *, default_category: str
+) -> TargetFormView:
+    """Assemble the edit-form values for a new or existing target."""
+    is_new = target is None or target.id is None
+    is_planned = kind == "planned"
+    recurring_type = RecurringDay if is_planned else RecurringDateRange
+    recurring = target is not None and isinstance(target.date_range, recurring_type)
+
+    if target is None:
+        duration_value, duration_unit = _duration_fields(None)
+        period_value, period_unit = _duration_fields(None)
+        return TargetFormView(
+            kind=kind,
+            is_new=True,
+            is_planned=is_planned,
+            has_duration=not is_planned,
+            target_id=None,
+            description="",
+            amount="100" if is_planned else "-100",
+            category=default_category,
+            start_date=date.today().strftime("%Y-%m-%d"),
+            duration_value=duration_value,
+            duration_unit=duration_unit,
+            recurring=False,
+            period_value=period_value,
+            period_unit=period_unit,
+            end_date="",
+            can_split=False,
+            keywords="",
+            approx_days="5",
+            approx_ratio="0.05",
+        )
+
+    period = (
+        target.date_range.period
+        if isinstance(target.date_range, (RecurringDateRange, RecurringDay))
+        else None
+    )
+    period_value, period_unit = _duration_fields(period)
+    duration_value, duration_unit = _duration_fields(
+        None if is_planned else target.date_range.duration
+    )
+    keywords, approx_days, approx_ratio = "", "5", "0.05"
+    if isinstance(target, PlannedOperation):
+        keywords = ", ".join(sorted(target.matcher.description_hints))
+        approx_days = str(
+            int(target.matcher.approximation_date_range.total_seconds() / 86400)
+        )
+        approx_ratio = str(target.matcher.approximation_amount_ratio)
+
+    return TargetFormView(
+        kind=kind,
+        is_new=is_new,
+        is_planned=is_planned,
+        has_duration=not is_planned,
+        target_id=target.id,
+        description=target.description,
+        amount=_amount_field(target.amount),
+        category=target.category.name,
+        start_date=target.date_range.start_date.strftime("%Y-%m-%d"),
+        duration_value=duration_value,
+        duration_unit=duration_unit,
+        recurring=recurring,
+        period_value=period_value,
+        period_unit=period_unit,
+        end_date=_end_date_field(target.date_range),
+        can_split=not is_new and recurring,
+        keywords=keywords,
+        approx_days=approx_days,
+        approx_ratio=approx_ratio,
+    )
+
+
+def target_form_from_submitted(
+    kind: str, submitted: dict[str, str], target_id: int | None
+) -> TargetFormView:
+    """Rebuild the form view from raw submitted values, so a validation error
+    re-renders with what the user typed rather than the stored target."""
+    get = submitted.get
+    return TargetFormView(
+        kind=kind,
+        is_new=target_id is None,
+        is_planned=kind == "planned",
+        has_duration=kind != "planned",
+        target_id=target_id,
+        description=get("description", ""),
+        amount=get("amount", ""),
+        category=get("category", ""),
+        start_date=get("start_date", ""),
+        duration_value=get("duration_value", "1"),
+        duration_unit=get("duration_unit", "months"),
+        recurring=get("recurring") == "yes",
+        period_value=get("period_value", "1"),
+        period_unit=get("period_unit", "months"),
+        end_date=get("end_date", ""),
+        can_split=False,
+        keywords=get("keywords", ""),
+        approx_days=get("approx_days", "5"),
+        approx_ratio=get("approx_ratio", "0.05"),
+    )
+
+
+class TargetRow(NamedTuple):
+    """One line in the /targets management list."""
+
+    kind: str  # "budget" | "planned"
+    id: int
+    description: str
+    amount: float
+    category: str
+    period_label: str
+    range_label: str
+    active: bool  # still running (not fully in the past)
+
+
+def _period_label(range_: DateRangeInterface) -> str:
+    if not isinstance(range_, (RecurringDateRange, RecurringDay)):
+        return _("one-off")
+    value, unit = relativedelta_to_unit(range_.period)
+    unit_word = {
+        DurationUnit.DAYS: _("days"),
+        DurationUnit.WEEKS: _("weeks"),
+        DurationUnit.MONTHS: _("months"),
+        DurationUnit.YEARS: _("years"),
+    }[unit]
+    return f"{value} {unit_word}"
+
+
+def _range_label(range_: DateRangeInterface) -> str:
+    if not isinstance(range_, (RecurringDateRange, RecurringDay)):
+        return range_.start_date.strftime("%d/%m/%Y")
+    start = range_.start_date.strftime("%m/%Y")
+    if range_.last_date == date.max:
+        return _("since {}").format(start)
+    return f"{start} → {range_.last_date.strftime('%m/%Y')}"
+
+
+def _target_row(kind: str, target: Target) -> TargetRow:
+    return TargetRow(
+        kind=kind,
+        id=target.id or 0,
+        description=target.description,
+        amount=float(target.amount),
+        category=target.category.value,
+        period_label=_period_label(target.date_range),
+        range_label=_range_label(target.date_range),
+        active=target.date_range.last_date >= date.today(),
+    )
+
+
+def build_target_list(
+    app: ApplicationService,
+) -> tuple[tuple[TargetRow, ...], tuple[TargetRow, ...]]:
+    """Return (budgets, planned operations) as management-list rows."""
+    budgets = tuple(_target_row("budget", b) for b in app.get_all_budgets())
+    planned = tuple(_target_row("planned", p) for p in app.get_all_planned_operations())
+    return budgets, planned
+
+
+class SourceRow(NamedTuple):
+    """A planned source (budget or planned op) inside a category drill-down."""
+
+    kind: str  # "budget" | "planned"
+    source_id: int | None
+    description: str
+    amount: float
+    periodicity: str
+
+
+class AttributedOpRow(NamedTuple):
+    """An operation attributed to a category inside the drill-down."""
+
+    operation_id: int
+    operation_date: date
+    description: str
+    amount: float
+    link_target_name: str
+    cross_month_annotation: str
+
+
+class CategoryDetailView(NamedTuple):
+    """The Mois drill-down: a category's planned sources + attributed operations."""
+
+    category: str  # Category value, as used in the URL
+    category_key: str  # Category member name, for prefilling the add form
+    month: date
+    sources: tuple[SourceRow, ...]
+    operations: tuple[AttributedOpRow, ...]
+    total_planned: float
+    total_actual: float
+
+
+def build_category_detail(
+    app: ApplicationService, category: str, month: date
+) -> CategoryDetailView:
+    """Assemble the drill-down for one category in one month."""
+    detail = app.get_category_detail(category, month)
+    category_key = detail["category"].name
+    sources = tuple(
+        SourceRow(
+            kind=(
+                "planned"
+                if s["forecast_source_type"] is ForecastSourceType.PLANNED_OPERATION
+                else "budget"
+            ),
+            source_id=s["source_id"],
+            description=s["description"],
+            amount=s["amount"],
+            periodicity=s["periodicity"],
+        )
+        for s in detail["planned_sources"]
+    )
+    operations = tuple(
+        AttributedOpRow(
+            operation_id=op["operation_id"],
+            operation_date=op["operation_date"],
+            description=op["description"],
+            amount=op["amount"],
+            link_target_name=op["link_target_name"],
+            cross_month_annotation=op["cross_month_annotation"],
+        )
+        for op in detail["operations"]
+    )
+    return CategoryDetailView(
+        category=category,
+        category_key=category_key,
+        month=month,
+        sources=sources,
+        operations=operations,
+        total_planned=detail["total_planned"],
+        total_actual=detail["total_actual"],
     )
 
 

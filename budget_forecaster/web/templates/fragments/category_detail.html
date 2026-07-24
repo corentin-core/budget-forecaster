@@ -1,0 +1,48 @@
+{% set month_str = detail.month.strftime('%Y-%m') %}
+{% set return_to = '/month/' ~ month_str ~ '?open=' ~ detail.category %}
+{% set rt = return_to | urlencode %}
+<div class="cat-detail">
+  <div class="cat-detail-head">
+    <h3>{{ _("Budgets & planned") }}</h3>
+    <span class="add-menu">
+      <a class="btn small" href="/targets/budget/new?category={{ detail.category_key }}&return_to={{ rt }}">{{ _("+ Budget") }}</a>
+      <a class="btn small" href="/targets/planned/new?category={{ detail.category_key }}&return_to={{ rt }}">{{ _("+ Planned") }}</a>
+    </span>
+  </div>
+
+  {% if detail.sources %}
+  <ul class="source-list">
+    {% for s in detail.sources %}
+    <li>
+      <a href="/targets/{{ s.kind }}/{{ s.source_id }}?return_to={{ rt }}">
+        <span class="src-desc">{{ s.description }}</span>
+        <span class="src-meta">{{ s.amount | signed_eur(currency) }} · {{ s.periodicity }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">{{ _("No budget or planned operation in this category") }}</p>
+  {% endif %}
+
+  <h3>{{ _("Attributed operations") }}</h3>
+  {% if detail.operations %}
+  <ul class="attributed-list">
+    {% for op in detail.operations %}
+    <li>
+      <a href="/operations/{{ op.operation_id }}?return_to={{ rt }}">
+        <span class="op-date">{{ op.operation_date | frdate }}</span>
+        <span class="op-desc">
+          {{ op.description }}
+          {% if op.cross_month_annotation %}<em class="annot">({{ op.cross_month_annotation }})</em>{% endif %}
+          {% if op.link_target_name %}<span class="link-tag">→ {{ op.link_target_name }}</span>{% endif %}
+        </span>
+        <span class="op-amount {{ 'positive' if op.amount > 0 else 'negative' }}">{{ op.amount | signed_eur(currency) }}</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">{{ _("No operation attributed this month") }}</p>
+  {% endif %}
+</div>

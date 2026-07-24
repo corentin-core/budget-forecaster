@@ -1,0 +1,36 @@
+{% set base = "/operations/" ~ operation_id ~ "/link/iterations" %}
+<div class="iter-picker">
+  <div class="iter-nav">
+    <button type="button" class="btn small"
+            hx-get="{{ base }}?target_type={{ target_type }}&target_id={{ target_id }}&offset={{ offset - 1 }}"
+            hx-target="#iter-slot" hx-swap="innerHTML">‹</button>
+    <span class="iter-window">{{ window }}</span>
+    <button type="button" class="btn small"
+            hx-get="{{ base }}?target_type={{ target_type }}&target_id={{ target_id }}&offset={{ offset + 1 }}"
+            hx-target="#iter-slot" hx-swap="innerHTML">›</button>
+  </div>
+
+  <p class="iter-target">→ {{ target_name }}</p>
+
+  {% if iterations %}
+  <form method="post" action="/operations/{{ operation_id }}/link">
+    <input type="hidden" name="target_type" value="{{ target_type }}" />
+    <input type="hidden" name="target_id" value="{{ target_id }}" />
+    <ul class="iter-list">
+      {% for it in iterations %}
+      <li>
+        <label>
+          <input type="radio" name="iteration_date" value="{{ it.iso }}"
+                 {{ 'checked' if it.iso == best_iso }} />
+          <span class="iter-date">{{ it.label }}</span>
+          <span class="iter-score">{{ (it.score / 100) | pct }}</span>
+        </label>
+      </li>
+      {% endfor %}
+    </ul>
+    <button type="submit" class="btn primary">{{ _("Link") }}</button>
+  </form>
+  {% else %}
+  <p class="empty">{{ _("No iteration in this period") }}</p>
+  {% endif %}
+</div>

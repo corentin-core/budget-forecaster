@@ -1,17 +1,21 @@
-"""Opérations: the filterable, paginated ledger (read-only)."""
+"""Opérations: the filterable ledger plus inline/bulk categorize and linking."""
 
 from datetime import date
 from typing import NamedTuple
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Request
-from fastapi.responses import Response
+from fastapi import APIRouter, Depends, Query, Request
+from fastapi.responses import RedirectResponse, Response
 
 from budget_forecaster.core.types import Category, LinkType
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.exceptions import BudgetForecasterError
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.operation.operation_service import OperationFilter
-from budget_forecaster.web.dependencies import get_app_service
+from budget_forecaster.web import linking
+from budget_forecaster.web.dependencies import get_app_service, refresh_forecast
+from budget_forecaster.web.formatting import sorted_categories
+from budget_forecaster.web.redirects import safe_local_path
 from budget_forecaster.web.rendering import render_template
 
 router = APIRouter()
@@ -132,10 +136,205 @@ async def list_operations(
         template,
         active="operations",
         rows=rows,
-        categories=tuple(Category),
+        categories=sorted_categories(),
         filters=filters,
         currency=app.currency,
         total=total,
         query=_query(filters),
         next_offset=next_offset if next_offset < total else None,
+    )
+
+
+def _safe_back(value: str) -> str:
+    """Only allow same-app relative paths as a back link."""
+    return safe_local_path(value, "/operations")
+
+
+@router.get("/operations/{operation_id}")
+async def operation_detail(
+    operation_id: int,
+    request: Request,
+    app: ApplicationService = Depends(get_app_service),
+    return_to: str = "/operations",
+) -> Response:
+    """Render the operation detail page."""
+    operation = app.get_operation_by_id(operation_id)
+    return render_template(
+        request,
+        "operation_detail.html",
+        active="operations",
+        operation=operation,
+        current=linking.current_link(app, operation_id),
+        currency=app.currency,
+        return_to=_safe_back(return_to),
+    )
+
+
+@router.get("/operations/{operation_id}/link")
+async def link_page(
+    operation_id: int,
+    request: Request,
+    app: ApplicationService = Depends(get_app_service),
+    target_type: str = "planned",
+    return_to: str = "/operations",
+) -> Response:
+    """Render the link page: operation info + score-ranked candidates."""
+    operation = app.get_operation_by_id(operation_id)
+    candidates = linking.build_candidates(app, operation, target_type)
+    shown, hidden = linking.filter_candidates(candidates, "", False)
+    return render_template(
+        request,
+        "link.html",
+        active="operations",
+        operation=operation,
+        target_type=target_type,
+        candidates=shown,
+        hidden_count=hidden,
+        current=linking.current_link(app, operation_id),
+        currency=app.currency,
+        return_to=_safe_back(return_to),
+    )
+
+
+@router.get("/operations/{operation_id}/link/candidates")
+async def link_candidates(
+    operation_id: int,
+    request: Request,
+    app: ApplicationService = Depends(get_app_service),
+    target_type: str = "planned",
+    q: str = "",
+    show_all: bool = Query(default=False, alias="all"),
+) -> Response:
+    """Return the filtered candidate list fragment (search / show-all)."""
+    operation = app.get_operation_by_id(operation_id)
+    candidates = linking.build_candidates(app, operation, target_type)
+    shown, hidden = linking.filter_candidates(candidates, q, show_all)
+    return render_template(
+        request,
+        "fragments/candidate_list.html",
+        active="operations",
+        operation=operation,
+        candidates=shown,
+        hidden_count=hidden,
+        target_type=target_type,
+        currency=app.currency,
+    )
+
+
+@router.get("/operations/{operation_id}/link/iterations")
+async def link_iterations(
+    operation_id: int,
+    request: Request,
+    app: ApplicationService = Depends(get_app_service),
+    target_type: str = "planned",
+    target_id: int = 0,
+    offset: int = 0,
+) -> Response:
+    """Render the iteration picker fragment for a chosen target."""
+    operation = app.get_operation_by_id(operation_id)
+    target = linking.target_object(app, target_type, target_id)
+    window, iterations, best_iso = linking.build_iterations(operation, target, offset)
+    return render_template(
+        request,
+        "fragments/link_iterations.html",
+        active="operations",
+        operation_id=operation_id,
+        target_type=target_type,
+        target_id=target_id,
+        offset=offset,
+        window=window,
+        iterations=iterations,
+        best_iso=best_iso,
+        target_name=target.description,
+    )
+
+
+@router.post("/operations/{operation_id}/link")
+async def create_link(
+    operation_id: int,
+    request: Request,
+    app: ApplicationService = Depends(get_app_service),
+) -> Response:
+    """Create a manual link to the chosen target iteration."""
+    form = await request.form()
+    target_type = str(form.get("target_type", "planned"))
+    back = RedirectResponse(url=f"/operations/{operation_id}/link", status_code=303)
+    try:
+        target_id = int(str(form.get("target_id", "")))
+        iteration_date = date.fromisoformat(str(form.get("iteration_date", "")))
+        operation = app.get_operation_by_id(operation_id)
+        target = linking.target_object(app, target_type, target_id)
+    except (ValueError, BudgetForecasterError):
+        return back
+    app.create_manual_link(operation, target, iteration_date)
+    refresh_forecast(app)
+    return RedirectResponse(url="/operations", status_code=303)
+
+
+@router.post("/operations/{operation_id}/unlink")
+async def unlink(
+    operation_id: int,
+    app: ApplicationService = Depends(get_app_service),
+) -> Response:
+    """Remove the operation's link."""
+    app.delete_link(operation_id)
+    refresh_forecast(app)
+    return RedirectResponse(url="/operations", status_code=303)
+
+
+@router.post("/operations/{operation_id}/categorize")
+async def categorize_one(
+    operation_id: int,
+    request: Request,
+    app: ApplicationService = Depends(get_app_service),
+) -> Response:
+    """Categorize a single operation inline; swap its row + refresh the badge."""
+    form = await request.form()
+    if (category := _category(str(form.get("category", "")))) is None:
+        return Response(status_code=400)
+    app.categorize_operations((operation_id,), category)
+    app.save_operation_changes()
+    refresh_forecast(app)
+    row = _rows(app, (app.get_operation_by_id(operation_id),))[0]
+    return render_template(
+        request,
+        "fragments/row_and_badge.html",
+        active="operations",
+        row=row,
+        categories=sorted_categories(),
+        currency=app.currency,
+    )
+
+
+@router.post("/operations/categorize")
+async def categorize_bulk(
+    request: Request,
+    app: ApplicationService = Depends(get_app_service),
+    filters: LedgerFilters = Depends(get_filters),
+) -> Response:
+    """Categorize the selected operations; re-render the ledger + badge."""
+    form = await request.form()
+    category = _category(str(form.get("bulk_category", "")))
+    ids = tuple(
+        int(i)
+        for i in form.getlist("ids")
+        if isinstance(i, str) and i.lstrip("-").isdigit()
+    )
+    if category is None or not ids:
+        return RedirectResponse(url="/operations", status_code=303)
+    app.categorize_operations(ids, category)
+    app.save_operation_changes()
+    refresh_forecast(app)
+    matches = app.get_operations(filters.criteria)
+    return render_template(
+        request,
+        "fragments/area_and_badge.html",
+        active="operations",
+        rows=_rows(app, matches[:_PAGE_SIZE]),
+        categories=sorted_categories(),
+        filters=filters,
+        currency=app.currency,
+        total=len(matches),
+        query=_query(filters),
+        next_offset=_PAGE_SIZE if _PAGE_SIZE < len(matches) else None,
     )

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ operation.description }} — Budget Forecaster{% endblock %}
+{% block content %}
+<section class="card op-detail">
+  <p class="back"><a href="{{ return_to }}">‹ {{ _("Back") }}</a></p>
+  <h1>{{ operation.description }}</h1>
+
+  <dl class="detail-grid">
+    <dt>{{ _("Date") }}</dt>
+    <dd>{{ operation.operation_date | frdate }}</dd>
+    <dt>{{ _("Amount") }}</dt>
+    <dd class="{{ 'positive' if operation.amount > 0 else 'negative' }}">{{ operation.amount | signed_eur(currency) }}</dd>
+    <dt>{{ _("Category") }}</dt>
+    <dd>{{ operation.category.value | category_name }}</dd>
+    <dt>{{ _("Link") }}</dt>
+    <dd>
+      {% if current %}
+        {{ current.target_name }}
+        <form method="post" action="/operations/{{ operation.unique_id }}/unlink" class="inline">
+          <button type="submit" class="btn danger small">{{ _("Unlink") }}</button>
+        </form>
+      {% else %}
+        {{ _("Not linked") }}
+      {% endif %}
+    </dd>
+  </dl>
+
+  <p class="actions">
+    <a class="btn primary" href="/operations/{{ operation.unique_id }}/link?return_to={{ return_to | urlencode }}">{{ _("Link…") }}</a>
+  </p>
+</section>
+{% endblock %}
