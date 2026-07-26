@@ -1,6 +1,7 @@
 """Main module for the Budget Forecaster application."""
 
 import argparse
+import getpass
 import logging
 import sys
 from pathlib import Path
@@ -21,6 +22,7 @@ from budget_forecaster.infrastructure.bank_sources.enable_banking.sync_runner im
 from budget_forecaster.infrastructure.bootstrap import open_repository
 from budget_forecaster.infrastructure.config import Config, EnableBankingConfig
 from budget_forecaster.tui.app import run_app
+from budget_forecaster.web.auth import hash_password
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +101,23 @@ def _run_consent_status(config_path: Path) -> None:
     print(f"Consent {state.status.value}, valid until {state.valid_until.date()}.")
 
 
+def _run_hash_password() -> None:
+    """Prompt for a password and print its hash for the web app secret."""
+    try:
+        password = getpass.getpass("Password: ")
+        confirm = getpass.getpass("Confirm: ")
+    except (EOFError, KeyboardInterrupt):
+        print("\nAborted.", file=sys.stderr)
+        sys.exit(1)
+    if password != confirm:
+        print("Passwords do not match.", file=sys.stderr)
+        sys.exit(1)
+    if not password:
+        print("Password must not be empty.", file=sys.stderr)
+        sys.exit(1)
+    print(hash_password(password))
+
+
 def main() -> None:
     """Entry point: launch the TUI, or run a subcommand such as sync."""
     default_config_path = Path("~/.config/budget-forecaster/config.yaml").expanduser()
@@ -118,7 +137,15 @@ def main() -> None:
     subparsers.add_parser(
         "consent-status", help="Show the Enable Banking consent status and expiry"
     )
+    subparsers.add_parser(
+        "hash-password", help="Hash a web app password for BUDGET_WEB_PASSWORD_HASH"
+    )
     args = parser.parse_args()
+
+    # Config-independent: no config file needed to hash a password.
+    if args.command == "hash-password":
+        _run_hash_password()
+        return
 
     config_path = args.config.expanduser()
 

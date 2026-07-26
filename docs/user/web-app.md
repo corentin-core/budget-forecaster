@@ -4,8 +4,8 @@ A mobile-first web interface over the same budget database as the TUI. It shows 
 balance, monthly review, operations ledger, trends, and connection status, and lets you
 categorize operations, link them to budgets or planned operations, and manage budgets
 and planned operations. Every interaction stays on the page or opens a dedicated page —
-there are no blocking pop-up dialogs. Sync controls and remote access over Tailscale
-come in later versions.
+there are no blocking pop-up dialogs. To run it as a background service reachable from
+your phone and other PCs over Tailscale, see the [deployment guide](deployment.md).
 
 ## Running the app
 
@@ -35,10 +35,11 @@ configure on the phones and PCs that connect.
 The server needs two secrets: a signing key for the session cookie and the password
 hash.
 
-Generate the password hash once from your chosen password:
+Generate the password hash once (prompts for the password, keeps it off your shell
+history):
 
 ```bash
-python -c "from budget_forecaster.web.auth import hash_password; print(hash_password('your-password'))"
+python -m budget_forecaster.main hash-password
 ```
 
 Provide both secrets through the environment (recommended for a deployed server):

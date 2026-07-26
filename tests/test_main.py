@@ -10,6 +10,7 @@ from budget_forecaster.core.types import SyncRunStatus
 from budget_forecaster.infrastructure.persistence.sqlite_repository import (
     SqliteRepository,
 )
+from budget_forecaster.web.auth import verify_password
 
 
 def test_sync_without_enable_banking_exits(
@@ -75,3 +76,54 @@ def test_sync_records_failed_run_when_no_consent(
     with SqliteRepository(tmp_path / "x.db") as repo:
         (run,) = repo.get_recent_sync_runs(1)
     assert run.status is SyncRunStatus.FAILED
+
+
+def test_hash_password_prints_verifiable_hash(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """hash-password prints a verifiable hash and never touches the config file."""
+    config_file = tmp_path / "config.yaml"
+    monkeypatch.setattr(main.getpass, "getpass", lambda _prompt: "s3cret")
+    monkeypatch.setattr(
+        "sys.argv", ["budget-forecaster", "-c", str(config_file), "hash-password"]
+    )
+
+    main.main()
+
+    printed = capsys.readouterr().out.strip()
+    assert verify_password("s3cret", printed)
+    assert not verify_password("wrong", printed)
+    assert not config_file.exists()
+
+
+def test_hash_password_exits_on_mismatch(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """hash-password exits 1 when the confirmation does not match."""
+    answers = iter(["one", "two"])
+    monkeypatch.setattr(main.getpass, "getpass", lambda _prompt: next(answers))
+    monkeypatch.setattr("sys.argv", ["budget-forecaster", "hash-password"])
+
+    with pytest.raises(SystemExit) as exc_info:
+        main.main()
+
+    assert exc_info.value.code == 1
+    assert "do not match" in capsys.readouterr().err
+
+
+def test_hash_password_exits_on_empty(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """hash-password rejects an empty password."""
+    monkeypatch.setattr(main.getpass, "getpass", lambda _prompt: "")
+    monkeypatch.setattr("sys.argv", ["budget-forecaster", "hash-password"])
+
+    with pytest.raises(SystemExit) as exc_info:
+        main.main()
+
+    assert exc_info.value.code == 1
+    assert "must not be empty" in capsys.readouterr().err
