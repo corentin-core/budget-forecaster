@@ -39,6 +39,8 @@ nav:
       - TUI Monthly Review: user/tui-review.md
       - TUI Planned Operations & Budgets: user/tui-planned-budgets.md
       - Available Margin: user/available-margin.md
+      - Web App: user/web-app.md
+      - Deployment: user/deployment.md
   - Developer:
       - Architecture: dev/architecture.md
       - Operations: dev/operations.md

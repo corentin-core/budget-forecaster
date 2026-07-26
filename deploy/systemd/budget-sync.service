@@ -1,0 +1,10 @@
+# User service: one bank sync, recorded as a sync_runs row. Driven by budget-sync.timer.
+# Edit ExecStart if your virtualenv lives elsewhere than ~/budget-forecaster-venv.
+# Reads service.env only for BUDGET_CONFIG (shared with budget-web.service).
+[Unit]
+Description=Budget Forecaster bank sync
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/budget-forecaster/service.env
+ExecStart=%h/budget-forecaster-venv/bin/python -m budget_forecaster.main -c ${BUDGET_CONFIG} sync

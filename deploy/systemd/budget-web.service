@@ -1,0 +1,17 @@
+# User service: the Budget Forecaster web app.
+# Install: see docs/user/deployment.md
+# Edit ExecStart if your virtualenv lives elsewhere than ~/budget-forecaster-venv.
+# A --user manager has no network-online.target, so no network ordering here;
+# Restart=on-failure covers a start before the network is up.
+[Unit]
+Description=Budget Forecaster web app
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/budget-forecaster/service.env
+ExecStart=%h/budget-forecaster-venv/bin/uvicorn --factory budget_forecaster.web.app:create_app --host 127.0.0.1 --port ${BUDGET_WEB_PORT}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
