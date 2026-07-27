@@ -26,8 +26,8 @@ def refresh_forecast(app: ApplicationService) -> None:
     """Reload the forecast and recompute the report after a write.
 
     reload_forecast() alone drops the cached report; the month/home/trends views
-    read that report, so the web must recompute it eagerly (the TUI does it
-    lazily on tab open). Tolerates an empty database.
+    read that report, so the web must recompute it eagerly. Tolerates an empty
+    database.
     """
     app.reload_forecast()
     try:

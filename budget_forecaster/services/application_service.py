@@ -1,8 +1,8 @@
 """Central application service orchestrating data flow between services.
 
 This module contains the ApplicationService class that serves as a thin
-facade for the TUI, delegating orchestration logic to focused use cases
-while providing direct access to read-only service methods.
+facade for the presentation layer, delegating orchestration logic to focused
+use cases while providing direct access to read-only service methods.
 """
 
 import logging

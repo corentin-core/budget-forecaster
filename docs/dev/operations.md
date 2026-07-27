@@ -180,13 +180,13 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     participant User
-    participant TUI
+    participant Web
     participant AppService
     participant OperationService
     participant LinkService
 
-    User->>TUI: Assign category
-    TUI->>AppService: categorize_operations()
+    User->>Web: Assign category
+    Web->>AppService: categorize_operations()
     AppService->>OperationService: update category
     AppService->>LinkService: delete old heuristic links
     AppService->>LinkService: create new heuristic links

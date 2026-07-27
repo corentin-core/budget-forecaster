@@ -92,20 +92,20 @@ stateDiagram-v2
 
 ```mermaid
 sequenceDiagram
-    participant TUI
+    participant Web
     participant AppService
     participant ForecastService
     participant ForecastActualizer
     participant AccountAnalyzer
     participant AccountForecaster
 
-    TUI->>AppService: compute_report(date_range)
+    Web->>AppService: compute_report(date_range)
     AppService->>ForecastService: load_forecast()
     AppService->>ForecastActualizer: actualize(forecast, links)
     ForecastActualizer-->>AppService: actualized forecast
     AppService->>AccountAnalyzer: compute_report()
     AccountAnalyzer->>AccountForecaster: project balance
-    AccountAnalyzer-->>TUI: AccountAnalysisReport
+    AccountAnalyzer-->>Web: AccountAnalysisReport
 ```
 
 ## Examples

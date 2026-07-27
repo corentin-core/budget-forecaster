@@ -1144,7 +1144,6 @@ msgstr "payé en avance (opération du {})"
 msgid "paid late (operation dated {})"
 msgstr "payé en retard (opération du {})"
 
-#: budget_forecaster/tui/screens/review.py — margin section
 msgid "Available margin"
 msgstr "Marge disponible"
 
@@ -1166,7 +1165,6 @@ msgstr "= le maximum que vous pouvez dépenser sans passer sous {}"
 msgid "Edit threshold"
 msgstr "Modifier le seuil"
 
-#: budget_forecaster/tui/modals/threshold_edit.py
 msgid "Edit margin threshold"
 msgstr "Modifier le seuil de marge"
 

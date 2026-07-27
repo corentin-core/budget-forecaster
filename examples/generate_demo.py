@@ -945,8 +945,11 @@ def main() -> None:
     print(f"Historic operations (Swile): {len(all_swile_ops)}")
     print(f"Operation links: {len(links)}")
     print("Margin threshold: 500 EUR")
-    print("\nDone! Run the TUI with:")
-    print("  cd examples/ && python -m budget_forecaster.main -c config.yaml")
+    print("\nDone! Run the web app with:")
+    print(
+        "  cd examples/ && BUDGET_CONFIG=config.yaml "
+        "uvicorn --factory budget_forecaster.web.app:create_app"
+    )
 
 
 if __name__ == "__main__":

@@ -68,16 +68,14 @@ net.
 
 ## Configuring the Threshold
 
-The threshold can be changed from the Review tab:
+The threshold can be changed from the Réglages section of the web app:
 
-1. Press `E` or click the **Edit** button in the margin section
-2. Enter the new threshold value
-3. The margin recalculates immediately
+1. Edit the threshold value
+2. The margin recalculates immediately
 
 A threshold of 0 means you only get an alert if the balance goes negative.
 
 ## Past Months
 
-The margin section is **hidden** when viewing past months in the Review tab. It only
-appears for the current month and future months, since the margin is a forward-looking
-indicator.
+The margin is **hidden** when viewing past months. It only appears for the current month
+and future months, since the margin is a forward-looking indicator.

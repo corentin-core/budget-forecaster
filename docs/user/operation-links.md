@@ -29,10 +29,10 @@ An operation can be linked to either:
 
 ### Link Modes
 
-| Mode      | Description                   | Behavior                                    |
-| --------- | ----------------------------- | ------------------------------------------- |
-| Automatic | Created by heuristic matching | Can be overwritten by user or recalculation |
-| Manual    | Created by user in TUI        | Protected from automatic recalculation      |
+| Mode      | Description                    | Behavior                                    |
+| --------- | ------------------------------ | ------------------------------------------- |
+| Automatic | Created by heuristic matching  | Can be overwritten by user or recalculation |
+| Manual    | Created by user in the web app | Protected from automatic recalculation      |
 
 ### Iteration Identification
 
@@ -65,132 +65,16 @@ highest score is selected.
 
 ## Automatic Link from Planned Operation Creation
 
-When you create a planned operation from a historic operation (using `P` key in the
-Operations tab), a manual link is automatically created between the source historic
-operation and the new planned operation. This saves you from having to manually link
-them afterwards.
+When you create a planned operation from a historic operation, a manual link is
+automatically created between the source historic operation and the new planned
+operation. This saves you from having to manually link them afterwards.
 
-## Manual Linking in TUI
+## Manual Linking
 
-### Viewing Link Status
-
-In the Operations tab, the "Lien" column shows linked operations:
-
-```
-┌──────────┬─────────────────────┬──────────┬─────────────┬──────────────┐
-│ Date     │ Description         │ Montant  │ Catégorie   │ Lien         │
-├──────────┼─────────────────────┼──────────┼─────────────┼──────────────┤
-│ 02/01/25 │ TRANSFER LANDLORD   │  -800.00 │ Loyer       │ 🔗 Loyer     │
-│ 15/01/25 │ EDF INVOICE         │   -95.00 │ Electricité │              │
-│ 28/01/25 │ SALARY COMPANY      │ +2500.00 │ Salaire     │ 🔗 Salaire   │
-└──────────┴─────────────────────┴──────────┴─────────────┴──────────────┘
-```
-
-### Creating a Link
-
-There are two ways to create or edit a link:
-
-#### From the Operations tab
-
-1. Select one or more operations in the Operations tab (see Multi-selection below)
-2. Press `L` to open the link modal
-3. Choose the target type (Planned Operation or Budget)
-4. Select a target from the list (sorted by match score)
-5. Click "Suivant" to proceed
-6. Select the specific iteration date
-7. Click "Lier" to confirm
-
-**Note:** When linking multiple operations, all are linked to the same target and
-iteration. This is useful for split payments or grouping similar transactions.
-
-#### From the Operation Detail Modal
-
-1. Press `Enter` on an operation to open its detail modal
-2. Click the "Link" button (or press `L`)
-3. Follow the same target selection and iteration flow
-4. The modal updates the link label and button text after changes
-
-If the operation already has a link, the button shows "Edit link" instead of "Link". You
-can also unlink from this modal by clicking "Supprimer le lien" in the target selection
-step.
-
-### Multi-selection
-
-You can select multiple operations before pressing `L` or `C`:
-
-| Shortcut     | Action                          |
-| ------------ | ------------------------------- |
-| `Space`      | Toggle selection of current row |
-| `Shift+↑`    | Extend selection upward         |
-| `Shift+↓`    | Extend selection downward       |
-| `Ctrl+A`     | Select all operations           |
-| `Ctrl+Click` | Toggle selection of clicked row |
-| `Click`      | Clear selection (if any exists) |
-| `Escape`     | Clear all selections            |
-
-Selected operations display a `►` marker before the date.
-
-#### Step 1: Select Target
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│ Lier l'opération                                                        │
-├─────────────────────────────────────────────────────────────────────────┤
-│ ┌─────────────────────────────────────────────────────────────────────┐ │
-│ │ TRANSFER LANDLORD                                                   │ │
-│ │ 02/01/2025 | -800.00 €                                              │ │
-│ └─────────────────────────────────────────────────────────────────────┘ │
-│                                                                         │
-│ 🔗 Lié à: Loyer                                                         │
-│                                                                         │
-│ ┌─────────────────────────────────────────────────────────────────────┐ │
-│ │ Opérations planifiées                                           [v] │ │
-│ └─────────────────────────────────────────────────────────────────────┘ │
-│                                                                         │
-│ Score  Description                      Montant   Catégorie             │
-│ ────────────────────────────────────────────────────────────────────────│
-│  85%   Loyer                             -800 €   Loyer       [selected]│
-│  42%   Electricité                        -95 €   Electricité           │
-│  30%   Salaire                          +2500 €   Salaire               │
-│   -    Abonnement téléphone               -20 €   Téléphone             │
-│                                                                         │
-│ [Supprimer le lien]                           [Annuler]  [Suivant]      │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-#### Step 2: Select Iteration
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│ Sélectionner l'itération                                                │
-├─────────────────────────────────────────────────────────────────────────┤
-│ ┌─────────────────────────────────────────────────────────────────────┐ │
-│ │ TRANSFER LANDLORD                                                   │ │
-│ │ 02/01/2025 | -800.00 €                                              │ │
-│ │ → Loyer                                                             │ │
-│ └─────────────────────────────────────────────────────────────────────┘ │
-│                                                                         │
-│              [<]     Nov 2024 - Mar 2025     [>]                        │
-│                                                                         │
-│ Score  Itération                                                        │
-│ ────────────────────────────────────────────────────────────────────────│
-│  55%  01/11/2024                                                        │
-│  70%  01/12/2024                                                        │
-│  85%  01/01/2025                                              [selected]│
-│  70%  01/02/2025                                                        │
-│  55%  01/03/2025                                                        │
-│                                                                         │
-│                                                   [Annuler]  [Lier]     │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-The modal displays a match score (0-100%) for each target to help you choose.
-
-### Removing a Link
-
-1. Select a linked operation (shows 🔗 in the Lien column)
-2. Press `L` to open the link modal
-3. Click "Supprimer le lien" at the bottom
+Beyond automatic matching, you can create, edit, and remove links by hand from the
+operation view. Each link targets a specific dated occurrence of a planned operation or
+budget, chosen from candidates ranked by match score. See [Web App](web-app.md) for the
+step-by-step interface.
 
 ## Impact on Forecasts
 

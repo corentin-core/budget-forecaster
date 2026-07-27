@@ -100,7 +100,7 @@ graph LR
 ```mermaid
 sequenceDiagram
     participant User
-    participant TUI
+    participant Web
     participant AppService
     participant ImportService
     participant BankAdapter
@@ -108,8 +108,8 @@ sequenceDiagram
     participant LinkService
     participant Repository
 
-    User->>TUI: Select bank file
-    TUI->>AppService: import_file(path)
+    User->>Web: Select bank file
+    Web->>AppService: import_file(path)
     AppService->>ImportService: import_file(path)
     ImportService->>BankAdapter: parse(file)
     BankAdapter-->>ImportService: operations + balance

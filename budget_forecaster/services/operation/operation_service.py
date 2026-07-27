@@ -1,7 +1,7 @@
 """Service for managing operations.
 
 This service provides a UI-agnostic API for querying and modifying operations.
-It can be used by TUI, GUI, or Web interfaces.
+It can be used by any presentation layer.
 """
 
 from dataclasses import dataclass
@@ -75,7 +75,7 @@ class OperationService:
 
     This service provides methods to query and modify operations through
     the AccountInterface. It is designed to be UI-agnostic and can be
-    used by any presentation layer (TUI, GUI, Web).
+    used by any presentation layer.
     """
 
     def __init__(self, account_manager: AccountInterface) -> None:

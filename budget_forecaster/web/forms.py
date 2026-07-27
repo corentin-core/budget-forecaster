@@ -1,9 +1,9 @@
 """Parse budget / planned-operation edit forms into domain objects.
 
-Mirrors the TUI edit modals so the web and TUI build identical targets from the
-same fields: description, amount, category, start date, optional recurrence
-(period + end), and — for budgets — an occurrence duration. Every parse failure
-raises FormError with a translated, user-facing message.
+Builds targets from the edit form fields: description, amount, category, start
+date, optional recurrence (period + end), and — for budgets — an occurrence
+duration. Every parse failure raises FormError with a translated, user-facing
+message.
 """
 
 from collections.abc import Mapping

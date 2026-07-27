@@ -21,7 +21,6 @@ from budget_forecaster.infrastructure.bank_sources.enable_banking.sync_runner im
 )
 from budget_forecaster.infrastructure.bootstrap import open_repository
 from budget_forecaster.infrastructure.config import Config, EnableBankingConfig
-from budget_forecaster.tui.app import run_app
 from budget_forecaster.web.auth import hash_password
 
 logger = logging.getLogger(__name__)
@@ -119,7 +118,7 @@ def _run_hash_password() -> None:
 
 
 def main() -> None:
-    """Entry point: launch the TUI, or run a subcommand such as sync."""
+    """Entry point: run a subcommand such as sync, or print help."""
     default_config_path = Path("~/.config/budget-forecaster/config.yaml").expanduser()
 
     parser = argparse.ArgumentParser(
@@ -142,6 +141,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    # No subcommand: nothing to do (the web app runs via uvicorn/systemd).
+    if args.command is None:
+        parser.print_help()
+        return
+
     # Config-independent: no config file needed to hash a password.
     if args.command == "hash-password":
         _run_hash_password()
@@ -159,8 +163,6 @@ def main() -> None:
         _run_sync(config_path)
     elif args.command == "consent-status":
         _run_consent_status(config_path)
-    else:
-        run_app(config_path)
 
 
 if __name__ == "__main__":
