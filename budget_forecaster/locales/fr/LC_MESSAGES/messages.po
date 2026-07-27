@@ -1716,3 +1716,18 @@ msgstr "Aucune banque liée pour le moment."
 
 msgid "Overdue: not yet posted"
 msgstr "En retard : pas encore enregistré"
+
+msgid "Upload a bank export"
+msgstr "Importer un relevé bancaire"
+
+msgid "No file selected."
+msgstr "Aucun fichier sélectionné."
+
+msgid "Unsupported file: {}"
+msgstr "Fichier non supporté : {}"
+
+msgid "Imported {} — balance {}"
+msgstr "Importé {} — solde au {}"
+
+msgid "{} new operation(s)"
+msgstr "{} nouvelle(s) opération(s)"

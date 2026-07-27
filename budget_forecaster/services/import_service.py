@@ -32,6 +32,10 @@ class ImportResult(NamedTuple):
     stats: ImportStats | None
     """Import statistics (None if import failed)."""
     error_message: str | None = None
+    account_name: str | None = None
+    """Name of the imported account (None if import failed)."""
+    balance_date: date | None = None
+    """Balance date read from the export (None if import failed)."""
 
 
 class ImportSummary(NamedTuple):
@@ -193,6 +197,8 @@ class ImportService:
                 path=path,
                 success=True,
                 stats=stats,
+                account_name=adapter.name,
+                balance_date=account_params.balance_date,
             )
 
         except Exception as e:  # pylint: disable=broad-except

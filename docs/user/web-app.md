@@ -62,7 +62,7 @@ to start if neither source provides both secrets.
 | Budgets    | All budgets and planned operations, whatever month they fall in; create, edit, split, delete |
 | Opérations | The full ledger, filterable by search text, category, month, and "uncategorized"             |
 | Tendances  | Balance evolution over time and expense breakdown by category                                |
-| Réglages   | Bank connection status and sync history, import inbox, and the margin threshold              |
+| Réglages   | Bank connection status and sync history, manual file import, and the margin threshold        |
 
 Navigation is a bottom bar on phones and a left sidebar on wider screens, each tab with
 an icon.
@@ -152,3 +152,17 @@ say) still raises the banner.
 
 "Sync now" in Réglages triggers a sync immediately, without waiting for the next
 scheduled run. It records a run just like the background sync does.
+
+## Manual file import
+
+Not every account syncs automatically — Swile, for one, is not covered by the bank sync.
+The Imports section of Réglages takes a bank export directly: pick a BNP `.xls` or a
+Swile `.zip` and press Import. The file goes through the same import as the automatic
+sync, so operations are deduplicated and categorized the same way.
+
+The result appears right below the button: the account, its balance date, and how many
+operations were new or skipped as duplicates. An unsupported file is refused with a
+message and nothing is imported.
+
+Keep the Swile export under its original name. The `.zip` is recognized by its
+`swile-export-YYYY-MM-DD.zip` name, so a renamed file is not accepted.

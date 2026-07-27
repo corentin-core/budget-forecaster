@@ -1,11 +1,15 @@
 """Réglages: bank connection status, imports inbox, margin threshold (read-only)."""
 
+import shutil
+import tempfile
 from datetime import date, datetime
+from pathlib import Path
 from typing import NamedTuple
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import RedirectResponse, Response
 
+from budget_forecaster.i18n import _
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent import (
     ConsentStatus,
 )
@@ -20,6 +24,7 @@ from budget_forecaster.infrastructure.persistence.repository_interface import (
     RepositoryInterface,
 )
 from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.services.import_service import ImportResult
 from budget_forecaster.web.dependencies import (
     get_app_service,
     get_config,
@@ -130,3 +135,56 @@ async def set_threshold(
         return RedirectResponse(url="/settings", status_code=303)
     refresh_forecast(app)
     return RedirectResponse(url="/settings", status_code=303)
+
+
+def _import_result_fragment(
+    request: Request,
+    app: ApplicationService,
+    *,
+    result: ImportResult | None = None,
+    error: str | None = None,
+) -> Response:
+    """Render the inline import-result fragment swapped into the Imports card."""
+    return render_template(
+        request,
+        "fragments/import_result.html",
+        active="settings",
+        result=result,
+        error=error,
+        currency=app.currency,
+    )
+
+
+@router.post("/settings/import")
+async def import_file(
+    request: Request,
+    file: UploadFile | None = File(None),
+    app: ApplicationService = Depends(get_app_service),
+) -> Response:
+    """Import an uploaded bank export through the shared import service.
+
+    The adapter factory dispatches on the file name (BNP on the .xls suffix,
+    Swile on the swile-export-YYYY-MM-DD.zip pattern), so the upload keeps its
+    original basename in a throwaway temp dir. Runs on the event-loop thread
+    like the manual sync: the shared SQLite connection is bound to it.
+    """
+    if file is None or not (name := Path(file.filename or "").name):
+        return _import_result_fragment(request, app, error=_("No file selected."))
+
+    tmp_dir = Path(tempfile.mkdtemp(prefix="budget-import-"))
+    tmp_path = tmp_dir / name
+    try:
+        tmp_path.write_bytes(await file.read())
+
+        if not app.is_supported_export(tmp_path):
+            return _import_result_fragment(
+                request, app, error=_("Unsupported file: {}").format(name)
+            )
+
+        result = app.import_file(tmp_path)
+        if result.success:
+            app.reload_account()
+            refresh_forecast(app)
+        return _import_result_fragment(request, app, result=result)
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
