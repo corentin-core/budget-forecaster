@@ -127,3 +127,17 @@ def test_hash_password_exits_on_empty(
 
     assert exc_info.value.code == 1
     assert "must not be empty" in capsys.readouterr().err
+
+
+def test_no_subcommand_prints_help(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Running with no subcommand prints help and returns without launching anything."""
+    monkeypatch.setattr("sys.argv", ["budget-forecaster"])
+
+    main.main()
+
+    output = capsys.readouterr().out
+    assert "usage:" in output
+    assert "sync" in output
