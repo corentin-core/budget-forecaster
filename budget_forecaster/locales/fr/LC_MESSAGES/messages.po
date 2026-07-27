@@ -1383,6 +1383,9 @@ msgstr "Mot de passe incorrect"
 msgid "Other categories"
 msgstr "Autres catégories"
 
+msgid "Group categories below"
+msgstr "Regrouper les catégories sous"
+
 msgid "per month"
 msgstr "par mois"
 

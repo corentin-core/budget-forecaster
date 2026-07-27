@@ -35,6 +35,12 @@ class TestSettingsTable:
         """The margin_threshold default is '0' after migration."""
         assert repository.get_setting("margin_threshold") == "0"
 
+    def test_get_default_expense_breakdown_threshold(
+        self, repository: RepositoryInterface
+    ) -> None:
+        """The expense_breakdown_threshold default is '2' after migration."""
+        assert repository.get_setting("expense_breakdown_threshold") == "2"
+
     def test_get_nonexistent_key_returns_none(
         self, repository: RepositoryInterface
     ) -> None:

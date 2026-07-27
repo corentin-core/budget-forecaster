@@ -1,4 +1,5 @@
 """Tests for margin computation in ForecastService."""
+
 # pylint: disable=too-few-public-methods
 
 from collections.abc import Iterator
@@ -263,3 +264,22 @@ class TestMarginThreshold:
         service.margin_threshold = 100.0
         service.margin_threshold = 250.0
         assert service.margin_threshold == 250.0
+
+
+class TestExpenseBreakdownThreshold:
+    """Tests for the expense breakdown threshold persistence via ForecastService."""
+
+    def test_default_threshold(self, service: ForecastService) -> None:
+        """Default breakdown threshold is 2 percent."""
+        assert service.expense_breakdown_threshold == 2.0
+
+    def test_set_and_get_threshold(self, service: ForecastService) -> None:
+        """Set threshold and read it back."""
+        service.expense_breakdown_threshold = 4.5
+        assert service.expense_breakdown_threshold == 4.5
+
+    def test_update_threshold(self, service: ForecastService) -> None:
+        """Updating threshold overwrites previous value."""
+        service.expense_breakdown_threshold = 1.0
+        service.expense_breakdown_threshold = 7.5
+        assert service.expense_breakdown_threshold == 7.5
