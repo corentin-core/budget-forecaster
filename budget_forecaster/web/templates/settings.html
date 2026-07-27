@@ -104,6 +104,15 @@
   {% else %}
   <p class="empty">{{ _("No pending files") }}</p>
   {% endif %}
+
+  <h3 class="subhead">{{ _("Upload a bank export") }}</h3>
+  <form class="import-form" hx-post="/settings/import"
+        hx-encoding="multipart/form-data" hx-target="#import-result"
+        hx-swap="innerHTML" hx-on::after-request="this.reset()">
+    <input type="file" name="file" accept=".xls,.zip" required />
+    <button type="submit" class="btn primary">{{ _("Import") }}</button>
+  </form>
+  <div id="import-result" aria-live="polite"></div>
 </section>
 
 <section class="card">

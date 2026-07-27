@@ -15,6 +15,7 @@ auth
 backend
 backfill
 backfills
+basename
 bnp
 bookmarklet
 bool
@@ -142,6 +143,7 @@ startswith
 str
 subcommand
 submodules
+summarised
 supermarche
 supermarché
 supersession

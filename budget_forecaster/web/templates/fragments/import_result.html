@@ -1,0 +1,10 @@
+{% if error %}
+<p class="import-result error">✗ {{ error }}</p>
+{% elif result.success %}
+<p class="import-result ok">
+  ✓ {{ _("Imported {} — balance {}").format(result.account_name, result.balance_date | frdate) }}<br />
+  {{ _("{} new operation(s)").format(result.stats.new_operations) }}{% if result.stats.duplicates_skipped %}, {{ _("{} duplicate(s) skipped").format(result.stats.duplicates_skipped) }}{% endif %}
+</p>
+{% else %}
+<p class="import-result error">✗ {{ result.error_message }}</p>
+{% endif %}

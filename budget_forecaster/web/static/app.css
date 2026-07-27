@@ -1314,6 +1314,22 @@ table {
   margin-bottom: 1rem;
   font-size: 0.9rem;
 }
+.import-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.import-result {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+}
+.import-result.ok {
+  color: var(--good);
+}
+.import-result.error {
+  color: var(--bad);
+}
 .advanced,
 .split {
   margin: 0.5rem 0;
