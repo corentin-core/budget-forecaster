@@ -147,7 +147,9 @@ class TestComputeBalanceEvolution:
 
         Without operation links, past/current planned operations are advanced
         to the next period (not automatically executed via matcher).
-        - Recurring op (2023-03-01, -20€/month until 2023-06-01): advanced to 2023-04-01
+        - Recurring op (2023-03-01, -20€/month until 2023-06-01): its iteration on
+          balance_date (2023-03-01) is pending, postponed to 2023-03-02, then
+          continues from 2023-04-01
         - Isolated op (2023-03-15, -50€): kept as-is (future)
         """
         analyzer = AccountAnalyzer(account, Forecast(planned_operations, ()))
@@ -159,18 +161,18 @@ class TestComputeBalanceEvolution:
         for date_str, expected_balance in {
             "2023-02-01": 1030.0,
             "2023-03-01": 1000.0,
-            # Recurring op advanced to April, not executed in March
-            "2023-03-02": 1000.0,
+            # Recurring op due on balance_date, postponed to March 2
+            "2023-03-02": 980.0,
             # Isolated op executed
-            "2023-03-15": 950.0,
-            # Recurring op (advanced from March) + normal April occurrence
-            "2023-04-01": 930.0,
-            # Recurring op
-            "2023-05-01": 910.0,
+            "2023-03-15": 930.0,
+            # April occurrence
+            "2023-04-01": 910.0,
+            # May occurrence
+            "2023-05-01": 890.0,
             # Recurring op executes on expiration date (inclusive)
-            "2023-06-01": 890.0,
-            "2023-07-01": 890.0,
-            "2023-08-01": 890.0,
+            "2023-06-01": 870.0,
+            "2023-07-01": 870.0,
+            "2023-08-01": 870.0,
         }.items():
             assert df.loc[date_str]["Balance"] == pytest.approx(
                 expected_balance

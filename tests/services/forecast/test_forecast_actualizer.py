@@ -56,14 +56,39 @@ class TestForecastActualizer:
         self, account: Account
     ) -> None:
         """
-        A one-time planned operation in the past/present without links is removed
-        because there's no next period.
+        A one-time planned operation in the past, outside the tolerance window and
+        without links, is removed because there's no next period.
         """
         forecast = Forecast(
             operations=(
                 PlannedOperation(
                     record_id=1,
                     description="Past Operation",
+                    amount=Amount(50.0, "EUR"),
+                    category=Category.GROCERIES,
+                    # 31 days before balance_date (Jan 1), outside the 5-day window
+                    date_range=SingleDay(date(2022, 12, 1)),
+                ),
+            ),
+            budgets=(),
+        )
+        actualizer = ForecastActualizer(account)
+        actualized_forecast = actualizer(forecast)
+        # One-time operation with no next period is removed
+        assert not actualized_forecast.operations
+
+    def test_one_time_operation_on_balance_date_is_postponed(
+        self, account: Account
+    ) -> None:
+        """
+        A one-time planned operation due exactly on balance_date without links is
+        pending (not yet posted): postponed to tomorrow, not removed.
+        """
+        forecast = Forecast(
+            operations=(
+                PlannedOperation(
+                    record_id=1,
+                    description="Due Today",
                     amount=Amount(50.0, "EUR"),
                     category=Category.GROCERIES,
                     date_range=SingleDay(date(2023, 1, 1)),
@@ -73,8 +98,11 @@ class TestForecastActualizer:
         )
         actualizer = ForecastActualizer(account)
         actualized_forecast = actualizer(forecast)
-        # One-time operation with no next period is removed
-        assert not actualized_forecast.operations
+        # Postponed to tomorrow, no periodic continuation for a one-time op
+        assert len(actualized_forecast.operations) == 1
+        op = actualized_forecast.operations[0]
+        assert isinstance(op.date_range, SingleDay)
+        assert op.date_range.start_date == date(2023, 1, 2)
 
     def test_periodic_past_operation_outside_tolerance_advances_to_next_period(
         self, account: Account
@@ -142,6 +170,41 @@ class TestForecastActualizer:
         # Second: periodic operation continues from next month
         periodic_op = actualized_forecast.operations[1]
         assert periodic_op.date_range.start_date == date(2023, 1, 28)
+
+    def test_recurring_iteration_on_balance_date_is_postponed(
+        self, account: Account
+    ) -> None:
+        """A recurring income due exactly on balance_date, not yet matched, is
+        postponed to tomorrow instead of being dropped.
+
+        Before the fix, the on-date iteration was skipped and the operation
+        advanced straight to next period, losing that period's amount.
+        """
+        account_on_due_date = account._replace(balance_date=date(2023, 1, 26))
+        forecast = Forecast(
+            operations=(
+                PlannedOperation(
+                    record_id=1,
+                    description="Monthly Salary",
+                    amount=Amount(3000.0, "EUR"),
+                    category=Category.SALARY,
+                    # Monthly, iteration Jan 26 falls exactly on balance_date
+                    date_range=RecurringDay(
+                        date(2022, 12, 26), relativedelta(months=1)
+                    ),
+                ),
+            ),
+            budgets=(),
+        )
+        actualizer = ForecastActualizer(account_on_due_date)
+        actualized_forecast = actualizer(forecast)
+        # Postponed one-time op tomorrow + periodic continuation next month
+        assert len(actualized_forecast.operations) == 2
+        postponed_op = actualized_forecast.operations[0]
+        assert isinstance(postponed_op.date_range, SingleDay)
+        assert postponed_op.date_range.start_date == date(2023, 1, 27)
+        periodic_op = actualized_forecast.operations[1]
+        assert periodic_op.date_range.start_date == date(2023, 2, 26)
 
     def test_future_operation_without_links_is_kept(self, account: Account) -> None:
         """
@@ -249,55 +312,38 @@ class TestForecastActualizerWithLinks:
             date_range=RecurringDay(date(2022, 12, 1), relativedelta(days=1)),
         )
 
-        # Create links for all iterations in the approximation window (Dec 27-31)
-        # With balance_date Jan 1 and default approximation of 5 days
-        links = (
+        # Link every iteration in the window (Dec 27-31) plus the one on
+        # balance_date (Jan 1); with balance_date Jan 1 and a 5-day approximation
+        links = tuple(
             OperationLink(
-                operation_unique_id=1,
+                operation_unique_id=i,
                 target_type=LinkType.PLANNED_OPERATION,
                 target_id=1,
-                iteration_date=date(2022, 12, 27),
+                iteration_date=iteration_date,
                 is_manual=False,
-            ),
-            OperationLink(
-                operation_unique_id=2,
-                target_type=LinkType.PLANNED_OPERATION,
-                target_id=1,
-                iteration_date=date(2022, 12, 28),
-                is_manual=False,
-            ),
-            OperationLink(
-                operation_unique_id=3,
-                target_type=LinkType.PLANNED_OPERATION,
-                target_id=1,
-                iteration_date=date(2022, 12, 29),
-                is_manual=False,
-            ),
-            OperationLink(
-                operation_unique_id=4,
-                target_type=LinkType.PLANNED_OPERATION,
-                target_id=1,
-                iteration_date=date(2022, 12, 30),
-                is_manual=False,
-            ),
-            OperationLink(
-                operation_unique_id=5,
-                target_type=LinkType.PLANNED_OPERATION,
-                target_id=1,
-                iteration_date=date(2022, 12, 31),
-                is_manual=False,
-            ),
+            )
+            for i, iteration_date in enumerate(
+                (
+                    date(2022, 12, 27),
+                    date(2022, 12, 28),
+                    date(2022, 12, 29),
+                    date(2022, 12, 30),
+                    date(2022, 12, 31),
+                    date(2023, 1, 1),
+                ),
+                start=1,
+            )
         )
 
         forecast = Forecast(operations=(planned_op,), budgets=())
         actualizer = ForecastActualizer(account, operation_links=links)
         actualized_forecast = actualizer(forecast)
 
-        # All iterations in window have links, no late iterations
-        # Operation advances to Jan 1 (next after last linked Dec 31)
+        # All iterations up to balance_date have links, no late iterations
+        # Operation advances to Jan 2 (next after last linked Jan 1)
         assert len(actualized_forecast.operations) == 1
         op = actualized_forecast.operations[0]
-        assert op.date_range.start_date == date(2023, 1, 1)
+        assert op.date_range.start_date == date(2023, 1, 2)
 
     def test_missing_links_in_window_are_late(self, account: Account) -> None:
         """
@@ -312,8 +358,8 @@ class TestForecastActualizerWithLinks:
             date_range=RecurringDay(date(2022, 12, 25), relativedelta(days=1)),
         )
 
-        # Link only Dec 28, leaving Dec 27, 29, 30, 31 as late
-        # (within the 5-day approximation window before Jan 1 balance_date)
+        # Link only Dec 28, leaving Dec 27, 29, 30, 31 and Jan 1 (on balance_date)
+        # as late (within the 5-day approximation window up to Jan 1 balance_date)
         links = (
             OperationLink(
                 operation_unique_id=10,
@@ -328,17 +374,17 @@ class TestForecastActualizerWithLinks:
         actualizer = ForecastActualizer(account, operation_links=links)
         actualized_forecast = actualizer(forecast)
 
-        # Dec 27, 29, 30, 31 are late (4 iterations without links in window)
+        # Dec 27, 29, 30, 31 and Jan 1 are late (5 iterations without links)
         # Each gets postponed to Jan 2, plus the periodic continuation from Jan 3
-        assert len(actualized_forecast.operations) == 5
+        assert len(actualized_forecast.operations) == 6
 
-        # First 4 are postponed one-time operations
-        for i in range(4):
+        # First 5 are postponed one-time operations
+        for i in range(5):
             op = actualized_forecast.operations[i]
             assert op.date_range.start_date == date(2023, 1, 2)
 
         # Last one is the periodic continuation
-        periodic_op = actualized_forecast.operations[4]
+        periodic_op = actualized_forecast.operations[5]
         assert periodic_op.date_range.start_date == date(2023, 1, 3)
 
     def test_budget_with_linked_operations(self, account: Account) -> None:
@@ -406,7 +452,9 @@ class TestForecastActualizerWithLinks:
             description="Future Linked Operation",
             amount=Amount(50.0, "EUR"),
             category=Category.GROCERIES,
-            date_range=RecurringDay(date(2023, 1, 1), relativedelta(days=1)),
+            # Starts after balance_date (Jan 1) so the on-date late path doesn't
+            # apply; this isolates the future-link actualization behavior
+            date_range=RecurringDay(date(2023, 1, 2), relativedelta(days=1)),
         )
 
         # Link operation 1 (which happened Jan 1) to future iteration Jan 5
@@ -743,8 +791,12 @@ class TestForecastActualizerGaps:
         forecast = Forecast(operations=(planned_op,), budgets=())
         actualizer = ForecastActualizer(account, operation_links=links)
         actualized_forecast = actualizer(forecast)
-        # The future link is not actualized (op 999 doesn't exist in account)
-        # Monthly op advances to Feb 1 (next period after balance_date)
-        assert len(actualized_forecast.operations) == 1
-        op = actualized_forecast.operations[0]
-        assert op.date_range.start_date == date(2023, 2, 1)
+        # The future link is not actualized (op 999 doesn't exist). The monthly
+        # iteration on balance_date (Jan 1) is pending: postponed to Jan 2, then
+        # the periodic operation continues from Feb 1.
+        assert len(actualized_forecast.operations) == 2
+        postponed_op = actualized_forecast.operations[0]
+        assert isinstance(postponed_op.date_range, SingleDay)
+        assert postponed_op.date_range.start_date == date(2023, 1, 2)
+        periodic_op = actualized_forecast.operations[1]
+        assert periodic_op.date_range.start_date == date(2023, 2, 1)
