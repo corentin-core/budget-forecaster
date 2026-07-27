@@ -92,7 +92,6 @@ Lower-level services handle specific concerns:
 
 - `ForecastService`: CRUD for planned operations/budgets, report computation
 - `AccountForecaster`/`AccountAnalyzer`: Compute account projections and aggregates
-- `AccountAnalysisRenderer`: Export analysis reports to Excel
 - `OperationService`/`OperationLinkService`: Manage operations and links
 - `OperationMatcher`/`categorize_operations`: Match and categorize operations
 - `ForecastActualizer`: Adjust forecasts based on linked operations

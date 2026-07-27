@@ -42,10 +42,6 @@ classDiagram
         +compute_budget_statistics()
     }
 
-    class AccountAnalysisRenderer {
-        +render_to_excel()
-    }
-
     class Account {
         +balance
         +balance_date
@@ -57,7 +53,6 @@ classDiagram
     PersistentAccount --> SqliteRepository : uses
     AggregatedAccount "1" *-- "*" Account
     AccountAnalyzer --> AccountForecaster : uses
-    AccountAnalysisRenderer --> AccountAnalyzer : renders
 ```
 
 PersistentAccount is the entry point for account management, handling persistence and
