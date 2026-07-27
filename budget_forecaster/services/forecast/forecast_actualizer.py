@@ -117,8 +117,9 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         for dr in planned_operation.date_range.iterate_over_date_ranges(
             balance_date - approximation
         ):
-            # Stop if we've reached or passed balance_date (not late yet)
-            if (iteration_date := dr.start_date) >= balance_date:
+            # Stop once past balance_date. An unlinked iteration exactly on
+            # balance_date is late (pending, not yet posted), like the days before.
+            if (iteration_date := dr.start_date) > balance_date:
                 break
 
             # Check if within the approximation window (not too old)
