@@ -3,7 +3,7 @@
 from datetime import date, datetime, timezone
 from typing import NamedTuple
 
-from budget_forecaster.core.types import SyncRunStatus
+from budget_forecaster.core.types import SyncRunStatus, SyncSource
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent import (
     ConsentStatus,
 )
@@ -48,9 +48,9 @@ def sync_failure_alert(
     repository: RepositoryInterface,
     consent_service: ConsentService | None,
 ) -> SyncFailureAlert | None:
-    """Return an alert when the latest sync failed, unless the consent banner
-    already covers it or a later re-authorization has made it stale."""
-    recent = repository.get_recent_sync_runs(1)
+    """Return an alert when the latest Enable Banking sync failed, unless the
+    consent banner already covers it or a later re-authorization made it stale."""
+    recent = repository.get_recent_sync_runs(1, source=SyncSource.ENABLE_BANKING)
     if not recent or recent[0].status is not SyncRunStatus.FAILED:
         return None
     latest = recent[0]
@@ -62,3 +62,24 @@ def sync_failure_alert(
         if consent.created_at > latest.ran_at:
             return None
     return SyncFailureAlert(latest.ran_at, latest.error)
+
+
+class SwileReconnectAlert(NamedTuple):
+    """The last Swile sync failed; the refresh token likely needs re-enrolling."""
+
+    ran_at: datetime
+    error: str | None
+
+
+def swile_reconnect_alert(
+    repository: RepositoryInterface,
+) -> SwileReconnectAlert | None:
+    """Return an alert when the latest Swile sync failed, else None.
+
+    A failed refresh means the stored token expired or was revoked; the user
+    re-enrolls from the Swile settings card. No Swile run means no alert.
+    """
+    recent = repository.get_recent_sync_runs(1, source=SyncSource.SWILE)
+    if not recent or recent[0].status is not SyncRunStatus.FAILED:
+        return None
+    return SwileReconnectAlert(recent[0].ran_at, recent[0].error)

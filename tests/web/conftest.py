@@ -34,6 +34,9 @@ def config_path_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path
     monkeypatch.delenv("BUDGET_WEB_PASSWORD_HASH", raising=False)
     # A stray Secure flag would drop cookies over the TestClient's http.
     monkeypatch.delenv("BUDGET_WEB_SECURE_COOKIES", raising=False)
+    # Keep the EB consent and Swile token stores under tmp, not the real
+    # user state dir (the app resolves both from XDG_STATE_HOME).
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     database = tmp_path / "demo.db"
     shutil.copy(_DEMO_DB, database)
     config = tmp_path / "config.yaml"

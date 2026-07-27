@@ -19,6 +19,9 @@ from budget_forecaster.infrastructure.bank_sources.enable_banking.consent_servic
 from budget_forecaster.infrastructure.bank_sources.enable_banking.sync_runner import (
     perform_sync,
 )
+from budget_forecaster.infrastructure.bank_sources.swile_oauth.token_store import (
+    SwileTokenStore,
+)
 from budget_forecaster.infrastructure.config import Config
 from budget_forecaster.infrastructure.persistence.repository_interface import (
     RepositoryInterface,
@@ -30,6 +33,7 @@ from budget_forecaster.web.dependencies import (
     get_config,
     get_consent_service,
     get_repository,
+    get_swile_token_store,
     refresh_forecast,
 )
 from budget_forecaster.web.enrollment import clear_flash, read_flash
@@ -74,6 +78,7 @@ async def settings(
     app: ApplicationService = Depends(get_app_service),
     consent_service: ConsentService | None = Depends(get_consent_service),
     repository: RepositoryInterface = Depends(get_repository),
+    swile_token_store: SwileTokenStore = Depends(get_swile_token_store),
 ) -> Response:
     """Render the operational settings page.
 
@@ -89,6 +94,7 @@ async def settings(
         flash=flash,
         sync_runs=repository.get_recent_sync_runs(_SYNC_HISTORY_LIMIT),
         consent_created_at=_consent_created_at(consent_service),
+        swile_enrolled=swile_token_store.load() is not None,
         inbox_path=app.inbox_path,
         pending=tuple(app.get_supported_exports_in_inbox()),
         margin_threshold=app.margin_threshold,

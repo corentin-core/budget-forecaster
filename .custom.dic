@@ -12,6 +12,7 @@ api's
 args
 au
 auth
+authed
 backend
 backfill
 backfills
@@ -61,6 +62,7 @@ downsample
 dropdown
 dropdowns
 dup
+eb
 edf
 entrypoint
 enum
@@ -80,10 +82,12 @@ hx
 idempotency
 impl
 init
+integrations
 iso
 iterable
 iteratively
 jinja
+js
 json
 jwt
 kwargs
@@ -100,6 +104,7 @@ mensuel
 middleware
 minification
 minifies
+minify
 mois
 msgid
 mtime
@@ -163,6 +168,7 @@ systemd
 tailnet
 tendances
 timedelta
+tmp
 tooltip
 trimestriel
 tz

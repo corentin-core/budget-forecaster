@@ -19,6 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from budget_forecaster.core.types import SyncRunStatus
 from budget_forecaster.exceptions import (
     BudgetForecasterError,
     BudgetNotFoundError,
@@ -34,6 +35,13 @@ from budget_forecaster.infrastructure.bank_sources.enable_banking.consent_servic
 )
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent_store import (
     ConsentStore,
+)
+from budget_forecaster.infrastructure.bank_sources.swile_oauth.client import SwileClient
+from budget_forecaster.infrastructure.bank_sources.swile_oauth.sync_runner import (
+    perform_sync as swile_perform_sync,
+)
+from budget_forecaster.infrastructure.bank_sources.swile_oauth.token_store import (
+    SwileTokenStore,
 )
 from budget_forecaster.infrastructure.bootstrap import open_repository
 from budget_forecaster.infrastructure.config import Config
@@ -65,6 +73,7 @@ from budget_forecaster.web.routes import (
     month,
     operations,
     settings,
+    swile,
     targets,
     trends,
 )
@@ -118,6 +127,29 @@ def _compute_report(app_service: ApplicationService) -> None:
         logger.warning("No account data yet; forecast views will be empty")
 
 
+def _startup_swile_sync(
+    config: Config,
+    repository: RepositoryInterface,
+    app_service: ApplicationService,
+    token_store: SwileTokenStore,
+    client: SwileClient,
+) -> None:
+    """Opportunistically sync Swile at startup when a token is enrolled.
+
+    Best-effort: perform_sync records its own outcome and never raises, so a
+    failed refresh just leaves the reconnect banner for the user.
+    """
+    if token_store.load() is None:
+        return
+    logger.info("Swile enrolled; syncing at startup")
+    run = swile_perform_sync(repository, token_store, config.accounts, client=client)
+    if run.status is SyncRunStatus.OK:
+        try:
+            app_service.reload_account()
+        except BudgetForecasterError:
+            logger.warning("Swile startup sync: no account to reload")
+
+
 def _build_templates() -> Jinja2Templates:
     templates = Jinja2Templates(directory=str(_PACKAGE_DIR / "templates"))
     templates.env.globals["_"] = _
@@ -142,6 +174,13 @@ def create_app(config_path: Path | None = None) -> FastAPI:
         logger.info("Starting Budget Forecaster web app")
         repository = open_repository(config)
         app_service = _build_app_service(config, repository)
+        _startup_swile_sync(
+            config,
+            repository,
+            app_service,
+            app.state.swile_token_store,
+            app.state.swile_client,
+        )
         _compute_report(app_service)
         app.state.repository = repository
         app.state.app_service = app_service
@@ -151,6 +190,10 @@ def create_app(config_path: Path | None = None) -> FastAPI:
     app.state.config = config
     app.state.consent_service = _build_consent_service(config)
     app.state.web_secrets = resolve_web_secrets(config)
+    app.state.swile_token_store = SwileTokenStore.default(
+        app.state.web_secrets.secret_key
+    )
+    app.state.swile_client = SwileClient()
     app.state.serializer = make_serializer(app.state.web_secrets.secret_key)
     app.state.pending_serializer = make_pending_serializer(
         app.state.web_secrets.secret_key
@@ -179,6 +222,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
     app.include_router(trends.router)
     app.include_router(settings.router)
     app.include_router(bank.router)
+    app.include_router(swile.router)
     return app
 
 

@@ -1732,3 +1732,45 @@ msgstr "Importé {} — solde au {}"
 
 msgid "{} new operation(s)"
 msgstr "{} nouvelle(s) opération(s)"
+
+msgid "Swile (meal vouchers)"
+msgstr "Swile (titres-resto)"
+
+msgid "Sync Swile"
+msgstr "Synchroniser Swile"
+
+msgid "Connected"
+msgstr "Connecté"
+
+msgid "Reconnect"
+msgstr "Reconnecter"
+
+msgid "Not connected yet."
+msgstr "Pas encore connecté."
+
+msgid "Refresh token"
+msgstr "Jeton de rafraîchissement"
+
+msgid "Paste the token copied by the bookmarklet"
+msgstr "Colle le jeton copié par le marque-page"
+
+msgid "Run the Swile Enroll bookmarklet on team.swile.co; it copies the token to paste here."
+msgstr "Lance le marque-page « Swile Enroll » sur team.swile.co ; il copie le jeton à coller ici."
+
+msgid "Enroll"
+msgstr "Enrôler"
+
+msgid "Source"
+msgstr "Source"
+
+msgid "Swile"
+msgstr "Swile"
+
+msgid "Swile connected and synced."
+msgstr "Swile connecté et synchronisé."
+
+msgid "Swile connection failed. Check the token and try again."
+msgstr "Échec de la connexion Swile. Vérifie le jeton et réessaie."
+
+msgid "Swile connection needs reconnecting"
+msgstr "Connexion Swile à renouveler"
