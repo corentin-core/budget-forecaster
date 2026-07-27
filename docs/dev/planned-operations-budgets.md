@@ -21,25 +21,25 @@ a specific date while preserving historical data.
 ```mermaid
 sequenceDiagram
     participant User
-    participant TUI
+    participant Web
     participant AppService
     participant ManageTargetsUC
     participant Repositories
 
-    User->>TUI: Click "Scinder"
-    TUI->>AppService: get_next_non_actualized_iteration()
+    User->>Web: Click "Scinder"
+    Web->>AppService: get_next_non_actualized_iteration()
     AppService->>ManageTargetsUC: get_next_non_actualized_iteration()
-    ManageTargetsUC-->>TUI: Default split date
+    ManageTargetsUC-->>Web: Default split date
 
-    User->>TUI: Configure split (date, amount, period)
-    TUI->>AppService: split_planned_operation_at_date() or split_budget_at_date()
+    User->>Web: Configure split (date, amount, period)
+    Web->>AppService: split_planned_operation_at_date() or split_budget_at_date()
     AppService->>ManageTargetsUC: split_planned_operation_at_date() or split_budget_at_date()
 
     ManageTargetsUC->>Repositories: Load original target
     ManageTargetsUC->>Repositories: Terminate original (set expiration_date)
     ManageTargetsUC->>Repositories: Create new target with new values
     ManageTargetsUC->>Repositories: Migrate links for iterations >= split_date
-    ManageTargetsUC-->>TUI: New target created
+    ManageTargetsUC-->>Web: New target created
 ```
 
 ### Split Data Flow

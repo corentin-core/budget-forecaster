@@ -1,7 +1,7 @@
 """Link-flow view models: score-ranked candidates and the iteration window.
 
-Mirrors the two TUI link modals (target pick, then iteration pick) as data the
-link page and its HTMX iteration fragment render.
+Models the two link steps (target pick, then iteration pick) as data the link
+page and its HTMX iteration fragment render.
 """
 
 from datetime import date, timedelta

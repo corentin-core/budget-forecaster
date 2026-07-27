@@ -71,7 +71,7 @@ the system "this bank transaction corresponds to this planned iteration."
 Links can be:
 
 - **Automatic**: Created by heuristic matching (amount, date, category similarity)
-- **Manual**: Created by the user in the TUI (protected from recalculation)
+- **Manual**: Created by the user in the web app (protected from recalculation)
 
 See [Operation Links](operation-links.md) for detailed usage.
 
@@ -130,12 +130,12 @@ Past (actual)              Now              Future (projected)
    Known amounts          |   Estimated amounts
 ```
 
-The balance evolution chart is displayed in the **Balance** tab of the TUI. See
-[Balance](tui-balance.md) for usage details.
+The balance evolution chart is displayed in the dashboard. See [Web App](web-app.md) for
+usage details.
 
 ## Budget Tracking
 
-For each budget, the forecast tracks consumption. The **Review** tab provides a
+For each budget, the forecast tracks consumption. The monthly review provides a
 per-category view with these columns:
 
 - **Planned**: The full budget amount for the period
@@ -143,7 +143,7 @@ per-category view with these columns:
 - **Forecast**: Projected spending for the current period based on links
 - **Remaining**: Forecast minus Actual — how much is left
 
-See [Monthly Review](tui-review.md) for the full tab documentation.
+See [Web App](web-app.md) for the full monthly review documentation.
 
 ### Daily Projection (Linear Decrease)
 
@@ -193,7 +193,7 @@ If linked operations exceed the budget, the remaining amount goes negative (over
 
 ## Monthly Summary
 
-The Review tab shows a per-category monthly summary with these columns:
+The monthly review shows a per-category summary with these columns:
 
 | Column        | Meaning                                                             |
 | ------------- | ------------------------------------------------------------------- |
@@ -205,20 +205,10 @@ The Review tab shows a per-category monthly summary with these columns:
 Categories are split into **Forecasted** (with planned counterparts) and
 **Unforecasted** (spending without a plan).
 
-## Excel Export
-
-The forecast report can be exported to Excel from the **Balance** tab (press `X`). The
-export includes:
-
-- Balance evolution chart
-- Monthly summary by category (Actual / Planned / Forecast)
-- Budget statistics (total and monthly average per category)
-
 ## Tips
 
 - **Import bank statements regularly** to keep the forecast accurate
-- **Link operations manually** when automatic matching fails (press `L` in the
-  Operations tab)
+- **Link operations manually** when automatic matching fails
 - **Use budgets** for variable spending categories (groceries, entertainment) and
   **planned operations** for fixed amounts (rent, salary)
 - **Split operations** when amounts change (e.g., salary increase) to preserve history

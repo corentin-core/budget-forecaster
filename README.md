@@ -36,24 +36,8 @@ So I built my own.
 - **Monthly review** — Per-category planned vs actual with consumption bars
 - **Available margin** — Track remaining disposable income with alert threshold
 - **Category drill-down** — Inspect planned sources and matched operations per category
-- **Terminal UI** — Interactive interface built with
-  [Textual](https://textual.textualize.io/)
+- **Web app** — Mobile-first web interface over the budget database
 - **Internationalization** — Available in English and French
-
-## Screenshots
-
-**Monthly Review** — Per-category budget tracking with consumption bars and available
-margin:
-
-![Review screen](docs/images/review.png)
-
-**Balance** — Balance projection chart with past actuals and future forecast:
-
-![Balance screen](docs/images/balance.png)
-
-**Operations** — Imported transactions with categories and links to planned operations:
-
-![Operations screen](docs/images/operations.png)
 
 ## Quick Start
 
@@ -71,7 +55,7 @@ python examples/generate_demo.py
 
 # Launch with the demo data
 cd examples/
-python -m budget_forecaster.main -c config.yaml
+BUDGET_CONFIG=config.yaml uvicorn --factory budget_forecaster.web.app:create_app
 ```
 
 The demo database contains categorized operations with planned counterparts and budgets.
@@ -83,7 +67,7 @@ The application follows a layered architecture with clear separation of concerns
 
 ```mermaid
 graph TD
-    Presentation["Presentation — CLI, Terminal UI (Textual)"]
+    Presentation["Presentation — Web app, CLI"]
     Services["Services — Use cases, forecasting, categorization, import"]
     Domain["Domain — Account, Operation, PlannedOperation, Budget, Forecast"]
     Core["Core — Amount, DateRange, Category"]
@@ -102,7 +86,7 @@ See [docs/dev/architecture.md](docs/dev/architecture.md) for the full layer diag
 | Area          | Tools                                                |
 | ------------- | ---------------------------------------------------- |
 | Language      | Python 3.12                                          |
-| UI            | [Textual](https://textual.textualize.io/)            |
+| UI            | FastAPI + Jinja2 + HTMX                              |
 | Persistence   | SQLite                                               |
 | Testing       | pytest                                               |
 | Type checking | mypy (strict mode)                                   |
@@ -116,7 +100,7 @@ See [docs/dev/architecture.md](docs/dev/architecture.md) for the full layer diag
 Browse the full documentation at
 [corentin-core.github.io/budget-forecaster](https://corentin-core.github.io/budget-forecaster/):
 
-- **User guides** — Configuration, forecast, operations, TUI usage
+- **User guides** — Configuration, forecast, operations, web app usage
 - **Developer docs** — Architecture, data models, persistence, contributing
 - **Quality scenarios** — Given-When-Then specifications for core features
 

@@ -223,7 +223,7 @@ classDiagram
     MatcherCache --> ForecastService
 ```
 
-ApplicationService is a thin facade for the TUI, delegating orchestration to focused use
-case classes. Each use case encapsulates a specific workflow and coordinates the
-lower-level services it needs. MatcherCache is a shared dependency providing lazy-loaded
-operation matchers for efficient link creation.
+ApplicationService is a thin facade for the front-end, delegating orchestration to
+focused use case classes. Each use case encapsulates a specific workflow and coordinates
+the lower-level services it needs. MatcherCache is a shared dependency providing
+lazy-loaded operation matchers for efficient link creation.

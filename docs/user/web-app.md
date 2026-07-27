@@ -1,11 +1,11 @@
 # Web app
 
-A mobile-first web interface over the same budget database as the TUI. It shows your
-balance, monthly review, operations ledger, trends, and connection status, and lets you
-categorize operations, link them to budgets or planned operations, and manage budgets
-and planned operations. Every interaction stays on the page or opens a dedicated page —
-there are no blocking pop-up dialogs. To run it as a background service reachable from
-your phone and other PCs over Tailscale, see the [deployment guide](deployment.md).
+A mobile-first web interface over your budget database. It shows your balance, monthly
+review, operations ledger, trends, and connection status, and lets you categorize
+operations, link them to budgets or planned operations, and manage budgets and planned
+operations. Every interaction stays on the page or opens a dedicated page — there are no
+blocking pop-up dialogs. To run it as a background service reachable from your phone and
+other PCs over Tailscale, see the [deployment guide](deployment.md).
 
 ## Running the app
 

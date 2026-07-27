@@ -1,7 +1,7 @@
 """Duration as a (value, unit) pair, and conversions to/from relativedelta.
 
-Shared by any UI that edits a period or duration, so the TUI and the web build
-identical relativedeltas from the same value+unit inputs.
+Shared by any UI that edits a period or duration, so callers build identical
+relativedeltas from the same value+unit inputs.
 """
 
 from enum import StrEnum

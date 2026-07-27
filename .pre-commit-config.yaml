@@ -65,7 +65,6 @@ repos:
         additional_dependencies:
           - types-PyYAML
           - pandas-stubs
-          - textual>=0.50.0
           - python-dateutil
           - pyjwt
           - types-requests

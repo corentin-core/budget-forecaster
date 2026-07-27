@@ -1,8 +1,8 @@
 """FastAPI application factory.
 
-Builds ApplicationService the same way tui/app.py::_load_config does, stores it
-(and the consent service) as singletons on app.state, and computes the forecast
-once at startup so the month and trends views read a populated report.
+Builds ApplicationService from config, stores it (and the consent service) as
+singletons on app.state, and computes the forecast once at startup so the month
+and trends views read a populated report.
 
 Run with: uvicorn --factory budget_forecaster.web.app:create_app
 """
@@ -79,7 +79,7 @@ _PACKAGE_DIR = Path(__file__).parent
 def _build_app_service(
     config: Config, repository: RepositoryInterface
 ) -> ApplicationService:
-    """Wire the services and ApplicationService (mirror of the TUI)."""
+    """Wire the services and ApplicationService."""
     persistent_account = PersistentAccount(repository)
     return ApplicationService(
         persistent_account=persistent_account,

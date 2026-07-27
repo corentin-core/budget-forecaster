@@ -29,11 +29,11 @@ pre-commit install
 ### Running the Application
 
 ```bash
-# Launch the TUI (creates default config on first run)
-python -m budget_forecaster.main
+# Launch the web app
+uvicorn --factory budget_forecaster.web.app:create_app
 
 # With a specific config file
-python -m budget_forecaster.main -c config.yaml
+BUDGET_CONFIG=config.yaml uvicorn --factory budget_forecaster.web.app:create_app
 ```
 
 ### Running Tests

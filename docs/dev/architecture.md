@@ -10,7 +10,7 @@ This document describes the high-level architecture of Budget Forecaster.
 | **Domain**         | Business entities   | Pure data objects and business rules. No orchestration, no external dependencies  |
 | **Services**       | Orchestration       | Coordination between domain objects, use case implementation, computed aggregates |
 | **Infrastructure** | External interfaces | Persistence, file parsing, configuration, rendering                               |
-| **Presentation**   | User interfaces     | CLI, TUI. Delegates to Services                                                   |
+| **Presentation**   | User interfaces     | Web app, CLI. Delegates to Services                                               |
 
 **Key distinction**: Domain objects represent _what_ exists in the business model.
 Services implement _how_ to coordinate those objects for specific use cases.
@@ -20,7 +20,7 @@ Services implement _how_ to coordinate those objects for specific use cases.
 ```mermaid
 graph TB
     subgraph Presentation
-        TUI[Terminal UI]
+        WEB[Web App]
         CLI[CLI Entry Point]
     end
 
@@ -52,7 +52,7 @@ graph TB
         CFG[Config / Backup]
     end
 
-    TUI --> AS
+    WEB --> AS
     CLI --> AS
     AS --> UC
     UC --> FS
@@ -68,10 +68,10 @@ graph TB
 Budget Forecaster is a personal finance application that imports bank statements,
 categorizes transactions, and generates balance forecasts.
 
-The **Presentation** layer provides user interfaces: a Terminal UI for interactive use
-and a CLI for scripted operations. Both delegate to **Services**, which orchestrate
-business logic. The CLI launches the TUI by default, or runs the `sync` command to pull
-transactions and balance from an API bank source into the local database.
+The **Presentation** layer provides user interfaces: a web app for interactive use and a
+CLI for scripted operations. Both delegate to **Services**, which orchestrate business
+logic. The CLI runs the `sync` command to pull transactions and balance from an API bank
+source into the local database.
 
 The **Services** layer coordinates domain objects and implements use cases.
 `ApplicationService` is a thin facade that delegates orchestration to focused use cases:
@@ -92,7 +92,6 @@ Lower-level services handle specific concerns:
 
 - `ForecastService`: CRUD for planned operations/budgets, report computation
 - `AccountForecaster`/`AccountAnalyzer`: Compute account projections and aggregates
-- `AccountAnalysisRenderer`: Export analysis reports to Excel
 - `OperationService`/`OperationLinkService`: Manage operations and links
 - `OperationMatcher`/`categorize_operations`: Match and categorize operations
 - `ForecastActualizer`: Adjust forecasts based on linked operations

@@ -1,7 +1,7 @@
 """Read-only view models derived from ApplicationService data.
 
-Replicates the review screen's category grouping and consumption logic so the
-web month view and home health match the TUI for the same database.
+Groups categories and computes consumption for the web month view and home
+health from the same database.
 """
 
 from datetime import date, datetime

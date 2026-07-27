@@ -1,4 +1,4 @@
-"""Shared database bootstrap for the TUI and CLI entry points.
+"""Shared database bootstrap for the web app and CLI entry points.
 
 Backs up the database, runs migrations, and seeds the aggregated account name
 on an empty database. Both entry points open the repository the same way.

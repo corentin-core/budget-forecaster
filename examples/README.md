@@ -11,9 +11,9 @@ pip install -e .
 # Optionally regenerate demo data with fresh dates
 python examples/generate_demo.py
 
-# Run the TUI from the examples directory
+# Run the web app from the examples directory
 cd examples/
-python -m budget_forecaster.main -c config.yaml
+BUDGET_CONFIG=config.yaml uvicorn --factory budget_forecaster.web.app:create_app
 ```
 
 ## Contents
