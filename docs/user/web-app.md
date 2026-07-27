@@ -72,6 +72,12 @@ safety threshold, so an at-a-glance screen tells you whether you are within budg
 Réglages lets you edit that threshold, and holds the log-out action (reachable on
 mobile, where there is no sidebar).
 
+The Accueil upcoming list also surfaces **overdue** iterations: an income or expense
+whose due date just passed but that has not been matched to a real operation yet (e.g. a
+salary paid a day or two late) is marked with a ⚠ and an amber date, sorted to the top,
+instead of silently disappearing. Overdue detection uses each operation's matching
+tolerance window; older unmatched iterations are assumed settled.
+
 ## Categorizing operations
 
 In Opérations, each row carries a category dropdown: change it and the row updates on

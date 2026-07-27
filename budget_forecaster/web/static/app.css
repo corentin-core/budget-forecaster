@@ -10,6 +10,7 @@
   --accent: #2f6df6;
   --good: #1f9d55;
   --bad: #d64545;
+  --warn: #c77700;
   --income: #1f9d55;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   --nav-h: 56px;
@@ -25,6 +26,7 @@
     --accent: #5b8dff;
     --good: #3fce7c;
     --bad: #f0736f;
+    --warn: #e0a83e;
     --income: #3fce7c;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   }
@@ -341,6 +343,13 @@ a {
 .up-date {
   color: var(--muted);
   min-width: 5.5rem;
+}
+.upcoming-list li.late .up-date {
+  color: var(--warn);
+  font-weight: 600;
+}
+.late-marker {
+  margin-right: 0.15rem;
 }
 .up-desc {
   flex: 1;

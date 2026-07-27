@@ -15,3 +15,4 @@ class DisplaySymbol(enum.StrEnum):
     EURO = "\u20ac"  # €
     PLAY = "\u25ba"  # ►
     STAR = "\u2605"  # ★
+    WARNING = "\u26a0"  # ⚠

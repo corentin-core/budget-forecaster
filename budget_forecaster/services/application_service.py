@@ -6,6 +6,7 @@ while providing direct access to read-only service methods.
 """
 
 import logging
+from collections.abc import Mapping
 from datetime import date, timedelta
 from pathlib import Path
 from typing import NamedTuple
@@ -74,22 +75,29 @@ class UpcomingIteration(NamedTuple):
     amount: float
     currency: str
     period: relativedelta | None
+    late: bool = False
 
 
 def get_upcoming_iterations(
     planned_operations: tuple[PlannedOperation, ...],
     reference_date: date,
     horizon_days: int = 30,
+    linked_iterations: Mapping[PlannedOperationId, set[date]] | None = None,
 ) -> tuple[UpcomingIteration, ...]:
     """Get upcoming iterations from planned operations within a time horizon.
+
+    Iterations due before reference_date that have no linked operation are
+    included as late (overdue, not yet posted), within each operation's matcher
+    tolerance window. Requires linked_iterations to tell matched from overdue.
 
     Args:
         planned_operations: All planned operations.
         reference_date: The date to compute from (typically today).
         horizon_days: Number of days ahead to look.
+        linked_iterations: Iteration dates already matched, per planned operation.
 
     Returns:
-        Upcoming iterations sorted by date ascending.
+        Upcoming and late iterations sorted by date ascending.
     """
     cutoff = reference_date + timedelta(days=horizon_days)
     iterations: list[UpcomingIteration] = []
@@ -98,19 +106,30 @@ def get_upcoming_iterations(
         period = (
             op.date_range.period if isinstance(op.date_range, RecurringDay) else None
         )
+        matched: set[date] = set()
+        if linked_iterations is not None and op.id is not None:
+            matched = linked_iterations.get(op.id, set())
+        window_start = reference_date - op.matcher.approximation_date_range
         for date_range in op.date_range.iterate_over_date_ranges(
-            from_date=reference_date
+            from_date=window_start
         ):
-            if date_range.start_date > cutoff:
+            if (iteration_date := date_range.start_date) > cutoff:
                 break
-            if date_range.start_date >= reference_date:
+            is_upcoming = iteration_date >= reference_date
+            is_late = (
+                linked_iterations is not None
+                and window_start <= iteration_date < reference_date
+                and iteration_date not in matched
+            )
+            if is_upcoming or is_late:
                 iterations.append(
                     UpcomingIteration(
-                        iteration_date=date_range.start_date,
+                        iteration_date=iteration_date,
                         description=op.description,
                         amount=op.amount,
                         currency=op.currency,
                         period=period,
+                        late=is_late,
                     )
                 )
 
@@ -344,7 +363,15 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
             Upcoming iterations sorted by date ascending.
         """
         planned_ops = self.get_all_planned_operations()
-        return get_upcoming_iterations(planned_ops, date.today(), horizon_days)
+        linked_iterations: dict[PlannedOperationId, set[date]] = {}
+        for link in self._operation_link_service.get_all_links():
+            if link.target_type == LinkType.PLANNED_OPERATION:
+                linked_iterations.setdefault(link.target_id, set()).add(
+                    link.iteration_date
+                )
+        return get_upcoming_iterations(
+            planned_ops, date.today(), horizon_days, linked_iterations
+        )
 
     def get_all_budgets(self) -> tuple[Budget, ...]:
         """Get all budgets sorted alphabetically by description."""

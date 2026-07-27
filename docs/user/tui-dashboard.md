@@ -18,6 +18,7 @@ The dashboard is composed of three sections, from top to bottom:
 ├────────────────────────┴─────────────────────────┴──────────────────────────┤
 │ Upcoming planned operations (next 30 days)                                  │
 │ Date       Description                  Amount           Period             │
+│ ⚠ Feb 26   Salary                      +2,940.00 EUR     1 mo.              │
 │ Mar 01     Rent                         -800.00 EUR      1 mo.              │
 │ Mar 05     Electricity                   -95.00 EUR      1 mo.              │
 │ Mar 15     Insurance                    -120.00 EUR      1 mo.              │
@@ -44,6 +45,12 @@ The top bar displays three key indicators:
 
 This section lists all planned operation iterations scheduled within the next 30 days,
 sorted by date (closest first). Both recurring and one-time operations are included.
+
+An iteration whose due date has already passed but that has no matching operation yet is
+shown as **late**: its date is prefixed with `⚠` and colored, and it sorts to the top.
+This catches an income or expense due a few days ago that has not yet posted (e.g. a
+salary paid late). Lateness is detected within each operation's matching tolerance
+window (5 days by default); older unmatched iterations are assumed settled and dropped.
 
 ### Columns
 

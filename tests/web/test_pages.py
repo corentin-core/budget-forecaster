@@ -1,8 +1,11 @@
 """Each read-only section renders and matches the ApplicationService data."""
 
+from datetime import date
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from budget_forecaster.services.application_service import UpcomingIteration
 from budget_forecaster.web.formatting import format_eur
 from budget_forecaster.web.routes.home import _PAGE_SIZE as _UPCOMING_PAGE_SIZE
 from budget_forecaster.web.routes.operations import _PAGE_SIZE
@@ -108,3 +111,39 @@ class TestPages:
         html = client.get("/settings").text
         assert "Réglages" in html
         assert inbox in html
+
+
+class TestUpcomingLateRendering:
+    """The upcoming fragment flags overdue (late) iterations."""
+
+    def _render(self, app: FastAPI, *iterations: UpcomingIteration) -> str:
+        template = app.state.templates.get_template("fragments/upcoming_items.html")
+        return template.render(upcoming=list(iterations), currency="EUR")
+
+    def test_late_iteration_is_marked(self, app: FastAPI) -> None:
+        """A late iteration gets the late class and warning marker."""
+        late = UpcomingIteration(
+            iteration_date=date(2025, 3, 26),
+            description="Salary",
+            amount=2940.0,
+            currency="EUR",
+            period=None,
+            late=True,
+        )
+        html = self._render(app, late)
+        assert 'class="late"' in html
+        assert "⚠" in html
+
+    def test_on_time_iteration_is_not_marked(self, app: FastAPI) -> None:
+        """A non-late iteration has no late class nor marker."""
+        on_time = UpcomingIteration(
+            iteration_date=date(2025, 3, 26),
+            description="Rent",
+            amount=-850.0,
+            currency="EUR",
+            period=None,
+            late=False,
+        )
+        html = self._render(app, on_time)
+        assert 'class="late"' not in html
+        assert "⚠" not in html

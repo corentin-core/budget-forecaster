@@ -187,6 +187,76 @@ class TestGetUpcomingIterations:
         assert any(it.iteration_date == date(2025, 3, 15) for it in result)
 
 
+class TestLateIterations:
+    """Tests for overdue (late) iterations in the upcoming list."""
+
+    def test_overdue_unmatched_iteration_is_late(self) -> None:
+        """An iteration due 2 days ago with no link is included, flagged late."""
+        # Monthly income due the 26th; reference date is the 28th (2 days late)
+        op = _make_recurring_op(
+            1, "Salary", 2940.0, date(2025, 1, 26), relativedelta(months=1)
+        )
+        result = get_upcoming_iterations(
+            (op,),
+            reference_date=date(2025, 3, 28),
+            horizon_days=30,
+            linked_iterations={},
+        )
+        late = [it for it in result if it.iteration_date == date(2025, 3, 26)]
+        assert len(late) == 1
+        assert late[0].late is True
+
+    def test_overdue_matched_iteration_is_excluded(self) -> None:
+        """An overdue iteration already linked to an operation is not shown."""
+        op = _make_recurring_op(
+            1, "Salary", 2940.0, date(2025, 1, 26), relativedelta(months=1)
+        )
+        result = get_upcoming_iterations(
+            (op,),
+            reference_date=date(2025, 3, 28),
+            horizon_days=30,
+            linked_iterations={1: {date(2025, 3, 26)}},
+        )
+        assert all(it.iteration_date != date(2025, 3, 26) for it in result)
+
+    def test_overdue_beyond_tolerance_window_is_excluded(self) -> None:
+        """An iteration overdue beyond the matcher window (5 days) is not shown."""
+        op = _make_recurring_op(
+            1, "Salary", 2940.0, date(2025, 1, 20), relativedelta(months=1)
+        )
+        # Due the 20th, reference the 28th: 8 days late, outside the 5-day window
+        result = get_upcoming_iterations(
+            (op,),
+            reference_date=date(2025, 3, 28),
+            horizon_days=30,
+            linked_iterations={},
+        )
+        assert all(it.iteration_date != date(2025, 3, 20) for it in result)
+
+    def test_upcoming_iteration_is_not_late(self) -> None:
+        """A future iteration is flagged as not late."""
+        op = _make_recurring_op(
+            1, "Rent", -850.0, date(2025, 1, 1), relativedelta(months=1)
+        )
+        result = get_upcoming_iterations(
+            (op,),
+            reference_date=date(2025, 3, 1),
+            horizon_days=30,
+            linked_iterations={},
+        )
+        assert result[0].late is False
+
+    def test_late_detection_disabled_without_links_argument(self) -> None:
+        """Without linked_iterations, overdue iterations are not detected."""
+        op = _make_recurring_op(
+            1, "Salary", 2940.0, date(2025, 1, 26), relativedelta(months=1)
+        )
+        result = get_upcoming_iterations(
+            (op,), reference_date=date(2025, 3, 28), horizon_days=30
+        )
+        assert all(it.iteration_date != date(2025, 3, 26) for it in result)
+
+
 class TestFormatPeriod:
     """Tests for format_period function."""
 
