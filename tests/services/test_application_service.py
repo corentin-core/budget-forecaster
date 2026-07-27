@@ -1161,3 +1161,85 @@ class TestReloadForecast:
 
         assert result is reloaded
         mock_forecast_service.reload_forecast.assert_called_once_with()
+
+
+class TestUpcomingPlannedIterations:
+    """get_upcoming_planned_iterations wires links into overdue (late) detection."""
+
+    @staticmethod
+    def _overdue_monthly_op(days_ago: int) -> tuple[PlannedOperation, date]:
+        """A monthly income whose current iteration is `days_ago` days overdue."""
+        iteration = date.today() - relativedelta(days=days_ago)
+        op = PlannedOperation(
+            record_id=7,
+            description="Salary",
+            amount=Amount(2940.0, "EUR"),
+            category=Category.SALARY,
+            date_range=RecurringDay(iteration, relativedelta(months=1)),
+        )
+        return op, iteration
+
+    def test_overdue_unmatched_iteration_is_flagged_late(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+        mock_operation_link_service: MagicMock,
+    ) -> None:
+        """An overdue iteration with no link is returned flagged late."""
+        op, iteration = self._overdue_monthly_op(2)
+        mock_forecast_service.get_all_planned_operations.return_value = [op]
+        mock_operation_link_service.get_all_links.return_value = ()
+
+        result = app_service.get_upcoming_planned_iterations()
+
+        late = [it for it in result if it.iteration_date == iteration]
+        assert len(late) == 1
+        assert late[0].late is True
+
+    def test_overdue_matched_iteration_is_excluded(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+        mock_operation_link_service: MagicMock,
+    ) -> None:
+        """An overdue iteration linked to an operation is not shown."""
+        op, iteration = self._overdue_monthly_op(2)
+        mock_forecast_service.get_all_planned_operations.return_value = [op]
+        mock_operation_link_service.get_all_links.return_value = (
+            OperationLink(
+                operation_unique_id=1,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=op.id,
+                iteration_date=iteration,
+                is_manual=False,
+            ),
+        )
+
+        result = app_service.get_upcoming_planned_iterations()
+
+        assert all(it.iteration_date != iteration for it in result)
+
+    def test_budget_link_does_not_match_a_planned_iteration(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+        mock_operation_link_service: MagicMock,
+    ) -> None:
+        """A BUDGET link with the same id/date must not count as a match."""
+        op, iteration = self._overdue_monthly_op(2)
+        mock_forecast_service.get_all_planned_operations.return_value = [op]
+        mock_operation_link_service.get_all_links.return_value = (
+            OperationLink(
+                operation_unique_id=1,
+                target_type=LinkType.BUDGET,
+                target_id=op.id,
+                iteration_date=iteration,
+                is_manual=False,
+            ),
+        )
+
+        result = app_service.get_upcoming_planned_iterations()
+
+        late = [it for it in result if it.iteration_date == iteration]
+        assert len(late) == 1
+        assert late[0].late is True
