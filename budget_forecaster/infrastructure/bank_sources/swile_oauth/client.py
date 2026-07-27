@@ -61,7 +61,7 @@ class SwileClient:
         shape the parser reads from a downloaded export.
         """
         items: list[dict[str, Any]] = []
-        cursor = datetime.now(timezone.utc).isoformat()
+        cursor: str | None = datetime.now(timezone.utc).isoformat()
         for _ in range(_MAX_PAGES):
             page = self._get(
                 constants.OPERATIONS_URL,
@@ -71,7 +71,8 @@ class SwileClient:
             items.extend(page.get("items", []))
             if not page.get("has_more"):
                 break
-            cursor = page["next_cursor"]
+            if not (cursor := page.get("next_cursor")):
+                break
         else:
             logger.warning(
                 "Swile operations hit the %d-page cap; older operations skipped",

@@ -1,9 +1,13 @@
 """The Swile client refreshes tokens and reads operations/wallets."""
 
+import logging
 from unittest.mock import MagicMock
+
+import pytest
 
 from budget_forecaster.infrastructure.bank_sources.swile_oauth import constants
 from budget_forecaster.infrastructure.bank_sources.swile_oauth.client import (
+    _MAX_PAGES,
     SwileClient,
     TokenBundle,
 )
@@ -63,6 +67,37 @@ def test_get_operations_follows_the_cursor_across_pages() -> None:
 
     assert payload == {"items": [{"name": "a"}, {"name": "b"}]}
     assert session.get.call_args_list[1].kwargs["params"]["before"] == "c2"
+
+
+def test_get_operations_stops_on_missing_cursor() -> None:
+    """A has_more page without a next_cursor ends pagination instead of crashing."""
+    session = MagicMock()
+    session.get.side_effect = [
+        _response({"items": [{"name": "a"}], "has_more": True, "next_cursor": None}),
+    ]
+
+    payload = SwileClient(session).get_operations("acc-token")
+
+    assert payload == {"items": [{"name": "a"}]}
+    assert session.get.call_count == 1
+
+
+def test_get_operations_stops_at_the_page_cap_and_warns(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Pagination stops at the safety cap and warns instead of looping forever."""
+    session = MagicMock()
+    session.get.side_effect = [
+        _response({"items": [{"name": str(i)}], "has_more": True, "next_cursor": "c"})
+        for i in range(_MAX_PAGES + 5)
+    ]
+
+    with caplog.at_level(logging.WARNING):
+        payload = SwileClient(session).get_operations("acc-token")
+
+    assert len(payload["items"]) == _MAX_PAGES
+    assert session.get.call_count == _MAX_PAGES
+    assert "page cap" in caplog.text
 
 
 def test_get_wallets_sends_the_api_version_header() -> None:
