@@ -67,6 +67,7 @@ repos:
           - pandas-stubs
           - python-dateutil
           - pyjwt
+          - cryptography
           - types-requests
           - fastapi
           - jinja2

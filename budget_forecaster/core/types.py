@@ -77,6 +77,13 @@ class SyncRunStatus(enum.StrEnum):
     FAILED = "FAILED"
 
 
+class SyncSource(enum.StrEnum):
+    """Which integration produced a sync run."""
+
+    ENABLE_BANKING = "enable_banking"
+    SWILE = "swile"
+
+
 class SyncRun(NamedTuple):
     """One recorded bank-sync run, for in-app alerting and history."""
 
@@ -96,6 +103,9 @@ class SyncRun(NamedTuple):
 
     error: str | None = None
     """Failure description ("ClassName: message"); set on failure."""
+
+    source: SyncSource = SyncSource.ENABLE_BANKING
+    """Integration that ran the sync."""
 
 
 class BudgetColumn(enum.StrEnum):
