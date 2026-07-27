@@ -246,6 +246,35 @@ class TestLateIterations:
         )
         assert result[0].late is False
 
+    def test_overdue_at_exact_window_edge_is_late(self) -> None:
+        """An iteration exactly at the 5-day window edge is included as late."""
+        op = _make_recurring_op(
+            1, "Salary", 2940.0, date(2025, 1, 21), relativedelta(months=1)
+        )
+        # Due the 21st, reference the 26th: exactly 5 days late (default window)
+        result = get_upcoming_iterations(
+            (op,),
+            reference_date=date(2025, 3, 26),
+            horizon_days=30,
+            linked_iterations={},
+        )
+        late = [it for it in result if it.iteration_date == date(2025, 3, 21)]
+        assert len(late) == 1
+        assert late[0].late is True
+
+    def test_overdue_one_day_past_window_is_excluded(self) -> None:
+        """An iteration 6 days late (one past the 5-day window) is excluded."""
+        op = _make_recurring_op(
+            1, "Salary", 2940.0, date(2025, 1, 20), relativedelta(months=1)
+        )
+        result = get_upcoming_iterations(
+            (op,),
+            reference_date=date(2025, 3, 26),
+            horizon_days=30,
+            linked_iterations={},
+        )
+        assert all(it.iteration_date != date(2025, 3, 20) for it in result)
+
     def test_late_detection_disabled_without_links_argument(self) -> None:
         """Without linked_iterations, overdue iterations are not detected."""
         op = _make_recurring_op(
