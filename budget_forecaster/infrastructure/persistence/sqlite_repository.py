@@ -26,6 +26,7 @@ from budget_forecaster.core.types import (
     OperationId,
     SyncRun,
     SyncRunStatus,
+    SyncSource,
     TargetId,
 )
 from budget_forecaster.domain.account.account import Account
@@ -812,8 +813,8 @@ class SqliteRepository(RepositoryInterface):
         conn = self._get_connection()
         conn.execute(
             """INSERT INTO sync_runs
-                   (ran_at, status, new_count, duplicate_count, balance, error)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+                   (ran_at, status, new_count, duplicate_count, balance, error, source)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
                 run.ran_at.isoformat(),
                 run.status.value,
@@ -821,6 +822,7 @@ class SqliteRepository(RepositoryInterface):
                 run.duplicate_count,
                 run.balance,
                 run.error,
+                run.source.value,
             ),
         )
         conn.commit()
@@ -829,7 +831,7 @@ class SqliteRepository(RepositoryInterface):
         """Get the most recent sync runs, newest first."""
         conn = self._get_connection()
         cursor = conn.execute(
-            """SELECT ran_at, status, new_count, duplicate_count, balance, error
+            """SELECT ran_at, status, new_count, duplicate_count, balance, error, source
                FROM sync_runs ORDER BY id DESC LIMIT ?""",
             (limit,),
         )
@@ -841,6 +843,7 @@ class SqliteRepository(RepositoryInterface):
                 duplicate_count=row["duplicate_count"],
                 balance=row["balance"],
                 error=row["error"],
+                source=SyncSource(row["source"]),
             )
             for row in cursor.fetchall()
         )

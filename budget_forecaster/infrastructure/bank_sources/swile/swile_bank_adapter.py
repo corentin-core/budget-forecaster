@@ -2,14 +2,15 @@
 import json
 import re
 import zipfile
-from datetime import datetime
 from pathlib import Path
 
-from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.types import Category
 from budget_forecaster.exceptions import InvalidExportDataError
 from budget_forecaster.infrastructure.bank_sources.file_export_adapter import (
     FileExportAdapterBase,
+)
+from budget_forecaster.infrastructure.bank_sources.swile.swile_parser import (
+    parse_balance,
+    parse_operations,
 )
 from budget_forecaster.services.operation.historic_operation_factory import (
     HistoricOperationFactory,
@@ -29,53 +30,21 @@ class SwileBankAdapter(FileExportAdapterBase):
     ) -> None:
         """Load export from a swile-export-YYYY-MM-DD.zip archive.
 
-        The zip must contain operations.json and wallets.json at the root level.
+        The zip holds operations.json and wallets.json at the root. An export
+        with no meal-voucher transaction is rejected as invalid.
         """
         with zipfile.ZipFile(bank_export, "r") as zf:
             operations_json = json.loads(zf.read("operations.json"))
             wallets_json = json.loads(zf.read("wallets.json"))
 
-        for wallet in wallets_json["wallets"]:
-            if wallet["type"] == "meal_voucher":
-                if not isinstance(wallet["balance"]["value"], (float, int)):
-                    raise InvalidExportDataError(
-                        "The balance field should be a float",
-                        path=bank_export,
-                    )
-                self._balance = wallet["balance"]["value"]
-                break
-
-        for operation in operations_json["items"]:
-            for transaction in operation["transactions"]:
-                if transaction["status"] not in ("AUTHORIZED", "VALIDATED", "CAPTURED"):
-                    continue
-
-                if transaction["payment_method"] != "Wallets::MealVoucherWallet":
-                    # we only consider meal vouchers as the other transactions are deduced from the
-                    # main account
-                    continue
-
-                amount = transaction["amount"]["value"] / 100.0
-                # date has format "2025-01-24T13:50:50.073+01:00"
-                op_date = datetime.strptime(transaction["date"][:10], "%Y-%m-%d").date()
-                self._operations.append(
-                    operation_factory.create_operation(
-                        description=operation["name"],
-                        amount=Amount(
-                            amount, transaction["amount"]["currency"]["iso_3"]
-                        ),
-                        category=Category.UNCATEGORIZED,
-                        operation_date=op_date,
-                    )
-                )
-
-        if not self._operations:
+        self._balance = parse_balance(wallets_json, path=bank_export)
+        if not (operations := parse_operations(operations_json, operation_factory)):
             raise InvalidExportDataError(
                 "No meal voucher transactions found in the operations.json file",
                 path=bank_export,
             )
-
-        self._export_date = max(op.operation_date for op in self._operations)
+        self._operations = list(operations)
+        self._export_date = max(op.operation_date for op in operations)
 
     @classmethod
     def match(cls, bank_export: Path) -> bool:

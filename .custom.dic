@@ -23,6 +23,7 @@ budgetinterface
 cancelled
 cancelling
 categorizer
+ciphertext
 cli
 clôturé
 codecov
@@ -40,6 +41,10 @@ dataframe
 daterange
 datetime
 datetimes
+decrypt
+decrypt
+decrypting
+decrypts
 dedup
 deduping
 deduplicates
@@ -62,6 +67,7 @@ entrypoint
 enum
 enums
 env
+fernet
 focusable
 forecasted
 gettext
@@ -112,6 +118,7 @@ paribas
 parseable
 parsers
 passthrough
+plaintext
 polyline
 pragma
 pre
@@ -151,6 +158,7 @@ supermarché
 supersession
 svg
 swile
+swile's
 sys
 systemd
 tailnet
@@ -175,6 +183,7 @@ upsert
 upserting
 upserts
 uptime
+urlsafe
 uvicorn
 whitespace
 widget's
