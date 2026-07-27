@@ -38,10 +38,32 @@
             <span class="legend-label">{{ slice.label }}</span>
             <span class="legend-value">{{ slice.fraction | pct }} · {{ slice.amount | eur(currency) }}</span>
           </li>
+          {% if slice.members %}
+            <li class="legend-members">
+              <ul>
+                {% for name, amount in slice.members %}
+                  <li>
+                    <span class="legend-label">{{ name }}</span>
+                    <span class="legend-value">{{ amount | eur(currency) }}</span>
+                  </li>
+                {% endfor %}
+              </ul>
+            </li>
+          {% endif %}
         {% endfor %}
       </ul>
       <p class="chart-hint">{{ _("Tap or hover a segment for details") }}</p>
     </div>
+    <form class="threshold-control"
+          hx-post="/trends/threshold" hx-target="#breakdown" hx-swap="outerHTML"
+          hx-trigger="input changed delay:300ms">
+      <input type="hidden" name="months" value="{{ period }}">
+      <label for="breakdown-threshold">{{ _("Group categories below") }}</label>
+      <input type="range" id="breakdown-threshold" name="threshold"
+             min="0" max="10" step="0.5" value="{{ threshold }}"
+             oninput="this.form.querySelector('.threshold-value').textContent = this.value.replace('.', ',')">
+      <span class="threshold-value">{{ threshold | replace(".", ",") }}</span>&nbsp;%
+    </form>
   {% else %}
     <p class="empty">{{ _("No expenses over this period") }}</p>
   {% endif %}

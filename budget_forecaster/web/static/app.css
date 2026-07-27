@@ -633,6 +633,28 @@ table {
   font-weight: 700;
 }
 
+/* --- Trends: breakdown threshold slider --- */
+.threshold-control {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.threshold-control input[type='range'] {
+  width: 140px;
+  max-width: 100%;
+  accent-color: var(--accent);
+}
+.threshold-control .threshold-value {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* --- Trends: expense donut --- */
 .breakdown-chart {
   position: relative;
@@ -712,6 +734,23 @@ table {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+/* Folded categories, listed under the grey "Other" legend row. */
+.donut-legend .legend-members {
+  display: block;
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+}
+.donut-legend .legend-members ul {
+  list-style: none;
+  margin: 0;
+  padding: 0.15rem 0 0.3rem 1.3rem;
+}
+.donut-legend .legend-members li {
+  border-bottom: none;
+  padding: 0.1rem 0;
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 
 /* --- Key/value + settings --- */

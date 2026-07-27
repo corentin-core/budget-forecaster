@@ -8,6 +8,7 @@ from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 
+from budget_forecaster.core.types import Category
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.operation.operation_service import OperationFilter
@@ -30,7 +31,9 @@ _SPARK_PADDING = 0.06  # headroom above/below the plotted range
 _SPARK_XTICKS = 4
 _PIE_RADIUS = 78
 _PIE_CIRCUMFERENCE = 2 * pi * _PIE_RADIUS
-_MAX_SLICES = 8
+_THRESHOLD_MIN = 0.0
+_THRESHOLD_MAX = 10.0
+_OTHER_COLOR = "#9ca3af"  # neutral grey, off-palette, for the folded "Other" slice
 _PALETTE = (
     "#2f6df6",
     "#1f9d55",
@@ -74,7 +77,11 @@ class Sparkline(NamedTuple):
 
 
 class ExpenseSlice(NamedTuple):
-    """One donut segment: its share of the total and its dash geometry."""
+    """One donut segment: its share of the total and its dash geometry.
+
+    members lists the folded categories (name, amount) for the "Other" slice; it is
+    empty for a plain single-category slice.
+    """
 
     label: str
     amount: float
@@ -83,6 +90,7 @@ class ExpenseSlice(NamedTuple):
     color: str
     dash: float
     offset: float
+    members: tuple[tuple[str, float], ...] = ()
 
 
 class Breakdown(NamedTuple):
@@ -92,6 +100,18 @@ class Breakdown(NamedTuple):
     total: float
     radius: float
     circumference: float
+
+
+class GroupedExpense(NamedTuple):
+    """A donut entry before geometry: a category (or the folded 'Other' bucket).
+
+    members lists the folded categories (name, amount) for the "Other" bucket; empty
+    for a plain single-category entry.
+    """
+
+    label: str
+    amount: float
+    members: tuple[tuple[str, float], ...] = ()
 
 
 def _x_labels(samples: list[tuple[date, float]]) -> tuple[str, ...]:
@@ -151,16 +171,73 @@ def _sparkline(
     )
 
 
-def _grouped_expenses(amounts: dict) -> list[tuple[str, float]]:
-    """Order expenses desc and fold the long tail into a single 'Other' entry."""
+def _grouped_expenses(
+    amounts: dict[Category, float], threshold: float
+) -> tuple[GroupedExpense, ...]:
+    """Order expenses desc and fold sub-threshold categories into one 'Other' entry.
+
+    A category folds when its share of the total is below threshold percent, or when it
+    is the real OTHER category. The folded entry carries its members (name, amount).
+    Folding happens only when at least two categories collapse: a single sub-threshold
+    category that is not OTHER stays as its own entry, to avoid a lonely "Other" that
+    equals one real category.
+    """
+    if (grand_total := sum(amounts.values())) == 0:
+        return ()
     ordered = sorted(amounts.items(), key=lambda item: item[1], reverse=True)
-    if len(ordered) <= _MAX_SLICES:
-        return [(category_name(str(cat)), amount) for cat, amount in ordered]
-    head = ordered[: _MAX_SLICES - 1]
-    tail_total = sum(amount for _cat, amount in ordered[_MAX_SLICES - 1 :])
-    entries = [(category_name(str(cat)), amount) for cat, amount in head]
-    entries.append((_("Other categories"), tail_total))
-    return entries
+    kept: list[GroupedExpense] = []
+    folded: list[tuple[str, float]] = []
+    folded_real_other = False
+    for cat, amount in ordered:
+        share = amount / grand_total * 100
+        if cat == Category.OTHER:
+            folded_real_other = True
+            folded.append((category_name(str(cat)), amount))
+        elif share < threshold:
+            folded.append((category_name(str(cat)), amount))
+        else:
+            kept.append(GroupedExpense(category_name(str(cat)), amount))
+    if not folded:
+        return tuple(kept)
+    if len(folded) == 1 and not folded_real_other:
+        name, amount = folded[0]
+        kept.append(GroupedExpense(name, amount))
+        return tuple(kept)
+    other_total = sum(amount for _name, amount in folded)
+    kept.append(GroupedExpense(_("Other categories"), other_total, tuple(folded)))
+    return tuple(kept)
+
+
+def _slices(
+    entries: tuple[GroupedExpense, ...],
+    total: float,
+    months: int,
+) -> tuple[ExpenseSlice, ...]:
+    """Turn grouped entries into donut segments, greying the folded 'Other' slice."""
+    slices = []
+    accumulated = 0.0
+    palette_index = 0
+    for entry in entries:
+        fraction = entry.amount / total if total else 0.0
+        if entry.members:
+            color = _OTHER_COLOR
+        else:
+            color = _PALETTE[palette_index % len(_PALETTE)]
+            palette_index += 1
+        slices.append(
+            ExpenseSlice(
+                label=entry.label,
+                amount=entry.amount,
+                average=entry.amount / months,
+                fraction=fraction,
+                color=color,
+                dash=round(fraction * _PIE_CIRCUMFERENCE, 2),
+                offset=round(-accumulated * _PIE_CIRCUMFERENCE, 2),
+                members=entry.members,
+            )
+        )
+        accumulated += fraction
+    return tuple(slices)
 
 
 def _breakdown(app: ApplicationService, months: int) -> Breakdown:
@@ -173,25 +250,10 @@ def _breakdown(app: ApplicationService, months: int) -> Breakdown:
     )
     totals = app.get_category_totals(criteria)
     amounts = {category: abs(total) for category, total in totals.items() if total != 0}
-    entries = _grouped_expenses(amounts)
-    total = sum(amount for _label, amount in entries)
-    slices = []
-    accumulated = 0.0
-    for index, (label, amount) in enumerate(entries):
-        fraction = amount / total if total else 0.0
-        slices.append(
-            ExpenseSlice(
-                label=label,
-                amount=amount,
-                average=amount / months,
-                fraction=fraction,
-                color=_PALETTE[index % len(_PALETTE)],
-                dash=round(fraction * _PIE_CIRCUMFERENCE, 2),
-                offset=round(-accumulated * _PIE_CIRCUMFERENCE, 2),
-            )
-        )
-        accumulated += fraction
-    return Breakdown(tuple(slices), total, _PIE_RADIUS, round(_PIE_CIRCUMFERENCE, 2))
+    entries = _grouped_expenses(amounts, app.expense_breakdown_threshold)
+    total = sum(entry.amount for entry in entries)
+    slices = _slices(entries, total, months)
+    return Breakdown(slices, total, _PIE_RADIUS, round(_PIE_CIRCUMFERENCE, 2))
 
 
 @router.get("/trends")
@@ -201,7 +263,7 @@ async def trends(
     months: int = _DEFAULT_PERIOD,
 ) -> Response:
     """Render balance evolution and expense breakdown for the chosen window."""
-    period = months if months in _PERIODS else _DEFAULT_PERIOD
+    period = _period_from(months)
     breakdown = _breakdown(app, period)
 
     # A period change (HX-Request) swaps only the breakdown card, keeping the
@@ -215,6 +277,7 @@ async def trends(
             currency=app.currency,
             period=period,
             periods=_PERIODS,
+            threshold=app.expense_breakdown_threshold,
         )
 
     # None = daily granularity, so the projected low point is actually visible.
@@ -234,4 +297,42 @@ async def trends(
         currency=app.currency,
         period=period,
         periods=_PERIODS,
+        threshold=app.expense_breakdown_threshold,
+    )
+
+
+def _period_from(raw: object) -> int:
+    """Coerce a form-supplied month count to a valid period, defaulting otherwise."""
+    try:
+        months = int(str(raw))
+    except (TypeError, ValueError):
+        return _DEFAULT_PERIOD
+    return months if months in _PERIODS else _DEFAULT_PERIOD
+
+
+@router.post("/trends/threshold")
+async def set_breakdown_threshold(
+    request: Request,
+    app: ApplicationService = Depends(get_app_service),
+) -> Response:
+    """Persist the expense breakdown threshold (clamped to [0, 10]%) and re-render the
+    donut. An unparseable value keeps the stored threshold."""
+    form = await request.form()
+    raw = str(form.get("threshold", "")).replace(",", ".").strip()
+    try:
+        clamped = min(_THRESHOLD_MAX, max(_THRESHOLD_MIN, float(raw)))
+    except ValueError:
+        clamped = app.expense_breakdown_threshold
+    app.expense_breakdown_threshold = clamped
+
+    months = _period_from(form.get("months"))
+    return render_template(
+        request,
+        "fragments/breakdown.html",
+        active="trends",
+        breakdown=_breakdown(app, months),
+        currency=app.currency,
+        period=months,
+        periods=_PERIODS,
+        threshold=app.expense_breakdown_threshold,
     )

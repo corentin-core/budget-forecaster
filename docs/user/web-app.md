@@ -78,6 +78,12 @@ salary paid a day or two late) is marked with a ⚠ and an amber date, sorted to
 instead of silently disappearing. Overdue detection uses each operation's matching
 tolerance window; older unmatched iterations are assumed settled.
 
+On Tendances, the expense breakdown donut folds small categories into a single grey
+**Other categories** slice. A slider below the donut sets the cutoff: any category below
+that share of the period total is folded in, and the donut re-renders live as you drag.
+Set it to 0% to show every category separately. The folded categories and their amounts
+are listed under the Other slice in the legend. The setting is remembered across visits.
+
 ## Categorizing operations
 
 In Opérations, each row carries a category dropdown: change it and the row updates on
