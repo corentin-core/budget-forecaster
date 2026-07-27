@@ -24,6 +24,7 @@ from budget_forecaster.infrastructure.persistence.repository_interface import (
     RepositoryInterface,
 )
 from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.services.import_service import ImportResult
 from budget_forecaster.web.dependencies import (
     get_app_service,
     get_config,
@@ -140,7 +141,7 @@ def _import_result_fragment(
     request: Request,
     app: ApplicationService,
     *,
-    result: object | None = None,
+    result: ImportResult | None = None,
     error: str | None = None,
 ) -> Response:
     """Render the inline import-result fragment swapped into the Imports card."""

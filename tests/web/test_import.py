@@ -9,6 +9,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from budget_forecaster.web.routes import settings as settings_route
+
 _EXAMPLES = Path(__file__).resolve().parents[2] / "examples" / "data"
 _BNP_EXPORT = _EXAMPLES / "bnp-export-demo.xls"
 _SWILE_EXPORT = _EXAMPLES / "swile-export-2026-03-04.zip"
@@ -85,6 +87,46 @@ class TestRejectedImport:
         )
         assert response.status_code == 303
         assert response.headers["location"].startswith("/login")
+
+
+def _pin_temp_dir(monkeypatch: pytest.MonkeyPatch, box: Path) -> None:
+    """Force the route to use `box` as its temp dir, created fresh each call."""
+
+    def fake_mkdtemp(**_: object) -> str:
+        box.mkdir(parents=True, exist_ok=True)
+        return str(box)
+
+    monkeypatch.setattr(settings_route.tempfile, "mkdtemp", fake_mkdtemp)
+
+
+class TestTempFileHandling:
+    """The upload writes to a throwaway dir that must never leak."""
+
+    def test_temp_dir_removed_after_import(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """The temp dir is gone after a success and after a rejection."""
+        box = tmp_path / "box"
+        _pin_temp_dir(monkeypatch, box)
+        _upload(client, _BNP_EXPORT.name, _BNP_EXPORT.read_bytes())
+        assert not box.exists()
+
+        _upload(client, "photo.png", b"not a bank export")
+        assert not box.exists()
+
+    def test_traversal_filename_stays_in_the_box(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """A ../-laden name is reduced to its basename, so nothing is written
+        outside the temp dir — an escaped file would survive the cleanup."""
+        box = tmp_path / "box"
+        _pin_temp_dir(monkeypatch, box)
+        response = client.post(
+            "/settings/import",
+            files={"file": ("../escaped.xls", b"x", "application/octet-stream")},
+        )
+        assert response.status_code == 200
+        assert not (tmp_path / "escaped.xls").exists()
 
 
 @pytest.mark.parametrize("missing", [_BNP_EXPORT, _SWILE_EXPORT])
