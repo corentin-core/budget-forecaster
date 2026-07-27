@@ -126,6 +126,11 @@ class UpcomingOperationRow(Horizontal):
         width: 12;
     }
 
+    UpcomingOperationRow .upcoming-date-late {
+        color: $warning;
+        text-style: bold;
+    }
+
     UpcomingOperationRow .upcoming-description {
         width: 1fr;
     }
@@ -155,7 +160,14 @@ class UpcomingOperationRow(Horizontal):
 
     def compose(self) -> ComposeResult:
         it = self._iteration
-        yield Static(it.iteration_date.strftime("%b %d"), classes="upcoming-date")
+        date_label = it.iteration_date.strftime("%b %d")
+        if it.late:
+            yield Static(
+                f"{DisplaySymbol.WARNING} {date_label}",
+                classes="upcoming-date upcoming-date-late",
+            )
+        else:
+            yield Static(date_label, classes="upcoming-date")
         yield Static(it.description, classes="upcoming-description")
         amount_class = (
             "upcoming-amount upcoming-amount-negative"

@@ -1713,3 +1713,6 @@ msgstr "Échec de la liaison. Veuillez réessayer."
 
 msgid "No bank linked yet."
 msgstr "Aucune banque liée pour le moment."
+
+msgid "Overdue: not yet posted"
+msgstr "En retard : pas encore enregistré"
