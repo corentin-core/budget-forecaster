@@ -111,3 +111,11 @@ class TestPreviewBackup:
 
         with pytest.raises(BackupError):
             preview_backup(current, corrupt)
+
+    def test_missing_file_raises(self, tmp_path: Path) -> None:
+        """A backup deleted before preview surfaces a clean error."""
+        current = tmp_path / "budget.db"
+        _make_db(current, balance=10.0, op_dates=[], version=7)
+
+        with pytest.raises(BackupError):
+            preview_backup(current, tmp_path / "gone.db")

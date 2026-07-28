@@ -3,6 +3,7 @@
 import logging
 import os
 import shutil
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, NamedTuple
@@ -28,6 +29,10 @@ class BackupService:
     """Service for creating, rotating and restoring database backups."""
 
     TIMESTAMP_FORMAT = "%Y-%m-%d_%H%M%S"
+    # Filenames carry microseconds so two backups in the same second never
+    # collide (a rapid restore then undo would otherwise overwrite its own
+    # safety snapshot). Parsing accepts the second-only form for older files.
+    _FILENAME_TIMESTAMP_FORMAT = "%Y-%m-%d_%H%M%S_%f"
 
     def __init__(
         self,
@@ -47,7 +52,9 @@ class BackupService:
         self._database_path = database_path
         self._backup_directory = backup_directory or database_path.parent
         self._max_backups = max_backups
-        self._max_safety_backups = max_safety_backups
+        # Always keep at least the snapshot a restore just took, so it is never
+        # rotated away before the caller can use it to undo.
+        self._max_safety_backups = max(1, max_safety_backups)
         self._db_stem = database_path.stem
 
     @property
@@ -72,10 +79,12 @@ class BackupService:
         """Read the timestamp from a backup filename, falling back to mtime."""
         suffix = path.stem.removeprefix(f"{self._db_stem}_")
         suffix = suffix.removeprefix(f"{_SAFETY_MARKER}_")
-        try:
-            return datetime.strptime(suffix, self.TIMESTAMP_FORMAT)
-        except ValueError:
-            return datetime.fromtimestamp(path.stat().st_mtime)
+        for fmt in (self._FILENAME_TIMESTAMP_FORMAT, self.TIMESTAMP_FORMAT):
+            try:
+                return datetime.strptime(suffix, fmt)
+            except ValueError:
+                continue
+        return datetime.fromtimestamp(path.stat().st_mtime)
 
     def create_backup(self, safety: bool = False) -> Path:
         """Create a backup of the database.
@@ -95,7 +104,7 @@ class BackupService:
 
         try:
             self._backup_directory.mkdir(parents=True, exist_ok=True)
-            timestamp = datetime.now().strftime(self.TIMESTAMP_FORMAT)
+            timestamp = datetime.now().strftime(self._FILENAME_TIMESTAMP_FORMAT)
             marker = f"{_SAFETY_MARKER}_" if safety else ""
             backup_path = (
                 self._backup_directory / f"{self._db_stem}_{marker}{timestamp}.db"
@@ -120,7 +129,7 @@ class BackupService:
         deleted += self._rotate(self._safety_backups(), self._max_safety_backups)
         return deleted
 
-    def _rotate(self, backups: list[Path], keep: int) -> list[Path]:
+    def _rotate(self, backups: tuple[Path, ...], keep: int) -> tuple[Path, ...]:
         """Delete all but the newest keep backups (input sorted oldest first)."""
         deleted: list[Path] = []
         for backup in backups[:-keep] if keep else backups:
@@ -130,20 +139,22 @@ class BackupService:
                 logger.info("Deleted old backup: %s", backup)
             except OSError as e:
                 logger.error("Failed to delete backup %s: %s", backup, e)
-        return deleted
+        return tuple(deleted)
 
     def get_existing_backups(self) -> list[Path]:
         """Get all backup files (automatic and safety), sorted oldest first."""
         backups = list(self._backup_directory.glob(self._get_backup_pattern()))
         return sorted(backups, key=lambda p: p.stat().st_mtime)
 
-    def _automatic_backups(self) -> list[Path]:
+    def _automatic_backups(self) -> tuple[Path, ...]:
         """Automatic backups only, sorted oldest first."""
-        return [p for p in self.get_existing_backups() if not self._is_safety_copy(p)]
+        return tuple(
+            p for p in self.get_existing_backups() if not self._is_safety_copy(p)
+        )
 
-    def _safety_backups(self) -> list[Path]:
+    def _safety_backups(self) -> tuple[Path, ...]:
         """Pre-restore snapshots only, sorted oldest first."""
-        return [p for p in self.get_existing_backups() if self._is_safety_copy(p)]
+        return tuple(p for p in self.get_existing_backups() if self._is_safety_copy(p))
 
     def get_backups(self) -> tuple[BackupInfo, ...]:
         """List all backups, newest first, with metadata for the UI."""
@@ -220,7 +231,7 @@ class BackupService:
                 shutil.copy2(source, scratch)
                 migrate(scratch)
                 os.replace(scratch, self._database_path)
-            except OSError as e:
+            except (OSError, sqlite3.Error) as e:
                 raise BackupError(f"Failed to restore backup: {filename!r}") from e
             finally:
                 scratch.unlink(missing_ok=True)

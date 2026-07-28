@@ -1,6 +1,7 @@
 """Tests for the BackupService and BackupConfig."""
 
 import os
+import sqlite3
 import time
 from datetime import datetime
 from pathlib import Path
@@ -256,17 +257,17 @@ class TestBackupErrorHandling:
     def test_rotate_backups_continues_on_individual_delete_failure(
         self, temp_db: Path, backup_dir: Path
     ) -> None:
-        """rotate_backups continues when a single file fails to delete."""
+        """rotate_backups deletes the rest when one entry cannot be removed."""
         base_time = 1000000000.0
-        for i in range(5):
+        # The oldest entry is a directory: unlinking it fails, so rotation must
+        # still delete the other over-limit backup.
+        oldest = backup_dir / "test_2025-01-17_100000.db"
+        oldest.mkdir()
+        os.utime(oldest, (base_time, base_time))
+        for i in range(1, 5):
             backup = backup_dir / f"test_2025-01-17_10000{i}.db"
             backup.write_text(f"backup {i}")
             os.utime(backup, (base_time + i, base_time + i))
-
-        # Make the oldest backup non-deletable
-        oldest = backup_dir / "test_2025-01-17_100000.db"
-        oldest.chmod(0o444)
-        backup_dir.chmod(0o555)
 
         service = BackupService(
             database_path=temp_db,
@@ -274,15 +275,11 @@ class TestBackupErrorHandling:
             max_backups=3,
         )
 
-        try:
-            deleted = service.rotate_backups()
+        deleted = service.rotate_backups()
 
-            # Should have attempted both deletions; some may fail
-            # The important thing is that it doesn't crash
-            assert isinstance(deleted, list)
-        finally:
-            backup_dir.chmod(0o755)
-            oldest.chmod(0o644)
+        remaining = service.get_existing_backups()
+        assert oldest in remaining  # directory deletion failed, still present
+        assert deleted == [backup_dir / "test_2025-01-17_100001.db"]
 
 
 class TestSafetyBackups:
@@ -467,6 +464,62 @@ class TestRestoreBackup:
 
         assert temp_db.read_text() == "test database content"
         assert not (backup_dir / ".restore-test.tmp").exists()
+
+    def test_wraps_non_backup_migration_error(
+        self, service: BackupService, backup_dir: Path
+    ) -> None:
+        """A migration error that is not a BackupError is wrapped as one."""
+        backup = backup_dir / "test_2025-01-17_100000.db"
+        backup.write_text("restored content")
+
+        def failing(_: Path) -> None:
+            raise sqlite3.OperationalError("no such column")
+
+        with pytest.raises(BackupError):
+            service.restore_backup(backup.name, migrate=failing)
+
+    def test_safety_snapshots_stay_bounded_across_restores(
+        self, temp_db: Path, backup_dir: Path
+    ) -> None:
+        """Repeated restores never grow the safety-snapshot pool past its cap."""
+        service = BackupService(
+            database_path=temp_db,
+            backup_directory=backup_dir,
+            max_safety_backups=2,
+        )
+        backup = backup_dir / "test_2025-01-17_100000.db"
+        backup.write_text("restored content")
+
+        for _ in range(5):
+            service.restore_backup(backup.name, migrate=lambda _: None)
+
+        safety = [b for b in service.get_backups() if b.is_safety_copy]
+        assert len(safety) == 2
+
+    def test_rejects_cross_device_backup_directory(
+        self,
+        service: BackupService,
+        backup_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A backup directory on another filesystem is refused before any swap."""
+        backup = backup_dir / "test_2025-01-17_100000.db"
+        backup.write_text("restored content")
+
+        real_stat = Path.stat
+
+        def fake_stat(self: Path, *args: object, **kwargs: object) -> os.stat_result:
+            result = real_stat(self, *args, **kwargs)
+            if self == backup_dir:
+                fields = list(result)
+                fields[2] = result.st_dev + 1  # st_dev is index 2
+                return os.stat_result(fields)
+            return result
+
+        monkeypatch.setattr(Path, "stat", fake_stat)
+
+        with pytest.raises(BackupError, match="same filesystem"):
+            service.restore_backup(backup.name, migrate=lambda _: None)
 
 
 class TestBackupConfigParsing:
