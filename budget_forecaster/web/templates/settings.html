@@ -115,13 +115,19 @@
   {% else %}
   <p class="empty">{{ _("Not connected yet.") }}</p>
   {% endif %}
+  {% if swile_enroll_bookmarklet %}
+  <p class="hint">{{ _("1. Drag this button to your bookmarks bar:") }}</p>
+  <p><a class="bookmarklet" href="{{ swile_enroll_bookmarklet }}" draggable="true" onclick="return false;">{{ _("Swile Enroll") }}</a></p>
+  <p class="hint">{{ _("2. On team.swile.co, click it to copy your token, then paste it below.") }}</p>
+  {% else %}
+  <p class="hint">{{ _("Run the Swile Enroll bookmarklet on team.swile.co; it copies the token to paste here.") }}</p>
+  {% endif %}
   <form method="post" action="/settings/swile/enroll" class="swile-enroll-form">
     <label class="field">
       <span>{{ _("Refresh token") }}</span>
       <input type="password" name="refresh_token" autocomplete="off"
              placeholder="{{ _('Paste the token copied by the bookmarklet') }}" required />
     </label>
-    <p class="hint">{{ _("Run the Swile Enroll bookmarklet on team.swile.co; it copies the token to paste here.") }}</p>
     <div class="form-actions">
       <button type="submit" class="btn primary">{{ _("Enroll") }}</button>
     </div>

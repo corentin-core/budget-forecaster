@@ -1774,3 +1774,12 @@ msgstr "Échec de la connexion Swile. Vérifie le jeton et réessaie."
 
 msgid "Swile connection needs reconnecting"
 msgstr "Connexion Swile à renouveler"
+
+msgid "1. Drag this button to your bookmarks bar:"
+msgstr "1. Glisse ce bouton dans ta barre de favoris :"
+
+msgid "2. On team.swile.co, click it to copy your token, then paste it below."
+msgstr "2. Sur team.swile.co, clique-le pour copier ton jeton, puis colle-le ci-dessous."
+
+msgid "Swile Enroll"
+msgstr "Swile Enroll"

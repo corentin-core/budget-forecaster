@@ -149,6 +149,12 @@ class TestSettingsCard:
         client.post("/settings/swile/enroll", data={"refresh_token": "rt"})
         assert "Connecté" in client.get("/settings").text
 
+    def test_card_offers_draggable_bookmarklet(self, client: TestClient) -> None:
+        """The card exposes the enroll bookmarklet as a draggable link."""
+        html = client.get("/settings").text
+        assert 'class="bookmarklet"' in html
+        assert "javascript:" in html
+
 
 class TestStartupSync:
     """The web app syncs Swile at startup when a token is enrolled."""

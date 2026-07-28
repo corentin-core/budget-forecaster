@@ -19,6 +19,14 @@ JS_SOURCE = SCRIPT_DIR / "swile_export.js"
 HTML_OUTPUT = SCRIPT_DIR / "swile_bookmarklet.html"
 ENROLL_JS_SOURCE = SCRIPT_DIR / "swile_enroll.js"
 ENROLL_HTML_OUTPUT = SCRIPT_DIR / "swile_enroll_bookmarklet.html"
+# The web app reads this at startup to render the draggable button in Réglages.
+ENROLL_BOOKMARKLET_OUTPUT = (
+    SCRIPT_DIR.parent
+    / "budget_forecaster"
+    / "web"
+    / "static"
+    / "swile_enroll.bookmarklet"
+)
 
 
 def minify_js(source: str) -> str:
@@ -256,22 +264,22 @@ def generate_enroll_html(bookmarklet_code: str) -> str:
 
 def _build(
     js_source: Path, html_output: Path, render_page: Callable[[str], str]
-) -> None:
-    """Minify one JS source and write its installation page."""
-    if not js_source.exists():
-        print(f"Error: {js_source} not found")
-        return
+) -> str:
+    """Minify one JS source, write its installation page, return the bookmarklet."""
     print(f"Reading {js_source}...")
     bookmarklet = f"javascript:{minify_js(js_source.read_text(encoding='utf-8'))}"
     print(f"Bookmarklet size: {len(bookmarklet)} characters")
     print(f"Generating {html_output}...")
     html_output.write_text(render_page(bookmarklet), encoding="utf-8")
+    return bookmarklet
 
 
 def main() -> None:
     """Build the export and enroll bookmarklet pages."""
     _build(JS_SOURCE, HTML_OUTPUT, generate_html)
-    _build(ENROLL_JS_SOURCE, ENROLL_HTML_OUTPUT, generate_enroll_html)
+    enroll = _build(ENROLL_JS_SOURCE, ENROLL_HTML_OUTPUT, generate_enroll_html)
+    print(f"Writing {ENROLL_BOOKMARKLET_OUTPUT}...")
+    ENROLL_BOOKMARKLET_OUTPUT.write_text(enroll, encoding="utf-8")
     print("Done!")
 
 
