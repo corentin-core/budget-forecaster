@@ -211,6 +211,14 @@ class BackupService:
             raise BackupError(f"Unknown backup: {filename!r}")
         return path
 
+    def is_safety_copy(self, filename: str) -> bool:
+        """Whether a named backup is a pre-restore safety snapshot.
+
+        Raises:
+            BackupError: If the name is not a valid backup in this directory.
+        """
+        return self._classify(self.resolve_backup(filename)) is BackupKind.SAFETY
+
     def delete_backup(self, filename: str) -> None:
         """Delete a single backup by filename.
 

@@ -132,6 +132,19 @@ class TestRestore:
         # The consumed safety copy is gone and no new one was created.
         assert not any(b.is_safety_copy for b in _backups(app))
 
+    def test_undo_flag_on_non_safety_backup_is_a_normal_restore(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """A forged undo on a normal backup restores with a net and keeps the file."""
+        client.post("/settings/backup", follow_redirects=False)
+        name = _backups(app)[0].path.name
+
+        client.post("/settings/backup/restore", data={"name": name, "undo": "1"})
+
+        remaining = {b.path.name for b in _backups(app)}
+        assert name in remaining  # the backup was not deleted
+        assert any(b.is_safety_copy for b in _backups(app))  # a safety net was taken
+
     def test_restore_unknown_backup_flashes_error(self, client: TestClient) -> None:
         """Restoring an unknown backup surfaces an error and changes nothing."""
         response = client.post(

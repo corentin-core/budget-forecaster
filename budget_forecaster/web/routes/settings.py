@@ -379,9 +379,12 @@ async def restore_backup(
     """
     form = await request.form()
     name = str(form.get("name", ""))
-    is_undo = bool(form.get("undo"))
+    wants_undo = form.get("undo") == "1"
     repository.close()
     try:
+        # Only a safety copy can be undone; any other target is a normal restore,
+        # so a forged undo can't restore-without-a-net then delete a real backup.
+        is_undo = wants_undo and backup_service.is_safety_copy(name)
         snapshot = backup_service.restore_backup(
             name, _migrate_scratch, blocking=False, take_snapshot=not is_undo
         )
@@ -399,9 +402,10 @@ async def restore_backup(
         )
     _reload_after_restore(app)
     if is_undo:
-        # Undo is terminal: drop the snapshot it consumed so restores don't pile
-        # up copies, and offer no further undo.
-        backup_service.delete_backup(name)
+        try:
+            backup_service.delete_backup(name)  # best-effort cleanup
+        except BackupError:
+            logger.warning("Could not remove the consumed safety copy: %s", name)
         return _backup_redirect(request, BackupFlash("undone", ""))
     assert snapshot is not None
     return _backup_redirect(request, BackupFlash("restored", snapshot.name))

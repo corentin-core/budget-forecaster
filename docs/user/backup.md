@@ -87,7 +87,8 @@ immediately, without restarting the app. Before replacing anything, it:
 
 Because the data is shared, a restore changes what **everyone** using the app sees.
 After a successful restore, an **Undo** button restores that safety copy, returning to
-the state you had just before.
+the state you had just before. Undo is a single step: once used, the safety copy is
+consumed and no further undo is offered.
 
 If the daily sync happens to be running, a restore reports that a sync is in progress —
 wait a moment and try again.
