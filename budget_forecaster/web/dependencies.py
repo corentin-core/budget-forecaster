@@ -5,6 +5,7 @@ import logging
 from fastapi import Request
 
 from budget_forecaster.exceptions import BudgetForecasterError
+from budget_forecaster.infrastructure.backup import BackupService
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent_service import (
     ConsentService,
 )
@@ -63,3 +64,8 @@ def get_repository(request: Request) -> RepositoryInterface:
 def get_config(request: Request) -> Config:
     """Return the loaded configuration."""
     return request.app.state.config
+
+
+def get_backup_service(request: Request) -> BackupService:
+    """Return the shared backup service."""
+    return request.app.state.backup_service
