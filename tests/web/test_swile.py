@@ -112,26 +112,25 @@ class TestEnroll:
 
 
 class TestSync:
-    """The Sync Swile button records a run for an enrolled account."""
+    """The unified Sync button syncs an enrolled Swile account."""
 
     def test_sync_records_ok_run(self, client: TestClient, app: FastAPI) -> None:
         """A sync with a stored token records an OK Swile run."""
         app.state.swile_client = _fake_client()
         app.state.swile_token_store.save("stored-rt")
-        response = client.post("/settings/swile/sync", follow_redirects=True)
+        response = client.post("/settings/sync", follow_redirects=True)
         assert response.status_code == 200
         run = _latest_swile_run(app)
         assert run is not None and run.status is SyncRunStatus.OK
 
-    def test_sync_without_enrollment_records_failed_run(
+    def test_sync_skips_unenrolled_swile(
         self, client: TestClient, app: FastAPI
     ) -> None:
-        """Syncing with no stored token records a FAILED run, not an error page."""
+        """With no stored token, the unified sync skips Swile and records no run."""
         app.state.swile_client = _fake_client()
-        response = client.post("/settings/swile/sync", follow_redirects=True)
+        response = client.post("/settings/sync", follow_redirects=True)
         assert response.status_code == 200
-        run = _latest_swile_run(app)
-        assert run is not None and run.status is SyncRunStatus.FAILED
+        assert _latest_swile_run(app) is None
 
     def test_history_shows_swile_run_without_enable_banking(
         self, client: TestClient, app: FastAPI
@@ -139,7 +138,7 @@ class TestSync:
         """A Swile run surfaces in the sync history even with no bank configured."""
         app.state.swile_client = _fake_client()
         app.state.swile_token_store.save("stored-rt")
-        client.post("/settings/swile/sync")
+        client.post("/settings/sync")
         assert 'class="sync-runs"' in client.get("/settings").text
 
 

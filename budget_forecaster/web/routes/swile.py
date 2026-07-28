@@ -101,20 +101,3 @@ async def enroll(
     run = _sync_and_refresh(repository, token_store, client, config, app)
     flash = Flash.SWILE_LINKED if run.status is SyncRunStatus.OK else Flash.SWILE_ERROR
     return _flash_redirect(request, flash)
-
-
-@router.post("/settings/swile/sync")
-async def sync_now(
-    app: ApplicationService = Depends(get_app_service),
-    token_store: SwileTokenStore = Depends(get_swile_token_store),
-    client: SwileClient = Depends(get_swile_client),
-    repository: RepositoryInterface = Depends(get_repository),
-    config: Config = Depends(get_config),
-) -> Response:
-    """Run a Swile sync now, then refresh the cached account and forecast.
-
-    Like the bank sync, this does blocking network I/O on the event-loop thread;
-    acceptable at personal scale (manual, rare).
-    """
-    _sync_and_refresh(repository, token_store, client, config, app)
-    return RedirectResponse(url="/settings", status_code=303)

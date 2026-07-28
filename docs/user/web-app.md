@@ -143,12 +143,12 @@ when the connection is valid or when Enable Banking is not configured.
 
 ## Sync history and failures
 
-The bank data refreshes on its own through a background sync that runs while the host is
-on. Réglages lists the recent runs — when each ran, whether it succeeded, how many
-operations were new or duplicates, and the resulting balance (or the error, for a failed
-run). Because that sync runs outside the app, a failure would otherwise go unnoticed:
-when the most recent run failed, a red banner appears on every page pointing to
-Réglages.
+Your data refreshes on its own through a background sync that runs while the host is on.
+The Sync card in Réglages lists the recent runs — when each ran, its source (Bank or
+Swile), whether it succeeded, how many operations were new or duplicates, and the
+resulting balance (or the error, for a failed run). Because that sync runs outside the
+app, a failure would otherwise go unnoticed: when the most recent run failed, a red
+banner appears on every page pointing to Réglages.
 
 The banner clears once a later sync succeeds. It also stays silent for a failure that
 predates your current bank authorization — if a sync failed because the consent had
@@ -156,14 +156,15 @@ expired and you have since renewed it, that old failure is treated as resolved a
 banner shows. A failure that happened under the current authorization (a bank outage,
 say) still raises the banner.
 
-"Sync now" in Réglages triggers a sync immediately, without waiting for the next
-scheduled run. It records a run just like the background sync does.
+A single "Sync now" button in the Sync card syncs every connected source at once (the
+bank and Swile), without waiting for the next scheduled run. Each source records its own
+run. A source you have not connected is skipped, and one source failing does not stop
+the others. The button is hidden when nothing is connected yet.
 
 ## Swile sync
 
-Swile syncs on its own once you connect it, the same way the bank sync works for BNP.
-See the [Swile sync guide](swile-sync.md) for the one-time enrollment and the Sync Swile
-button.
+Swile syncs alongside the bank, through the same "Sync now" button and the same daily
+timer. See the [Swile sync guide](swile-sync.md) for the one-time enrollment.
 
 ## Manual file import
 

@@ -97,6 +97,10 @@ systemctl --user enable --now budget-web.service
 systemctl --user enable --now budget-sync.timer
 ```
 
+The daily timer syncs every connected source. It reads `service.env`, so keep
+`BUDGET_WEB_SECRET_KEY` there (the same key the web app uses) for Swile to sync too;
+without it the timer syncs only the bank.
+
 Let the services keep running after you log out, and start on boot:
 
 ```bash

@@ -3,10 +3,11 @@
 import argparse
 import getpass
 import logging
+import os
 import sys
 from pathlib import Path
 
-from budget_forecaster.core.types import SyncRunStatus
+from budget_forecaster.core.types import SyncRun, SyncRunStatus, SyncSource
 from budget_forecaster.infrastructure.bank_sources.enable_banking.client import (
     EnableBankingClient,
 )
@@ -16,12 +17,14 @@ from budget_forecaster.infrastructure.bank_sources.enable_banking.consent_servic
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent_store import (
     ConsentStore,
 )
-from budget_forecaster.infrastructure.bank_sources.enable_banking.sync_runner import (
-    perform_sync,
+from budget_forecaster.infrastructure.bank_sources.swile_oauth.token_store import (
+    SwileTokenStore,
 )
+from budget_forecaster.infrastructure.bank_sources.sync_all import sync_all_sources
 from budget_forecaster.infrastructure.bootstrap import open_repository
 from budget_forecaster.infrastructure.config import Config, EnableBankingConfig
 from budget_forecaster.web.auth import hash_password
+from budget_forecaster.web.config import ENV_SECRET_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -60,28 +63,60 @@ def _build_client(enable_banking: EnableBankingConfig) -> EnableBankingClient:
     )
 
 
+def _consent_service(config: Config) -> ConsentService | None:
+    """Build the Enable Banking consent service, or None when not configured."""
+    if config.enable_banking is None:
+        return None
+    return ConsentService(_build_client(config.enable_banking), ConsentStore.default())
+
+
+def _swile_token_store(config: Config) -> SwileTokenStore | None:
+    """Build the Swile token store, or None when no web secret key is available.
+
+    The token is encrypted with the web secret key (env first, config fallback);
+    without it the timer can't decrypt the token, so Swile is skipped silently.
+    """
+    if not (secret_key := os.environ.get(ENV_SECRET_KEY) or config.web.secret_key):
+        logger.info("Swile sync skipped: no web secret key configured")
+        return None
+    return SwileTokenStore.default(secret_key)
+
+
+def _report_sync_runs(runs: tuple[SyncRun, ...]) -> None:
+    """Print one line per attempted source; failures go to stderr."""
+    if not runs:
+        print("No connected source to sync.")
+        return
+    for run in runs:
+        label = "Swile" if run.source is SyncSource.SWILE else "Bank"
+        if run.status is SyncRunStatus.OK:
+            balance = f" Balance: {run.balance:.2f}" if run.balance is not None else ""
+            print(
+                f"{label}: {run.new_count} new, "
+                f"{run.duplicate_count} duplicates skipped.{balance}"
+            )
+        else:
+            print(f"{label}: failed — {run.error}", file=sys.stderr)
+
+
 def _run_sync(config_path: Path) -> None:
-    """Sync the consented Enable Banking account, recording the run."""
+    """Sync every connected source; exit non-zero if any attempted source failed."""
     config = Config()
     config.parse(config_path)
     config.setup_logging()
-    enable_banking = _require_enable_banking(config)
-    client = _build_client(enable_banking)
-    consent_service = ConsentService(client, ConsentStore.default())
+
+    consent_service = _consent_service(config)
+    swile_token_store = _swile_token_store(config)
 
     repository = open_repository(config)
     try:
-        run = perform_sync(repository, consent_service, enable_banking, config.accounts)
+        runs = sync_all_sources(repository, config, consent_service, swile_token_store)
     finally:
         repository.close()
 
-    if run.status is SyncRunStatus.FAILED:
-        print(run.error, file=sys.stderr)
+    _report_sync_runs(runs)
+    if any(run.status is SyncRunStatus.FAILED for run in runs):
         sys.exit(1)
-    print(
-        f"Synced {enable_banking.local_account_name}: {run.new_count} new, "
-        f"{run.duplicate_count} duplicates skipped. Balance: {run.balance:.2f}"
-    )
 
 
 def _run_consent_status(config_path: Path) -> None:

@@ -25,12 +25,14 @@ def _repo_with_runs(*runs: SyncRun) -> Mock:
 
 
 def _connected_service() -> Mock:
-    """A consent-service double: connection configured and valid, no supersession."""
+    """A consent-service double: a stored, valid consent (the source is connected)."""
     service = Mock()
     service.state.return_value = ConsentState(
         ConsentStatus.VALID, datetime(2027, 1, 1, tzinfo=timezone.utc)
     )
-    service.current_consent.return_value = None
+    service.current_consent.return_value = Mock(
+        created_at=datetime(2020, 1, 1, tzinfo=timezone.utc)
+    )
     return service
 
 
@@ -74,41 +76,71 @@ class TestSyncHistory:
 
 
 class TestSyncNow:
-    """POST /settings/sync runs a sync only when Enable Banking is configured."""
+    """POST /settings/sync runs the all-sources orchestrator, refreshing on success."""
 
-    def test_noop_when_not_configured(self, client: TestClient, app: FastAPI) -> None:
-        """No consent service: the button redirects without syncing."""
+    def test_noop_when_nothing_connected(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """No connected source: the button redirects without reloading anything."""
         app.state.consent_service = None
+        reloaded: list[str] = []
+        app.state.app_service.reload_account = lambda: reloaded.append("reload")
         response = client.post("/settings/sync", follow_redirects=False)
         assert response.status_code == 303
+        assert not reloaded
 
-    def test_runs_and_refreshes_when_configured(
+    def test_runs_and_refreshes_on_success(
         self, client: TestClient, app: FastAPI, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """A configured connection syncs, reloads the account, then refreshes."""
+        """A successful sync reloads the account, then refreshes the forecast."""
         steps: list[str] = []
 
-        def fake_perform_sync(*_args: object) -> SyncRun:
+        def fake_sync_all(*_args: object, **_kwargs: object) -> tuple[SyncRun, ...]:
             steps.append("sync")
-            return SyncRun(
-                datetime(2026, 7, 23, 6, 0, tzinfo=timezone.utc),
-                SyncRunStatus.OK,
-                new_count=0,
-                duplicate_count=0,
-                balance=0.0,
+            return (
+                SyncRun(
+                    datetime(2026, 7, 23, 6, 0, tzinfo=timezone.utc),
+                    SyncRunStatus.OK,
+                    new_count=0,
+                    duplicate_count=0,
+                    balance=0.0,
+                ),
             )
 
-        monkeypatch.setattr(settings_route, "perform_sync", fake_perform_sync)
+        monkeypatch.setattr(settings_route, "sync_all_sources", fake_sync_all)
         monkeypatch.setattr(
             app.state.app_service, "reload_account", lambda: steps.append("reload")
         )
         monkeypatch.setattr(
             settings_route, "refresh_forecast", lambda _app: steps.append("refresh")
         )
-        app.state.consent_service = Mock()
-        app.state.config.enable_banking = object()
 
         response = client.post("/settings/sync", follow_redirects=False)
 
         assert response.status_code == 303
         assert steps == ["sync", "reload", "refresh"]
+
+    def test_no_refresh_when_all_failed(
+        self, client: TestClient, app: FastAPI, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """When every source fails, the account is not reloaded (tolerates empty DB)."""
+        steps: list[str] = []
+
+        def fake_sync_all(*_args: object, **_kwargs: object) -> tuple[SyncRun, ...]:
+            return (
+                SyncRun(
+                    datetime(2026, 7, 23, 6, 0, tzinfo=timezone.utc),
+                    SyncRunStatus.FAILED,
+                    error="boom",
+                ),
+            )
+
+        monkeypatch.setattr(settings_route, "sync_all_sources", fake_sync_all)
+        monkeypatch.setattr(
+            app.state.app_service, "reload_account", lambda: steps.append("reload")
+        )
+
+        response = client.post("/settings/sync", follow_redirects=False)
+
+        assert response.status_code == 303
+        assert not steps

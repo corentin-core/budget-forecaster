@@ -12,9 +12,9 @@ available as the fallback (see the [web app guide](web-app.md)).
 
 You copy a token from your logged-in Swile session once (via a bookmarklet) and paste it
 into Budget Forecaster. The app keeps that token encrypted and uses it to fetch fresh
-data on its own: on every app startup and whenever you press Sync Swile. Only
-meal-voucher operations are imported; card payments are ignored, since they already come
-through the bank account.
+data on its own: on every app startup, on the daily timer, and whenever you press "Sync
+now". Only meal-voucher operations are imported; card payments are ignored, since they
+already come through the bank account.
 
 If the token later stops working, a banner asks you to reconnect — you run the
 bookmarklet again and paste a new token.
@@ -31,14 +31,19 @@ bookmarklet again and paste a new token.
 Enrolling runs a first sync immediately, so your Swile operations appear right away.
 
 Enrollment is desktop-only: bookmarklets do not run on mobile, and the Swile app hides
-the token. From a phone you can still press Sync Swile once enrolled.
+the token. From a phone you can still press "Sync now" once enrolled.
 
 ## Syncing
 
-- **Automatic:** every time the web app starts (for example when your machine boots).
-- **Manual:** the **Sync Swile** button in Réglages, from desktop or mobile.
+- **Automatic:** every time the web app starts (for example when your machine boots),
+  and on the daily sync timer alongside the bank.
+- **Manual:** the single **Sync now** button in Réglages, from desktop or mobile.
 
 Re-running a sync is safe: already-imported operations are recognized and skipped.
+
+The daily timer syncs Swile only when it can read the web secret key (the same
+`BUDGET_WEB_SECRET_KEY` the web app uses to decrypt the stored token). See the
+[deployment guide](deployment.md).
 
 ## Reconnecting
 

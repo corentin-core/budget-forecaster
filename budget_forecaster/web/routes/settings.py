@@ -9,6 +9,7 @@ from typing import NamedTuple
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import RedirectResponse, Response
 
+from budget_forecaster.core.types import SyncRun, SyncRunStatus, SyncSource
 from budget_forecaster.i18n import _
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent import (
     ConsentStatus,
@@ -16,12 +17,11 @@ from budget_forecaster.infrastructure.bank_sources.enable_banking.consent import
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent_service import (
     ConsentService,
 )
-from budget_forecaster.infrastructure.bank_sources.enable_banking.sync_runner import (
-    perform_sync,
-)
+from budget_forecaster.infrastructure.bank_sources.swile_oauth.client import SwileClient
 from budget_forecaster.infrastructure.bank_sources.swile_oauth.token_store import (
     SwileTokenStore,
 )
+from budget_forecaster.infrastructure.bank_sources.sync_all import sync_all_sources
 from budget_forecaster.infrastructure.config import Config
 from budget_forecaster.infrastructure.persistence.repository_interface import (
     RepositoryInterface,
@@ -33,6 +33,7 @@ from budget_forecaster.web.dependencies import (
     get_config,
     get_consent_service,
     get_repository,
+    get_swile_client,
     get_swile_token_store,
     refresh_forecast,
 )
@@ -72,6 +73,12 @@ def _consent_created_at(consent_service: ConsentService | None) -> datetime | No
     return consent.created_at
 
 
+def _latest_run(repository: RepositoryInterface, source: SyncSource) -> SyncRun | None:
+    """Most recent run for one source, for the Sync card summary line."""
+    recent = repository.get_recent_sync_runs(1, source=source)
+    return recent[0] if recent else None
+
+
 @router.get("/settings")
 async def settings(
     request: Request,
@@ -86,6 +93,8 @@ async def settings(
     """
     connection = _connection_status(consent_service)
     flash = read_flash(request, request.app.state.flash_serializer)
+    last_bank = _latest_run(repository, SyncSource.ENABLE_BANKING)
+    last_swile = _latest_run(repository, SyncSource.SWILE)
     response = render_template(
         request,
         "settings.html",
@@ -93,6 +102,11 @@ async def settings(
         connection=connection,
         flash=flash,
         sync_runs=repository.get_recent_sync_runs(_SYNC_HISTORY_LIMIT),
+        last_bank=last_bank,
+        last_swile=last_swile,
+        last_sync_at=max(
+            (run.ran_at for run in (last_bank, last_swile) if run), default=None
+        ),
         consent_created_at=_consent_created_at(consent_service),
         swile_enrolled=swile_token_store.load() is not None,
         inbox_path=app.inbox_path,
@@ -111,17 +125,20 @@ async def sync_now(
     consent_service: ConsentService | None = Depends(get_consent_service),
     repository: RepositoryInterface = Depends(get_repository),
     config: Config = Depends(get_config),
+    swile_token_store: SwileTokenStore = Depends(get_swile_token_store),
+    swile_client: SwileClient = Depends(get_swile_client),
 ) -> Response:
-    """Run a bank sync now, then refresh the cached account and forecast.
+    """Sync every connected source, then refresh the cached account and forecast once.
 
     The sync does blocking network I/O on the event-loop thread (the shared SQLite
-    connection is bound to it, so it can't be offloaded). A slow bank API stalls
-    other requests for its duration — acceptable at personal scale, manual and rare.
+    connection is bound to it, so it can't be offloaded). A slow source stalls other
+    requests for its duration — acceptable at personal scale, manual and rare. Reload
+    only when at least one source succeeded, so reload_account tolerates an empty DB.
     """
-    if consent_service is not None and config.enable_banking is not None:
-        perform_sync(
-            repository, consent_service, config.enable_banking, config.accounts
-        )
+    runs = sync_all_sources(
+        repository, config, consent_service, swile_token_store, swile_client
+    )
+    if any(run.status is SyncRunStatus.OK for run in runs):
         app.reload_account()
         refresh_forecast(app)
     return RedirectResponse(url="/settings", status_code=303)

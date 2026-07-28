@@ -1786,3 +1786,19 @@ msgstr "Swile Enroll"
 
 msgid "Open team.swile.co"
 msgstr "Ouvrir team.swile.co"
+
+msgid "Sync"
+msgstr "Synchronisation"
+
+msgid "Syncing…"
+msgstr "Synchronisation…"
+
+msgid "Last sync"
+msgstr "Dernière synchro"
+
+
+msgid "failed — see above"
+msgstr "échec — voir ci-dessus"
+
+msgid "Reconnect a source below to sync."
+msgstr "Reconnectez une source ci-dessous pour synchroniser."
