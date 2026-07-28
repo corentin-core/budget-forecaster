@@ -54,7 +54,7 @@
     {% endif %}
   {% else %}
   <p class="empty">{{ _("Not configured") }}</p>
-  {% endif %} {% if connection.configured %}
+  {% endif %} {% if connection.configured or sync_runs %}
   <h3 class="subhead">{{ _("Recent syncs") }}</h3>
   {% if sync_runs %}
   <table class="sync-runs">

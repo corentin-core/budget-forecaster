@@ -133,6 +133,15 @@ class TestSync:
         run = _latest_swile_run(app)
         assert run is not None and run.status is SyncRunStatus.FAILED
 
+    def test_history_shows_swile_run_without_enable_banking(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """A Swile run surfaces in the sync history even with no bank configured."""
+        app.state.swile_client = _fake_client()
+        app.state.swile_token_store.save("stored-rt")
+        client.post("/settings/swile/sync")
+        assert 'class="sync-runs"' in client.get("/settings").text
+
 
 class TestSettingsCard:
     """The Swile card reflects the enrollment state."""
