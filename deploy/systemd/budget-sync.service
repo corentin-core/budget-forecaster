@@ -1,6 +1,8 @@
-# User service: one bank sync, recorded as a sync_runs row. Driven by budget-sync.timer.
+# User service: sync every connected source (bank + Swile), each recorded as a sync_runs
+# row. Driven by budget-sync.timer.
 # Edit ExecStart if your virtualenv lives elsewhere than ~/budget-forecaster-venv.
-# Reads service.env only for BUDGET_CONFIG (shared with budget-web.service).
+# Reads service.env (shared with budget-web.service) for BUDGET_CONFIG and, so Swile can
+# be synced too, BUDGET_WEB_SECRET_KEY (the key that decrypts the stored Swile token).
 [Unit]
 Description=Budget Forecaster bank sync
 

@@ -1,81 +1,116 @@
 """Tests for the CLI entry point."""
 
+from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
 from budget_forecaster import main
-from budget_forecaster.core.types import SyncRunStatus
+from budget_forecaster.core.types import SyncRun, SyncRunStatus, SyncSource
+from budget_forecaster.infrastructure.bank_sources.swile_oauth import (
+    sync_runner as swile_runner,
+)
+from budget_forecaster.infrastructure.bank_sources.swile_oauth.token_store import (
+    SwileTokenStore,
+)
 from budget_forecaster.infrastructure.persistence.sqlite_repository import (
     SqliteRepository,
 )
 from budget_forecaster.web.auth import verify_password
+from tests.web.test_swile import _fake_client
 
 
-def test_sync_without_enable_banking_exits(
-    tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The sync command exits with an error when Enable Banking is unconfigured."""
-    monkeypatch.setattr(main.Config, "setup_logging", lambda self: None)
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text(
-        f"database_path: {tmp_path / 'x.db'}\n"
-        'account_name: "Test"\n'
-        "account_currency: EUR\n",
-        encoding="utf-8",
-    )
-    monkeypatch.setattr(
-        "sys.argv", ["budget-forecaster", "-c", str(config_file), "sync"]
-    )
-
-    with pytest.raises(SystemExit) as exc_info:
-        main.main()
-
-    assert exc_info.value.code == 1
-    assert "Enable Banking is not configured" in capsys.readouterr().err
-
-
-def _write_eb_config(tmp_path: Path) -> Path:
-    """Write a config with an Enable Banking section and no aspsp_name."""
-    config_file = tmp_path / "config.yaml"
-    config_file.write_text(
+def _write_config(tmp_path: Path, *, enable_banking: bool = False) -> Path:
+    """Write a minimal config, optionally with an Enable Banking section."""
+    body = (
         f"database_path: {tmp_path / 'x.db'}\n"
         'account_name: "Test"\n'
         "account_currency: EUR\n"
-        "enable_banking:\n"
-        '  application_id: "app-1"\n'
-        f"  private_key_path: {tmp_path / 'key.pem'}\n"
-        '  redirect_url: "https://localhost/callback"\n',
-        encoding="utf-8",
     )
+    if enable_banking:
+        (tmp_path / "key.pem").write_bytes(b"dummy-key")
+        body += (
+            "enable_banking:\n"
+            '  application_id: "app-1"\n'
+            f"  private_key_path: {tmp_path / 'key.pem'}\n"
+            '  redirect_url: "https://localhost/callback"\n'
+        )
+    config_file = tmp_path / "config.yaml"
+    config_file.write_text(body, encoding="utf-8")
     return config_file
 
 
-def test_sync_records_failed_run_when_no_consent(
+def _run_cli_sync(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **cfg: bool) -> None:
+    monkeypatch.setattr(main.Config, "setup_logging", lambda self: None)
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
+    config_file = _write_config(tmp_path, **cfg)
+    monkeypatch.setattr(
+        "sys.argv", ["budget-forecaster", "-c", str(config_file), "sync"]
+    )
+    main.main()
+
+
+def test_sync_noop_when_nothing_connected(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A sync with no stored consent exits 1 and records a FAILED run."""
-    monkeypatch.setattr(main.Config, "setup_logging", lambda self: None)
+    """No configured source: sync is a clean no-op, not an error."""
+    _run_cli_sync(tmp_path, monkeypatch)
+    assert "No connected source to sync." in capsys.readouterr().out
+
+
+def test_sync_skips_unlinked_enable_banking(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Enable Banking configured but never linked is skipped, recording no run."""
+    _run_cli_sync(tmp_path, monkeypatch, enable_banking=True)
+    with SqliteRepository(tmp_path / "x.db") as repo:
+        assert not repo.get_recent_sync_runs(1)
+
+
+def test_sync_syncs_swile_from_cli(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """With a web secret key and a stored token, the CLI syncs Swile (the timer path)."""
+    key = "cli-swile-secret"
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
-    monkeypatch.setattr(main, "_build_client", lambda _config: MagicMock())
-    config_file = _write_eb_config(tmp_path)
-    monkeypatch.setattr(
-        "sys.argv", ["budget-forecaster", "-c", str(config_file), "sync"]
-    )
+    monkeypatch.setenv("BUDGET_WEB_SECRET_KEY", key)
+    SwileTokenStore.default(key).save("stored-rt")
+    monkeypatch.setattr(swile_runner, "SwileClient", _fake_client)
 
-    with pytest.raises(SystemExit) as exc_info:
-        main.main()
+    _run_cli_sync(tmp_path, monkeypatch)
 
-    assert exc_info.value.code == 1
-    assert capsys.readouterr().err
     with SqliteRepository(tmp_path / "x.db") as repo:
         (run,) = repo.get_recent_sync_runs(1)
-    assert run.status is SyncRunStatus.FAILED
+    assert run.source is SyncSource.SWILE
+    assert run.status is SyncRunStatus.OK
+    assert "Swile:" in capsys.readouterr().out
+
+
+def test_sync_exits_when_a_source_failed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A FAILED run from any source makes the command exit non-zero."""
+
+    def failed(*_args: object, **_kwargs: object) -> tuple[SyncRun, ...]:
+        return (
+            SyncRun(
+                datetime(2026, 7, 28, 6, 0, tzinfo=timezone.utc),
+                SyncRunStatus.FAILED,
+                error="boom",
+                source=SyncSource.SWILE,
+            ),
+        )
+
+    monkeypatch.setattr(main, "sync_all_sources", failed)
+    with pytest.raises(SystemExit) as exc_info:
+        _run_cli_sync(tmp_path, monkeypatch)
+    assert exc_info.value.code == 1
 
 
 def test_hash_password_prints_verifiable_hash(
