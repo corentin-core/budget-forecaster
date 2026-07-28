@@ -52,6 +52,7 @@ def test_get_operations_sends_auth_headers_and_pagination_params() -> None:
     assert headers["Authorization"] == "Bearer acc-token"
     assert headers["X-API-Key"] == constants.X_API_KEY
     assert headers["X-Lunchr-Platform"] == "web"
+    assert headers["Accept-Language"] == "fr-FR"
     assert call.kwargs["params"]["per"] == 100
 
 
