@@ -1,0 +1,53 @@
+{% if error %}
+<p class="import-result error">✗ {{ error }}</p>
+{% else %}
+{% set cur = view.preview.current %}
+{% set bak = view.preview.backup %}
+<div class="backup-preview">
+  <table class="backup-preview-table">
+    <thead>
+      <tr>
+        <th scope="col"></th>
+        <th scope="col" class="num">{{ _("Current") }}</th>
+        <th scope="col" class="num">{{ _("Backup") }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th scope="row">{{ _("Balance") }}</th>
+        <td class="num">{{ cur.total_balance.value | eur }}</td>
+        <td class="num">{{ bak.total_balance.value | eur }}</td>
+      </tr>
+      <tr>
+        <th scope="row">{{ _("Operations") }}</th>
+        <td class="num">{{ cur.operation_count }}</td>
+        <td class="num">{{ bak.operation_count }}</td>
+      </tr>
+      <tr>
+        <th scope="row">{{ _("Latest operation") }}</th>
+        <td class="num">{{ cur.latest_operation_date | frdate if cur.latest_operation_date else "–" }}</td>
+        <td class="num">{{ bak.latest_operation_date | frdate if bak.latest_operation_date else "–" }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="backup-preview-summary">{{ view.summary }}</p>
+
+  {% if view.older_schema %}
+  <p class="hint">{{ _("This backup predates the current data format; it will be upgraded automatically before restoring.") }}</p>
+  {% endif %}
+
+  <p class="banner banner-expiring" role="status">
+    ⚠ {{ _("Restoring changes the data for everyone using the app. A safety copy of the current data is taken first.") }}
+  </p>
+
+  <div class="form-actions">
+    <button type="button" class="btn" onclick="document.getElementById('backup-preview').innerHTML=''">{{ _("Cancel") }}</button>
+    <form method="post" action="/settings/backup/restore"
+          onsubmit="var b=this.querySelector('button'); b.disabled=true; b.textContent='{{ _('Restoring…') }}';">
+      <input type="hidden" name="name" value="{{ view.name }}" />
+      <button type="submit" class="btn danger">{{ _("Confirm restore") }}</button>
+    </form>
+  </div>
+</div>
+{% endif %}

@@ -200,7 +200,9 @@ class BackupService:
         except OSError as e:
             raise BackupError(f"Failed to delete backup: {filename!r}") from e
 
-    def restore_backup(self, filename: str, migrate: Callable[[Path], None]) -> Path:
+    def restore_backup(
+        self, filename: str, migrate: Callable[[Path], None], *, blocking: bool = True
+    ) -> Path:
         """Restore a backup over the live database.
 
         Takes a pre-restore safety snapshot, migrates a scratch copy of the
@@ -213,6 +215,8 @@ class BackupService:
             filename: Name of the backup to restore (validated).
             migrate: Callback that upgrades the given scratch file to the current
                 schema; must raise on failure so no swap happens.
+            blocking: When False, raise DatabaseBusyError instead of waiting if a
+                sync process holds the lock.
 
         Returns:
             Path to the pre-restore safety snapshot (restore it to undo).
@@ -220,11 +224,12 @@ class BackupService:
         Raises:
             BackupError: On an invalid source, a cross-device backup directory,
                 a failed migration, or a failed file operation.
+            DatabaseBusyError: When blocking is False and the lock is held.
         """
         source = self.resolve_backup(filename)
         self._require_same_filesystem()
 
-        with database_lock(self._database_path):
+        with database_lock(self._database_path, blocking=blocking):
             snapshot = self.create_backup(safety=True)
             scratch = self._backup_directory / f".restore-{self._db_stem}.tmp"
             try:

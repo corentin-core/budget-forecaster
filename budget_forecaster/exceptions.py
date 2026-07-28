@@ -41,6 +41,10 @@ class BackupError(BudgetForecasterError):
         super().__init__(message)
 
 
+class DatabaseBusyError(BudgetForecasterError):
+    """The database lock is held by another process (e.g. a running sync)."""
+
+
 class AccountNotFoundError(BudgetForecasterError):
     """No account with the given name exists."""
 

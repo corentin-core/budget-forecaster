@@ -1,8 +1,9 @@
-# Automatic Database Backup
+# Database Backups
 
 Budget Forecaster automatically creates backups of your SQLite database at each
-application startup, providing a safety net against data corruption or accidental
-deletion.
+application startup, and lets you manage backups from the web app: list, create,
+preview, restore, download and delete. This is a safety net against data corruption or
+accidental deletion.
 
 ## Overview
 
@@ -36,39 +37,69 @@ backup:
 
 ## Backup File Naming
 
-Backup files follow this naming convention:
+Automatic backups follow this naming convention:
 
 ```
-{database_name}_{YYYY-MM-DD_HHMMSS}.db
+{database_name}_{YYYY-MM-DD_HHMMSS_microseconds}.db
 ```
 
 For example, if your database is `budget.db`, backups will be named:
 
-- `budget_2025-01-17_143022.db`
-- `budget_2025-01-17_091500.db`
-- `budget_2025-01-16_180045.db`
+- `budget_2025-01-17_143022_004512.db`
+- `budget_2025-01-17_091500_781203.db`
+
+Safety copies taken before a restore carry a `prerestore` marker:
+
+- `budget_prerestore_2025-01-17_143022_004512.db`
 
 ## Rotation Behavior
 
-When the number of backups exceeds `max_backups`:
+Automatic backups and pre-restore safety copies rotate independently, each keeping only
+its most recent few. A restore's safety copy therefore never pushes out an automatic
+backup you still want, and repeated restores cannot grow the backup folder without
+bound.
 
-1. Existing backups are sorted by modification time
-2. The oldest backups are deleted until only `max_backups` remain
-3. The newest backups are always preserved
+## Managing Backups from the Web App
 
-## Manual Restore
+The **Backups** section on the Settings page lists your backups newest first, split into
+automatic backups and pre-restore safety copies. From there you can:
 
-To restore from a backup:
+- **Create a backup** on demand.
+- **Restore** a backup. This opens a read-only preview first — the balance, operation
+  count and latest operation date of the backup next to your current data, with the
+  difference between them. Restoring is a deliberate second step behind that preview.
+- **Download** a backup as a raw `.db` file.
+- **Delete** a backup (a confirmation is required).
 
-1. Stop the application
-2. Locate the backup file you want to restore
-3. Copy it to replace your current database:
+### What a restore does
 
-```bash
-cp backups/budget_2025-01-17_143022.db budget.db
-```
+Restoring replaces the live database with the chosen backup and takes effect
+immediately, without restarting the app. Before replacing anything, it:
 
-4. Restart the application
+1. Takes a **safety copy** of the current data (listed under “Before restore”).
+2. Upgrades the backup to the current data format if it is older, so an old backup never
+   leaves the app in a broken state.
+3. Swaps the database in place and reloads the account and forecast.
+
+Because the data is shared, a restore changes what **everyone** using the app sees.
+After a successful restore, an **Undo** button restores that safety copy, returning to
+the state you had just before.
+
+If the daily sync happens to be running, a restore reports that a sync is in progress —
+wait a moment and try again.
+
+### Manual restore (fallback)
+
+You can still restore by hand if the app is not running:
+
+1. Stop the application.
+2. Copy the chosen backup over your current database:
+
+   ```bash
+   cp budget_2025-01-17_143022_000000.db budget.db
+   ```
+
+3. Restart the application.
 
 ## Troubleshooting
 

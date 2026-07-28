@@ -27,6 +27,7 @@ from budget_forecaster.exceptions import (
     PlannedOperationNotFoundError,
 )
 from budget_forecaster.i18n import _, setup_i18n
+from budget_forecaster.infrastructure.backup import BackupService
 from budget_forecaster.infrastructure.bank_sources.enable_banking.client import (
     EnableBankingClient,
 )
@@ -200,6 +201,11 @@ def create_app(config_path: Path | None = None) -> FastAPI:
 
     app = FastAPI(title="Budget Forecaster", lifespan=lifespan)
     app.state.config = config
+    app.state.backup_service = BackupService(
+        config.database_path,
+        config.backup.directory,
+        config.backup.max_backups,
+    )
     app.state.consent_service = _build_consent_service(config)
     app.state.web_secrets = resolve_web_secrets(config)
     app.state.swile_token_store = SwileTokenStore.default(

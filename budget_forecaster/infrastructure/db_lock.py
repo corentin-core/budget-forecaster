@@ -12,6 +12,8 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
+from budget_forecaster.exceptions import DatabaseBusyError
+
 logger = logging.getLogger(__name__)
 
 
@@ -21,16 +23,21 @@ def _lock_path(database_path: Path) -> Path:
 
 
 @contextmanager
-def database_lock(database_path: Path) -> Iterator[None]:
+def database_lock(database_path: Path, *, blocking: bool = True) -> Iterator[None]:
     """Hold an exclusive advisory lock on the database for the block's duration.
 
-    Blocks until the lock is free. Released on block exit and on process death.
+    Released on block exit and on process death. When blocking is False and the
+    lock is already held, raises DatabaseBusyError instead of waiting.
     """
     path = _lock_path(database_path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    flags = fcntl.LOCK_EX if blocking else fcntl.LOCK_EX | fcntl.LOCK_NB
     with open(path, "w", encoding="utf-8") as handle:
         logger.debug("Acquiring database lock: %s", path)
-        fcntl.flock(handle, fcntl.LOCK_EX)
+        try:
+            fcntl.flock(handle, flags)
+        except BlockingIOError as e:
+            raise DatabaseBusyError("Database is busy") from e
         try:
             yield
         finally:

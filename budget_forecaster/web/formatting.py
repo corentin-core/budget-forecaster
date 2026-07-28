@@ -76,6 +76,18 @@ def format_pct(ratio: float) -> str:
     return f"{ratio * 100:.0f}{_NBSP}%"
 
 
+def format_filesize(num_bytes: int) -> str:
+    """Format a byte count with French units, e.g. '1,2 Mo'."""
+    size = float(num_bytes)
+    for unit in ("o", "Ko", "Mo", "Go"):
+        if size < 1024 or unit == "Go":
+            if unit == "o":
+                return f"{int(size)}{_NBSP}{unit}"
+            return f"{size:.1f}".replace(".", ",") + f"{_NBSP}{unit}"
+        size /= 1024
+    return f"{size:.1f}".replace(".", ",") + f"{_NBSP}Go"
+
+
 def category_name(key: str) -> str:
     """Translate a category identifier to its display name, or echo it back."""
     try:
@@ -111,4 +123,5 @@ def register_filters(env: Environment) -> None:
     env.filters["sync_error"] = format_sync_error
     env.filters["month_label"] = format_month
     env.filters["pct"] = format_pct
+    env.filters["filesize"] = format_filesize
     env.filters["category_name"] = category_name

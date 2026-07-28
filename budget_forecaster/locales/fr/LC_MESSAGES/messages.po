@@ -1802,3 +1802,84 @@ msgstr "échec — voir ci-dessus"
 
 msgid "Reconnect a source below to sync."
 msgstr "Reconnectez une source ci-dessous pour synchroniser."
+
+msgid "Backups"
+msgstr "Sauvegardes"
+
+msgid "Create backup"
+msgstr "Créer une sauvegarde"
+
+msgid "Creating…"
+msgstr "Création…"
+
+msgid "Database restored."
+msgstr "Base de données restaurée."
+
+msgid "Undo"
+msgstr "Annuler la restauration"
+
+msgid "Size"
+msgstr "Taille"
+
+msgid "Restore…"
+msgstr "Restaurer…"
+
+msgid "Download backup"
+msgstr "Télécharger la sauvegarde"
+
+msgid "Delete backup"
+msgstr "Supprimer la sauvegarde"
+
+msgid "Automatic"
+msgstr "Automatiques"
+
+msgid "Before restore"
+msgstr "Avant restauration"
+
+msgid "No backup yet"
+msgstr "Aucune sauvegarde pour l'instant"
+
+msgid "Restore replaces the current database. A safety copy is taken first and can be restored to undo."
+msgstr "La restauration remplace la base actuelle. Une copie de sécurité est créée avant et peut être restaurée pour annuler."
+
+msgid "Current"
+msgstr "Actuel"
+
+msgid "Backup"
+msgstr "Sauvegarde"
+
+msgid "Latest operation"
+msgstr "Dernière opération"
+
+msgid "Compared to now: {ops:+d} operations, balance {balance}."
+msgstr "Par rapport à maintenant : {ops:+d} opérations, solde {balance}."
+
+msgid "This backup predates the current data format; it will be upgraded automatically before restoring."
+msgstr "Cette sauvegarde précède le format de données actuel ; elle sera mise à niveau automatiquement avant la restauration."
+
+msgid "Restoring changes the data for everyone using the app. A safety copy of the current data is taken first."
+msgstr "La restauration modifie les données pour toutes les personnes qui utilisent l'application. Une copie de sécurité des données actuelles est créée avant."
+
+msgid "Restoring…"
+msgstr "Restauration…"
+
+msgid "Confirm restore"
+msgstr "Confirmer la restauration"
+
+msgid "This backup could not be read."
+msgstr "Cette sauvegarde n'a pas pu être lue."
+
+msgid "Could not create the backup."
+msgstr "Impossible de créer la sauvegarde."
+
+msgid "A sync is running. Try again in a moment."
+msgstr "Une synchronisation est en cours. Réessayez dans un instant."
+
+msgid "Restore failed. Your data is unchanged."
+msgstr "Échec de la restauration. Vos données sont inchangées."
+
+msgid "Could not delete the backup."
+msgstr "Impossible de supprimer la sauvegarde."
+
+msgid "Unknown backup."
+msgstr "Sauvegarde inconnue."
