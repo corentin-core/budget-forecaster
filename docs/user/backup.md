@@ -61,8 +61,9 @@ bound.
 
 ## Managing Backups from the Web App
 
-The **Backups** section on the Settings page lists your backups newest first, split into
-automatic backups and pre-restore safety copies. From there you can:
+The **Backups** section on the Settings page lists your backups newest first. Copies
+taken automatically just before a restore are tagged "Copie de sécurité" so you can tell
+them apart. From there you can:
 
 - **Create a backup** on demand.
 - **Restore** a backup. This opens a read-only preview first — the balance, operation
@@ -76,7 +77,8 @@ automatic backups and pre-restore safety copies. From there you can:
 Restoring replaces the live database with the chosen backup and takes effect
 immediately, without restarting the app. Before replacing anything, it:
 
-1. Takes a **safety copy** of the current data (listed under “Before restore”).
+1. Takes a **safety copy** of the current data (shown in the list, tagged "Copie de
+   sécurité").
 2. Upgrades the backup to the current data format if it is older, so an old backup never
    leaves the app in a broken state.
 3. Swaps the database in place and reloads the account and forecast.

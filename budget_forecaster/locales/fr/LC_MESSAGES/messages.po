@@ -1886,3 +1886,12 @@ msgstr "Sauvegarde inconnue."
 
 msgid "Restore undone."
 msgstr "Restauration annulée."
+
+msgid "Backups, newest first."
+msgstr "Sauvegardes, les plus récentes en premier."
+
+msgid "Safety copy"
+msgstr "Copie de sécurité"
+
+msgid "created before a restore"
+msgstr "créée avant une restauration"

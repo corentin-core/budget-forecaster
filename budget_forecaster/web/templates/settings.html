@@ -220,14 +220,19 @@
     {% endif %}
   {% endif %}
 
-  {% set automatic = backups | rejectattr('is_safety_copy') | list %}
-  {% set safety = backups | selectattr('is_safety_copy') | list %}
-
   {% if backups %}
-  {% macro backup_rows(rows) -%}
-    {% for b in rows %}
+  <p class="hint">{{ _("Backups, newest first.") }}</p>
+  <div class="backups-scroll">
+    <table class="backups"><tbody>
+    {% for b in backups %}
     <tr>
-      <td data-label="{{ _('When') }}">{{ b.timestamp | frdatetime }}</td>
+      <td data-label="{{ _('When') }}">
+        {{ b.timestamp | frdatetime }}
+        {% if b.is_safety_copy %}
+        <span class="tag">{{ _("Safety copy") }}</span>
+        <small class="muted">{{ _("created before a restore") }}</small>
+        {% endif %}
+      </td>
       <td data-label="{{ _('Size') }}" class="num">{{ b.size_bytes | filesize }}</td>
       <td class="backup-actions">
         <button type="button" class="btn small"
@@ -248,17 +253,7 @@
       </td>
     </tr>
     {% endfor %}
-  {%- endmacro %}
-
-  <div class="backups-scroll">
-    {% if automatic %}
-    <h3 class="subhead">{{ _("Automatic") }}</h3>
-    <table class="backups"><tbody>{{ backup_rows(automatic) }}</tbody></table>
-    {% endif %}
-    {% if safety %}
-    <h3 class="subhead">{{ _("Before restore") }}</h3>
-    <table class="backups"><tbody>{{ backup_rows(safety) }}</tbody></table>
-    {% endif %}
+    </tbody></table>
   </div>
   {% else %}
   <p class="empty">{{ _("No backup yet") }}</p>

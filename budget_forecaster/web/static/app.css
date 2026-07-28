@@ -1759,3 +1759,9 @@ table {
     margin-top: 0.35rem;
   }
 }
+
+.backups .tag + .muted {
+  color: var(--muted);
+  font-size: 0.72rem;
+  margin-left: 0.35rem;
+}
