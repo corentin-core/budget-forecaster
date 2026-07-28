@@ -17,7 +17,7 @@ from budget_forecaster.exceptions import (
     DatabaseBusyError,
 )
 from budget_forecaster.i18n import _
-from budget_forecaster.infrastructure.backup import BackupService
+from budget_forecaster.infrastructure.backup import BackupKind, BackupService
 from budget_forecaster.infrastructure.backup_preview import (
     BackupPreview,
     preview_backup,
@@ -326,7 +326,7 @@ async def create_backup(
 ) -> Response:
     """Create a backup on demand, then rotate old ones."""
     try:
-        backup_service.create_backup()
+        backup_service.create_backup(BackupKind.MANUAL)
         backup_service.rotate_backups()
     except BackupError:
         logger.exception("On-demand backup failed")

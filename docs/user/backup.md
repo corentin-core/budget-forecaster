@@ -39,7 +39,7 @@ backup:
 
 Automatic backups follow this naming convention:
 
-```
+```text
 {database_name}_{YYYY-MM-DD_HHMMSS_microseconds}.db
 ```
 
@@ -48,22 +48,24 @@ For example, if your database is `budget.db`, backups will be named:
 - `budget_2025-01-17_143022_004512.db`
 - `budget_2025-01-17_091500_781203.db`
 
-Safety copies taken before a restore carry a `prerestore` marker:
+Backups you create on demand carry a `manual` marker, and safety copies taken before a
+restore carry a `prerestore` marker:
 
+- `budget_manual_2025-01-17_143022_004512.db`
 - `budget_prerestore_2025-01-17_143022_004512.db`
 
 ## Rotation Behavior
 
-Automatic backups and pre-restore safety copies rotate independently, each keeping only
-its most recent few. A restore's safety copy therefore never pushes out an automatic
-backup you still want, and repeated restores cannot grow the backup folder without
-bound.
+Automatic (startup), manual (on-demand) and pre-restore safety copies each rotate on
+their own counter, keeping only their most recent few. A restore's safety copy therefore
+never pushes out a manual backup you still want, and repeated restores cannot grow the
+backup folder without bound.
 
 ## Managing Backups from the Web App
 
-The **Backups** section on the Settings page lists your backups newest first. Copies
-taken automatically just before a restore are tagged "Copie de sécurité" so you can tell
-them apart. From there you can:
+The **Backups** section on the Settings page lists your backups newest first. Each row
+is tagged by kind — "Automatique" (taken at startup), "Manuelle" (created on demand), or
+"Copie de sécurité" (taken just before a restore). From there you can:
 
 - **Create a backup** on demand.
 - **Restore** a backup. This opens a read-only preview first — the balance, operation

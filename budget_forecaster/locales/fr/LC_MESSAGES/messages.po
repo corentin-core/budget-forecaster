@@ -1831,7 +1831,7 @@ msgid "Delete backup"
 msgstr "Supprimer la sauvegarde"
 
 msgid "Automatic"
-msgstr "Automatiques"
+msgstr "Automatique"
 
 msgid "Before restore"
 msgstr "Avant restauration"
@@ -1895,3 +1895,12 @@ msgstr "Copie de sécurité"
 
 msgid "created before a restore"
 msgstr "créée avant une restauration"
+
+msgid "Manual"
+msgstr "Manuelle"
+
+msgid "created on demand"
+msgstr "créée à la demande"
+
+msgid "created at startup"
+msgstr "créée au démarrage"

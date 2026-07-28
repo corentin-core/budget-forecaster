@@ -5,6 +5,7 @@ import os
 import shutil
 import sqlite3
 from datetime import datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Callable, NamedTuple
 
@@ -13,7 +14,20 @@ from budget_forecaster.infrastructure.db_lock import database_lock
 
 logger = logging.getLogger(__name__)
 
-_SAFETY_MARKER = "prerestore"
+
+class BackupKind(StrEnum):
+    """Why a backup exists, which drives its tag and rotation counter."""
+
+    AUTOMATIC = "automatic"  # taken at startup
+    MANUAL = "manual"  # created on demand from the app
+    SAFETY = "safety"  # taken just before a restore, to undo it
+
+
+# Filename marker per kind; automatic backups carry none.
+_MARKERS: dict[BackupKind, str] = {
+    BackupKind.MANUAL: "manual",
+    BackupKind.SAFETY: "prerestore",
+}
 
 
 class BackupInfo(NamedTuple):
@@ -22,7 +36,12 @@ class BackupInfo(NamedTuple):
     path: Path
     timestamp: datetime
     size_bytes: int
-    is_safety_copy: bool
+    kind: BackupKind
+
+    @property
+    def is_safety_copy(self) -> bool:
+        """Whether this is a pre-restore safety snapshot."""
+        return self.kind is BackupKind.SAFETY
 
 
 class BackupService:
@@ -39,6 +58,7 @@ class BackupService:
         database_path: Path,
         backup_directory: Path | None = None,
         max_backups: int = 5,
+        max_manual_backups: int = 5,
         max_safety_backups: int = 3,
     ) -> None:
         """Initialize the backup service.
@@ -47,15 +67,18 @@ class BackupService:
             database_path: Path to the SQLite database file.
             backup_directory: Directory for backups (default: same as database).
             max_backups: Maximum number of automatic backups to keep.
+            max_manual_backups: Maximum number of on-demand backups to keep.
             max_safety_backups: Maximum number of pre-restore snapshots to keep.
         """
         self._database_path = database_path
         self._backup_directory = backup_directory or database_path.parent
-        self._max_backups = max_backups
-        # Always keep at least the snapshot a restore just took, so it is never
-        # rotated away before the caller can use it to undo.
-        self._max_safety_backups = max(1, max_safety_backups)
         self._db_stem = database_path.stem
+        self._caps = {
+            BackupKind.AUTOMATIC: max_backups,
+            BackupKind.MANUAL: max_manual_backups,
+            # Always keep at least the snapshot a restore just took.
+            BackupKind.SAFETY: max(1, max_safety_backups),
+        }
 
     @property
     def backup_directory(self) -> Path:
@@ -65,20 +88,25 @@ class BackupService:
     @property
     def max_backups(self) -> int:
         """Return the maximum number of automatic backups to keep."""
-        return self._max_backups
+        return self._caps[BackupKind.AUTOMATIC]
 
     def _get_backup_pattern(self) -> str:
         """Get the glob pattern for backup files."""
         return f"{self._db_stem}_*.db"
 
-    def _is_safety_copy(self, path: Path) -> bool:
-        """Whether a backup file is a pre-restore safety snapshot."""
-        return path.stem.startswith(f"{self._db_stem}_{_SAFETY_MARKER}_")
+    def _classify(self, path: Path) -> BackupKind:
+        """Determine a backup file's kind from its filename marker."""
+        suffix = path.stem.removeprefix(f"{self._db_stem}_")
+        for kind, marker in _MARKERS.items():
+            if suffix.startswith(f"{marker}_"):
+                return kind
+        return BackupKind.AUTOMATIC
 
     def _parse_timestamp(self, path: Path) -> datetime:
         """Read the timestamp from a backup filename, falling back to mtime."""
         suffix = path.stem.removeprefix(f"{self._db_stem}_")
-        suffix = suffix.removeprefix(f"{_SAFETY_MARKER}_")
+        for marker in _MARKERS.values():
+            suffix = suffix.removeprefix(f"{marker}_")
         for fmt in (self._FILENAME_TIMESTAMP_FORMAT, self.TIMESTAMP_FORMAT):
             try:
                 return datetime.strptime(suffix, fmt)
@@ -86,12 +114,12 @@ class BackupService:
                 continue
         return datetime.fromtimestamp(path.stat().st_mtime)
 
-    def create_backup(self, safety: bool = False) -> Path:
+    def create_backup(self, kind: BackupKind = BackupKind.AUTOMATIC) -> Path:
         """Create a backup of the database.
 
         Args:
-            safety: When True, name it as a pre-restore snapshot rotated on its
-                own counter rather than mixed with automatic backups.
+            kind: What the backup is for; drives its filename marker and which
+                rotation counter it falls under.
 
         Returns:
             Path to the created backup file.
@@ -105,7 +133,7 @@ class BackupService:
         try:
             self._backup_directory.mkdir(parents=True, exist_ok=True)
             timestamp = datetime.now().strftime(self._FILENAME_TIMESTAMP_FORMAT)
-            marker = f"{_SAFETY_MARKER}_" if safety else ""
+            marker = f"{_MARKERS[kind]}_" if kind in _MARKERS else ""
             backup_path = (
                 self._backup_directory / f"{self._db_stem}_{marker}{timestamp}.db"
             )
@@ -118,15 +146,15 @@ class BackupService:
     def rotate_backups(self) -> list[Path]:
         """Delete backups exceeding the per-kind caps.
 
-        Automatic and pre-restore snapshots rotate independently, so a restore's
-        safety snapshot never evicts an automatic backup the user still wants.
+        Each kind rotates on its own counter, so a restore's safety snapshot
+        never evicts an automatic or manual backup the user still wants.
 
         Returns:
             List of deleted backup file paths.
         """
         deleted: list[Path] = []
-        deleted += self._rotate(self._automatic_backups(), self._max_backups)
-        deleted += self._rotate(self._safety_backups(), self._max_safety_backups)
+        for kind, cap in self._caps.items():
+            deleted += self._rotate(self._backups_of_kind(kind), cap)
         return deleted
 
     def _rotate(self, backups: tuple[Path, ...], keep: int) -> tuple[Path, ...]:
@@ -142,19 +170,15 @@ class BackupService:
         return tuple(deleted)
 
     def get_existing_backups(self) -> list[Path]:
-        """Get all backup files (automatic and safety), sorted oldest first."""
+        """Get all backup files, sorted oldest first."""
         backups = list(self._backup_directory.glob(self._get_backup_pattern()))
         return sorted(backups, key=lambda p: p.stat().st_mtime)
 
-    def _automatic_backups(self) -> tuple[Path, ...]:
-        """Automatic backups only, sorted oldest first."""
+    def _backups_of_kind(self, kind: BackupKind) -> tuple[Path, ...]:
+        """Backups of one kind only, sorted oldest first."""
         return tuple(
-            p for p in self.get_existing_backups() if not self._is_safety_copy(p)
+            p for p in self.get_existing_backups() if self._classify(p) == kind
         )
-
-    def _safety_backups(self) -> tuple[Path, ...]:
-        """Pre-restore snapshots only, sorted oldest first."""
-        return tuple(p for p in self.get_existing_backups() if self._is_safety_copy(p))
 
     def get_backups(self) -> tuple[BackupInfo, ...]:
         """List all backups, newest first, with metadata for the UI."""
@@ -163,7 +187,7 @@ class BackupService:
                 path=p,
                 timestamp=self._parse_timestamp(p),
                 size_bytes=p.stat().st_size,
-                is_safety_copy=self._is_safety_copy(p),
+                kind=self._classify(p),
             )
             for p in self.get_existing_backups()
         ]
@@ -238,7 +262,7 @@ class BackupService:
         self._require_same_filesystem()
 
         with database_lock(self._database_path, blocking=blocking):
-            snapshot = self.create_backup(safety=True) if take_snapshot else None
+            snapshot = self.create_backup(BackupKind.SAFETY) if take_snapshot else None
             scratch = self._backup_directory / f".restore-{self._db_stem}.tmp"
             try:
                 shutil.copy2(source, scratch)
@@ -250,7 +274,10 @@ class BackupService:
                 scratch.unlink(missing_ok=True)
             self._remove_stale_sidecars()
             if take_snapshot:
-                self._rotate(self._safety_backups(), self._max_safety_backups)
+                self._rotate(
+                    self._backups_of_kind(BackupKind.SAFETY),
+                    self._caps[BackupKind.SAFETY],
+                )
         return snapshot
 
     def _require_same_filesystem(self) -> None:

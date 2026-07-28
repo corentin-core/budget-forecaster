@@ -41,11 +41,14 @@ class TestBackupListing:
         assert response.status_code == 200
         assert "Aucune sauvegarde" in response.text
 
-    def test_created_backup_is_listed(self, client: TestClient, app: FastAPI) -> None:
-        """A created backup appears in the list."""
+    def test_created_backup_is_listed_as_manual(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """An on-demand backup appears tagged as manual."""
         client.post("/settings/backup", follow_redirects=False)
         response = client.get("/settings")
         assert "Sauvegardes" in response.text
+        assert "Manuelle" in response.text
         assert len(_backups(app)) == 1
 
     def test_create_returns_redirect(self, client: TestClient, app: FastAPI) -> None:

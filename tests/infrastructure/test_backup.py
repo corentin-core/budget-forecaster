@@ -9,7 +9,11 @@ from pathlib import Path
 import pytest
 
 from budget_forecaster.exceptions import BackupError
-from budget_forecaster.infrastructure.backup import BackupInfo, BackupService
+from budget_forecaster.infrastructure.backup import (
+    BackupInfo,
+    BackupKind,
+    BackupService,
+)
 from budget_forecaster.infrastructure.config import BackupConfig, Config
 
 
@@ -287,7 +291,7 @@ class TestSafetyBackups:
 
     def test_safety_backup_uses_marker_name(self, service: BackupService) -> None:
         """A safety backup is named with the prerestore marker."""
-        path = service.create_backup(safety=True)
+        path = service.create_backup(BackupKind.SAFETY)
         assert path.stem.startswith("test_prerestore_")
 
     def test_safety_and_automatic_rotate_independently(
@@ -318,6 +322,47 @@ class TestSafetyBackups:
         assert len(deleted) == 3
 
 
+class TestBackupKinds:
+    """Tests for classifying and rotating the three kinds independently."""
+
+    def test_manual_backup_is_marked_and_classified(
+        self, service: BackupService
+    ) -> None:
+        """An on-demand backup carries the manual marker and is classified so."""
+        path = service.create_backup(BackupKind.MANUAL)
+        assert "_manual_" in path.name
+        (info,) = service.get_backups()
+        assert info.kind is BackupKind.MANUAL
+
+    def test_each_kind_rotates_on_its_own_counter(
+        self, temp_db: Path, backup_dir: Path
+    ) -> None:
+        """Automatic, manual and safety backups never evict one another."""
+        service = BackupService(
+            database_path=temp_db,
+            backup_directory=backup_dir,
+            max_backups=2,
+            max_manual_backups=2,
+            max_safety_backups=2,
+        )
+        base = 1_000_000_000.0
+        specs = {"": 3, "manual_": 3, "prerestore_": 3}
+        moment = 0
+        for marker, count in specs.items():
+            for i in range(count):
+                path = backup_dir / f"test_{marker}2025-01-17_10000{i}.db"
+                path.write_text("x")
+                os.utime(path, (base + moment, base + moment))
+                moment += 1
+
+        service.rotate_backups()
+
+        kinds = [b.kind for b in service.get_backups()]
+        assert kinds.count(BackupKind.AUTOMATIC) == 2
+        assert kinds.count(BackupKind.MANUAL) == 2
+        assert kinds.count(BackupKind.SAFETY) == 2
+
+
 class TestGetBackups:
     """Tests for the UI-facing backup listing."""
 
@@ -337,9 +382,10 @@ class TestGetBackups:
             path=safety,
             timestamp=datetime(2025, 1, 18, 10, 0, 0),
             size_bytes=safety.stat().st_size,
-            is_safety_copy=True,
+            kind=BackupKind.SAFETY,
         )
-        assert backups[1].is_safety_copy is False
+        assert backups[0].is_safety_copy is True
+        assert backups[1].kind is BackupKind.AUTOMATIC
 
     def test_timestamp_falls_back_to_mtime(
         self, service: BackupService, backup_dir: Path

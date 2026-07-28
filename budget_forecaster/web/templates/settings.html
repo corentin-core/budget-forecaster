@@ -228,9 +228,12 @@
     <tr>
       <td data-label="{{ _('When') }}">
         {{ b.timestamp | frdatetime }}
-        {% if b.is_safety_copy %}
-        <span class="tag">{{ _("Safety copy") }}</span>
-        <small class="muted">{{ _("created before a restore") }}</small>
+        {% if b.kind.value == "safety" %}
+        <span class="tag" title="{{ _('created before a restore') }}">{{ _("Safety copy") }}</span>
+        {% elif b.kind.value == "manual" %}
+        <span class="tag" title="{{ _('created on demand') }}">{{ _("Manual") }}</span>
+        {% else %}
+        <span class="tag" title="{{ _('created at startup') }}">{{ _("Automatic") }}</span>
         {% endif %}
       </td>
       <td data-label="{{ _('Size') }}" class="num">{{ b.size_bytes | filesize }}</td>
