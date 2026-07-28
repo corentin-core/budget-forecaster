@@ -195,6 +195,79 @@
 </section>
 
 <section class="card">
+  <div class="card-head">
+    <h2>{{ _("Backups") }}</h2>
+    <form method="post" action="/settings/backup"
+          onsubmit="var b=this.querySelector('button'); b.disabled=true; b.textContent='{{ _('Creating…') }}';">
+      <button type="submit" class="btn">{{ _("Create backup") }}</button>
+    </form>
+  </div>
+
+  {% if backup_flash %}
+    {% if backup_flash.kind == "restored" %}
+    <div class="banner banner-linked" role="status">
+      {{ _("Database restored.") }}
+      <form method="post" action="/settings/backup/restore" class="inline">
+        <input type="hidden" name="name" value="{{ backup_flash.detail }}" />
+        <input type="hidden" name="undo" value="1" />
+        <button type="submit" class="btn small">{{ _("Undo") }}</button>
+      </form>
+    </div>
+    {% elif backup_flash.kind == "undone" %}
+    <div class="banner banner-linked" role="status">{{ _("Restore undone.") }}</div>
+    {% else %}
+    <div class="banner banner-error" role="status">{{ backup_flash.detail }}</div>
+    {% endif %}
+  {% endif %}
+
+  {% if backups %}
+  <p class="hint">{{ _("Backups, newest first.") }}</p>
+  <div class="backups-scroll">
+    <table class="backups"><tbody>
+    {% for b in backups %}
+    <tr>
+      <td data-label="{{ _('When') }}">
+        {{ b.timestamp | frdatetime }}
+        {% if b.kind.value == "safety" %}
+        <span class="tag" title="{{ _('created before a restore') }}">{{ _("Safety copy") }}</span>
+        {% elif b.kind.value == "manual" %}
+        <span class="tag" title="{{ _('created on demand') }}">{{ _("Manual") }}</span>
+        {% else %}
+        <span class="tag" title="{{ _('created at startup') }}">{{ _("Automatic") }}</span>
+        {% endif %}
+      </td>
+      <td data-label="{{ _('Size') }}" class="num">{{ b.size_bytes | filesize }}</td>
+      <td class="backup-actions">
+        <button type="button" class="btn small"
+                hx-get="/settings/backup/preview?name={{ b.path.name | urlencode }}"
+                hx-target="#backup-preview" hx-swap="innerHTML">{{ _("Restore…") }}</button>
+        <a class="btn small icon" href="/settings/backup/download?name={{ b.path.name | urlencode }}"
+           aria-label="{{ _('Download backup') }}" title="{{ _('Download backup') }}">↓</a>
+        <form method="post" action="/settings/backup/delete" class="delete-form" data-confirm>
+          <input type="hidden" name="name" value="{{ b.path.name }}" />
+          <button type="button" class="btn danger small icon" data-delete-trigger
+                  aria-label="{{ _('Delete backup') }}" title="{{ _('Delete backup') }}">×</button>
+          <span class="confirm-cluster" hidden>
+            <span>{{ _("Delete?") }}</span>
+            <button type="button" class="btn small" data-delete-cancel>{{ _("Cancel") }}</button>
+            <button type="submit" class="btn danger small">{{ _("Confirm") }}</button>
+          </span>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody></table>
+  </div>
+  {% else %}
+  <p class="empty">{{ _("No backup yet") }}</p>
+  {% endif %}
+
+  <div id="backup-preview" aria-live="polite"></div>
+  <p class="hint">{{ _("Restore replaces the current database. A safety copy is taken first and can be restored to undo.") }}</p>
+</section>
+
+<section class="card">
   <a class="btn" href="/logout">{{ _("Log out") }}</a>
 </section>
+<script src="/static/backups.js" defer></script>
 {% endblock %}
