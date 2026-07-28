@@ -1,12 +1,17 @@
 {% extends "base.html" %} {% block title %}{{ _("Settings") }} — Budget Forecaster{% endblock %} {% block content %}
 {% if flash %}
-<div class="banner banner-{{ flash.value }}" role="status">
+{% set flash_kind = "linked" if flash.value in ["linked", "swile-linked"] else ("error" if flash.value in ["error", "swile-error"] else flash.value) %}
+<div class="banner banner-{{ flash_kind }}" role="status">
   {% if flash.value == "linked" %}
     {{ _("Bank linked.") }}
     <form method="post" action="/settings/sync" class="inline-cta"
           onsubmit="var b=this.querySelector('button'); b.disabled=true; b.textContent='…';">
       <button type="submit" class="link-button">{{ _("Sync now") }}</button>
     </form>
+  {% elif flash.value == "swile-linked" %}
+    {{ _("Swile connected and synced.") }}
+  {% elif flash.value == "swile-error" %}
+    {{ _("Swile connection failed. Check the token and try again.") }}
   {% elif flash.value == "cancelled" %}
     {{ _("Linking cancelled. You can try again.") }}
   {% else %}
@@ -49,13 +54,14 @@
     {% endif %}
   {% else %}
   <p class="empty">{{ _("Not configured") }}</p>
-  {% endif %} {% if connection.configured %}
+  {% endif %} {% if connection.configured or sync_runs %}
   <h3 class="subhead">{{ _("Recent syncs") }}</h3>
   {% if sync_runs %}
   <table class="sync-runs">
     <thead>
       <tr>
         <th scope="col">{{ _("When") }}</th>
+        <th scope="col">{{ _("Source") }}</th>
         <th scope="col">{{ _("Result") }}</th>
         <th scope="col" class="num">{{ _("Added") }}</th>
         <th scope="col" class="num">{{ _("Dupes") }}</th>
@@ -64,9 +70,10 @@
     </thead>
     <tbody>
       {% for run in sync_runs %}
-      {% set resolved = run.status.value == "FAILED" and consent_created_at and run.ran_at < consent_created_at %}
+      {% set resolved = run.status.value == "FAILED" and run.source.value != "swile" and consent_created_at and run.ran_at < consent_created_at %}
       <tr{% if resolved %} class="resolved"{% endif %}>
         <td data-label="{{ _('When') }}">{{ run.ran_at | frdatetime }}</td>
+        <td data-label="{{ _('Source') }}">{{ _("Swile") if run.source.value == "swile" else _("Bank") }}</td>
         <td data-label="{{ _('Result') }}" class="status-{{ run.status.value }}">
           {% if run.status.value == "OK" %}{{ _("OK") }}{% else %}{{ _("Failed") }}{% endif %}
           {% if resolved %}<span class="tag">{{ _("before renewal") }}</span>{% endif %}
@@ -87,6 +94,45 @@
   {% else %}
   <p class="empty">{{ _("No sync yet") }}</p>
   {% endif %} {% endif %}
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>{{ _("Swile (meal vouchers)") }}</h2>
+    {% if swile_enrolled %}
+    <form method="post" action="/settings/swile/sync"
+          onsubmit="var b=this.querySelector('button'); b.disabled=true; b.textContent='…';">
+      <button type="submit" class="btn">{{ _("Sync Swile") }}</button>
+    </form>
+    {% endif %}
+  </div>
+  {% if swile_enrolled %}
+  <div class="kv">
+    <span>{{ _("Status") }}</span>
+    <strong class="status-valid">{{ _("Connected") }}</strong>
+  </div>
+  <h3 class="subhead">{{ _("Reconnect") }}</h3>
+  {% else %}
+  <p class="empty">{{ _("Not connected yet.") }}</p>
+  {% endif %}
+  {% if swile_enroll_bookmarklet %}
+  <p class="hint">{{ _("1. Drag this button to your bookmarks bar:") }}</p>
+  <p><a class="bookmarklet" href="{{ swile_enroll_bookmarklet }}" draggable="true" onclick="return false;">{{ _("Swile Enroll") }}</a></p>
+  <p class="hint">{{ _("2. On team.swile.co, click it to copy your token, then paste it below.") }}</p>
+  {% else %}
+  <p class="hint">{{ _("Run the Swile Enroll bookmarklet on team.swile.co; it copies the token to paste here.") }}</p>
+  {% endif %}
+  <p><a href="https://team.swile.co" target="_blank" rel="noopener noreferrer">{{ _("Open team.swile.co") }} ↗</a></p>
+  <form method="post" action="/settings/swile/enroll" class="swile-enroll-form">
+    <label class="field">
+      <span>{{ _("Refresh token") }}</span>
+      <input type="password" name="refresh_token" autocomplete="off"
+             placeholder="{{ _('Paste the token copied by the bookmarklet') }}" required />
+    </label>
+    <div class="form-actions">
+      <button type="submit" class="btn primary">{{ _("Enroll") }}</button>
+    </div>
+  </form>
 </section>
 
 <section class="card">

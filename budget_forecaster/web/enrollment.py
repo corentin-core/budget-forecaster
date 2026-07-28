@@ -36,6 +36,8 @@ class Flash(str, Enum):
     LINKED = "linked"
     CANCELLED = "cancelled"
     ERROR = "error"
+    SWILE_LINKED = "swile-linked"
+    SWILE_ERROR = "swile-error"
 
 
 class PendingEnrollment(NamedTuple):

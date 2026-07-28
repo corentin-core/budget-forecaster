@@ -12,6 +12,7 @@ api's
 args
 au
 auth
+authed
 backend
 backfill
 backfills
@@ -23,6 +24,7 @@ budgetinterface
 cancelled
 cancelling
 categorizer
+ciphertext
 cli
 clôturé
 codecov
@@ -40,6 +42,9 @@ dataframe
 daterange
 datetime
 datetimes
+decrypt
+decrypting
+decrypts
 dedup
 deduping
 deduplicates
@@ -54,14 +59,17 @@ dicts
 dir
 donut
 downsample
+draggable
 dropdown
 dropdowns
 dup
+eb
 edf
 entrypoint
 enum
 enums
 env
+fernet
 focusable
 forecasted
 gettext
@@ -75,10 +83,12 @@ hx
 idempotency
 impl
 init
+integrations
 iso
 iterable
 iteratively
 jinja
+js
 json
 jwt
 kwargs
@@ -95,6 +105,7 @@ mensuel
 middleware
 minification
 minifies
+minify
 mois
 msgid
 mtime
@@ -112,6 +123,7 @@ paribas
 parseable
 parsers
 passthrough
+plaintext
 polyline
 pragma
 pre
@@ -151,11 +163,13 @@ supermarché
 supersession
 svg
 swile
+swile's
 sys
 systemd
 tailnet
 tendances
 timedelta
+tmp
 tooltip
 trimestriel
 tz
@@ -175,6 +189,7 @@ upsert
 upserting
 upserts
 uptime
+urlsafe
 uvicorn
 whitespace
 widget's

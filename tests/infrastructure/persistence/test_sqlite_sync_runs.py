@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from budget_forecaster.core.types import SyncRun, SyncRunStatus
+from budget_forecaster.core.types import SyncRun, SyncRunStatus, SyncSource
 from budget_forecaster.infrastructure.persistence.repository_interface import (
     RepositoryInterface,
 )
@@ -79,3 +79,49 @@ class TestSyncRunsTable:
                 _run(datetime(2026, 7, day, 6, 0, tzinfo=timezone.utc))
             )
         assert len(repository.get_recent_sync_runs(2)) == 2
+
+    def test_source_defaults_to_enable_banking(
+        self, repository: RepositoryInterface
+    ) -> None:
+        """A run recorded without a source reads back as Enable Banking."""
+        ran_at = datetime(2026, 7, 23, 6, 0, tzinfo=timezone.utc)
+        repository.add_sync_run(_run(ran_at))
+        (run,) = repository.get_recent_sync_runs(10)
+        assert run.source is SyncSource.ENABLE_BANKING
+
+
+class TestSyncRunsBySource:
+    """get_recent_sync_runs filters by source when asked."""
+
+    def test_filter_returns_only_that_source(
+        self, repository: RepositoryInterface
+    ) -> None:
+        """The source filter excludes runs of the other integration."""
+        eb = datetime(2026, 7, 21, 6, 0, tzinfo=timezone.utc)
+        swile = datetime(2026, 7, 22, 6, 0, tzinfo=timezone.utc)
+        repository.add_sync_run(_run(eb, source=SyncSource.ENABLE_BANKING))
+        repository.add_sync_run(_run(swile, source=SyncSource.SWILE))
+
+        swile_runs = repository.get_recent_sync_runs(10, source=SyncSource.SWILE)
+        eb_runs = repository.get_recent_sync_runs(10, source=SyncSource.ENABLE_BANKING)
+
+        assert [r.ran_at for r in swile_runs] == [swile]
+        assert [r.ran_at for r in eb_runs] == [eb]
+
+    def test_no_filter_returns_all_sources(
+        self, repository: RepositoryInterface
+    ) -> None:
+        """Without a source, runs of both integrations come back."""
+        repository.add_sync_run(
+            _run(
+                datetime(2026, 7, 21, 6, 0, tzinfo=timezone.utc),
+                source=SyncSource.ENABLE_BANKING,
+            )
+        )
+        repository.add_sync_run(
+            _run(
+                datetime(2026, 7, 22, 6, 0, tzinfo=timezone.utc),
+                source=SyncSource.SWILE,
+            )
+        )
+        assert len(repository.get_recent_sync_runs(10)) == 2

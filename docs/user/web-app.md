@@ -159,9 +159,15 @@ say) still raises the banner.
 "Sync now" in Réglages triggers a sync immediately, without waiting for the next
 scheduled run. It records a run just like the background sync does.
 
+## Swile sync
+
+Swile syncs on its own once you connect it, the same way the bank sync works for BNP.
+See the [Swile sync guide](swile-sync.md) for the one-time enrollment and the Sync Swile
+button.
+
 ## Manual file import
 
-Not every account syncs automatically — Swile, for one, is not covered by the bank sync.
+Manual import stays available as a fallback (for example if a Swile reconnect is due).
 The Imports section of Réglages takes a bank export directly: pick a BNP `.xls` or a
 Swile `.zip` and press Import. The file goes through the same import as the automatic
 sync, so operations are deduplicated and categorized the same way.
