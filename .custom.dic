@@ -70,6 +70,7 @@ enum
 enums
 env
 fernet
+filesystem
 focusable
 forecasted
 gettext
@@ -117,6 +118,7 @@ oauth
 oob
 opérations
 orchestrator
+os
 overridable
 params
 paribas
@@ -130,6 +132,7 @@ pre
 prefilled
 prefilling
 preformatted
+prerestore
 prs
 prévu
 pytest
@@ -145,6 +148,7 @@ repo
 repointed
 repr
 reproducibility
+restore's
 revenus
 rmul
 rsa
@@ -193,6 +197,7 @@ upserts
 uptime
 urlsafe
 uvicorn
+wal
 whitespace
 widget's
 xdg
