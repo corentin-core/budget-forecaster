@@ -420,8 +420,24 @@ class TestRestoreBackup:
         snapshot = service.restore_backup(backup.name, migrate=lambda _: None)
 
         assert temp_db.read_text() == "restored content"
+        assert snapshot is not None
         assert snapshot.stem.startswith("test_prerestore_")
         assert snapshot.read_text() == "test database content"
+
+    def test_undo_skips_snapshot(
+        self, service: BackupService, temp_db: Path, backup_dir: Path
+    ) -> None:
+        """An undo restores without taking a new safety snapshot."""
+        backup = backup_dir / "test_2025-01-17_100000.db"
+        backup.write_text("restored content")
+
+        snapshot = service.restore_backup(
+            backup.name, migrate=lambda _: None, take_snapshot=False
+        )
+
+        assert snapshot is None
+        assert temp_db.read_text() == "restored content"
+        assert not any(b.is_safety_copy for b in service.get_backups())
 
     def test_migrate_receives_scratch_copy(
         self, service: BackupService, backup_dir: Path

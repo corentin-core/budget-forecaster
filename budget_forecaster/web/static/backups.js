@@ -1,5 +1,5 @@
-// Two-step inline delete confirm for the Backups card. Degrades to a normal
-// form submit when JS is off (the confirm cluster is shown, the trigger hidden).
+// Two-step inline delete confirm for the Backups card. Delete needs JS (same
+// pattern as the target edit page): the trigger reveals the confirm cluster.
 
 (function () {
   document.querySelectorAll('.card [data-confirm]').forEach(function (form) {

@@ -379,9 +379,12 @@ async def restore_backup(
     """
     form = await request.form()
     name = str(form.get("name", ""))
+    is_undo = bool(form.get("undo"))
     repository.close()
     try:
-        snapshot = backup_service.restore_backup(name, _migrate_scratch, blocking=False)
+        snapshot = backup_service.restore_backup(
+            name, _migrate_scratch, blocking=False, take_snapshot=not is_undo
+        )
     except DatabaseBusyError:
         _reload_after_restore(app)
         return _backup_redirect(
@@ -395,6 +398,12 @@ async def restore_backup(
             request, BackupFlash("error", _("Restore failed. Your data is unchanged."))
         )
     _reload_after_restore(app)
+    if is_undo:
+        # Undo is terminal: drop the snapshot it consumed so restores don't pile
+        # up copies, and offer no further undo.
+        backup_service.delete_backup(name)
+        return _backup_redirect(request, BackupFlash("undone", ""))
+    assert snapshot is not None
     return _backup_redirect(request, BackupFlash("restored", snapshot.name))
 
 

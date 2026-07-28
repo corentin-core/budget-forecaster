@@ -9,7 +9,6 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from budget_forecaster.web.backup_flash import BACKUP_FLASH_COOKIE
 from budget_forecaster.web.routes import settings as settings_module
 
 
@@ -105,6 +104,31 @@ class TestRestore:
         # A safety snapshot was taken and is offered as the undo target.
         assert any(b.is_safety_copy for b in _backups(app))
 
+    def test_undo_reverts_and_consumes_the_snapshot(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """Undo restores the pre-restore state, takes no new copy, and drops it."""
+        original = _threshold(client)
+        client.post("/settings/backup", follow_redirects=False)
+        name = _backups(app)[0].path.name
+
+        bumped = f"{float(original) + 500:.2f}"
+        client.post("/settings/threshold", data={"threshold": bumped})
+        client.post("/settings/backup/restore", data={"name": name})
+        assert _threshold(client) == original
+
+        snapshot = next(b for b in _backups(app) if b.is_safety_copy)
+        response = client.post(
+            "/settings/backup/restore",
+            data={"name": snapshot.path.name, "undo": "1"},
+            follow_redirects=True,
+        )
+
+        assert _threshold(client) == bumped
+        assert "Restauration annulée" in response.text
+        # The consumed safety copy is gone and no new one was created.
+        assert not any(b.is_safety_copy for b in _backups(app))
+
     def test_restore_unknown_backup_flashes_error(self, client: TestClient) -> None:
         """Restoring an unknown backup surfaces an error and changes nothing."""
         response = client.post(
@@ -130,6 +154,10 @@ class TestRestore:
             )
 
         assert "synchronisation est en cours" in response.text
+        # No safety snapshot was taken (restore aborted at the lock) and the app
+        # is still usable after the closed-then-busy path.
+        assert not any(b.is_safety_copy for b in _backups(app))
+        assert client.get("/settings").status_code == 200
 
 
 class TestDelete:
@@ -150,10 +178,9 @@ class TestDelete:
     def test_delete_unknown_flashes_error(self, client: TestClient) -> None:
         """Deleting an unknown backup surfaces an error."""
         response = client.post(
-            "/settings/backup/delete", data={"name": "nope.db"}, follow_redirects=False
+            "/settings/backup/delete", data={"name": "nope.db"}, follow_redirects=True
         )
-        assert response.status_code == 303
-        assert BACKUP_FLASH_COOKIE in response.headers.get("set-cookie", "")
+        assert "Impossible de supprimer la sauvegarde" in response.text
 
 
 class TestDownload:
@@ -176,6 +203,35 @@ class TestDownload:
         """An unknown download name redirects instead of erroring."""
         response = client.get(
             "/settings/backup/download?name=nope.db", follow_redirects=False
+        )
+        assert response.status_code == 303
+
+
+class TestPathTraversal:
+    """The web routes inherit resolve_backup's traversal guard."""
+
+    _NAME = "../../../etc/passwd"
+
+    def test_preview_rejects_traversal(self, client: TestClient) -> None:
+        """Preview of a traversal name renders the error fragment, not a file."""
+        response = client.get(f"/settings/backup/preview?name={self._NAME}")
+        assert response.status_code == 200
+        assert "pas pu être lue" in response.text
+
+    @pytest.mark.parametrize("path", ["restore", "delete"])
+    def test_post_routes_reject_traversal(self, client: TestClient, path: str) -> None:
+        """Restore/delete of a traversal name redirect with an error, no side effect."""
+        response = client.post(
+            f"/settings/backup/{path}",
+            data={"name": self._NAME},
+            follow_redirects=False,
+        )
+        assert response.status_code == 303
+
+    def test_download_rejects_traversal(self, client: TestClient) -> None:
+        """Download of a traversal name redirects instead of serving the file."""
+        response = client.get(
+            f"/settings/backup/download?name={self._NAME}", follow_redirects=False
         )
         assert response.status_code == 303
 

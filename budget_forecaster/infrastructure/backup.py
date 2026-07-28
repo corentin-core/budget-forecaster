@@ -201,15 +201,19 @@ class BackupService:
             raise BackupError(f"Failed to delete backup: {filename!r}") from e
 
     def restore_backup(
-        self, filename: str, migrate: Callable[[Path], None], *, blocking: bool = True
-    ) -> Path:
+        self,
+        filename: str,
+        migrate: Callable[[Path], None],
+        *,
+        blocking: bool = True,
+        take_snapshot: bool = True,
+    ) -> Path | None:
         """Restore a backup over the live database.
 
-        Takes a pre-restore safety snapshot, migrates a scratch copy of the
-        chosen backup to the current schema, then atomically swaps it into place.
-        Held under the cross-process database lock so a concurrent sync cannot
-        write into the file being replaced. The caller must close its own
-        connection before and reload after.
+        Migrates a scratch copy of the chosen backup to the current schema, then
+        atomically swaps it into place. Held under the cross-process database
+        lock so a concurrent sync cannot write into the file being replaced. The
+        caller must close its own connection before and reload after.
 
         Args:
             filename: Name of the backup to restore (validated).
@@ -217,9 +221,13 @@ class BackupService:
                 schema; must raise on failure so no swap happens.
             blocking: When False, raise DatabaseBusyError instead of waiting if a
                 sync process holds the lock.
+            take_snapshot: When True, take a pre-restore safety snapshot first.
+                Set False for an undo, which restores an existing snapshot and
+                should not spawn another.
 
         Returns:
-            Path to the pre-restore safety snapshot (restore it to undo).
+            Path to the pre-restore safety snapshot, or None when take_snapshot
+            is False.
 
         Raises:
             BackupError: On an invalid source, a cross-device backup directory,
@@ -230,7 +238,7 @@ class BackupService:
         self._require_same_filesystem()
 
         with database_lock(self._database_path, blocking=blocking):
-            snapshot = self.create_backup(safety=True)
+            snapshot = self.create_backup(safety=True) if take_snapshot else None
             scratch = self._backup_directory / f".restore-{self._db_stem}.tmp"
             try:
                 shutil.copy2(source, scratch)
@@ -241,7 +249,8 @@ class BackupService:
             finally:
                 scratch.unlink(missing_ok=True)
             self._remove_stale_sidecars()
-            self._rotate(self._safety_backups(), self._max_safety_backups)
+            if take_snapshot:
+                self._rotate(self._safety_backups(), self._max_safety_backups)
         return snapshot
 
     def _require_same_filesystem(self) -> None:

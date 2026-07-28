@@ -209,9 +209,12 @@
       {{ _("Database restored.") }}
       <form method="post" action="/settings/backup/restore" class="inline">
         <input type="hidden" name="name" value="{{ backup_flash.detail }}" />
+        <input type="hidden" name="undo" value="1" />
         <button type="submit" class="btn small">{{ _("Undo") }}</button>
       </form>
     </div>
+    {% elif backup_flash.kind == "undone" %}
+    <div class="banner banner-linked" role="status">{{ _("Restore undone.") }}</div>
     {% else %}
     <div class="banner banner-error" role="status">{{ backup_flash.detail }}</div>
     {% endif %}

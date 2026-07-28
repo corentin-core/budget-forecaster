@@ -1883,3 +1883,6 @@ msgstr "Impossible de supprimer la sauvegarde."
 
 msgid "Unknown backup."
 msgstr "Sauvegarde inconnue."
+
+msgid "Restore undone."
+msgstr "Restauration annulée."
