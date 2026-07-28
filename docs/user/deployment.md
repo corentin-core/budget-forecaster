@@ -199,4 +199,6 @@ Install WSL2 with a recent Ubuntu, then:
 
 The app and the sync timer still run under systemd inside WSL; only the tailnet entry
 point moves to Windows. Follow the common setup for everything except step 3
-(Tailscale), which the above replaces.
+(Tailscale), which the above replaces. Where the common setup writes `<node>` (bank
+callback, Access), use the reclaimed hostname above — the whole point of reclaiming it
+is that `<node>` stays the same after moving to Windows.
