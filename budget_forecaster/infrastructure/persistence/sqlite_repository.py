@@ -827,14 +827,22 @@ class SqliteRepository(RepositoryInterface):
         )
         conn.commit()
 
-    def get_recent_sync_runs(self, limit: int) -> tuple[SyncRun, ...]:
-        """Get the most recent sync runs, newest first."""
+    def get_recent_sync_runs(
+        self, limit: int, source: SyncSource | None = None
+    ) -> tuple[SyncRun, ...]:
+        """Get the most recent sync runs, newest first, optionally by source."""
         conn = self._get_connection()
-        cursor = conn.execute(
-            """SELECT ran_at, status, new_count, duplicate_count, balance, error, source
-               FROM sync_runs ORDER BY id DESC LIMIT ?""",
-            (limit,),
+        base = (
+            "SELECT ran_at, status, new_count, duplicate_count, balance, error, source "
+            "FROM sync_runs"
         )
+        if source is None:
+            cursor = conn.execute(f"{base} ORDER BY id DESC LIMIT ?", (limit,))
+        else:
+            cursor = conn.execute(
+                f"{base} WHERE source = ? ORDER BY id DESC LIMIT ?",
+                (source.value, limit),
+            )
         return tuple(
             SyncRun(
                 ran_at=datetime.fromisoformat(row["ran_at"]),

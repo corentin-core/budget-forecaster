@@ -7,7 +7,11 @@ from typing import Any
 from fastapi import Request
 from fastapi.responses import Response
 
-from budget_forecaster.web.alerts import consent_alert, sync_failure_alert
+from budget_forecaster.web.alerts import (
+    consent_alert,
+    swile_reconnect_alert,
+    sync_failure_alert,
+)
 
 
 def render_template(
@@ -26,6 +30,7 @@ def render_template(
         "sync_alert": sync_failure_alert(
             request.app.state.repository, request.app.state.consent_service
         ),
+        "swile_alert": swile_reconnect_alert(request.app.state.repository),
         "today": date.today(),
         "uncat_count": request.app.state.app_service.count_uncategorized_operations(),
         **context,

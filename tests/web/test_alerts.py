@@ -6,14 +6,18 @@ from unittest.mock import Mock
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from budget_forecaster.core.types import SyncRun, SyncRunStatus
+from budget_forecaster.core.types import SyncRun, SyncRunStatus, SyncSource
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent import (
     ConsentStatus,
 )
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent_service import (
     ConsentState,
 )
-from budget_forecaster.web.alerts import consent_alert, sync_failure_alert
+from budget_forecaster.web.alerts import (
+    consent_alert,
+    swile_reconnect_alert,
+    sync_failure_alert,
+)
 
 
 def _repo_with_runs(*runs: SyncRun) -> Mock:
@@ -149,6 +153,14 @@ class TestSyncFailureAlert:
         )
         assert sync_failure_alert(_repo_with_runs(run), consent) is None
 
+    def test_queries_only_enable_banking_runs(self) -> None:
+        """The banner filters the repository by the Enable Banking source."""
+        repo = _repo_with_runs()
+        sync_failure_alert(repo, None)
+        repo.get_recent_sync_runs.assert_called_once_with(
+            1, source=SyncSource.ENABLE_BANKING
+        )
+
 
 class TestSyncFailureBanner:
     """The failed-sync banner renders across pages when the last run failed."""
@@ -170,3 +182,31 @@ class TestSyncFailureBanner:
         """A successful last run renders no failed-sync banner."""
         app.state.repository = _repo_with_runs(_run(SyncRunStatus.OK))
         assert "banner-failed" not in client.get("/").text
+
+
+class TestSwileReconnectAlert:
+    """swile_reconnect_alert surfaces the last failed Swile sync."""
+
+    def test_alert_when_last_swile_run_failed(self) -> None:
+        """A failed latest Swile run yields a reconnect alert."""
+        run = _run(
+            SyncRunStatus.FAILED, error="HTTPError: 401", source=SyncSource.SWILE
+        )
+        alert = swile_reconnect_alert(_repo_with_runs(run))
+        assert alert is not None
+        assert alert.error == "HTTPError: 401"
+
+    def test_no_alert_when_last_swile_run_ok(self) -> None:
+        """A successful latest Swile run yields no alert."""
+        run = _run(SyncRunStatus.OK, source=SyncSource.SWILE)
+        assert swile_reconnect_alert(_repo_with_runs(run)) is None
+
+    def test_no_alert_without_any_swile_run(self) -> None:
+        """No Swile run at all yields no alert."""
+        assert swile_reconnect_alert(_repo_with_runs()) is None
+
+    def test_queries_only_swile_runs(self) -> None:
+        """The alert filters the repository by the Swile source."""
+        repo = _repo_with_runs()
+        swile_reconnect_alert(repo)
+        repo.get_recent_sync_runs.assert_called_once_with(1, source=SyncSource.SWILE)

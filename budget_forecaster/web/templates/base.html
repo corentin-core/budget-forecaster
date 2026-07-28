@@ -46,6 +46,12 @@
         <a href="/settings">{{ _("Details") }}</a>
       </div>
       {% endif %}
+      {% if swile_alert %}
+      <div class="banner banner-failed">
+        {{ _("Swile connection needs reconnecting") }} ({{ swile_alert.ran_at | frdatetime }})
+        <a href="/settings">{{ _("Reconnect") }}</a>
+      </div>
+      {% endif %}
       {% block content %}{% endblock %}
     </main>
 

@@ -8,7 +8,13 @@ combines them all.
 from abc import ABC, abstractmethod
 from typing import Self
 
-from budget_forecaster.core.types import LinkType, OperationId, SyncRun, TargetId
+from budget_forecaster.core.types import (
+    LinkType,
+    OperationId,
+    SyncRun,
+    SyncSource,
+    TargetId,
+)
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
@@ -353,11 +359,14 @@ class RepositoryInterface(
         """
 
     @abstractmethod
-    def get_recent_sync_runs(self, limit: int) -> tuple[SyncRun, ...]:
+    def get_recent_sync_runs(
+        self, limit: int, source: SyncSource | None = None
+    ) -> tuple[SyncRun, ...]:
         """Get the most recent sync runs, newest first.
 
         Args:
             limit: Maximum number of runs to return.
+            source: When set, restrict to runs of that integration.
 
         Returns:
             Recent runs ordered from newest to oldest.
