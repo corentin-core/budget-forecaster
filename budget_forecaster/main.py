@@ -23,6 +23,7 @@ from budget_forecaster.infrastructure.bank_sources.swile_oauth.token_store impor
 from budget_forecaster.infrastructure.bank_sources.sync_all import sync_all_sources
 from budget_forecaster.infrastructure.bootstrap import open_repository
 from budget_forecaster.infrastructure.config import Config, EnableBankingConfig
+from budget_forecaster.infrastructure.db_lock import database_lock
 from budget_forecaster.web.auth import hash_password
 from budget_forecaster.web.config import ENV_SECRET_KEY
 
@@ -108,11 +109,16 @@ def _run_sync(config_path: Path) -> None:
     consent_service = _consent_service(config)
     swile_token_store = _swile_token_store(config)
 
-    repository = open_repository(config)
-    try:
-        runs = sync_all_sources(repository, config, consent_service, swile_token_store)
-    finally:
-        repository.close()
+    # Hold the lock for the whole session so a web-app restore cannot swap the
+    # database file while this process has it open.
+    with database_lock(config.database_path):
+        repository = open_repository(config)
+        try:
+            runs = sync_all_sources(
+                repository, config, consent_service, swile_token_store
+            )
+        finally:
+            repository.close()
 
     _report_sync_runs(runs)
     if any(run.status is SyncRunStatus.FAILED for run in runs):

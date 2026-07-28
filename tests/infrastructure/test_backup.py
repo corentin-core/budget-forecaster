@@ -1,13 +1,15 @@
 """Tests for the BackupService and BackupConfig."""
 
 import os
+import sqlite3
 import time
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 
 from budget_forecaster.exceptions import BackupError
-from budget_forecaster.infrastructure.backup import BackupService
+from budget_forecaster.infrastructure.backup import BackupInfo, BackupService
 from budget_forecaster.infrastructure.config import BackupConfig, Config
 
 
@@ -255,17 +257,17 @@ class TestBackupErrorHandling:
     def test_rotate_backups_continues_on_individual_delete_failure(
         self, temp_db: Path, backup_dir: Path
     ) -> None:
-        """rotate_backups continues when a single file fails to delete."""
+        """rotate_backups deletes the rest when one entry cannot be removed."""
         base_time = 1000000000.0
-        for i in range(5):
+        # The oldest entry is a directory: unlinking it fails, so rotation must
+        # still delete the other over-limit backup.
+        oldest = backup_dir / "test_2025-01-17_100000.db"
+        oldest.mkdir()
+        os.utime(oldest, (base_time, base_time))
+        for i in range(1, 5):
             backup = backup_dir / f"test_2025-01-17_10000{i}.db"
             backup.write_text(f"backup {i}")
             os.utime(backup, (base_time + i, base_time + i))
-
-        # Make the oldest backup non-deletable
-        oldest = backup_dir / "test_2025-01-17_100000.db"
-        oldest.chmod(0o444)
-        backup_dir.chmod(0o555)
 
         service = BackupService(
             database_path=temp_db,
@@ -273,15 +275,251 @@ class TestBackupErrorHandling:
             max_backups=3,
         )
 
-        try:
-            deleted = service.rotate_backups()
+        deleted = service.rotate_backups()
 
-            # Should have attempted both deletions; some may fail
-            # The important thing is that it doesn't crash
-            assert isinstance(deleted, list)
-        finally:
-            backup_dir.chmod(0o755)
-            oldest.chmod(0o644)
+        remaining = service.get_existing_backups()
+        assert oldest in remaining  # directory deletion failed, still present
+        assert deleted == [backup_dir / "test_2025-01-17_100001.db"]
+
+
+class TestSafetyBackups:
+    """Tests for pre-restore safety snapshots and their independent rotation."""
+
+    def test_safety_backup_uses_marker_name(self, service: BackupService) -> None:
+        """A safety backup is named with the prerestore marker."""
+        path = service.create_backup(safety=True)
+        assert path.stem.startswith("test_prerestore_")
+
+    def test_safety_and_automatic_rotate_independently(
+        self, temp_db: Path, backup_dir: Path
+    ) -> None:
+        """Safety snapshots rotate on their own counter, never evicting backups."""
+        service = BackupService(
+            database_path=temp_db,
+            backup_directory=backup_dir,
+            max_backups=3,
+            max_safety_backups=2,
+        )
+        base_time = 1_000_000_000.0
+        for i in range(4):
+            auto = backup_dir / f"test_2025-01-17_10000{i}.db"
+            auto.write_text(f"auto {i}")
+            os.utime(auto, (base_time + i, base_time + i))
+            safety = backup_dir / f"test_prerestore_2025-01-17_10000{i}.db"
+            safety.write_text(f"safety {i}")
+            os.utime(safety, (base_time + i, base_time + i))
+
+        deleted = service.rotate_backups()
+
+        remaining = {p.name for p in service.get_existing_backups()}
+        # 3 newest automatic kept, 2 newest safety kept
+        assert len([n for n in remaining if "prerestore" in n]) == 2
+        assert len([n for n in remaining if "prerestore" not in n]) == 3
+        assert len(deleted) == 3
+
+
+class TestGetBackups:
+    """Tests for the UI-facing backup listing."""
+
+    def test_lists_newest_first_with_metadata(
+        self, service: BackupService, backup_dir: Path
+    ) -> None:
+        """get_backups returns metadata sorted newest first."""
+        auto = backup_dir / "test_2025-01-17_100000.db"
+        auto.write_text("auto")
+        safety = backup_dir / "test_prerestore_2025-01-18_100000.db"
+        safety.write_text("safety")
+
+        backups = service.get_backups()
+
+        assert [b.path for b in backups] == [safety, auto]
+        assert backups[0] == BackupInfo(
+            path=safety,
+            timestamp=datetime(2025, 1, 18, 10, 0, 0),
+            size_bytes=safety.stat().st_size,
+            is_safety_copy=True,
+        )
+        assert backups[1].is_safety_copy is False
+
+    def test_timestamp_falls_back_to_mtime(
+        self, service: BackupService, backup_dir: Path
+    ) -> None:
+        """An unparseable name falls back to the file mtime."""
+        odd = backup_dir / "test_manual.db"
+        odd.write_text("x")
+        os.utime(odd, (1_000_000_000.0, 1_000_000_000.0))
+
+        (info,) = service.get_backups()
+
+        assert info.timestamp == datetime.fromtimestamp(1_000_000_000.0)
+
+
+class TestResolveBackup:
+    """Tests for filename validation."""
+
+    def test_resolves_existing_backup(
+        self, service: BackupService, backup_dir: Path
+    ) -> None:
+        """A valid backup name resolves to its path."""
+        backup = backup_dir / "test_2025-01-17_100000.db"
+        backup.write_text("x")
+        assert service.resolve_backup("test_2025-01-17_100000.db") == backup
+
+    @pytest.mark.parametrize(
+        "name",
+        ["../test.db", "sub/test.db", "missing.db"],
+        ids=["parent", "subdir", "unknown"],
+    )
+    def test_rejects_invalid_names(self, service: BackupService, name: str) -> None:
+        """Path traversal and unknown names are rejected."""
+        with pytest.raises(BackupError):
+            service.resolve_backup(name)
+
+
+class TestDeleteBackup:
+    """Tests for deleting a single backup."""
+
+    def test_deletes_named_backup(
+        self, service: BackupService, backup_dir: Path
+    ) -> None:
+        """The named backup is removed."""
+        backup = backup_dir / "test_2025-01-17_100000.db"
+        backup.write_text("x")
+
+        service.delete_backup("test_2025-01-17_100000.db")
+
+        assert not backup.exists()
+
+    def test_delete_allows_last_backup(
+        self, service: BackupService, backup_dir: Path
+    ) -> None:
+        """Deleting the only remaining backup is allowed."""
+        backup = backup_dir / "test_2025-01-17_100000.db"
+        backup.write_text("x")
+
+        service.delete_backup(backup.name)
+
+        assert service.get_existing_backups() == []
+
+    def test_rejects_unknown_backup(self, service: BackupService) -> None:
+        """Deleting an unknown name raises."""
+        with pytest.raises(BackupError):
+            service.delete_backup("nope.db")
+
+
+class TestRestoreBackup:
+    """Tests for restoring a backup over the live database."""
+
+    def test_swaps_file_and_returns_snapshot(
+        self, service: BackupService, temp_db: Path, backup_dir: Path
+    ) -> None:
+        """The database is replaced by the backup and a safety snapshot returned."""
+        backup = backup_dir / "test_2025-01-17_100000.db"
+        backup.write_text("restored content")
+
+        snapshot = service.restore_backup(backup.name, migrate=lambda _: None)
+
+        assert temp_db.read_text() == "restored content"
+        assert snapshot.stem.startswith("test_prerestore_")
+        assert snapshot.read_text() == "test database content"
+
+    def test_migrate_receives_scratch_copy(
+        self, service: BackupService, backup_dir: Path
+    ) -> None:
+        """The migrate callback runs on a scratch copy before the swap."""
+        backup = backup_dir / "test_2025-01-17_100000.db"
+        backup.write_text("restored content")
+        seen: dict[str, str] = {}
+
+        def migrate(scratch: Path) -> None:
+            seen["content"] = scratch.read_text()
+
+        service.restore_backup(backup.name, migrate=migrate)
+
+        assert seen["content"] == "restored content"
+
+    def test_cleans_scratch_on_success(
+        self, service: BackupService, backup_dir: Path
+    ) -> None:
+        """No scratch file is left behind after a restore."""
+        backup = backup_dir / "test_2025-01-17_100000.db"
+        backup.write_text("restored content")
+
+        service.restore_backup(backup.name, migrate=lambda _: None)
+
+        assert not (backup_dir / ".restore-test.tmp").exists()
+
+    def test_failed_migration_leaves_db_untouched(
+        self, service: BackupService, temp_db: Path, backup_dir: Path
+    ) -> None:
+        """A migration failure aborts before the swap; the live DB is unchanged."""
+        backup = backup_dir / "test_2025-01-17_100000.db"
+        backup.write_text("restored content")
+
+        def failing(_: Path) -> None:
+            raise BackupError("migration failed")
+
+        with pytest.raises(BackupError):
+            service.restore_backup(backup.name, migrate=failing)
+
+        assert temp_db.read_text() == "test database content"
+        assert not (backup_dir / ".restore-test.tmp").exists()
+
+    def test_wraps_non_backup_migration_error(
+        self, service: BackupService, backup_dir: Path
+    ) -> None:
+        """A migration error that is not a BackupError is wrapped as one."""
+        backup = backup_dir / "test_2025-01-17_100000.db"
+        backup.write_text("restored content")
+
+        def failing(_: Path) -> None:
+            raise sqlite3.OperationalError("no such column")
+
+        with pytest.raises(BackupError):
+            service.restore_backup(backup.name, migrate=failing)
+
+    def test_safety_snapshots_stay_bounded_across_restores(
+        self, temp_db: Path, backup_dir: Path
+    ) -> None:
+        """Repeated restores never grow the safety-snapshot pool past its cap."""
+        service = BackupService(
+            database_path=temp_db,
+            backup_directory=backup_dir,
+            max_safety_backups=2,
+        )
+        backup = backup_dir / "test_2025-01-17_100000.db"
+        backup.write_text("restored content")
+
+        for _ in range(5):
+            service.restore_backup(backup.name, migrate=lambda _: None)
+
+        safety = [b for b in service.get_backups() if b.is_safety_copy]
+        assert len(safety) == 2
+
+    def test_rejects_cross_device_backup_directory(
+        self,
+        service: BackupService,
+        backup_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A backup directory on another filesystem is refused before any swap."""
+        backup = backup_dir / "test_2025-01-17_100000.db"
+        backup.write_text("restored content")
+
+        real_stat = Path.stat
+
+        def fake_stat(self: Path, *args: object, **kwargs: object) -> os.stat_result:
+            result = real_stat(self, *args, **kwargs)
+            if self == backup_dir:
+                fields = list(result)
+                fields[2] = result.st_dev + 1  # st_dev is index 2
+                return os.stat_result(fields)
+            return result
+
+        monkeypatch.setattr(Path, "stat", fake_stat)
+
+        with pytest.raises(BackupError, match="same filesystem"):
+            service.restore_backup(backup.name, migrate=lambda _: None)
 
 
 class TestBackupConfigParsing:
