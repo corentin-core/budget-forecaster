@@ -66,6 +66,7 @@ def parse_operations(
                     amount=Amount(amount, transaction["amount"]["currency"]["iso_3"]),
                     category=Category.UNCATEGORIZED,
                     operation_date=op_date,
+                    source_ref=transaction.get("id"),
                 )
             )
     return tuple(operations)

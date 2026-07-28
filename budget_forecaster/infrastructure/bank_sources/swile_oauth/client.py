@@ -100,6 +100,10 @@ class SwileClient:
             "X-API-Key": constants.X_API_KEY,
             "X-Lunchr-Platform": "web",
             "Content-Type": "application/json",
+            # Swile returns operation names in the caller's language; without
+            # this the API defaults to English and won't dedup against French
+            # file imports.
+            "Accept-Language": "fr-FR",
         }
         if extra_headers:
             headers.update(extra_headers)

@@ -15,11 +15,14 @@ from budget_forecaster.services.operation.historic_operation_factory import (
 )
 
 
-def _meal_voucher(name: str, value: int, day: str, status: str = "CAPTURED") -> dict:
+def _meal_voucher(
+    name: str, value: int, day: str, status: str = "CAPTURED", tx_id: str = "tx-1"
+) -> dict:
     return {
         "name": name,
         "transactions": [
             {
+                "id": tx_id,
                 "status": status,
                 "payment_method": "Wallets::MealVoucherWallet",
                 "date": f"{day}T13:50:50.073+01:00",
@@ -52,6 +55,34 @@ def test_parse_operations_keeps_meal_vouchers(
     assert {op.description for op in operations} == {"Restaurant", "Boulangerie"}
     assert all(op.category == Category.UNCATEGORIZED for op in operations)
     assert operations[1].operation_date == date(2025, 1, 16)
+
+
+def test_parse_operations_carries_transaction_id_as_source_ref(
+    factory: HistoricOperationFactory,
+) -> None:
+    """The transaction id becomes the source ref, so dedup survives label drift."""
+    payload = {
+        "items": [_meal_voucher("Restaurant", -2500, "2025-01-15", tx_id="tx-9")]
+    }
+
+    operations = parse_operations(payload, factory)
+
+    assert operations[0].source_ref == "tx-9"
+
+
+def test_parse_operations_source_ref_none_without_transaction_id(
+    factory: HistoricOperationFactory,
+) -> None:
+    """A transaction with no id falls back to a content-based dedup key."""
+    transaction = {
+        "status": "CAPTURED",
+        "payment_method": "Wallets::MealVoucherWallet",
+        "date": "2025-01-15T13:50:50.073+01:00",
+        "amount": {"value": -2500, "currency": {"iso_3": "EUR"}},
+    }
+    payload = {"items": [{"name": "Restaurant", "transactions": [transaction]}]}
+
+    assert parse_operations(payload, factory)[0].source_ref is None
 
 
 def test_parse_operations_skips_non_meal_voucher_and_declined(

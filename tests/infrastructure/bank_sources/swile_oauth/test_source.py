@@ -16,6 +16,7 @@ _OPERATIONS = {
             "name": "Restaurant",
             "transactions": [
                 {
+                    "id": "tx-1",
                     "status": "CAPTURED",
                     "payment_method": "Wallets::MealVoucherWallet",
                     "date": "2025-01-15T13:50:50.073+01:00",
@@ -38,6 +39,7 @@ def test_fetch_populates_operations_balance_and_date() -> None:
     source.fetch("swile", HistoricOperationFactory(last_operation_id=0))
 
     assert [op.amount for op in source.operations] == [-25.0]
+    assert [op.source_ref for op in source.operations] == ["tx-1"]
     assert source.balance == 100.0
     assert source.export_date == date.today()
 
