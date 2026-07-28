@@ -11,6 +11,7 @@ import logging
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse, Response
 
+from budget_forecaster.core.types import SyncRun, SyncRunStatus
 from budget_forecaster.infrastructure.bank_sources.swile_oauth.client import SwileClient
 from budget_forecaster.infrastructure.bank_sources.swile_oauth.consent_service import (
     SwileConsentService,
@@ -59,11 +60,17 @@ def _sync_and_refresh(
     client: SwileClient,
     config: Config,
     app: ApplicationService,
-) -> None:
-    """Sync Swile, then refresh the cached account and forecast."""
-    perform_sync(repository, token_store, config.accounts, client=client)
-    app.reload_account()
-    refresh_forecast(app)
+) -> SyncRun:
+    """Sync Swile and, only on success, refresh the cached account and forecast.
+
+    reload_account raises on an empty database, so it must not run for a failed
+    sync (the run itself is always recorded by perform_sync).
+    """
+    run = perform_sync(repository, token_store, config.accounts, client=client)
+    if run.status is SyncRunStatus.OK:
+        app.reload_account()
+        refresh_forecast(app)
+    return run
 
 
 @router.post("/settings/swile/enroll")
@@ -91,8 +98,9 @@ async def enroll(
         logger.exception("Swile enrollment failed")
         return _flash_redirect(request, Flash.SWILE_ERROR)
 
-    _sync_and_refresh(repository, token_store, client, config, app)
-    return _flash_redirect(request, Flash.SWILE_LINKED)
+    run = _sync_and_refresh(repository, token_store, client, config, app)
+    flash = Flash.SWILE_LINKED if run.status is SyncRunStatus.OK else Flash.SWILE_ERROR
+    return _flash_redirect(request, flash)
 
 
 @router.post("/settings/swile/sync")

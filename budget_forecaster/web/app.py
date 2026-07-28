@@ -138,6 +138,11 @@ def _startup_swile_sync(
 
     Best-effort: perform_sync records its own outcome and never raises, so a
     failed refresh just leaves the reconnect banner for the user.
+
+    This runs on the boot path and does blocking Swile I/O, so a slow endpoint
+    delays readiness — bounded by the client's per-request timeout (a hang fails
+    the run rather than stalling for minutes). Acceptable at personal scale,
+    where the host boots rarely and only pending pages are fetched.
     """
     if token_store.load() is None:
         return

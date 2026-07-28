@@ -70,7 +70,7 @@
     </thead>
     <tbody>
       {% for run in sync_runs %}
-      {% set resolved = run.status.value == "FAILED" and consent_created_at and run.ran_at < consent_created_at %}
+      {% set resolved = run.status.value == "FAILED" and run.source.value != "swile" and consent_created_at and run.ran_at < consent_created_at %}
       <tr{% if resolved %} class="resolved"{% endif %}>
         <td data-label="{{ _('When') }}">{{ run.ran_at | frdatetime }}</td>
         <td data-label="{{ _('Source') }}">{{ _("Swile") if run.source.value == "swile" else _("Bank") }}</td>

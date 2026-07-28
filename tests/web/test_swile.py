@@ -93,6 +93,23 @@ class TestEnroll:
         assert "Échec de la connexion Swile" in response.text
         assert app.state.swile_token_store.load() is None
 
+    def test_valid_token_but_failed_first_sync_flashes_error(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """The token validates and is stored, but a failing first sync flashes error."""
+        client_double = _fake_client()
+        client_double.get_operations.side_effect = RuntimeError("operations down")
+        app.state.swile_client = client_double
+        response = client.post(
+            "/settings/swile/enroll",
+            data={"refresh_token": "good-rt"},
+            follow_redirects=True,
+        )
+        assert "Échec de la connexion Swile" in response.text
+        assert app.state.swile_token_store.load() == "rotated-rt"
+        run = _latest_swile_run(app)
+        assert run is not None and run.status is SyncRunStatus.FAILED
+
 
 class TestSync:
     """The Sync Swile button records a run for an enrolled account."""
@@ -131,3 +148,34 @@ class TestSettingsCard:
         app.state.swile_client = _fake_client()
         client.post("/settings/swile/enroll", data={"refresh_token": "rt"})
         assert "Connecté" in client.get("/settings").text
+
+
+class TestStartupSync:
+    """The web app syncs Swile at startup when a token is enrolled."""
+
+    def test_startup_syncs_when_enrolled(self, app: FastAPI) -> None:
+        """Booting with a stored token records an OK Swile run."""
+        app.state.swile_client = _fake_client()
+        app.state.swile_token_store.save("stored-rt")
+        with TestClient(app):
+            pass
+        run = _latest_swile_run(app)
+        assert run is not None and run.status is SyncRunStatus.OK
+
+    def test_startup_survives_failed_refresh(self, app: FastAPI) -> None:
+        """A failing refresh at startup records a FAILED run but boots cleanly."""
+        failing = _fake_client()
+        failing.refresh.side_effect = RuntimeError("token revoked")
+        app.state.swile_client = failing
+        app.state.swile_token_store.save("stored-rt")
+        with TestClient(app) as booted:
+            assert booted.get("/health").status_code == 200
+        run = _latest_swile_run(app)
+        assert run is not None and run.status is SyncRunStatus.FAILED
+
+    def test_no_startup_sync_without_enrollment(self, app: FastAPI) -> None:
+        """Booting without a token records no Swile run."""
+        app.state.swile_client = _fake_client()
+        with TestClient(app):
+            pass
+        assert _latest_swile_run(app) is None
