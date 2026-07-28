@@ -80,6 +80,11 @@ sudo tailscale serve --bg http://127.0.0.1:8000
 `tailscale serve` persists across reboots. Find your node name with `tailscale status`;
 the app is then reachable at `https://<node>.<tailnet>.ts.net`.
 
+> **On WSL2, do not run Tailscale inside the distro.** WSL's virtual NIC drops the
+> tailnet connection when the Windows host sleeps, leaving the node offline until you
+> restart WSL. Run Tailscale on the **Windows** host instead and let it proxy to the
+> app. Skip this step here and follow [Windows via WSL2](#windows-via-wsl2).
+
 ### 4. systemd services
 
 Install the units as user services (no root; they run under your account):
@@ -163,12 +168,35 @@ Install WSL2 with a recent Ubuntu, then:
 
    This boots the distro (and its systemd services) in the background.
 
-3. **Tailscale TUN fallback.** If `sudo tailscale up` reports no TUN device, run it in
-   userspace-networking mode:
+3. **Serve from the Windows host, not from WSL.** WSL's virtual NIC drops long-lived
+   connections when the host sleeps, so a Tailscale node running inside WSL goes offline
+   on resume until you restart WSL. The Windows Tailscale client reconnects reliably, so
+   run Tailscale there and have it proxy to the WSL app over `localhost`.
 
-   ```bash
-   sudo tailscaled --tun=userspace-networking &
-   sudo tailscale up
+   Install the Tailscale Windows client, sign in to the same tailnet, then from
+   PowerShell:
+
+   ```powershell
+   tailscale serve --bg http://localhost:8000
    ```
 
-Then follow the common setup.
+   The app is then reachable at `https://<windows-node>.<tailnet>.ts.net`. Windows
+   reaches the WSL uvicorn over `localhost` because WSL2 forwards it by default; if that
+   link becomes unreachable after a sleep/resume, set `networkingMode=mirrored` under
+   `[wsl2]` in `%USERPROFILE%\.wslconfig` and `wsl --shutdown`.
+
+   **Keep the hostname stable.** If a Tailscale node inside WSL already claimed the app
+   hostname, the Windows node registers with a `-1` suffix. To keep the bank callback
+   URL valid, stop and disable Tailscale in WSL (`sudo tailscale down`, then
+   `sudo systemctl disable --now tailscaled`), remove the offline WSL node in the
+   Tailscale admin console, rename the Windows node to the freed hostname, then re-issue
+   the serve config so it picks up the new name:
+
+   ```powershell
+   tailscale serve reset
+   tailscale serve --bg http://localhost:8000
+   ```
+
+The app and the sync timer still run under systemd inside WSL; only the tailnet entry
+point moves to Windows. Follow the common setup for everything except step 3
+(Tailscale), which the above replaces.
