@@ -32,7 +32,10 @@ from budget_forecaster.exceptions import (
     OperationNotFoundError,
     PlannedOperationNotFoundError,
 )
-from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.services.application_service import (
+    ApplicationService,
+    OverdueIteration,
+)
 from budget_forecaster.services.forecast.forecast_service import ForecastService
 from budget_forecaster.services.import_service import ImportResult, ImportService
 from budget_forecaster.services.operation.iteration_resolution_service import (
@@ -1399,7 +1402,7 @@ class TestOverdueIterations:
                 description="Insurance",
                 amount=Amount(-145.0, "EUR"),
                 category=Category.HOUSE_INSURANCE,
-                date_range=SingleDay(date(2025, 1, 10)),
+                date_range=SingleDay(date(2025, 2, 10)),
             )
         ]
 
@@ -1507,6 +1510,118 @@ class TestOverdueIterations:
         assert overdue.iteration_date == date(2025, 3, 5)
         assert overdue.postponed_to == date(2025, 3, 15)
         assert overdue.days_overdue == 5
+
+    @pytest.mark.parametrize(
+        "iteration_date,expected",
+        [
+            (
+                date(2025, 1, 17),
+                (
+                    OverdueIteration(
+                        planned_operation_id=7,
+                        iteration_date=date(2025, 1, 17),
+                        description="Insurance",
+                        amount=-145.0,
+                        currency="EUR",
+                        state=IterationState.EXPIRED,
+                        days_overdue=62,
+                        counted_on=None,
+                    ),
+                ),
+            ),
+            (date(2025, 1, 16), ()),
+        ],
+        ids=["oldest_listed_day", "one_day_too_old"],
+    )
+    def test_the_listing_window_bounds_what_the_card_shows(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+        iteration_date: date,
+        expected: tuple[OverdueIteration, ...],
+    ) -> None:
+        """Listed for a month past the late horizon, then gone."""
+        mock_forecast_service.get_all_planned_operations.return_value = [
+            PlannedOperation(
+                record_id=7,
+                description="Insurance",
+                amount=Amount(-145.0, "EUR"),
+                category=Category.HOUSE_INSURANCE,
+                date_range=SingleDay(iteration_date),
+            )
+        ]
+
+        assert app_service.get_overdue_iterations() == expected
+
+    def test_an_old_decision_does_not_bring_back_the_undecided_tail(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+        mock_iteration_resolution_service: MagicMock,
+    ) -> None:
+        """Honouring an old decision must not widen what the card lists."""
+        mock_forecast_service.get_all_planned_operations.return_value = [
+            PlannedOperation(
+                record_id=7,
+                description="Rent",
+                amount=Amount(-850.0, "EUR"),
+                category=Category.RENT,
+                date_range=RecurringDay(date(2024, 9, 5), relativedelta(months=1)),
+            )
+        ]
+        mock_iteration_resolution_service.get_all_resolutions.return_value = (
+            IterationResolution(
+                planned_operation_id=7,
+                iteration_date=date(2024, 9, 5),
+                action=IterationAction.SKIP,
+            ),
+        )
+
+        result = app_service.get_overdue_iterations()
+
+        assert [it.iteration_date for it in result] == [
+            date(2025, 2, 5),
+            date(2025, 3, 5),
+        ]
+
+    def test_an_old_iteration_postponed_into_the_window_stays_listed(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+        mock_iteration_resolution_service: MagicMock,
+    ) -> None:
+        """The window measures the date the user chose, not the original."""
+        mock_forecast_service.get_all_planned_operations.return_value = [
+            PlannedOperation(
+                record_id=7,
+                description="Insurance",
+                amount=Amount(-145.0, "EUR"),
+                category=Category.HOUSE_INSURANCE,
+                date_range=SingleDay(date(2024, 11, 5)),
+            )
+        ]
+        mock_iteration_resolution_service.get_all_resolutions.return_value = (
+            IterationResolution(
+                planned_operation_id=7,
+                iteration_date=date(2024, 11, 5),
+                action=IterationAction.POSTPONE,
+                postponed_to=date(2025, 3, 10),
+            ),
+        )
+
+        assert app_service.get_overdue_iterations() == (
+            OverdueIteration(
+                planned_operation_id=7,
+                iteration_date=date(2024, 11, 5),
+                description="Insurance",
+                amount=-145.0,
+                currency="EUR",
+                state=IterationState.LATE,
+                days_overdue=10,
+                counted_on=date(2025, 3, 21),
+                postponed_to=date(2025, 3, 10),
+            ),
+        )
 
 
 class TestIterationDecisions:

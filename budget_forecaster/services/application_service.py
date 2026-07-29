@@ -45,6 +45,7 @@ from budget_forecaster.services.forecast.forecast_service import (
     MonthlySummary,
 )
 from budget_forecaster.services.forecast.iteration_lifecycle import (
+    OVERDUE_LISTING_WINDOW,
     derive_past_iterations,
     index_resolutions,
 )
@@ -195,10 +196,6 @@ def _has_iteration(op: PlannedOperation, iteration_date: date) -> bool:
         if date_range.start_date > iteration_date:
             return False
     return False
-
-
-OVERDUE_LISTING_WINDOW = relativedelta(months=6)
-"""How far back the overdue list reaches, well past the late horizon."""
 
 
 class OverdueIteration(NamedTuple):
@@ -474,12 +471,15 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         Postponed and skipped iterations are left out: the user already decided,
         and their decision is listed on the planned operation itself.
 
-        The list reaches back OVERDUE_LISTING_WINDOW, so an operation backdated by
-        years does not bury the card under iterations that left the forecast long
-        ago. Anything older stopped being counted at the late horizon.
+        The list reaches back OVERDUE_LISTING_WINDOW. Anything older left the
+        forecast a month before that, and a month of not acting on it says enough.
+
+        The window is checked per occurrence, not only through the derivation's own
+        bound: a stored decision widens that bound so old decisions keep being
+        honoured, and one such decision must not drag the undecided tail back in.
         """
         balance_date = self.balance_date
-        since = balance_date - OVERDUE_LISTING_WINDOW
+        listing_start = balance_date - OVERDUE_LISTING_WINDOW
         linked = self._linked_iterations_by_planned_operation()
         resolutions = index_resolutions(
             self._iteration_resolution_service.get_all_resolutions()
@@ -494,11 +494,14 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
                 balance_date,
                 linked.get(op.id, set()),
                 resolutions.get(op.id, {}),
-                since=since,
+                since=listing_start,
             ):
                 if past.state not in (IterationState.LATE, IterationState.EXPIRED):
                     continue
-                reference = past.postponed_to or past.iteration_date
+                if (
+                    reference := past.postponed_to or past.iteration_date
+                ) < listing_start:
+                    continue
                 overdue.append(
                     OverdueIteration(
                         planned_operation_id=past.planned_operation_id,

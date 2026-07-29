@@ -26,9 +26,14 @@ class Overdue(NamedTuple):
 
 
 def _create_unmatched(
-    client: TestClient, app: FastAPI, *, days_before_balance: int, amount: str
+    client: TestClient,
+    app: FastAPI,
+    *,
+    days_before_balance: int,
+    amount: str,
+    recurring: bool = True,
 ) -> Overdue:
-    """Create a monthly payment whose iterations nothing will ever match."""
+    """Create a payment whose iterations nothing will ever match."""
     iteration = app.state.app_service.balance_date - timedelta(days=days_before_balance)
     client.post(
         "/targets/planned",
@@ -37,7 +42,7 @@ def _create_unmatched(
             "amount": amount,
             "category": "RENT",
             "start_date": iteration.isoformat(),
-            "recurring": "yes",
+            "recurring": "yes" if recurring else "no",
             "period_value": "1",
             "period_unit": "months",
             "end_date": "",
@@ -48,7 +53,8 @@ def _create_unmatched(
         },
         follow_redirects=False,
     )
-    listing = client.get("/targets?view=planned").text
+    # Past one-time payments are inactive, which the listing hides by default.
+    listing = client.get("/targets?view=planned&submitted=1&active=false").text
     row = listing[listing.find(_DESCRIPTION) - 400 : listing.find(_DESCRIPTION)]
     found = re.findall(r"/targets/planned/(\d+)", row)
     assert found, "the new planned operation should be listed"
@@ -391,6 +397,49 @@ class TestUncountedIteration:
         card = _card(client)
 
         assert f"/overdue/{overdue.op_id}/{overdue.iteration}/postpone" in card
+
+
+class TestListingWindow:
+    """The card stops one late horizon past the one that stopped counting."""
+
+    def test_an_iteration_inside_the_window_is_listed(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """The last day of the window still asks for a decision."""
+        _create_unmatched(
+            client, app, days_before_balance=62, amount="-321", recurring=False
+        )
+
+        assert _DESCRIPTION in _card(client)
+
+    def test_an_iteration_past_the_window_is_gone(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """One day later nobody will act on it: it leaves the card and the badge."""
+        before = _card(client).count('class="overdue-item"')
+
+        _create_unmatched(
+            client, app, days_before_balance=63, amount="-321", recurring=False
+        )
+
+        card = _card(client)
+        assert _DESCRIPTION not in card
+        assert card.count('class="overdue-item"') == before
+
+    def test_its_actions_go_with_it(self, client: TestClient, app: FastAPI) -> None:
+        """No route acts on a row the card no longer offers."""
+        gone = _create_unmatched(
+            client, app, days_before_balance=63, amount="-321", recurring=False
+        )
+
+        assert (
+            client.get(f"/overdue/{gone.op_id}/{gone.iteration}/link").status_code
+            == 404
+        )
+        assert (
+            client.post(f"/overdue/{gone.op_id}/{gone.iteration}/skip").status_code
+            == 404
+        )
 
 
 class TestUnknownIterations:

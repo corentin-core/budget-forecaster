@@ -78,8 +78,12 @@ list, with a count on the Accueil tab so you see it from any page.
 
 Each overdue row says how late the payment is and whether the forecast still counts it:
 for a month it does, on the day after your balance date, then it stops being counted and
-the row says so. Either way it stays listed until you settle it — nothing is dropped
-behind your back.
+the row says so. It stays listed a second month, which is there for you to notice it,
+and then the row leaves the card, taking its two decisions with it — by that point the
+amount has been out of the forecast for a month, so there is nothing left to settle. A
+decision you took while the row was there is kept for good, so a postponement made in
+time still moves the amount long after. Linking the payment stays possible whenever you
+find it, from the operation's own row in Opérations.
 
 **Lier…** is the first thing to try, and the description opens the same page. Most often
 the payment did happen and the matcher did not recognize it, so the page lists the
