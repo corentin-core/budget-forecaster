@@ -1269,6 +1269,29 @@ a.overdue-edit:focus-visible,
 .select-cell {
   width: 1.6rem;
 }
+/* Every column but the description is pinned: otherwise the widest cell in the
+   filtered set sets the width, and the layout jumps on each filter change. */
+@media (min-width: 1024px) {
+  .ledger {
+    table-layout: fixed;
+  }
+  /* Fixed layout counts padding in, so the checkbox needs its own room. */
+  .ledger .select-cell {
+    width: 2.6rem;
+  }
+  .ledger .date {
+    width: 6rem;
+  }
+  .ledger .num {
+    width: 7.5rem;
+  }
+  .ledger .cat {
+    width: 13rem;
+  }
+  .ledger .desc {
+    overflow-wrap: anywhere;
+  }
+}
 .cat-actions {
   display: flex;
   align-items: center;

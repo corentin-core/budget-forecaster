@@ -289,6 +289,24 @@ class TestCategorize:
         assert response.status_code == 200
         assert 'hx-swap-oob="true"' in response.text
 
+    def test_bulk_categorize_keeps_the_active_filter(self, client: TestClient) -> None:
+        """The filter bar is posted in the body, so the re-rendered ledger stays
+        narrowed to the uncategorized rows."""
+        ids = self._uncategorized_ids(client)
+        assert len(ids) >= 2
+        response = client.post(
+            "/operations/categorize",
+            data={
+                "ids": ids[:2],
+                "bulk_category": "leisure",
+                "uncategorized": "true",
+            },
+            headers={"HX-Request": "true"},
+            follow_redirects=False,
+        )
+        rendered = re.findall(r'name="ids" value="(\d+)"', response.text)
+        assert set(rendered) == set(ids[2:])
+
     def test_bulk_categorize_without_selection_redirects(
         self, client: TestClient
     ) -> None:
