@@ -5,9 +5,13 @@ from datetime import date, datetime
 import pandas as pd
 import pytest
 
+from budget_forecaster.core.amount import Amount
+from budget_forecaster.core.types import Category
+from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.web.viewmodels import (
     Consumption,
     add_months,
+    build_planned_form_from_operation,
     consumption,
     month_to_date,
 )
@@ -92,3 +96,37 @@ class TestConsumption:
         """An expense where income was planned is always bad."""
         result = consumption(-30.0, 100.0, is_income=True)
         assert result is not None and result.bad
+
+
+def _operation(
+    description: str, category: Category = Category.RENT
+) -> HistoricOperation:
+    return HistoricOperation(
+        unique_id=1,
+        description=description,
+        amount=Amount(-74.2, "EUR"),
+        category=category,
+        operation_date=date(2026, 7, 29),
+    )
+
+
+class TestPlannedFormFromOperation:
+    """The create form as an operation seeds it."""
+
+    def test_seeds_a_monthly_operation_named_after_the_payee(self) -> None:
+        """Amount, category and date come from the operation."""
+        form = build_planned_form_from_operation(
+            _operation("PRLV SEPA EDF FACTURE 07/2026")
+        )
+        assert (form.description, form.keywords) == ("EDF", "EDF")
+        assert form.amount == "-74.2"
+        assert form.category == "RENT"
+        assert form.start_date == "2026-07-29"
+        assert form.recurring
+        assert (form.period_value, form.period_unit) == ("1", "months")
+
+    def test_falls_back_to_the_label_with_no_keyword(self) -> None:
+        """An all-noise label still names the operation, but matches on nothing."""
+        form = build_planned_form_from_operation(_operation("PRLV SEPA 07/2026"))
+        assert form.description == "PRLV SEPA 07/2026"
+        assert form.keywords == ""

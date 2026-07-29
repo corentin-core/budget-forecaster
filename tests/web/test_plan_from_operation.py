@@ -104,6 +104,15 @@ def _create(client: TestClient, fields: dict[str, str], description: str) -> Non
     assert response.status_code == 303
 
 
+def _planned_id(client: TestClient, description: str) -> int:
+    """The id of the planned operation the management list shows under that name."""
+    listing = client.get("/targets?view=planned").text
+    row = listing[listing.find(description) - 400 : listing.find(description)]
+    found = re.findall(r"/targets/planned/(\d+)", row)
+    assert found, f"planned operation {description!r} should be listed"
+    return int(found[-1])
+
+
 def _link_target(client: TestClient, operation_id: int) -> str:
     """What the operation's detail page says counts it, or an empty string."""
     html = client.get(f"/operations/{operation_id}").text
@@ -180,6 +189,24 @@ class TestLinkingBack:
         _create(
             client, _form_fields(_seeded_page(client, operation)), "Zzz seeded plan"
         )
+        assert _link_target(client, operation.operation_id) == "Zzz seeded plan"
+
+    def test_the_link_survives_editing_the_planned_operation(
+        self, client: TestClient
+    ) -> None:
+        """Editing recomputes automatic links, so this one has to be manual."""
+        operation = _unlinked(client)
+        _create(
+            client, _form_fields(_seeded_page(client, operation)), "Zzz seeded plan"
+        )
+        target_id = _planned_id(client, "Zzz seeded plan")
+        fields = _form_fields(client.get(f"/targets/planned/{target_id}").text)
+        response = client.post(
+            f"/targets/planned/{target_id}",
+            data={**fields, "keywords": "zzz-nothing-matches-this"},
+            follow_redirects=False,
+        )
+        assert response.status_code == 303
         assert _link_target(client, operation.operation_id) == "Zzz seeded plan"
 
     def test_leaves_an_operation_linked_elsewhere_alone(

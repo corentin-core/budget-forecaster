@@ -234,10 +234,15 @@ def link_source_operation(
 ) -> None:
     """Link the operation a planned operation was created from to its occurrence.
 
-    Automatic matching runs first and may already have caught it; a link to
-    anything else is the user's and is left alone.
+    A link to anything else is the user's and is left alone. A link automatic
+    matching just made to this same target is replaced by a manual one: editing
+    the planned operation recomputes automatic links, and this one has to hold.
     """
-    if app.get_link_for_operation(operation_id) is not None:
+    existing = app.get_link_for_operation(operation_id)
+    if existing is not None and (
+        existing.target_type is not LinkType.PLANNED_OPERATION
+        or existing.target_id != target.id
+    ):
         return
     operation = app.get_operation_by_id(operation_id)
     app.create_manual_link(operation, target, _seeded_iteration(operation, target))

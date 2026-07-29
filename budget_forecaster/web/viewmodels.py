@@ -28,6 +28,7 @@ from budget_forecaster.services.forecast.forecast_service import (
     MarginInfo,
     MonthlySummary,
 )
+from budget_forecaster.services.forecast.iteration_lifecycle import LATE_HORIZON
 from budget_forecaster.services.operation.bank_labels import recognizable_name
 from budget_forecaster.services.operation.link_candidates import (
     AmountMatch,
@@ -407,8 +408,7 @@ def build_operation_seed(
         operation_id=operation.unique_id,
         label=operation.description,
         duplicate=_duplicate_hint(app, operation),
-        late_occurrences=operation.operation_date
-        < date.today() - relativedelta(months=1),
+        late_occurrences=operation.operation_date < date.today() - LATE_HORIZON,
         uncategorized=operation.category is Category.UNCATEGORIZED,
     )
 
@@ -426,9 +426,9 @@ def _duplicate_hint(
     for candidate in build_candidates(app, operation, "planned"):
         if candidate.score < _DUPLICATE_MIN_SCORE:
             return None
-        target = app.get_planned_operation_by_id(candidate.target_id)
-        if target.category is not operation.category:
+        if candidate.category_key != operation.category.name:
             continue
+        target = app.get_planned_operation_by_id(candidate.target_id)
         if amount_match(operation, target) is AmountMatch.OFF:
             continue
         return DuplicateHint(

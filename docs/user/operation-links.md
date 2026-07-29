@@ -65,9 +65,10 @@ highest score is selected.
 
 ## Automatic Link from Planned Operation Creation
 
-When you create a planned operation from a historic operation, a manual link is
-automatically created between the source historic operation and the new planned
-operation. This saves you from having to manually link them afterwards.
+Creating a planned operation from an operation links that operation to the occurrence it
+falls in, so the payment counts from the start. The link is a manual one and survives
+later edits to the planned operation, and an operation already linked to something else
+keeps that link.
 
 ## Manual Linking
 
