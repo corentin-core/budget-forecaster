@@ -2007,8 +2007,6 @@ msgstr "tout est traité"
 msgid "no longer counted"
 msgstr "plus comptée"
 
-msgid "Link…"
-msgstr "Lier…"
 
 msgid "Find this payment"
 msgstr "Retrouver ce paiement"
@@ -2037,14 +2035,14 @@ msgstr "déjà comptée pour l'échéance du {date}"
 msgid "Count this operation for the {date} occurrence?"
 msgstr "Compter cette opération pour l'échéance du {date} ?"
 
-msgid "{target} will stop counting this operation: {amount} becomes expected again."
-msgstr "{target} ne comptera plus cette opération : {amount} seront de nouveau attendus."
+msgid "{target} will stop counting this operation."
+msgstr "{target} ne comptera plus cette opération."
 
-msgid "{target} goes back among the upcoming payments ({date}) and {amount} becomes expected again."
-msgstr "{target} revient dans les échéances à venir ({date}) et {amount} seront de nouveau attendus."
+msgid "{target} goes back among the upcoming payments ({date})."
+msgstr "{target} revient dans les échéances à venir ({date})."
 
-msgid "{target} goes back overdue ({date} occurrence) and {amount} becomes expected again."
-msgstr "{target} repasse en retard (échéance du {date}) et {amount} seront de nouveau attendus."
+msgid "{target} goes back overdue ({date} occurrence)."
+msgstr "{target} repasse en retard (échéance du {date})."
 
 msgid "The last sync failed, so the operation you are looking for may be missing."
 msgstr "La dernière synchronisation a échoué : l'opération que vous cherchez est peut-être absente."
@@ -2054,3 +2052,6 @@ msgstr "Aucune ne correspond ? Alors le paiement n'a pas encore eu lieu."
 
 msgid "A payment made in cash has no operation to link: not counting it is the answer."
 msgstr "Un paiement en espèces n'a pas d'opération à lier : ne pas le compter est la réponse."
+
+msgid "{amount} becomes expected again."
+msgstr "{amount} seront de nouveau attendus."

@@ -182,6 +182,21 @@ class TestPostpone:
         decided = _decided_section(client, overdue.op_id)
         assert target.strftime("%d/%m/%Y") in decided
 
+    def test_a_chip_wins_over_the_empty_date_field_beside_it(
+        self, client: TestClient, overdue: Overdue
+    ) -> None:
+        """A chip and the free date field share a name; flattening the form to a
+        dict would keep the empty one and reject the request."""
+        chosen = date.today() + timedelta(days=20)
+
+        response = client.post(
+            f"/overdue/{overdue.op_id}/{overdue.iteration}/postpone",
+            data={"postponed_to": [chosen.isoformat(), ""]},
+        )
+
+        assert response.status_code == 200
+        assert chosen.strftime("%d/%m/%Y") in _decided_section(client, overdue.op_id)
+
     def test_the_postponed_iteration_shows_in_upcoming(
         self, client: TestClient, overdue: Overdue
     ) -> None:

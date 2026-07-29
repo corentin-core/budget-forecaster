@@ -34,12 +34,18 @@
       <span class="confirm-question">
         {%- if not c.existing %}
           {{ _("Count this operation for the {date} occurrence?").format(date=row.iteration_date | frdate) }}
-        {%- elif c.existing.is_budget %}
-          {{ _("{target} will stop counting this operation: {amount} becomes expected again.").format(target=c.existing.target_name, amount=c.amount | abs | eur(currency)) }}
-        {%- elif c.existing.iteration_date > balance_date %}
-          {{ _("{target} goes back among the upcoming payments ({date}) and {amount} becomes expected again.").format(target=c.existing.target_name, date=c.existing.iteration_date | frdate, amount=c.amount | abs | eur(currency)) }}
         {%- else %}
-          {{ _("{target} goes back overdue ({date} occurrence) and {amount} becomes expected again.").format(target=c.existing.target_name, date=c.existing.iteration_date | frdate, amount=c.amount | abs | eur(currency)) }}
+          {%- if c.existing.is_budget %}
+            {{ _("{target} will stop counting this operation.").format(target=c.existing.target_name) }}
+          {%- elif c.existing.iteration_date > balance_date %}
+            {{ _("{target} goes back among the upcoming payments ({date}).").format(target=c.existing.target_name, date=c.existing.iteration_date | frdate) }}
+          {%- else %}
+            {{ _("{target} goes back overdue ({date} occurrence).").format(target=c.existing.target_name, date=c.existing.iteration_date | frdate) }}
+          {%- endif %}
+          {#- Only an occurrence the forecast still expects hands its amount back. #}
+          {%- if c.existing.counted %}
+            {{ _("{amount} becomes expected again.").format(amount=c.amount | abs | eur(currency)) }}
+          {%- endif %}
         {%- endif %}
       </span>
       <button type="button" class="btn small" data-confirm-cancel>{{ _("Cancel") }}</button>

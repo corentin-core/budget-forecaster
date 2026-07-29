@@ -4,6 +4,7 @@ Everything goes through the routes: the app's SQLite connection belongs to the
 serving thread, so the test thread must not read the database directly.
 """
 
+import html as html_module
 import re
 from datetime import date, timedelta
 
@@ -126,6 +127,56 @@ def _an_expense_label(client: TestClient, *, date_to: date | None = None) -> str
     raise AssertionError("the ledger should list an expense")
 
 
+def _candidate_block(page: str, operation_id: int) -> str:
+    """The whole list item one candidate renders, entities decoded."""
+    marker = f'name="operation_id" value="{operation_id}"'
+    at = page.find(marker)
+    assert at > 0, f"operation {operation_id} should be offered"
+    start = page.rfind('<li class="candidate-item"', 0, at)
+    return html_module.unescape(page[start : page.find("</li>", at)])
+
+
+def _confirm_text(page: str, operation_id: int) -> str:
+    """The question one candidate's confirm asks, whitespace collapsed."""
+    question = re.search(
+        r'confirm-question">(.*?)</span>', _candidate_block(page, operation_id), re.S
+    )
+    assert question, "every candidate carries a question"
+    return " ".join(question.group(1).split())
+
+
+def _badge_text(page: str, operation_id: int) -> str:
+    """What the candidate says already counts it, or an empty string."""
+    badge = re.search(
+        r'cand-badge">(.*?)</span>', _candidate_block(page, operation_id), re.S
+    )
+    return " ".join(badge.group(1).split()) if badge else ""
+
+
+def _link_via_operation(
+    client: TestClient, operation_id: int, target_type: str, target_id: int, when: date
+) -> None:
+    """Link from the operation's own page, the flow that already existed."""
+    response = client.post(
+        f"/operations/{operation_id}/link",
+        data={
+            "target_type": target_type,
+            "target_id": str(target_id),
+            "iteration_date": when.isoformat(),
+        },
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+
+
+def _a_budget_id(client: TestClient) -> int:
+    """Any budget, to hang a link off a target that has no occurrences to hand back."""
+    listing = client.get("/targets?view=budgets").text
+    found = re.findall(r"/targets/budget/(\d+)", listing)
+    assert found, "the demo data should hold a budget"
+    return int(found[0])
+
+
 class TestRanking:
     """The list agrees with the matching the user already trusts."""
 
@@ -241,13 +292,31 @@ class TestLinking:
 class TestRePointing:
     """Correcting a mis-attribution is the case that sends the user here."""
 
-    def test_an_already_linked_operation_says_what_counts_it(
+    def test_an_already_linked_operation_names_the_target_that_counts_it(
         self, client: TestClient, picker: Picker
     ) -> None:
         """Hiding it would hide the very operation being looked for."""
-        html = picker.list_fragment(all="true")
-        badged = re.search(r'cand-badge">\s*déjà comptée pour ([^,<]+)', html)
-        assert badged, "the demo data links operations, so a badge should show"
+        page = picker.list_fragment(all="true")
+        linked = next(
+            (c for c in picker.candidate_ids(page) if _link_target(client, c)), None
+        )
+        assert linked, "the demo data should offer an already-linked candidate"
+
+        assert _badge_text(page, linked).startswith(
+            f"déjà comptée pour {_link_target(client, linked)}"
+        )
+
+    def test_an_unlinked_operation_carries_no_badge(
+        self, client: TestClient, picker: Picker
+    ) -> None:
+        """The badge is what tells the two kinds of candidate apart."""
+        page = picker.list_fragment(all="true")
+        unlinked = next(
+            (c for c in picker.candidate_ids(page) if not _link_target(client, c)), None
+        )
+        assert unlinked, "the demo data should offer an unlinked candidate"
+
+        assert _badge_text(page, unlinked) == ""
 
     def test_it_moves_the_link_and_hands_the_amount_back(
         self, client: TestClient, picker: Picker
@@ -301,6 +370,76 @@ class TestDecisionBecomesMoot:
 
         assert picker.description not in _card(client)
         assert _link_target(client, candidate) == picker.description
+
+
+class TestConfirmWording:
+    """What the confirmation promises has to be true."""
+
+    def test_an_unlinked_candidate_only_asks(self, picker: Picker) -> None:
+        """Nothing is taken from anyone, so there is nothing to warn about."""
+        unlinked = next(
+            c
+            for c in picker.candidate_ids(picker.list_fragment(all="true"))
+            if not _link_target(picker.client, c)
+        )
+
+        text = _confirm_text(picker.list_fragment(all="true"), unlinked)
+
+        assert "Compter cette opération pour l'échéance" in text
+        assert "de nouveau attendus" not in text
+
+    def test_taking_it_from_a_budget_says_the_budget_stops_counting(
+        self, client: TestClient, picker: Picker
+    ) -> None:
+        """A budget has no occurrence to hand back."""
+        candidate = picker.candidate_ids(picker.page())[0]
+        _link_via_operation(
+            client, candidate, "budget", _a_budget_id(client), picker.iteration
+        )
+
+        text = _confirm_text(picker.list_fragment(all="true"), candidate)
+
+        assert "ne comptera plus cette opération" in text
+
+    def test_taking_it_from_a_future_occurrence_says_it_comes_back_upcoming(
+        self, client: TestClient, app: FastAPI, picker: Picker
+    ) -> None:
+        """No overdue row appears for it, so promising one would be false."""
+        ahead = app.state.app_service.balance_date + timedelta(days=40)
+        other = _create_unmatched(client, app, amount="-42.50", description="Zzz other")
+        candidate = picker.candidate_ids(picker.page())[0]
+        _link_via_operation(client, candidate, "planned", other.op_id, ahead)
+
+        text = _confirm_text(picker.list_fragment(all="true"), candidate)
+
+        assert "revient dans les échéances à venir" in text
+
+    def test_an_occurrence_out_of_the_forecast_promises_no_money_back(
+        self, client: TestClient, app: FastAPI, picker: Picker
+    ) -> None:
+        """Past the late horizon it stopped being counted, so nothing is freed."""
+        expired = app.state.app_service.balance_date - timedelta(days=120)
+        other = _create_unmatched(client, app, amount="-42.50", description="Zzz old")
+        candidate = picker.candidate_ids(picker.page())[0]
+        _link_via_operation(client, candidate, "planned", other.op_id, expired)
+
+        text = _confirm_text(picker.list_fragment(all="true"), candidate)
+
+        assert "repasse en retard" in text
+        assert "de nouveau attendus" not in text
+
+    def test_the_same_planned_operation_badge_drops_its_own_name(
+        self, client: TestClient, picker: Picker
+    ) -> None:
+        """Repeating the page's own title would read as a bug."""
+        earlier = picker.iteration - timedelta(days=31)
+        candidate = picker.candidate_ids(picker.page())[0]
+        _link_via_operation(client, candidate, "planned", picker.op_id, earlier)
+
+        badge = _badge_text(picker.list_fragment(all="true"), candidate)
+
+        assert badge.startswith("déjà comptée pour l'échéance du")
+        assert picker.description not in badge
 
 
 class TestSettlingWithoutAnOperation:

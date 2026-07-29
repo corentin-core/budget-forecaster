@@ -14,6 +14,7 @@ from typing import Any, NamedTuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse, Response
+from starlette.datastructures import FormData
 
 from budget_forecaster.core.types import PlannedOperationId
 from budget_forecaster.exceptions import BudgetForecasterError
@@ -122,27 +123,48 @@ def _safe_back(value: str) -> str:
     return safe_local_path(value, "/")
 
 
+class PickerQuery(NamedTuple):
+    """What the picker's URL asks of the candidate list."""
+
+    query: str = ""
+    show_all: bool = False
+    return_to: str = "/"
+
+
+def get_picker_query(
+    q: str = "",
+    show_all: bool = Query(default=False, alias="all"),
+    return_to: str = "/",
+) -> PickerQuery:
+    """Read the candidate list's query parameters, as the ledger does its filters."""
+    return PickerQuery(q.strip(), show_all, return_to)
+
+
 def _picker_context(
     request: Request,
     app: ApplicationService,
     op_id: PlannedOperationId,
     iteration_date: date,
-    query: str,
-    show_all: bool,
+    asked: PickerQuery,
 ) -> dict[str, Any]:
     """Everything the picker page and its list fragment render."""
     target = _find_row(request, app, op_id, iteration_date)
     planned = app.get_planned_operation_by_id(op_id)
-    candidates = linking.build_operation_candidates(app, planned, iteration_date, query)
-    shown, hidden = linking.filter_operation_candidates(candidates, query, show_all)
+    candidates = linking.build_operation_candidates(
+        app, planned, iteration_date, asked.query
+    )
+    shown, hidden = linking.filter_operation_candidates(
+        candidates, asked.query, asked.show_all
+    )
     return {
         "card": target.card,
         "row": target.row,
         "candidates": shown,
         "hidden_count": hidden,
-        "query": query,
+        "query": asked.query,
         "balance_date": app.balance_date,
         "currency": app.currency,
+        "return_to": _safe_back(asked.return_to),
     }
 
 
@@ -160,8 +182,9 @@ async def link_page(
         request,
         "overdue_link.html",
         active="home",
-        return_to=_safe_back(return_to),
-        **_picker_context(request, app, op_id, parsed, "", False),
+        **_picker_context(
+            request, app, op_id, parsed, PickerQuery(return_to=return_to)
+        ),
     )
 
 
@@ -171,8 +194,7 @@ async def link_candidates(
     iteration_date: str,
     request: Request,
     app: ApplicationService = Depends(get_app_service),
-    q: str = "",
-    show_all: bool = Query(default=False, alias="all"),
+    asked: PickerQuery = Depends(get_picker_query),
 ) -> Response:
     """Return the candidate list fragment (search / show-all)."""
     parsed = _parse_iteration_date(iteration_date)
@@ -180,7 +202,7 @@ async def link_candidates(
         request,
         "fragments/operation_candidate_list.html",
         active="home",
-        **_picker_context(request, app, op_id, parsed, q.strip(), show_all),
+        **_picker_context(request, app, op_id, parsed, asked),
     )
 
 
@@ -275,6 +297,23 @@ def _decided_response(
     )
 
 
+def _chosen_date(form: FormData) -> str:
+    """The postponement date the user picked, or empty.
+
+    The chips and the free date field share a name, so clicking a chip also
+    submits an empty text field; flattening the form to a dict would keep that
+    empty one and reject the request.
+    """
+    return next(
+        (
+            raw.strip()
+            for raw in form.getlist("postponed_to")
+            if isinstance(raw, str) and raw.strip()
+        ),
+        "",
+    )
+
+
 def _redirect_back(submitted: dict[str, str]) -> str | None:
     """Where a submit that states a back target goes, or None to swap in place.
 
@@ -295,9 +334,10 @@ async def postpone(
     """Move an overdue iteration to the date the user picked."""
     parsed = _parse_iteration_date(iteration_date)
     target = _find_target(request, app, op_id, parsed)
-    submitted = forms.form_to_dict(await request.form())
+    form = await request.form()
+    submitted = forms.form_to_dict(form)
     try:
-        postponed_to = date.fromisoformat(submitted.get("postponed_to", "").strip())
+        postponed_to = date.fromisoformat(_chosen_date(form))
     except ValueError as exc:
         raise HTTPException(status_code=400, detail="invalid date") from exc
     if postponed_to <= date.today():

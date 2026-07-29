@@ -1495,6 +1495,16 @@ table {
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
+.candidate-search {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  margin-bottom: 0.8rem;
+}
 .candidate-list {
   list-style: none;
   margin: 0;

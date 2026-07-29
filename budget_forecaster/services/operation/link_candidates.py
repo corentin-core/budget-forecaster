@@ -39,6 +39,26 @@ class AmountMatch(enum.StrEnum):
     OFF = enum.auto()
 
 
+Target = Budget | PlannedOperation
+
+
+def _score(operation: HistoricOperation, target: Target, iteration_date: date) -> float:
+    """Score a pair the way automatic matching does, on the target's own params.
+
+    Passing the target's matcher settings is what makes the two directions
+    agree: without them the configured keywords never earn their 10 points and
+    the tolerances fall back to the defaults.
+    """
+    return compute_match_score(
+        operation,
+        target,
+        iteration_date,
+        approximation_amount_ratio=target.matcher.approximation_amount_ratio,
+        approximation_date_range=target.matcher.approximation_date_range,
+        description_hints=target.matcher.description_hints,
+    )
+
+
 def amount_match(
     operation: HistoricOperation,
     target: OperationRange,
@@ -55,13 +75,15 @@ def amount_match(
 
 def best_score(
     operation: HistoricOperation,
-    target: OperationRange,
+    target: Target,
     window: timedelta = CANDIDATE_WINDOW,
 ) -> float:
     """The best score any of the target's occurrences within window reaches.
 
-    Both bounds are checked here: a one-off target yields its single day whatever
-    from_date it is given, so asking the iterator is not enough.
+    Both bounds are checked here rather than left to the iterator, which honours
+    from_date for a recurrence but yields a one-off's single day regardless. A
+    target with no occurrence inside the window therefore scores 0, one-off or
+    yearly alike, rather than on amount and category alone.
     """
     earliest = operation.operation_date - window
     latest = operation.operation_date + window
@@ -71,21 +93,21 @@ def best_score(
             break
         if iteration.start_date < earliest:
             continue
-        best = max(best, compute_match_score(operation, target, iteration.start_date))
+        best = max(best, _score(operation, target, iteration.start_date))
     return best
 
 
 class ScoredTarget(NamedTuple):
     """A persisted budget or planned operation ranked against one operation."""
 
-    target: Budget | PlannedOperation
+    target: Target
     target_id: TargetId
     score: float
     amount_match: AmountMatch
 
 
 def rank_targets(
-    operation: HistoricOperation, targets: tuple[Budget | PlannedOperation, ...]
+    operation: HistoricOperation, targets: tuple[Target, ...]
 ) -> tuple[ScoredTarget, ...]:
     """Rank targets against one operation, best first.
 
@@ -132,7 +154,7 @@ def rank_operations(
     scored = [
         ScoredOperation(
             operation=operation,
-            score=compute_match_score(operation, target, iteration_date),
+            score=_score(operation, target, iteration_date),
             amount_match=amount_match(operation, target),
         )
         for operation in operations

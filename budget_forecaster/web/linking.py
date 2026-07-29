@@ -6,6 +6,7 @@ The ranking itself belongs to the link-candidates service; this module fetches
 what it scores and dresses the result for the templates.
 """
 
+from collections.abc import Callable
 from datetime import date, timedelta
 from typing import NamedTuple, Protocol, TypeVar
 
@@ -18,6 +19,7 @@ from budget_forecaster.domain.operation.operation_range import OperationRange
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.services.forecast.iteration_lifecycle import LATE_HORIZON
 from budget_forecaster.services.operation.link_candidates import (
     CANDIDATE_WINDOW,
     AmountMatch,
@@ -88,6 +90,7 @@ def build_candidates(
 _MIN_SCORE = 15.0  # hide weaker candidates behind "show all"
 _MIN_SHOWN = 5
 _CAP = 10
+_SEARCH_CAP = 50  # a two-letter query matches years of statements
 
 
 class Rankable(Protocol):
@@ -112,11 +115,12 @@ def filter_candidates(
     *,
     min_score: float = _MIN_SCORE,
     pad_with_weak: bool = True,
+    keep: Callable[[_RankableT], bool] | None = None,
 ) -> tuple[tuple[_RankableT, ...], int]:
     """Narrow the candidate list; return (shown, hidden_count).
 
-    A search matches on description and shows every match. Otherwise only strong
-    matches show, with the rest behind "show all".
+    A search matches on description, capped. Otherwise only strong matches show,
+    with the rest behind "show all".
 
     Args:
         candidates: The ranked candidates, best first.
@@ -124,14 +128,17 @@ def filter_candidates(
         show_all: Whether the user asked for the weak matches too.
         min_score: The floor a candidate must clear to show by default.
         pad_with_weak: Fall back to the top few when too few clear the floor.
+        keep: Shows a candidate whatever its score.
     """
     if query:
         needle = query.casefold()
         matches = tuple(c for c in candidates if needle in c.description.casefold())
-        return matches, 0
+        return matches[:_SEARCH_CAP], max(0, len(matches) - _SEARCH_CAP)
     if show_all:
         return candidates, 0
-    shown = tuple(c for c in candidates if c.score >= min_score)
+    shown = tuple(
+        c for c in candidates if c.score >= min_score or (keep is not None and keep(c))
+    )
     if pad_with_weak and len(shown) < _MIN_SHOWN:
         shown = candidates[:_CAP]
     return shown, len(candidates) - len(shown)
@@ -223,6 +230,14 @@ class ExistingLink(NamedTuple):
     is_same_target: bool
     """The link already points at the planned operation being linked to."""
 
+    counted: bool
+    """Whether the forecast still expects this amount, so re-pointing frees it.
+
+    An occurrence past the late horizon, or a budget month already closed, has
+    left the forecast: taking its operation away changes a past report, not the
+    margin, and the confirmation must not promise otherwise.
+    """
+
 
 class OperationCandidate(NamedTuple):
     """An operation offered as the one that paid an overdue iteration."""
@@ -232,7 +247,10 @@ class OperationCandidate(NamedTuple):
     description: str
     amount: float
     score: float
+    amount_match: AmountMatch
     reason: str
+    """The amount hint as the templates show it, empty when it says nothing."""
+
     existing: ExistingLink | None
 
 
@@ -242,15 +260,19 @@ def _existing_links(
     """Describe every operation's current link, for the candidate badges."""
     budgets = {b.id: b.description for b in app.get_all_budgets()}
     planned = {p.id: p.description for p in app.get_all_planned_operations()}
+    horizon_start = app.balance_date - LATE_HORIZON
+    month_start = date.today().replace(day=1)
     described = {}
     for link in app.get_all_links():
         is_budget = link.target_type is LinkType.BUDGET
         names = budgets if is_budget else planned
+        floor = month_start if is_budget else horizon_start
         described[link.operation_unique_id] = ExistingLink(
             target_name=names.get(link.target_id, f"#{link.target_id}"),
             iteration_date=link.iteration_date,
             is_budget=is_budget,
             is_same_target=not is_budget and link.target_id == target.id,
+            counted=link.iteration_date >= floor,
         )
     return described
 
@@ -290,6 +312,7 @@ def build_operation_candidates(
             description=scored.operation.description,
             amount=float(scored.operation.amount),
             score=scored.score,
+            amount_match=scored.amount_match,
             reason=_reason(scored.amount_match),
             existing=links.get(scored.operation.unique_id),
         )
@@ -303,9 +326,12 @@ _MIN_OPERATION_SCORE = 55.0
 """The floor an operation clears to be offered by default.
 
 Above the 50 that falling on the right day in the right category already scores:
-in any given week a dozen operations do that, so the amount has to say something.
-The target floor cannot be reused — targets are few, and picking one only loads
-its iterations.
+in any given week a dozen operations do that. The target floor cannot be reused
+— targets are few, and picking one only loads its iterations.
+
+An exact amount is exempt: it is the strongest single signal there is, and an
+operation the matcher missed is often uncategorized, which costs it 20 points it
+cannot earn back.
 """
 
 
@@ -320,6 +346,7 @@ def filter_operation_candidates(
         candidates,
         query,
         show_all,
+        keep=lambda c: c.amount_match is AmountMatch.EXACT,
         min_score=_MIN_OPERATION_SCORE,
         pad_with_weak=False,
     )
