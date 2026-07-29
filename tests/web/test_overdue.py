@@ -123,14 +123,25 @@ class TestCardVisibility:
     def test_the_description_opens_the_filtered_ledger(
         self, client: TestClient, overdue: Overdue
     ) -> None:
-        """The likeliest cause is a label that drifted, so send the user looking."""
-        assert "/operations?q=Zzz" in _card(client)
+        """The likeliest cause is a label that drifted, so send the user looking.
+
+        Following the link matters: the ledger filters on `search`, and a wrong
+        parameter name silently returns everything.
+        """
+        card = _card(client)
+        href = re.search(r'href="(/operations\?[^"]+)"', card)
+        assert href, "the description should link to the ledger"
+        filtered = client.get(href.group(1).replace("&amp;", "&")).text
+        unfiltered = client.get("/operations").text
+        assert filtered.count('id="op-row-') < unfiltered.count('id="op-row-')
 
     def test_nav_badge_counts_them(self, client: TestClient, overdue: Overdue) -> None:
-        """The count is visible from any page."""
+        """The count is visible from any page, and it is the real count."""
+        rows = _card(client).count('class="overdue-item"')
         html = client.get("/trends").text
-        badge = html.split('id="overdue-badge-side"')[1][:40]
+        badge = html.split('id="overdue-badge-side"')[1][:60]
         assert "hidden" not in badge
+        assert f">{rows}<" in badge
 
 
 class TestPostpone:
@@ -167,7 +178,7 @@ class TestPostpone:
         )
 
         assert response.status_code == 200
-        assert "Reportée" in response.text
+        assert "reportée au" in response.text
         assert 'id="margin-hero"' in response.text
         assert "hx-swap-oob" in response.text
         decided = _decided_section(client, overdue.op_id)
@@ -236,7 +247,7 @@ class TestSkip:
         response = client.post(f"/overdue/{overdue.op_id}/{overdue.iteration}/skip")
 
         assert response.status_code == 200
-        assert "Plus comptée" in response.text
+        assert "plus comptée" in response.text
         assert 'id="margin-hero"' in response.text
         assert "non comptée" in _decided_section(client, overdue.op_id)
 
@@ -280,24 +291,63 @@ class TestRestore:
         assert f"/overdue/{overdue.op_id}/{overdue.iteration}/restore" in decided
 
 
+def _break_the_sync(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make every alert derivation report a failed sync."""
+    for module in ("home", "overdue"):
+        monkeypatch.setattr(
+            f"budget_forecaster.web.routes.{module}.sync_is_broken",
+            lambda repository, consent_service: True,
+        )
+
+
 class TestDegradedState:
     """A failed sync must not invite decisions on incomplete data."""
 
-    def test_actions_are_withheld_when_a_sync_failed(
+    def test_actions_are_withheld_from_the_card(
         self,
         client: TestClient,
         overdue: Overdue,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """The card explains itself instead of offering buttons."""
-        monkeypatch.setattr(
-            "budget_forecaster.web.routes.home._sync_is_broken", lambda request: True
-        )
+        _break_the_sync(monkeypatch)
 
         card = _card(client)
 
         assert "Synchronisez avant de décider" in card
         assert "/postpone" not in card
+
+    @pytest.mark.parametrize("action", ["skip", "postpone"])
+    def test_the_writes_refuse_too(
+        self,
+        client: TestClient,
+        overdue: Overdue,
+        monkeypatch: pytest.MonkeyPatch,
+        action: str,
+    ) -> None:
+        """Hiding the buttons is not the barrier: the routes enforce it."""
+        _break_the_sync(monkeypatch)
+
+        response = client.post(
+            f"/overdue/{overdue.op_id}/{overdue.iteration}/{action}",
+            data={"postponed_to": (date.today() + timedelta(days=5)).isoformat()},
+        )
+
+        assert response.status_code == 409
+        assert _decided_section(client, overdue.op_id) == ""
+
+    def test_the_fragments_offer_nothing_either(
+        self,
+        client: TestClient,
+        overdue: Overdue,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A row fetched while the sync is broken must not carry the actions."""
+        _break_the_sync(monkeypatch)
+
+        response = client.get(f"/overdue/{overdue.op_id}/{overdue.iteration}/row")
+
+        assert response.status_code == 409
 
     def test_an_old_balance_date_alone_does_not_withhold_them(
         self, client: TestClient, overdue: Overdue
@@ -328,3 +378,89 @@ class TestUncountedIteration:
         card = _card(client)
 
         assert f"/overdue/{overdue.op_id}/{overdue.iteration}/postpone" in card
+
+
+class TestUnknownIterations:
+    """A decision must land on an iteration that actually awaits one."""
+
+    @pytest.mark.parametrize("action", ["skip", "postpone", "restore"])
+    def test_an_iteration_that_is_not_overdue_is_a_404(
+        self, client: TestClient, overdue: Overdue, action: str
+    ) -> None:
+        """Otherwise a stale tab writes a decision about nothing, forever."""
+        response = client.post(
+            f"/overdue/{overdue.op_id}/2099-12-31/{action}",
+            data={"postponed_to": "2100-01-01"},
+        )
+        assert response.status_code == 404
+        assert _decided_section(client, overdue.op_id) == ""
+
+    def test_a_week_date_is_a_404(self, client: TestClient, overdue: Overdue) -> None:
+        """One URL per iteration: ISO week dates would alias another day."""
+        assert client.get(f"/overdue/{overdue.op_id}/2026-W25-1/row").status_code == 404
+
+    def test_cancelling_the_postpone_form_brings_the_row_back(
+        self, client: TestClient, overdue: Overdue
+    ) -> None:
+        """Same markup the card renders, so no affordance is lost."""
+        response = client.get(f"/overdue/{overdue.op_id}/{overdue.iteration}/row")
+
+        assert response.status_code == 200
+        assert _DESCRIPTION in response.text
+        assert f"/overdue/{overdue.op_id}/{overdue.iteration}/skip" in response.text
+
+
+class TestUndoRefreshesEverything:
+    """An undo moves the same figures the decision moved."""
+
+    def test_it_carries_the_margin_and_the_badge(
+        self, client: TestClient, overdue: Overdue
+    ) -> None:
+        """Leaving them stale would show a number the data no longer supports."""
+        client.post(f"/overdue/{overdue.op_id}/{overdue.iteration}/skip")
+
+        response = client.post(f"/overdue/{overdue.op_id}/{overdue.iteration}/restore")
+
+        assert 'id="margin-hero"' in response.text
+        assert 'id="overdue-badge-side"' in response.text
+        assert 'id="overdue-head"' in response.text
+
+    def test_the_margin_goes_back_to_its_value(
+        self, client: TestClient, overdue: Overdue
+    ) -> None:
+        """The decision and its undo cancel out."""
+        before = _margin_value(client)
+        client.post(f"/overdue/{overdue.op_id}/{overdue.iteration}/skip")
+
+        client.post(f"/overdue/{overdue.op_id}/{overdue.iteration}/restore")
+
+        assert _margin_value(client) == pytest.approx(before)
+
+    def test_from_the_planned_operation_page_it_swaps_nothing_else(
+        self, client: TestClient, overdue: Overdue
+    ) -> None:
+        """That page has neither the card's markup nor its swap targets."""
+        client.post(f"/overdue/{overdue.op_id}/{overdue.iteration}/skip")
+
+        response = client.post(
+            f"/overdue/{overdue.op_id}/{overdue.iteration}/restore",
+            headers={"HX-Target": f"decided-{overdue.op_id}-{overdue.iteration}"},
+        )
+
+        assert response.status_code == 200
+        assert "overdue-item" not in response.text
+        assert "margin-hero" not in response.text
+        assert _decided_section(client, overdue.op_id) == ""
+
+    def test_no_hero_when_there_is_no_margin(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An empty styled card at the top of Accueil is worse than nothing."""
+        monkeypatch.setattr(
+            ApplicationService, "get_available_margin", lambda self, month: None
+        )
+
+        html = client.get("/").text
+
+        assert "margin-hero" not in html
+        assert "margin-None" not in html

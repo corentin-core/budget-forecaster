@@ -13,8 +13,12 @@ python examples/generate_demo.py
 
 # Run the web app from the examples directory
 cd examples/
+cp demo.db demo-run.db   # the app writes as you click; keeps demo.db pristine
 BUDGET_CONFIG=config.yaml uvicorn --factory budget_forecaster.web.app:create_app
 ```
+
+Skip the copy and you get an empty database: `config.yaml` points at `demo-run.db`,
+which is ignored by git precisely so your clicks never land in the repository.
 
 Open http://127.0.0.1:8000 and log in with the password **demo**. `config.yaml` carries
 a throwaway signing key and password hash so the demo runs with one command; never reuse
@@ -23,7 +27,8 @@ that pair for a deployment holding real data.
 ## Contents
 
 - **demo.db** — SQLite database with 3 months of categorized operations, planned
-  operations, budgets, and operation links
+  operations, budgets, and operation links. Copy it to `demo-run.db` before playing with
+  the app: every decision you take is written to the database.
 - **data/bnp-export-demo.xls** — Anonymized BNP bank export for the current month (new
   data to import)
 - **data/swile-export-YYYY-MM-DD.zip** — Anonymized Swile meal voucher export for the

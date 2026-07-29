@@ -1,17 +1,11 @@
 {% if card.rows %}
-<section class="card overdue-card">
-  <div class="card-head">
-    <h2>{{ _("Overdue payments") }} ({{ card.rows | length }})</h2>
-    {% set uncounted = card.rows | rejectattr("counted_on") | list | length %}
-    {% if uncounted %}
-      <span class="card-note">{{ _("not counted: {n}").format(n=uncounted) }}</span>
-    {% endif %}
-  </div>
+<section class="card overdue-card" id="overdue-card">
+  {% include "fragments/overdue_head.html" %}
   {% if card.sync_broken %}
   <p class="banner banner-failed overdue-degraded">
     ⚠ {{ _("The last sync failed, so operations may be missing.") }}
     {{ _("Sync before deciding.") }}
-    <a href="/settings">{{ _("Sync") }}</a>
+    <a href="/settings">{{ _("Synchronize") }}</a>
   </p>
   {% elif card.show_data_horizon %}
   <p class="muted-note overdue-degraded">

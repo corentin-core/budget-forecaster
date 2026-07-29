@@ -9,8 +9,17 @@
       const cancel = holder.querySelector('[data-delete-cancel]');
       if (!trigger || !cluster || trigger.dataset.bound) return;
       trigger.dataset.bound = '1';
+      const strip = holder.closest('.overdue-actions');
+      const siblings = strip
+        ? Array.prototype.filter.call(strip.children, function (el) {
+            return !el.contains(trigger);
+          })
+        : [];
       trigger.addEventListener('click', function () {
         trigger.hidden = true;
+        siblings.forEach(function (el) {
+          el.hidden = true;
+        });
         cluster.hidden = false;
         cluster.querySelector('[type=submit]').focus();
       });
@@ -18,6 +27,9 @@
         cancel.addEventListener('click', function () {
           cluster.hidden = true;
           trigger.hidden = false;
+          siblings.forEach(function (el) {
+            el.hidden = false;
+          });
           trigger.focus();
         });
       }

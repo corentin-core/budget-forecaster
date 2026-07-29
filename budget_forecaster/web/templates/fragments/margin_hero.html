@@ -1,6 +1,6 @@
+{% if margin %}
 <section class="card highlight margin-hero margin-{{ margin_status }}" id="margin-hero"
          {{ 'hx-swap-oob="true"' | safe if oob }}>
-  {% if margin %}
   <div class="metric-label">
     {{ _("Available margin") }}
     <span class="info" tabindex="0"
@@ -10,5 +10,5 @@
   {% if margin_status == "bad" %}
     <div class="metric-sub warn-text">{{ _("Projected below your safety threshold") }}</div>
   {% endif %}
-  {% endif %}
 </section>
+{% endif %}

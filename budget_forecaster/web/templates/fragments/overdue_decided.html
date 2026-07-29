@@ -1,17 +1,22 @@
-{# The settled row, with the margin hero and nav badge refreshed out of band. #}
-<li class="overdue-item settled" id="overdue-{{ op_id }}-{{ iteration_date }}">
+{# The settled row, with every out-of-band figure refreshed alongside. #}
+<li class="overdue-item settled" id="overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}">
   <div class="overdue-head">
     <span class="overdue-desc">
-      {%- if outcome == "skipped" %}{{ _("No longer counted") }}{% else %}{{ _("Postponed") }}{% endif -%}
+      {{ row.description }} ·
+      {%- if postponed_to %}
+        {{ _("postponed to {date}").format(date=postponed_to | frdate) }}
+      {%- else %}
+        {{ _("no longer counted") }}
+      {%- endif %}
     </span>
     {% if released %}
-      <span class="overdue-amount positive">{{ _("margin") }} +{{ released | eur(currency) }}</span>
+      <span class="overdue-amount positive">{{ _("margin") }} +{{ released | eur(row.currency) }}</span>
     {% endif %}
   </div>
   <div class="overdue-actions">
     <button class="btn small" type="button"
-            hx-post="/overdue/{{ op_id }}/{{ iteration_date }}/restore"
-            hx-target="#overdue-{{ op_id }}-{{ iteration_date }}"
+            hx-post="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/restore"
+            hx-target="#overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}"
             hx-swap="outerHTML">{{ _("Undo the decision") }}</button>
   </div>
 </li>
