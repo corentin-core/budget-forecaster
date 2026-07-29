@@ -22,7 +22,7 @@ with an environment variable:
 BUDGET_CONFIG=~/.config/budget-forecaster/config.yaml uvicorn --factory budget_forecaster.web.app:create_app
 ```
 
-The app binds to `127.0.0.1:8000` by default. Open http://127.0.0.1:8000 and sign in
+The app binds to `127.0.0.1:8000` by default. Open <http://127.0.0.1:8000> and sign in
 with the shared password.
 
 ## Authentication
@@ -186,9 +186,15 @@ The month drill-down and the Budgets tab both edit the same items.
   (untick "active only" to see expired ones).
 
 Editing opens on its own page with a working back button. From there you set the amount,
-category, dates, and recurrence, split a recurring item from a chosen date, or delete it
-(deletion asks for a confirmation inline first). Saving returns you to wherever you came
-from.
+category, dates, and recurrence, or delete the item (deletion asks for a confirmation
+inline first). Saving returns you to wherever you came from.
+
+Splitting a recurring item from a chosen date is a separate submission, below the Save
+button: open **Split from a date**, give the date and the new values, then confirm with
+**Split**. Save is paused while that section is open, since it would store the item
+unchanged and drop what you typed there. The original segment stops the day before the
+split and keeps its history; the new one runs from the split date onward, so both appear
+in the list.
 
 ## Linking a bank
 

@@ -225,6 +225,15 @@ class TestTargetCrud:
         }
         assert "-400" in amounts
 
+    def test_split_section_sits_below_save(self, client: TestClient) -> None:
+        """Save submits the form above it and ignores the split fields, so the
+        split section comes after the actions and owns its own primary button."""
+        client.post("/targets/budget", data=_RECURRING_BUDGET, follow_redirects=False)
+        page = client.get(f"/targets/budget/{_budget_id(client, 'Test Budget')}").text
+        assert page.index("data-save-button") < page.index("data-split-section")
+        split_form = re.search(r"data-split-section.*?</details>", page, re.S).group(0)
+        assert 'class="btn primary"' in split_form
+
 
 class TestCategorize:
     """Inline and bulk categorization, and the uncategorized badge."""

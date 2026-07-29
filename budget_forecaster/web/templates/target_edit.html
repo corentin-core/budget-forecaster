@@ -134,8 +134,29 @@
 
   </form>
 
+  <div class="form-actions">
+    {% if not form.is_new %}
+    <form method="post" action="/targets/{{ form.kind }}/{{ form.target_id }}/delete"
+          class="delete-form" data-confirm>
+      <input type="hidden" name="return_to" value="{{ return_to }}" />
+      <button type="button" class="btn danger" data-confirm-trigger>{{ _("Delete") }}</button>
+      <span class="confirm-cluster" hidden>
+        <span>{{ _("Delete?") }}</span>
+        <button type="button" class="btn" data-confirm-cancel>{{ _("Cancel") }}</button>
+        <button type="submit" class="btn danger">{{ _("Confirm") }}</button>
+      </span>
+    </form>
+    {% endif %}
+    <span class="actions-spacer"></span>
+    <a class="btn" href="{{ return_to }}">{{ _("Cancel") }}</a>
+    <button type="submit" class="btn primary" form="target-form"
+            data-save-button>{{ _("Save") }}</button>
+  </div>
+
+  {# Below the actions on purpose: the split is its own submission, and Save
+     ignores these fields. Opening it takes over as the page's primary action. #}
   {% if not form.is_new and form.can_split %}
-  <details class="split">
+  <details class="split" data-split-section>
     <summary class="btn">{{ _("Split from a date") }}</summary>
     <form method="post" action="/targets/{{ form.kind }}/{{ form.target_id }}/split">
       <input type="hidden" name="return_to" value="{{ return_to }}" />
@@ -158,28 +179,12 @@
         {{ duration_fields("split_duration", form.duration_value, form.duration_unit) }}
       </div>
       {% endif %}
-      <button type="submit" class="btn">{{ _("Split") }}</button>
+      {# Revealed by the script that actually pauses Save, so it never lies. #}
+      <p class="hint" data-split-note hidden>{{ _("Saving is paused while this section is open.") }}</p>
+      <button type="submit" class="btn primary">{{ _("Split") }}</button>
     </form>
   </details>
   {% endif %}
-
-  <div class="form-actions">
-    {% if not form.is_new %}
-    <form method="post" action="/targets/{{ form.kind }}/{{ form.target_id }}/delete"
-          class="delete-form" data-confirm>
-      <input type="hidden" name="return_to" value="{{ return_to }}" />
-      <button type="button" class="btn danger" data-confirm-trigger>{{ _("Delete") }}</button>
-      <span class="confirm-cluster" hidden>
-        <span>{{ _("Delete?") }}</span>
-        <button type="button" class="btn" data-confirm-cancel>{{ _("Cancel") }}</button>
-        <button type="submit" class="btn danger">{{ _("Confirm") }}</button>
-      </span>
-    </form>
-    {% endif %}
-    <span class="actions-spacer"></span>
-    <a class="btn" href="{{ return_to }}">{{ _("Cancel") }}</a>
-    <button type="submit" class="btn primary" form="target-form">{{ _("Save") }}</button>
-  </div>
 </section>
 
 {% include "fragments/decided_iterations.html" %}
