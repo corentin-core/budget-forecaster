@@ -2055,3 +2055,12 @@ msgstr "Un paiement en espèces n'a pas d'opération à lier : ne pas le compter
 
 msgid "{amount} becomes expected again."
 msgstr "{amount} seront de nouveau attendus."
+
+msgid "Open the linked budget {name}"
+msgstr "Ouvrir le budget lié {name}"
+
+msgid "Open the linked planned operation {name}"
+msgstr "Ouvrir l'opération planifiée liée {name}"
+
+msgid "Edit the planned operation (all occurrences)"
+msgstr "Modifier l'opération planifiée (toutes les occurrences)"

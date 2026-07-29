@@ -1,5 +1,6 @@
 """Each read-only section renders and matches the ApplicationService data."""
 
+import re
 from datetime import date
 
 from fastapi import FastAPI
@@ -123,6 +124,7 @@ class TestUpcomingRendering:
     def test_postponed_iteration_shows_its_original_date(self, app: FastAPI) -> None:
         """A postponed iteration carries where it came from."""
         postponed = UpcomingIteration(
+            planned_operation_id=7,
             iteration_date=date(2025, 4, 2),
             description="Rent",
             amount=-850.0,
@@ -137,6 +139,7 @@ class TestUpcomingRendering:
     def test_plain_iteration_has_no_note(self, app: FastAPI) -> None:
         """An iteration due on its own date shows no annotation."""
         plain = UpcomingIteration(
+            planned_operation_id=7,
             iteration_date=date(2025, 4, 2),
             description="Rent",
             amount=-850.0,
@@ -145,3 +148,120 @@ class TestUpcomingRendering:
         )
         html = self._render(app, plain)
         assert "up-note" not in html
+
+    def test_the_description_opens_the_planned_operation(self, app: FastAPI) -> None:
+        """The list names planned operations, so it leads to them."""
+        item = UpcomingIteration(
+            planned_operation_id=7,
+            iteration_date=date(2025, 4, 2),
+            description="Rent",
+            amount=-850.0,
+            currency="EUR",
+            period=None,
+        )
+        html = self._render(app, item)
+        assert '<a href="/targets/planned/7?return_to=/">Rent</a>' in html
+
+    def test_an_unsaved_operation_stays_plain_text(self, app: FastAPI) -> None:
+        """Without an id there is no page to open."""
+        item = UpcomingIteration(
+            planned_operation_id=None,
+            iteration_date=date(2025, 4, 2),
+            description="Rent",
+            amount=-850.0,
+            currency="EUR",
+            period=None,
+        )
+        html = self._render(app, item)
+        assert "/targets/planned/" not in html
+        assert "Rent" in html
+
+
+class TestReachingTheNamedTarget:
+    """Wherever a row names its link target, the target opens from it.
+
+    Everything goes through the routes: the app's SQLite connection belongs to
+    the serving thread.
+    """
+
+    def _linked_row(self, client: TestClient, query: str = "") -> str:
+        """The ledger row of an operation that names its target."""
+        html = client.get(f"/operations?{query}").text
+        row = next(
+            (
+                block[: block.find("</tr>")]
+                for block in html.split('<tr id="op-row-')[1:]
+                if "link-tag" in block[: block.find("</tr>")]
+            ),
+            "",
+        )
+        assert row, "the demo ledger should list a linked operation"
+        return row
+
+    def _target_href(self, markup: str) -> str:
+        """The target URL the tag points at."""
+        found = re.search(r'class="link-tag" href="(/targets/[^"?]+)', markup)
+        assert found, "the tag should be a link to its target"
+        return found.group(1)
+
+    def test_the_ledger_tag_opens_the_target_and_comes_back(
+        self, client: TestClient
+    ) -> None:
+        """One click out, one click back to the same filtered ledger."""
+        row = self._linked_row(client, "category=RENT")
+        found = re.search(r'class="link-tag" href="([^"]+)"', row)
+        assert found, "the tag should be a link to its target"
+        page = client.get(found.group(1).replace("&amp;", "&"))
+        assert page.status_code == 200
+        assert 'href="/operations?category=RENT"' in page.text
+
+    def test_every_link_in_the_row_keeps_the_filters(self, client: TestClient) -> None:
+        """A row's links all lead back where the row was read."""
+        row = self._linked_row(client, "category=RENT")
+        assert row.count("return_to=/operations%3Fcategory%3DRENT") == 3
+
+    def test_the_operation_detail_opens_the_target(self, client: TestClient) -> None:
+        """The phone layout hides the ledger's link icon, so the detail page carries it."""
+        row = self._linked_row(client)
+        found = re.search(r'<a href="(/operations/\d+)\?', row)
+        assert found, "the row should link to the operation"
+        html = client.get(found.group(1)).text
+        assert re.search(r'<dd>\s*<a href="/targets/', html)
+
+    def test_two_hops_out_come_back_two_hops_in(self, client: TestClient) -> None:
+        """Ledger to operation to target, then back down the same nested path."""
+        row = self._linked_row(client, "category=RENT")
+        to_operation = re.search(r'<a href="(/operations/\d+\?return_to=[^"]+)"', row)
+        assert to_operation, "the row should link to the operation"
+        operation_url = to_operation.group(1)
+
+        detail = client.get(operation_url).text
+        to_target = re.search(r'<dd>\s*<a href="([^"]+)"', detail)
+        assert to_target, "the detail page should link to the target"
+
+        target = client.get(to_target.group(1).replace("&amp;", "&"))
+        assert target.status_code == 200
+        back_to_operation = re.search(r'class="btn" href="([^"]+)"', target.text)
+        assert back_to_operation, "the target page should offer a way back"
+        assert back_to_operation.group(1).startswith(operation_url.split("?")[0])
+
+        again = client.get(back_to_operation.group(1))
+        assert again.status_code == 200
+        assert '<p class="back"><a href="/operations?category=RENT">' in again.text
+
+    def test_the_month_drilldown_opens_the_target(self, client: TestClient) -> None:
+        """The drill-down keeps its row click while the tag gets its own target."""
+        month = client.get("/month").text
+        fragments = re.findall(r'data-url="(/month/[^"]+)"', month)
+        assert fragments, "the month view should offer drill-downs"
+        tagged = next(
+            (
+                html
+                for html in (client.get(url).text for url in fragments)
+                if "link-tag" in html
+            ),
+            "",
+        )
+        assert tagged, "a drill-down should show an attributed linked operation"
+        assert 'class="attributed-row" data-href="/operations/' in tagged
+        assert client.get(self._target_href(tagged)).status_code == 200

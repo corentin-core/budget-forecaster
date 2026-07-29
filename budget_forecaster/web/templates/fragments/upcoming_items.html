@@ -2,7 +2,11 @@
   <li>
     <span class="up-date">{{ item.iteration_date | frdate }}</span>
     <span class="up-desc">
+      {%- if item.planned_operation_id %}
+      <a href="/targets/planned/{{ item.planned_operation_id }}?return_to=/">{{ item.description }}</a>
+      {%- else %}
       {{ item.description }}
+      {%- endif %}
       {%- if item.postponed_from %}
       <span class="up-note">{{ _("postponed from {date}").format(date=item.postponed_from | frdate) }}</span>
       {%- endif %}

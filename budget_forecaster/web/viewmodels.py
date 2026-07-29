@@ -16,7 +16,7 @@ from budget_forecaster.core.date_range import (
     RecurringDay,
 )
 from budget_forecaster.core.duration import DurationUnit, relativedelta_to_unit
-from budget_forecaster.core.types import PlannedOperationId
+from budget_forecaster.core.types import LinkType, PlannedOperationId
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.i18n import _
@@ -434,6 +434,8 @@ class AttributedOpRow(NamedTuple):
     operation_date: date
     description: str
     amount: float
+    link_target_kind: str  # "budget" | "planned", empty when unlinked
+    link_target_id: int
     link_target_name: str
     cross_month_annotation: str
 
@@ -448,6 +450,13 @@ class CategoryDetailView(NamedTuple):
     operations: tuple[AttributedOpRow, ...]
     total_planned: float
     total_actual: float
+
+
+def _target_url_kind(link_type: str) -> str:
+    """Translate a link type into the segment the target pages use."""
+    if not link_type:
+        return ""
+    return "budget" if link_type == LinkType.BUDGET.value else "planned"
 
 
 def build_category_detail(
@@ -476,6 +485,8 @@ def build_category_detail(
             operation_date=op["operation_date"],
             description=op["description"],
             amount=op["amount"],
+            link_target_kind=_target_url_kind(op["link_type"]),
+            link_target_id=op["link_target_id"],
             link_target_name=op["link_target_name"],
             cross_month_annotation=op["cross_month_annotation"],
         )

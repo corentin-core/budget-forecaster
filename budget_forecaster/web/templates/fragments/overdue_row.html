@@ -2,6 +2,11 @@
   <div class="overdue-head">
     <a class="overdue-desc" href="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/link"
        title="{{ _('Find this payment among your operations') }}">{{ row.description }} ›</a>
+    {# Editing reaches the whole series, so the label says so rather than hinting
+       at this occurrence, which "Postpone…" beside it already handles. #}
+    <a class="overdue-edit" href="/targets/planned/{{ row.planned_operation_id }}?return_to=/"
+       aria-label="{{ _('Edit the planned operation (all occurrences)') }}"
+       title="{{ _('Edit the planned operation (all occurrences)') }}">✏️</a>
     <span class="overdue-amount {{ 'positive' if row.amount > 0 else 'negative' }}">
       {{ row.amount | signed_eur(row.currency) }}
     </span>

@@ -28,6 +28,18 @@
   );
 })();
 
+// Clicking an attributed operation row opens it. Delegated, because the rows
+// arrive with the drill-down fragment; the inner links keep their own targets.
+(function () {
+  'use strict';
+
+  document.addEventListener('click', function (event) {
+    var row = event.target.closest('.attributed-row[data-href]');
+    if (!row || event.target.closest('a')) return;
+    window.location.href = row.dataset.href;
+  });
+})();
+
 // Expand/collapse a category drill-down under its month row. The open category
 // is mirrored into the URL (?open=<cat>) so the back button and the "return to"
 // links from edit/detail pages land back on the same expanded row.

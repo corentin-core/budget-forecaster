@@ -85,6 +85,12 @@ decision you took while the row was there is kept for good, so a postponement ma
 time still moves the amount long after. Linking the payment stays possible whenever you
 find it, from the operation's own row in Opérations.
 
+The pencil beside the description opens the planned operation itself, for when the
+payment keeps arriving late or off-amount and the recurrence is what needs fixing. It
+edits the whole series, not the occurrence in front of you — for a single date,
+**Reporter** on the row is the tool, and the edit page can split the recurrence from a
+date. Names in the Accueil upcoming list open the same page.
+
 **Lier…** is the first thing to try, and the description opens the same page. Most often
 the payment did happen and the matcher did not recognize it, so the page lists the
 operations that could be it, best first, ranked by the same score the automatic matching

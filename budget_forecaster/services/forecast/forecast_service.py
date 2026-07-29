@@ -82,6 +82,7 @@ class AttributedOperationDetail(TypedDict):
     amount: float
     cross_month_annotation: str  # empty if same month
     link_type: str  # "budget", "planned_operation", or "" if unlinked
+    link_target_id: int  # id of the linked budget/planned op, or 0
     link_target_name: str  # name of the linked budget/planned op, or ""
 
 
@@ -231,20 +232,25 @@ def _build_link_index(
     }
 
 
+class _LinkInfo(NamedTuple):
+    """What an operation's link contributes to its display, empty if unlinked."""
+
+    type: str
+    target_id: int
+    target_name: str
+
+
 def _resolve_link_info(
     link_entry: tuple[date, OperationLink] | None,
     target_names: dict[tuple[LinkType, TargetId], str],
-) -> tuple[str, str]:
-    """Resolve link type and target name from a link entry.
-
-    Returns:
-        (link_type, link_target_name) — both empty strings if unlinked.
-    """
+) -> _LinkInfo:
+    """Resolve link type, target id and target name from a link entry."""
     if link_entry is None:
-        return "", ""
+        return _LinkInfo("", 0, "")
     link = link_entry[1]
-    return (
+    return _LinkInfo(
         link.target_type.value,
+        link.target_id,
         target_names.get((link.target_type, link.target_id), ""),
     )
 
@@ -767,7 +773,7 @@ class ForecastService:  # pylint: disable=too-many-public-methods
                 if linked_month is not None
                 else ""
             )
-            link_type, link_target_name = _resolve_link_info(link_entry, target_names)
+            link = _resolve_link_info(link_entry, target_names)
 
             operations.append(
                 AttributedOperationDetail(
@@ -776,8 +782,9 @@ class ForecastService:  # pylint: disable=too-many-public-methods
                     description=op.description,
                     amount=op.amount,
                     cross_month_annotation=annotation,
-                    link_type=link_type,
-                    link_target_name=link_target_name,
+                    link_type=link.type,
+                    link_target_id=link.target_id,
+                    link_target_name=link.target_name,
                 )
             )
 

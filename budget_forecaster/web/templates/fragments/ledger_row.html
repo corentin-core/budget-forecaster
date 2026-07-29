@@ -1,4 +1,7 @@
 {# One ledger line: select checkbox, inline categorize, link action. #}
+{# The active filters ride along, so every link comes back to the same ledger. #}
+{% set ledger_url = '/operations?' ~ query if query else '/operations' %}
+{% set back = ledger_url | urlencode %}
 <tr id="op-row-{{ row.operation.unique_id }}" class="op-row">
   <td class="select-cell">
     <input type="checkbox" name="ids" value="{{ row.operation.unique_id }}"
@@ -6,9 +9,14 @@
   </td>
   <td class="date" data-label="{{ _('Date') }}">{{ row.operation.operation_date | frdate }}</td>
   <td class="desc" data-label="{{ _('Description') }}">
-    <a href="/operations/{{ row.operation.unique_id }}">{{ row.operation.description }}</a>
+    <a href="/operations/{{ row.operation.unique_id }}?return_to={{ back }}">{{ row.operation.description }}</a>
     {% if row.linked %}
-      <span class="link-tag" title="{{ row.target_name }}">→ {{ row.target_name }}</span>
+      {% set open_target = (
+           _("Open the linked budget {name}") if row.target_kind == 'budget'
+           else _("Open the linked planned operation {name}")
+         ).format(name=row.target_name) %}
+      <a class="link-tag" href="/targets/{{ row.target_kind }}/{{ row.target_id }}?return_to={{ back }}"
+         aria-label="{{ open_target }}" title="{{ open_target }}">→ {{ row.target_name }}</a>
     {% endif %}
   </td>
   <td class="num {{ 'positive' if row.operation.amount > 0 else 'negative' }}"
@@ -16,7 +24,7 @@
   <td class="cat" data-label="{{ _('Category') }}">
     <div class="cat-actions">
       <select class="row-category" name="category"
-              hx-post="/operations/{{ row.operation.unique_id }}/categorize"
+              hx-post="/operations/{{ row.operation.unique_id }}/categorize{{ '?' ~ query if query }}"
               hx-target="#op-row-{{ row.operation.unique_id }}"
               hx-swap="outerHTML"
               hx-trigger="change"
@@ -25,7 +33,7 @@
           <option value="{{ c.value }}" {{ 'selected' if row.operation.category == c }}>{{ c.value | category_name }}</option>
         {% endfor %}
       </select>
-      <a class="link-action" href="/operations/{{ row.operation.unique_id }}/link"
+      <a class="link-action" href="/operations/{{ row.operation.unique_id }}/link?return_to={{ back }}"
          aria-label="{{ _('Link') }}" title="{{ _('Link') }}">🔗</a>
     </div>
   </td>
