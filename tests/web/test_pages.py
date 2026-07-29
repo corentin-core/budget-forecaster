@@ -228,6 +228,27 @@ class TestReachingTheNamedTarget:
         html = client.get(found.group(1)).text
         assert re.search(r'<dd>\s*<a href="/targets/', html)
 
+    def test_two_hops_out_come_back_two_hops_in(self, client: TestClient) -> None:
+        """Ledger to operation to target, then back down the same nested path."""
+        row = self._linked_row(client, "category=RENT")
+        to_operation = re.search(r'<a href="(/operations/\d+\?return_to=[^"]+)"', row)
+        assert to_operation, "the row should link to the operation"
+        operation_url = to_operation.group(1)
+
+        detail = client.get(operation_url).text
+        to_target = re.search(r'<dd>\s*<a href="([^"]+)"', detail)
+        assert to_target, "the detail page should link to the target"
+
+        target = client.get(to_target.group(1).replace("&amp;", "&"))
+        assert target.status_code == 200
+        back_to_operation = re.search(r'class="btn" href="([^"]+)"', target.text)
+        assert back_to_operation, "the target page should offer a way back"
+        assert back_to_operation.group(1).startswith(operation_url.split("?")[0])
+
+        again = client.get(back_to_operation.group(1))
+        assert again.status_code == 200
+        assert '<p class="back"><a href="/operations?category=RENT">' in again.text
+
     def test_the_month_drilldown_opens_the_target(self, client: TestClient) -> None:
         """The drill-down keeps its row click while the tag gets its own target."""
         month = client.get("/month").text

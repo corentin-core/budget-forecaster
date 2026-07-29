@@ -6,7 +6,7 @@
        at this occurrence, which "Postpone…" beside it already handles. #}
     <a class="overdue-edit" href="/targets/planned/{{ row.planned_operation_id }}?return_to=/"
        aria-label="{{ _('Edit the planned operation (all occurrences)') }}"
-       title="{{ _('Edit the planned operation (all occurrences)') }}">✎</a>
+       title="{{ _('Edit the planned operation (all occurrences)') }}">✏️</a>
     <span class="overdue-amount {{ 'positive' if row.amount > 0 else 'negative' }}">
       {{ row.amount | signed_eur(row.currency) }}
     </span>
