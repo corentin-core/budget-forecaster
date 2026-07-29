@@ -53,6 +53,9 @@ def test_sync_fetches_source_and_merges_into_account() -> None:
     assert account_params.currency == "EUR"
     assert account_params.balance_date == date(2026, 1, 15)
     assert account_params.operations == operations
+    # A live API fetch is authoritative: its balance overwrites the stored one
+    # even on a same-day re-sync.
+    assert account_params.authoritative is True
     persistent_account.save.assert_called_once()
     persistent_account.reload.assert_called_once()
     assert result == stats

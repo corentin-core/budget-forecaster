@@ -224,9 +224,9 @@ class AggregatedAccount:
 
         An authoritative source (a live API sync) is a fresh snapshot: balance
         and date win together, so a same-day re-sync overwrites a stale value.
-        Otherwise the newer date wins, keeping a re-imported older file export
-        from regressing the stored balance; a missing balance is reconstructed
-        from the new operations.
+        A missing balance never overwrites, authoritative or not. Otherwise the
+        newer date wins, keeping a re-imported older file export from regressing
+        the stored balance; a missing balance is reconstructed from operations.
         """
         if new_account.authoritative and new_account.balance is not None:
             return new_account.balance, export_date
