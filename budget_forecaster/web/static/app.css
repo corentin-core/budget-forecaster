@@ -344,12 +344,9 @@ a {
   color: var(--muted);
   min-width: 5.5rem;
 }
-.upcoming-list li.late .up-date {
-  color: var(--warn);
-  font-weight: 600;
-}
-.late-marker {
-  margin-right: 0.15rem;
+.up-note {
+  color: var(--muted);
+  font-size: 0.8rem;
 }
 .up-desc {
   flex: 1;

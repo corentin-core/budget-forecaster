@@ -11,11 +11,12 @@ from budget_forecaster.core.date_range import (
     RecurringDay,
     SingleDay,
 )
-from budget_forecaster.core.types import Category, LinkType
+from budget_forecaster.core.types import Category, IterationAction, LinkType
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.domain.operation.iteration_resolution import IterationResolution
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.services.forecast.forecast_actualizer import ForecastActualizer
@@ -52,12 +53,13 @@ class TestForecastActualizer:
         assert not actualized_forecast.operations
         assert not actualized_forecast.budgets
 
-    def test_one_time_past_operation_without_links_is_removed(
+    def test_one_time_operation_within_late_horizon_stays_counted(
         self, account: Account
     ) -> None:
-        """
-        A one-time planned operation in the past, outside the tolerance window and
-        without links, is removed because there's no next period.
+        """A one-time operation missed weeks ago still weighs on the forecast.
+
+        The matcher's 5-day tolerance says how far an operation may be recognised
+        from its planned date; it does not decide when the money is forgotten.
         """
         forecast = Forecast(
             operations=(
@@ -66,7 +68,7 @@ class TestForecastActualizer:
                     description="Past Operation",
                     amount=Amount(50.0, "EUR"),
                     category=Category.GROCERIES,
-                    # 31 days before balance_date (Jan 1), outside the 5-day window
+                    # 31 days before balance_date (Jan 1): the horizon boundary
                     date_range=SingleDay(date(2022, 12, 1)),
                 ),
             ),
@@ -74,7 +76,32 @@ class TestForecastActualizer:
         )
         actualizer = ForecastActualizer(account)
         actualized_forecast = actualizer(forecast)
-        # One-time operation with no next period is removed
+        assert len(actualized_forecast.operations) == 1
+        assert actualized_forecast.operations[0].date_range.start_date == date(
+            2023, 1, 2
+        )
+
+    def test_one_time_operation_beyond_late_horizon_stops_being_counted(
+        self, account: Account
+    ) -> None:
+        """Past the late horizon an undecided iteration leaves the forecast.
+
+        It is still reported as overdue, so the money does not vanish unnoticed.
+        """
+        forecast = Forecast(
+            operations=(
+                PlannedOperation(
+                    record_id=1,
+                    description="Forgotten Operation",
+                    amount=Amount(50.0, "EUR"),
+                    category=Category.GROCERIES,
+                    date_range=SingleDay(date(2022, 11, 15)),
+                ),
+            ),
+            budgets=(),
+        )
+        actualizer = ForecastActualizer(account)
+        actualized_forecast = actualizer(forecast)
         assert not actualized_forecast.operations
 
     def test_one_time_operation_on_balance_date_is_postponed(
@@ -104,12 +131,13 @@ class TestForecastActualizer:
         assert isinstance(op.date_range, SingleDay)
         assert op.date_range.start_date == date(2023, 1, 2)
 
-    def test_periodic_past_operation_outside_tolerance_advances_to_next_period(
+    def test_periodic_past_operation_outside_tolerance_stays_counted(
         self, account: Account
     ) -> None:
         """
-        A periodic planned operation in the past, outside the tolerance window
-        (more than 5 days before balance_date), advances to the next period.
+        A periodic iteration missed beyond the matcher tolerance is late, not
+        skipped: it is counted the day after the balance date and the recurrence
+        carries on.
         """
         forecast = Forecast(
             operations=(
@@ -129,10 +157,11 @@ class TestForecastActualizer:
         )
         actualizer = ForecastActualizer(account)
         actualized_forecast = actualizer(forecast)
-        # Outside tolerance window: operation advances to next period
-        assert len(actualized_forecast.operations) == 1
-        op = actualized_forecast.operations[0]
-        assert op.date_range.start_date == date(2023, 1, 20)
+        assert len(actualized_forecast.operations) == 2
+        late_op, periodic_op = actualized_forecast.operations
+        assert isinstance(late_op.date_range, SingleDay)
+        assert late_op.date_range.start_date == date(2023, 1, 2)
+        assert periodic_op.date_range.start_date == date(2023, 1, 20)
 
     def test_periodic_past_operation_within_tolerance_is_late(
         self, account: Account
@@ -196,7 +225,16 @@ class TestForecastActualizer:
             ),
             budgets=(),
         )
-        actualizer = ForecastActualizer(account_on_due_date)
+        # December was received, so only the on-date iteration is unmatched
+        links = (
+            OperationLink(
+                operation_unique_id=1,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
+                iteration_date=date(2022, 12, 26),
+            ),
+        )
+        actualizer = ForecastActualizer(account_on_due_date, operation_links=links)
         actualized_forecast = actualizer(forecast)
         # Postponed one-time op tomorrow + periodic continuation next month
         assert len(actualized_forecast.operations) == 2
@@ -309,11 +347,10 @@ class TestForecastActualizerWithLinks:
             description="Linked Operation",
             amount=Amount(50.0, "EUR"),
             category=Category.GROCERIES,
-            date_range=RecurringDay(date(2022, 12, 1), relativedelta(days=1)),
+            date_range=RecurringDay(date(2022, 12, 27), relativedelta(days=1)),
         )
 
-        # Link every iteration in the window (Dec 27-31) plus the one on
-        # balance_date (Jan 1); with balance_date Jan 1 and a 5-day approximation
+        # Link every past iteration: Dec 27-31 plus the one on balance_date (Jan 1)
         links = tuple(
             OperationLink(
                 operation_unique_id=i,
@@ -339,16 +376,16 @@ class TestForecastActualizerWithLinks:
         actualizer = ForecastActualizer(account, operation_links=links)
         actualized_forecast = actualizer(forecast)
 
-        # All iterations up to balance_date have links, no late iterations
-        # Operation advances to Jan 2 (next after last linked Jan 1)
+        # Every past iteration is matched, so none is late:
+        # the operation advances to Jan 2 (next after the last linked Jan 1)
         assert len(actualized_forecast.operations) == 1
         op = actualized_forecast.operations[0]
         assert op.date_range.start_date == date(2023, 1, 2)
 
     def test_missing_links_in_window_are_late(self, account: Account) -> None:
         """
-        When some iterations in the approximation window have no links,
-        they are considered late and postponed to balance_date + 1.
+        Every past iteration without a link is late and counted the day after the
+        balance date, whatever its distance from the matcher tolerance.
         """
         planned_op = PlannedOperation(
             record_id=2,
@@ -358,8 +395,7 @@ class TestForecastActualizerWithLinks:
             date_range=RecurringDay(date(2022, 12, 25), relativedelta(days=1)),
         )
 
-        # Link only Dec 28, leaving Dec 27, 29, 30, 31 and Jan 1 (on balance_date)
-        # as late (within the 5-day approximation window up to Jan 1 balance_date)
+        # Link only Dec 28, leaving Dec 25-27 and Dec 29 to Jan 1 unmatched
         links = (
             OperationLink(
                 operation_unique_id=10,
@@ -374,17 +410,15 @@ class TestForecastActualizerWithLinks:
         actualizer = ForecastActualizer(account, operation_links=links)
         actualized_forecast = actualizer(forecast)
 
-        # Dec 27, 29, 30, 31 and Jan 1 are late (5 iterations without links)
-        # Each gets postponed to Jan 2, plus the periodic continuation from Jan 3
-        assert len(actualized_forecast.operations) == 6
+        # Seven unmatched iterations, each counted on Jan 2, plus the daily
+        # recurrence continuing from Jan 3
+        assert len(actualized_forecast.operations) == 8
 
-        # First 5 are postponed one-time operations
-        for i in range(5):
-            op = actualized_forecast.operations[i]
+        *late_ops, periodic_op = actualized_forecast.operations
+        for op in late_ops:
+            assert isinstance(op.date_range, SingleDay)
             assert op.date_range.start_date == date(2023, 1, 2)
 
-        # Last one is the periodic continuation
-        periodic_op = actualized_forecast.operations[5]
         assert periodic_op.date_range.start_date == date(2023, 1, 3)
 
     def test_budget_with_linked_operations(self, account: Account) -> None:
@@ -787,6 +821,13 @@ class TestForecastActualizerGaps:
                 iteration_date=date(2023, 1, 5),  # Future
                 is_manual=True,
             ),
+            # December was matched, leaving only the on-date iteration pending
+            OperationLink(
+                operation_unique_id=1,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
+                iteration_date=date(2022, 12, 1),
+            ),
         )
         forecast = Forecast(operations=(planned_op,), budgets=())
         actualizer = ForecastActualizer(account, operation_links=links)
@@ -800,3 +841,112 @@ class TestForecastActualizerGaps:
         assert postponed_op.date_range.start_date == date(2023, 1, 2)
         periodic_op = actualized_forecast.operations[1]
         assert periodic_op.date_range.start_date == date(2023, 2, 1)
+
+
+class TestForecastActualizerWithResolutions:
+    """The user's decisions on late iterations drive the forecast."""
+
+    @staticmethod
+    def _monthly_op() -> PlannedOperation:
+        """A monthly expense whose December iteration is late on Jan 1."""
+        return PlannedOperation(
+            record_id=1,
+            description="Subscription",
+            amount=Amount(-20.0, "EUR"),
+            category=Category.OTHER,
+            date_range=RecurringDay(date(2022, 12, 20), relativedelta(months=1)),
+        )
+
+    def test_skipped_iteration_is_not_counted(self, account: Account) -> None:
+        """Only the recurrence carries on; the missed period is gone."""
+        forecast = Forecast(operations=(self._monthly_op(),), budgets=())
+        actualizer = ForecastActualizer(
+            account,
+            iteration_resolutions=(
+                IterationResolution(
+                    planned_operation_id=1,
+                    iteration_date=date(2022, 12, 20),
+                    action=IterationAction.SKIP,
+                ),
+            ),
+        )
+        actualized_forecast = actualizer(forecast)
+        (periodic_op,) = actualized_forecast.operations
+        assert periodic_op.date_range.start_date == date(2023, 1, 20)
+
+    def test_postponed_iteration_lands_on_the_chosen_date(
+        self, account: Account
+    ) -> None:
+        """The forecast counts the amount where the user moved it."""
+        forecast = Forecast(operations=(self._monthly_op(),), budgets=())
+        actualizer = ForecastActualizer(
+            account,
+            iteration_resolutions=(
+                IterationResolution(
+                    planned_operation_id=1,
+                    iteration_date=date(2022, 12, 20),
+                    action=IterationAction.POSTPONE,
+                    postponed_to=date(2023, 1, 10),
+                ),
+            ),
+        )
+        actualized_forecast = actualizer(forecast)
+        postponed_op, periodic_op = actualized_forecast.operations
+        assert isinstance(postponed_op.date_range, SingleDay)
+        assert postponed_op.date_range.start_date == date(2023, 1, 10)
+        assert periodic_op.date_range.start_date == date(2023, 1, 20)
+
+    def test_a_link_overrides_a_decision(self, account: Account) -> None:
+        """An operation turned up, so the iteration is settled, not skipped."""
+        forecast = Forecast(operations=(self._monthly_op(),), budgets=())
+        links = (
+            OperationLink(
+                operation_unique_id=1,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=1,
+                iteration_date=date(2022, 12, 20),
+            ),
+        )
+        actualizer = ForecastActualizer(
+            account,
+            operation_links=links,
+            iteration_resolutions=(
+                IterationResolution(
+                    planned_operation_id=1,
+                    iteration_date=date(2022, 12, 20),
+                    action=IterationAction.POSTPONE,
+                    postponed_to=date(2023, 1, 10),
+                ),
+            ),
+        )
+        actualized_forecast = actualizer(forecast)
+        (periodic_op,) = actualized_forecast.operations
+        assert periodic_op.date_range.start_date == date(2023, 1, 20)
+
+    def test_skipping_the_only_iteration_of_a_one_time_operation_removes_it(
+        self, account: Account
+    ) -> None:
+        """Nothing is left to forecast."""
+        forecast = Forecast(
+            operations=(
+                PlannedOperation(
+                    record_id=1,
+                    description="Cancelled repair",
+                    amount=Amount(-300.0, "EUR"),
+                    category=Category.HOUSE_WORKS,
+                    date_range=SingleDay(date(2022, 12, 15)),
+                ),
+            ),
+            budgets=(),
+        )
+        actualizer = ForecastActualizer(
+            account,
+            iteration_resolutions=(
+                IterationResolution(
+                    planned_operation_id=1,
+                    iteration_date=date(2022, 12, 15),
+                    action=IterationAction.SKIP,
+                ),
+            ),
+        )
+        assert not actualizer(forecast).operations

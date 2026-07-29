@@ -12,11 +12,12 @@ from budget_forecaster.core.date_range import (
     RecurringDay,
     SingleDay,
 )
-from budget_forecaster.core.types import Category, LinkType
+from budget_forecaster.core.types import Category, IterationAction, LinkType
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.domain.operation.iteration_resolution import IterationResolution
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.services.account.account_analyzer import AccountAnalyzer
@@ -177,6 +178,37 @@ class TestComputeBalanceEvolution:
             assert df.loc[date_str]["Balance"] == pytest.approx(
                 expected_balance
             ), f"Date: {date_str}"
+
+    def test_skipped_iteration_leaves_the_projection(self, account: Account) -> None:
+        """A skipped expense gives its amount back to the projected balance."""
+        planned_op = PlannedOperation(
+            record_id=9,
+            description="Unpaid subscription",
+            amount=Amount(-40.0),
+            category=Category.OTHER,
+            date_range=SingleDay(date(2023, 2, 20)),
+        )
+        forecast = Forecast((planned_op,), ())
+
+        counted = AccountAnalyzer(account, forecast).compute_balance_evolution_per_day(
+            date(2023, 3, 1), date(2023, 3, 10)
+        )
+        skipped = AccountAnalyzer(
+            account,
+            forecast,
+            iteration_resolutions=(
+                IterationResolution(
+                    planned_operation_id=9,
+                    iteration_date=date(2023, 2, 20),
+                    action=IterationAction.SKIP,
+                ),
+            ),
+        ).compute_balance_evolution_per_day(date(2023, 3, 1), date(2023, 3, 10))
+
+        # Left undecided, the missed expense is still counted the day after the
+        # balance date; skipping it releases the 40 euros.
+        assert counted.loc["2023-03-02"]["Balance"] == pytest.approx(960.0)
+        assert skipped.loc["2023-03-02"]["Balance"] == pytest.approx(1000.0)
 
     def test_with_budgets(self, account: Account, budgets: tuple[Budget, ...]) -> None:
         """Balance reflects budget consumption spread across days."""

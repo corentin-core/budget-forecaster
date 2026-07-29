@@ -9,8 +9,10 @@ from abc import ABC, abstractmethod
 from typing import Self
 
 from budget_forecaster.core.types import (
+    IterationDate,
     LinkType,
     OperationId,
+    PlannedOperationId,
     SyncRun,
     SyncSource,
     TargetId,
@@ -18,6 +20,7 @@ from budget_forecaster.core.types import (
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.domain.operation.iteration_resolution import IterationResolution
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 
@@ -370,4 +373,38 @@ class RepositoryInterface(
 
         Returns:
             Recent runs ordered from newest to oldest.
+        """
+
+    # Iteration resolutions
+
+    @abstractmethod
+    def upsert_iteration_resolution(self, resolution: IterationResolution) -> None:
+        """Store the decision about an iteration, replacing any previous one.
+
+        Args:
+            resolution: The decision to persist.
+        """
+
+    @abstractmethod
+    def get_iteration_resolutions(
+        self, planned_operation_id: PlannedOperationId | None = None
+    ) -> tuple[IterationResolution, ...]:
+        """Get stored decisions, oldest iteration first.
+
+        Args:
+            planned_operation_id: When set, restrict to that planned operation.
+
+        Returns:
+            The stored decisions.
+        """
+
+    @abstractmethod
+    def delete_iteration_resolution(
+        self, planned_operation_id: PlannedOperationId, iteration_date: IterationDate
+    ) -> None:
+        """Delete the decision about an iteration, restoring its derived state.
+
+        Args:
+            planned_operation_id: The planned operation the iteration belongs to.
+            iteration_date: The iteration's own planned date.
         """

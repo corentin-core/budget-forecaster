@@ -113,37 +113,35 @@ class TestPages:
         assert inbox in html
 
 
-class TestUpcomingLateRendering:
-    """The upcoming fragment flags overdue (late) iterations."""
+class TestUpcomingRendering:
+    """The upcoming fragment lists what is still ahead."""
 
     def _render(self, app: FastAPI, *iterations: UpcomingIteration) -> str:
         template = app.state.templates.get_template("fragments/upcoming_items.html")
         return template.render(upcoming=list(iterations), currency="EUR")
 
-    def test_late_iteration_is_marked(self, app: FastAPI) -> None:
-        """A late iteration gets the late class and warning marker."""
-        late = UpcomingIteration(
-            iteration_date=date(2025, 3, 26),
-            description="Salary",
-            amount=2940.0,
-            currency="EUR",
-            period=None,
-            late=True,
-        )
-        html = self._render(app, late)
-        assert 'class="late"' in html
-        assert "⚠" in html
-
-    def test_on_time_iteration_is_not_marked(self, app: FastAPI) -> None:
-        """A non-late iteration has no late class nor marker."""
-        on_time = UpcomingIteration(
-            iteration_date=date(2025, 3, 26),
+    def test_postponed_iteration_shows_its_original_date(self, app: FastAPI) -> None:
+        """A postponed iteration carries where it came from."""
+        postponed = UpcomingIteration(
+            iteration_date=date(2025, 4, 2),
             description="Rent",
             amount=-850.0,
             currency="EUR",
             period=None,
-            late=False,
+            postponed_from=date(2025, 3, 5),
         )
-        html = self._render(app, on_time)
-        assert 'class="late"' not in html
-        assert "⚠" not in html
+        html = self._render(app, postponed)
+        assert "up-note" in html
+        assert "05/03/2025" in html
+
+    def test_plain_iteration_has_no_note(self, app: FastAPI) -> None:
+        """An iteration due on its own date shows no annotation."""
+        plain = UpcomingIteration(
+            iteration_date=date(2025, 4, 2),
+            description="Rent",
+            amount=-850.0,
+            currency="EUR",
+            period=None,
+        )
+        html = self._render(app, plain)
+        assert "up-note" not in html

@@ -41,6 +41,32 @@ class MatcherKey(NamedTuple):
     target_id: TargetId
 
 
+class IterationAction(enum.StrEnum):
+    """What the user decided about an iteration no operation ever matched."""
+
+    SKIP = enum.auto()
+    POSTPONE = enum.auto()
+
+
+class IterationState(enum.StrEnum):
+    """Derived state of a past iteration no operation matched.
+
+    A future iteration and a matched one have no state: they produce no entry.
+    """
+
+    LATE = enum.auto()
+    """Due and still expected: counted the day after the balance date."""
+
+    EXPIRED = enum.auto()
+    """Overdue beyond the late horizon with no decision: no longer counted."""
+
+    POSTPONED = enum.auto()
+    """Moved by the user to a later date, counted there."""
+
+    SKIPPED = enum.auto()
+    """Declared as never happening: not counted."""
+
+
 # Import progress callback type aliases
 ImportProgressCurrent = int
 """Current progress count (number of files processed)."""

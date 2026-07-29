@@ -17,8 +17,14 @@ from budget_forecaster.core.types import (
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.domain.operation.iteration_resolution import IterationResolution
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.services.forecast.iteration_lifecycle import (
+    PastIteration,
+    derive_past_iterations,
+    index_resolutions,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +36,11 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         self,
         account: Account,
         operation_links: tuple[OperationLink, ...] = (),
+        iteration_resolutions: tuple[IterationResolution, ...] = (),
     ) -> None:
         self._account: Final = account
         self._operation_links: Final = operation_links
+        self._resolutions: Final = index_resolutions(iteration_resolutions)
         # Internal indexes built from operation_links
         self._linked_iterations: dict[PlannedOperationId, set[IterationDate]] = {}
         self._linked_op_ids: dict[tuple[BudgetId, IterationDate], set[OperationId]] = {}
@@ -92,70 +100,47 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             return set()
         return self._linked_op_ids.get((budget.id, iteration_date), set())
 
-    def _get_late_iterations(
+    def _get_past_iterations(
         self,
         planned_operation: PlannedOperation,
         linked_iterations: set[date],
-    ) -> tuple[date, ...]:
-        """Find iterations that are late (past due and no link).
+    ) -> tuple[PastIteration, ...]:
+        """Derive the unmatched iterations due by the balance date.
 
-        An iteration is considered late if:
-        1. It's past (before balance_date) but within the approximation window
-        2. It has no link to an operation
-
-        Note: Heuristic matching is handled by automatic link creation during import,
-        so we only need to check for links here.
+        Heuristic matching happens through automatic link creation during import,
+        so an iteration without a link is one nothing was found for.
         """
         if planned_operation.id is None:
             return ()
+        return derive_past_iterations(
+            planned_operation,
+            self._account.balance_date,
+            linked_iterations,
+            self._resolutions.get(planned_operation.id, {}),
+        )
 
-        balance_date = self._account.balance_date
-        late_iterations: list[date] = []
-        approximation = planned_operation.matcher.approximation_date_range
-
-        # Iterate over date ranges starting before the approximation window
-        for dr in planned_operation.date_range.iterate_over_date_ranges(
-            balance_date - approximation
-        ):
-            # Stop once past balance_date. An unlinked iteration exactly on
-            # balance_date is late (pending, not yet posted), like the days before.
-            if (iteration_date := dr.start_date) > balance_date:
-                break
-
-            # Check if within the approximation window (not too old)
-            if not dr.is_within(balance_date, approx_after=approximation):
-                continue
-
-            # Check if this iteration has a link - if not, it's late
-            if iteration_date not in linked_iterations:
-                late_iterations.append(iteration_date)
-
-        return tuple(late_iterations)
-
-    def _handle_late_iterations(
+    def _handle_past_iterations(
         self,
         planned_operation: PlannedOperation,
-        late_iterations: tuple[date, ...],
+        past_iterations: tuple[PastIteration, ...],
     ) -> tuple[PlannedOperation, ...]:
-        """Create postponed operations for late iterations.
+        """Place the unmatched past iterations on the date they are counted on.
 
-        Returns a tuple of:
-        - One SingleDay operation for each late iteration (postponed to tomorrow)
-        - The original periodic operation advanced to after the postponed date (if applicable)
+        Returns one SingleDay operation per still-counted iteration — the day after
+        the balance date when it is late, the user's date when it was postponed —
+        plus the periodic operation advanced past the balance date. Skipped and
+        expired iterations yield nothing.
         """
-        if not late_iterations:
+        if not past_iterations:
             return ()
 
-        balance_date = self._account.balance_date
-        postponed_date = balance_date + timedelta(days=1)
+        postponed_date = self._account.balance_date + timedelta(days=1)
 
-        result: list[PlannedOperation] = []
-
-        # Create one postponed operation per late iteration
-        for _ in late_iterations:
-            result.append(
-                planned_operation.replace(date_range=SingleDay(postponed_date))
-            )
+        result: list[PlannedOperation] = [
+            planned_operation.replace(date_range=SingleDay(past.effective_date))
+            for past in past_iterations
+            if past.effective_date is not None
+        ]
 
         # Advance the periodic operation to start after the postponed date
         if (
@@ -170,10 +155,10 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             )
 
         logger.debug(
-            "Postponed %d late iteration(s) for planned op %s to %s",
-            len(late_iterations),
+            "Planned op %s: %d unmatched past iteration(s), %d still counted",
             planned_operation.id,
-            postponed_date,
+            len(past_iterations),
+            sum(1 for past in past_iterations if past.effective_date is not None),
         )
 
         return tuple(result)
@@ -259,18 +244,15 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
             planned_operations, key=lambda op: op.date_range.start_date
         ):
             linked_iterations = self._get_linked_iterations(planned_operation)
-            # Check for late iterations (past iterations without links)
-            late_iterations = self._get_late_iterations(
+            past_iterations = self._get_past_iterations(
                 planned_operation, linked_iterations
             )
-            if late_iterations:
-                # Some iterations are late, postpone them to tomorrow
-                postponed = self._handle_late_iterations(
-                    planned_operation, late_iterations
+            if past_iterations:
+                actualized_planned_operations.extend(
+                    self._handle_past_iterations(planned_operation, past_iterations)
                 )
-                actualized_planned_operations.extend(postponed)
             else:
-                # No late iterations, use link-based actualization
+                # Every past iteration was matched: advance from the links
                 updated = self._actualize_planned_operation_with_links(
                     planned_operation, linked_iterations
                 )

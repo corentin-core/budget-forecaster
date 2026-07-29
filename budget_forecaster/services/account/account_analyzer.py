@@ -19,6 +19,7 @@ from budget_forecaster.core.types import (
 )
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.forecast.forecast import Forecast
+from budget_forecaster.domain.operation.iteration_resolution import IterationResolution
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.services.account.account_analysis_report import (
     AccountAnalysisReport,
@@ -65,12 +66,14 @@ class AccountAnalyzer:
         account: Account,
         forecast: Forecast,
         operation_links: tuple[OperationLink, ...] = (),
+        iteration_resolutions: tuple[IterationResolution, ...] = (),
     ) -> None:
         self._account = account._replace(
             operations=categorize_operations(account.operations, forecast)
         )
         self._forecast = forecast
         self._operation_links = operation_links
+        self._iteration_resolutions = iteration_resolutions
 
     def compute_report(self, start_date: date, end_date: date) -> AccountAnalysisReport:
         """
@@ -179,9 +182,9 @@ class AccountAnalyzer:
                 f"start_date must be <= end_date, got {start_date} > {end_date}"
             )
 
-        actualized_forecast = ForecastActualizer(self._account, self._operation_links)(
-            self._forecast
-        )
+        actualized_forecast = ForecastActualizer(
+            self._account, self._operation_links, self._iteration_resolutions
+        )(self._forecast)
         account_forecaster = AccountForecaster(self._account, actualized_forecast)
 
         initial_state = account_forecaster(start_date)

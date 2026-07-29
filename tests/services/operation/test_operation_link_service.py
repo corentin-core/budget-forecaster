@@ -35,6 +35,9 @@ from budget_forecaster.infrastructure.persistence.sqlite_repository import (
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.forecast.forecast_service import ForecastService
 from budget_forecaster.services.import_service import ImportService
+from budget_forecaster.services.operation.iteration_resolution_service import (
+    IterationResolutionService,
+)
 from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
     compute_match_score,
@@ -432,6 +435,7 @@ class TestApplicationServiceLinkIntegration:
 
         operation_service = OperationService(populated_persistent_account)
         operation_link_service = OperationLinkService(repository)
+        iteration_resolution_service = IterationResolutionService(repository)
         import_service = ImportService(populated_persistent_account, Path("/tmp/inbox"))
         forecast_service = ForecastService(populated_persistent_account, repository)
 
@@ -441,6 +445,7 @@ class TestApplicationServiceLinkIntegration:
             operation_service=operation_service,
             forecast_service=forecast_service,
             operation_link_service=operation_link_service,
+            iteration_resolution_service=iteration_resolution_service,
         )
 
     def test_add_planned_operation_creates_links(

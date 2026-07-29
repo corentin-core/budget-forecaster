@@ -20,6 +20,9 @@ from budget_forecaster.domain.operation.historic_operation import HistoricOperat
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.services.forecast.forecast_service import ForecastService
+from budget_forecaster.services.operation.iteration_resolution_service import (
+    IterationResolutionService,
+)
 from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
 )
@@ -52,13 +55,24 @@ def mock_operation_link_service_fixture() -> MagicMock:
     return MagicMock(spec=OperationLinkService)
 
 
+@pytest.fixture(name="mock_resolution_service")
+def mock_resolution_service_fixture() -> MagicMock:
+    """Create a mock iteration resolution service."""
+    mock = MagicMock(spec=IterationResolutionService)
+    mock.get_all_resolutions.return_value = ()
+    return mock
+
+
 @pytest.fixture(name="use_case")
 def use_case_fixture(
     mock_forecast_service: MagicMock,
     mock_operation_link_service: MagicMock,
+    mock_resolution_service: MagicMock,
 ) -> ComputeForecastUseCase:
     """Create a ComputeForecastUseCase with mock dependencies."""
-    return ComputeForecastUseCase(mock_forecast_service, mock_operation_link_service)
+    return ComputeForecastUseCase(
+        mock_forecast_service, mock_operation_link_service, mock_resolution_service
+    )
 
 
 class TestComputeReport:
@@ -78,7 +92,9 @@ class TestComputeReport:
         use_case.compute_report()
 
         mock_operation_link_service.get_all_links.assert_called_once()
-        mock_forecast_service.compute_report.assert_called_once_with(None, None, links)
+        mock_forecast_service.compute_report.assert_called_once_with(
+            None, None, links, ()
+        )
 
     def test_passes_date_range(
         self,
@@ -94,7 +110,7 @@ class TestComputeReport:
         end = date(2025, 12, 31)
         use_case.compute_report(start, end)
 
-        mock_forecast_service.compute_report.assert_called_once_with(start, end, ())
+        mock_forecast_service.compute_report.assert_called_once_with(start, end, (), ())
 
 
 class TestComputeReportIntegration:
@@ -166,7 +182,13 @@ class TestComputeReportIntegration:
 
         forecast_service = ForecastService(_AccountStub(account), mock_repo)
         link_service = OperationLinkService(mock_link_repo)
-        use_case = ComputeForecastUseCase(forecast_service, link_service)
+        use_case = ComputeForecastUseCase(
+            forecast_service,
+            link_service,
+            IterationResolutionService(
+                MagicMock(get_iteration_resolutions=MagicMock(return_value=()))
+            ),
+        )
 
         report = use_case.compute_report(
             start_date=date(2025, 3, 1),

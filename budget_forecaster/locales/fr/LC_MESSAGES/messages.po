@@ -1715,8 +1715,8 @@ msgstr "Échec de la liaison. Veuillez réessayer."
 msgid "No bank linked yet."
 msgstr "Aucune banque liée pour le moment."
 
-msgid "Overdue: not yet posted"
-msgstr "En retard : pas encore enregistré"
+msgid "postponed from {date}"
+msgstr "reportée du {date}"
 
 msgid "Upload a bank export"
 msgstr "Importer un relevé bancaire"
