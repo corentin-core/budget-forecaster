@@ -8,6 +8,7 @@ from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.types import Category
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.infrastructure.bank_sources.enable_banking.mapper import (
+    ClosingBalance,
     map_transaction,
     select_closing_booked_balance,
 )
@@ -130,10 +131,16 @@ class TestSelectClosingBookedBalance:
         """The CLBD balance is picked among several balance types."""
         balances = (
             {"balance_type": "ITAV", "balance_amount": {"amount": "500.00"}},
-            {"balance_type": "CLBD", "balance_amount": {"amount": "1234.56"}},
+            {
+                "balance_type": "CLBD",
+                "balance_amount": {"amount": "1234.56"},
+                "reference_date": "2026-07-27",
+            },
         )
 
-        assert select_closing_booked_balance(balances) == 1234.56
+        assert select_closing_booked_balance(balances) == ClosingBalance(
+            1234.56, date(2026, 7, 27)
+        )
 
     def test_first_closing_booked_wins(self) -> None:
         """With several CLBD entries, the first one is used."""
@@ -142,13 +149,19 @@ class TestSelectClosingBookedBalance:
             {"balance_type": "CLBD", "balance_amount": {"amount": "20.00"}},
         )
 
-        assert select_closing_booked_balance(balances) == 10.00
+        assert select_closing_booked_balance(balances) == ClosingBalance(10.00, None)
 
     def test_negative_closing_booked_keeps_sign(self) -> None:
         """An overdraft balance is returned as a negative float."""
         balances = ({"balance_type": "CLBD", "balance_amount": {"amount": "-42.50"}},)
 
-        assert select_closing_booked_balance(balances) == -42.50
+        assert select_closing_booked_balance(balances) == ClosingBalance(-42.50, None)
+
+    def test_reference_date_absent_yields_none_date(self) -> None:
+        """A CLBD entry without reference_date yields a None as-of date."""
+        balances = ({"balance_type": "CLBD", "balance_amount": {"amount": "10.00"}},)
+
+        assert select_closing_booked_balance(balances).reference_date is None
 
     def test_returns_none_when_absent(self) -> None:
         """No CLBD entry yields a None balance."""

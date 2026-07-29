@@ -215,6 +215,40 @@ class AggregatedAccount:
         return _MergeResult(tuple(merged), tuple(reconciliations), new_count)
 
     @staticmethod
+    def _resolve_balance(
+        current_account: Account,
+        new_account: AccountParameters,
+        export_date: date,
+    ) -> tuple[float, date]:
+        """Resolve the account's balance and its as-of date after a merge.
+
+        An authoritative source (a live API sync) is a fresh snapshot: balance
+        and date win together, so a same-day re-sync overwrites a stale value.
+        A missing balance never overwrites, authoritative or not. Otherwise the
+        newer date wins, keeping a re-imported older file export from regressing
+        the stored balance; a missing balance is reconstructed from operations.
+        """
+        if new_account.authoritative and new_account.balance is not None:
+            return new_account.balance, export_date
+
+        balance_date = max(current_account.balance_date, export_date)
+        if new_account.balance is not None:
+            balance = (
+                new_account.balance
+                if export_date > current_account.balance_date
+                else current_account.balance
+            )
+        elif export_date > current_account.balance_date:
+            balance = current_account.balance + sum(
+                operation.amount
+                for operation in new_account.operations
+                if operation.operation_date > current_account.balance_date
+            )
+        else:
+            balance = current_account.balance
+        return balance, balance_date
+
+    @staticmethod
     def update_account(
         current_account: Account, new_account: AccountParameters
     ) -> UpdateResult:
@@ -235,33 +269,12 @@ class AggregatedAccount:
             duplicates_skipped=total_in_file - merge.new_count,
         )
 
-        # Get balance date
         export_date = new_account.balance_date or max(
             operation.operation_date for operation in new_account.operations
         )
-        balance_date = (
-            current_account.balance_date
-            if current_account.balance_date > export_date
-            else export_date
+        balance, balance_date = AggregatedAccount._resolve_balance(
+            current_account, new_account, export_date
         )
-
-        # Get balance
-        if new_account.balance is None:
-            if export_date > current_account.balance_date:
-                # add the new operations to the current account
-                balance = current_account.balance + sum(
-                    operation.amount
-                    for operation in new_account.operations
-                    if operation.operation_date > current_account.balance_date
-                )
-            else:
-                balance = current_account.balance
-        else:
-            balance = (
-                new_account.balance
-                if export_date > current_account.balance_date
-                else current_account.balance
-            )
 
         # Adopt the external id the incoming source declares (backfill a
         # pre-existing account, or reflect a config re-identification); keep the

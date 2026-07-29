@@ -61,6 +61,7 @@ class BankSyncService:  # pylint: disable=too-few-public-methods
             balance_date=self._api_source.export_date or date.today(),
             operations=self._api_source.operations,
             external_id=self._account_registry.external_id_for(self._api_source.name),
+            authoritative=True,
         )
 
         stats = self._persistent_account.upsert_account(account_params)

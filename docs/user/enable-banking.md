@@ -16,7 +16,9 @@ you can sync as often as you like without re-authenticating. When it expires, yo
 authorize again.
 
 Only booked transactions are imported; pending ones are ignored. The balance reflects
-the closing booked balance reported by the bank.
+the closing booked balance reported by the bank, dated at the bank's own as-of date.
+Each sync overwrites the stored balance with the freshly fetched one, so syncing again
+the same day picks up any change.
 
 ## One-time portal setup
 
