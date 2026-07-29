@@ -11,6 +11,7 @@ from budget_forecaster.domain.operation.iteration_resolution import IterationRes
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.services.forecast.iteration_lifecycle import (
     LATE_HORIZON,
+    OVERDUE_LISTING_WINDOW,
     derive_past_iterations,
     index_resolutions,
 )
@@ -43,6 +44,11 @@ def _one_time(iteration: date) -> PlannedOperation:
 def test_the_late_horizon_is_a_month() -> None:
     """The documented value, pinned: the user docs and the design both say a month."""
     assert LATE_HORIZON == timedelta(days=31)
+
+
+def test_the_listing_window_is_two_late_horizons() -> None:
+    """A month counted, a month to notice: what the user docs promise."""
+    assert OVERDUE_LISTING_WINDOW == timedelta(days=62)
 
 
 class TestUndecidedIterations:

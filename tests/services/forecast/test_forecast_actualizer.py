@@ -11,11 +11,12 @@ from budget_forecaster.core.date_range import (
     RecurringDay,
     SingleDay,
 )
-from budget_forecaster.core.types import Category, LinkType
+from budget_forecaster.core.types import Category, IterationAction, LinkType
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.domain.operation.iteration_resolution import IterationResolution
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.services.forecast.forecast_actualizer import ForecastActualizer
@@ -85,7 +86,8 @@ class TestForecastActualizer:
     ) -> None:
         """Past the late horizon an undecided iteration leaves the forecast.
 
-        It is still reported as overdue, so the money does not vanish unnoticed.
+        It is still reported as overdue for another month, so the money does not
+        vanish unnoticed.
         """
         forecast = Forecast(
             operations=(
@@ -102,6 +104,41 @@ class TestForecastActualizer:
         actualizer = ForecastActualizer(account)
         actualized_forecast = actualizer(forecast)
         assert not actualized_forecast.operations
+
+    def test_a_decision_older_than_any_listing_window_is_still_applied(
+        self, account: Account
+    ) -> None:
+        """A postponement holds however old the iteration it was taken on."""
+        forecast = Forecast(
+            operations=(
+                PlannedOperation(
+                    record_id=1,
+                    description="Postponed Long Ago",
+                    amount=Amount(50.0, "EUR"),
+                    category=Category.GROCERIES,
+                    date_range=SingleDay(date(2022, 6, 5)),
+                ),
+            ),
+            budgets=(),
+        )
+        actualizer = ForecastActualizer(
+            account,
+            iteration_resolutions=(
+                IterationResolution(
+                    planned_operation_id=1,
+                    iteration_date=date(2022, 6, 5),
+                    action=IterationAction.POSTPONE,
+                    postponed_to=date(2023, 2, 5),
+                ),
+            ),
+        )
+
+        actualized_forecast = actualizer(forecast)
+
+        assert len(actualized_forecast.operations) == 1
+        assert actualized_forecast.operations[0].date_range.start_date == date(
+            2023, 2, 5
+        )
 
     def test_one_time_operation_on_balance_date_is_postponed(
         self, account: Account

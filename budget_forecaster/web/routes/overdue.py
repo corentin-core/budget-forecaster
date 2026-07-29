@@ -412,7 +412,8 @@ async def restore(
         None,
     )
     if row is None:
-        # Nothing to put back: a link settled the iteration meanwhile.
+        # Nothing to put back: a link settled the iteration meanwhile, or it aged
+        # past the listing window while the decision held it out of the card.
         return render_template(
             request, "fragments/overdue_gone.html", active="home", **context
         )

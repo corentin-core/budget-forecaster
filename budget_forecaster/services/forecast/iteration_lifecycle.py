@@ -24,7 +24,14 @@ LATE_HORIZON: Final = timedelta(days=31)
 """How long an unmatched iteration keeps weighing on the forecast.
 
 Undecided iterations older than this stop being counted, and say so in the
-overdue list: dropping them silently is what this lifecycle exists to prevent.
+overdue list rather than dropping out of it.
+"""
+
+OVERDUE_LISTING_WINDOW: Final = 2 * LATE_HORIZON
+"""How far back the overdue list reaches.
+
+One late horizon to be counted, one more to be noticed. An iteration nobody acted
+on by then leaves the list; a decision taken on it is still honoured.
 """
 
 
