@@ -10,6 +10,7 @@ al
 algo
 alimentaires
 alimentation
+août
 api's
 args
 au
@@ -175,9 +176,9 @@ startswith
 stderr
 str
 subclasses
-subclasses
 subcommand
 submodules
+substrings
 summarised
 supermarche
 supermarché
@@ -206,6 +207,7 @@ unlink
 unlinked
 unlinking
 unmapped
+unmatchable
 unparseable
 upsert
 upserting

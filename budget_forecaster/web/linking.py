@@ -217,6 +217,32 @@ def current_link(app: ApplicationService, operation_id: int) -> CurrentLink | No
     )
 
 
+def _seeded_iteration(operation: HistoricOperation, target: PlannedOperation) -> date:
+    """The occurrence the operation falls in, or the first one."""
+    occurrence = target.date_range.current_date_range(
+        operation.operation_date,
+        approx_before=target.matcher.approximation_date_range,
+        approx_after=target.matcher.approximation_date_range,
+    )
+    if occurrence is None:
+        return target.date_range.start_date
+    return occurrence.start_date
+
+
+def link_source_operation(
+    app: ApplicationService, operation_id: OperationId, target: PlannedOperation
+) -> None:
+    """Link the operation a planned operation was created from to its occurrence.
+
+    Automatic matching runs first and may already have caught it; a link to
+    anything else is the user's and is left alone.
+    """
+    if app.get_link_for_operation(operation_id) is not None:
+        return
+    operation = app.get_operation_by_id(operation_id)
+    app.create_manual_link(operation, target, _seeded_iteration(operation, target))
+
+
 def target_object(
     app: ApplicationService, kind: str, target_id: int
 ) -> Budget | PlannedOperation:

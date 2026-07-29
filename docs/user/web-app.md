@@ -153,6 +153,26 @@ match is preselected. Step the window with the arrows when the occurrence you wa
 further out. Confirm to create the link, or use "Délier" on an already-linked operation
 to remove it.
 
+## Forecasting a payment you just saw
+
+A recurring payment showing up in the ledger for the first time can become a planned
+operation without retyping it. Open the operation, then "Créer une opération planifiée":
+the form arrives filled from the payment — amount, category, its own date as the start
+date, monthly recurrence — and named after the one word of the bank label that says who
+was paid, with the raw label kept underneath so you can rename it. "Reconnaître par"
+holds that same word as the keyword future payments must contain; trim it to what will
+come back every month, since a reference number or a month never will.
+
+Saving links the payment to the first occurrence, so it counts straight away. An
+operation already linked to something else keeps that link. You land back on the
+operation, where the "Lien" line names whatever counts it.
+
+When an existing planned operation already fits the payment, a note above the form names
+it and offers to link to it instead — worth taking, since a second entry for the same
+payment would be forecast twice every month. Starting from an old payment also warns
+you: the occurrences since that date are expected too, and those with no matching
+operation show up as overdue on Accueil.
+
 ## Budgets and planned operations
 
 The month drill-down and the Budgets tab both edit the same items.
