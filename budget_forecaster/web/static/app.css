@@ -514,13 +514,35 @@ table {
 }
 .link-tag {
   display: inline-block;
+  vertical-align: middle;
+  max-width: 14rem;
   font-size: 0.7rem;
   color: var(--accent);
   border: 1px solid var(--accent);
   border-radius: 4px;
-  padding: 0 0.3rem;
-  margin-left: 0.3rem;
+  padding: 0.15rem 0.4rem;
+  margin-left: 0.5rem;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Only the anchor form navigates; the same look is used as a plain badge
+   elsewhere, so the affordance has to be on a.link-tag alone. */
+a.link-tag {
+  text-decoration: none;
+  cursor: pointer;
+}
+a.link-tag:hover,
+a.link-tag:focus-visible {
+  background: var(--accent);
+  color: var(--bg);
+  text-decoration: underline;
+}
+a.link-tag:focus-visible,
+a.overdue-edit:focus-visible,
+.link-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* --- Trends: balance curve --- */
@@ -1192,13 +1214,25 @@ table {
   padding: 0;
 }
 .source-list li a,
-.attributed-list li a {
+.attributed-list li {
   display: flex;
   justify-content: space-between;
   gap: 0.5rem;
   padding: 0.4rem 0;
   border-bottom: 1px solid var(--border);
   color: inherit;
+}
+/* The row holds two links with different destinations, so it is the row —
+   not an anchor — that carries the click. */
+.attributed-row {
+  cursor: pointer;
+}
+.attributed-list .op-desc a {
+  color: inherit;
+  text-decoration: none;
+}
+.attributed-row:hover {
+  background: var(--bg);
 }
 .src-meta,
 .op-amount {
@@ -1881,6 +1915,21 @@ a.overdue-desc {
 }
 a.overdue-desc:hover {
   text-decoration: underline;
+}
+/* Thumb-sized like the actions below, and centred so a wrapping description
+   does not drag it around. */
+a.overdue-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--muted);
+  text-decoration: none;
+}
+a.overdue-edit:hover {
+  color: var(--accent);
 }
 .overdue-amount {
   font-variant-numeric: tabular-nums;

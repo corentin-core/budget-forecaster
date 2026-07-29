@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block title %}{{ operation.description }} — Budget Forecaster{% endblock %}
 {% block content %}
+{# Coming back from the target lands here, with this page's own back link intact. #}
+{% set self_url = '/operations/' ~ operation.unique_id ~ '?return_to=' ~ (return_to | urlencode) %}
 <section class="card op-detail">
   <p class="back"><a href="{{ return_to }}">‹ {{ _("Back") }}</a></p>
   <h1>{{ operation.description }}</h1>
@@ -15,7 +17,7 @@
     <dt>{{ _("Link") }}</dt>
     <dd>
       {% if current %}
-        {{ current.target_name }}
+        <a href="/targets/{{ current.kind }}/{{ current.target_id }}?return_to={{ self_url | urlencode }}">{{ current.target_name }}</a>
         <form method="post" action="/operations/{{ operation.unique_id }}/unlink" class="inline">
           <button type="submit" class="btn danger small">{{ _("Unlink") }}</button>
         </form>

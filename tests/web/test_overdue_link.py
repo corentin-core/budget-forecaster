@@ -118,7 +118,9 @@ def _decided_section(client: TestClient, op_id: int) -> str:
 def _link_target(client: TestClient, operation_id: int) -> str:
     """What the operation's detail page says counts it, or an empty string."""
     html = client.get(f"/operations/{operation_id}").text
-    found = re.search(r"<dd>\s*([^<]*?)\s*<form[^>]*/unlink", html, re.DOTALL)
+    found = re.search(
+        r"<dd>\s*<a[^>]*>([^<]*)</a>\s*<form[^>]*/unlink", html, re.DOTALL
+    )
     return found.group(1).strip() if found else ""
 
 
@@ -129,7 +131,7 @@ def _an_expense_label(client: TestClient, *, date_to: date | None = None) -> str
     for block in listing.split('<tr id="op-row-')[1:]:
         if 'class="num negative"' not in block:
             continue
-        if found := re.search(r'<a href="/operations/\d+">([^<]+)</a>', block):
+        if found := re.search(r'<a href="/operations/\d+[^"]*">([^<]+)</a>', block):
             return found.group(1).strip()
     raise AssertionError("the ledger should list an expense")
 

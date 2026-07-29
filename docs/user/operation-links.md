@@ -76,6 +76,11 @@ operation view. Each link targets a specific dated occurrence of a planned opera
 budget, chosen from candidates ranked by match score. See [Web App](web-app.md) for the
 step-by-step interface.
 
+Wherever the app names what counts an operation, the name is a link: the `→ target` tag
+in the ledger, the link line on an operation's page, the same tag in the Mois
+drill-down. It opens the budget or planned operation for editing and comes back to where
+you left, filters included.
+
 The same thing works from the other end: an overdue occurrence offers the operations
 that could be it, ranked by the same score. Since a link belongs to the operation,
 linking one that another target already counts moves it rather than duplicating it. The
@@ -134,10 +139,10 @@ prioritized when both match on other criteria.
 
 ### Wrong automatic link created
 
-1. Open the link modal (`L` key)
-2. Click "Supprimer le lien" to remove the incorrect link
-3. Select the correct target and iteration
-4. The new link will be manual and protected from recalculation
+1. Open the operation from the ledger
+2. Use "Unlink" to remove the incorrect link
+3. Use "Link…" to pick the right target and iteration
+4. The new link is manual, so recalculation leaves it alone
 
 ### Link disappeared after editing planned operation
 

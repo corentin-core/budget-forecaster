@@ -396,6 +396,7 @@ class TestGetCategoryDetail:
             amount=-80.0,
             cross_month_annotation="",
             link_type="",
+            link_target_id=0,
             link_target_name="",
         )
         assert detail["operations"] == (expected_op,)
@@ -450,6 +451,7 @@ class TestGetCategoryDetail:
             amount=-800.0,
             cross_month_annotation="paid early (operation dated Feb 28)",
             link_type="planned_operation",
+            link_target_id=1,
             link_target_name="Rent",
         )
         assert march_detail["operations"] == (expected_op,)
@@ -566,6 +568,7 @@ class TestGetCategoryDetail:
             amount=-45.0,
             cross_month_annotation="",
             link_type="",
+            link_target_id=0,
             link_target_name="",
         )
         assert detail == CategoryDetail(
@@ -619,6 +622,7 @@ class TestGetCategoryDetail:
                 amount=-10.0,
                 cross_month_annotation="",
                 link_type="",
+                link_target_id=0,
                 link_target_name="",
             ),
             AttributedOperationDetail(
@@ -628,6 +632,7 @@ class TestGetCategoryDetail:
                 amount=-20.0,
                 cross_month_annotation="",
                 link_type="",
+                link_target_id=0,
                 link_target_name="",
             ),
         )

@@ -28,17 +28,25 @@
   <h3>{{ _("Attributed operations") }}</h3>
   {% if detail.operations %}
   <ul class="attributed-list">
+    {# The tag is a link of its own, so the row cannot be one big anchor: the
+       whole line stays clickable through data-href, the description carries the
+       real anchor for the keyboard and for no-JS. #}
     {% for op in detail.operations %}
-    <li>
-      <a href="/operations/{{ op.operation_id }}?return_to={{ rt }}">
-        <span class="op-date">{{ op.operation_date | frdate }}</span>
-        <span class="op-desc">
-          {{ op.description }}
-          {% if op.cross_month_annotation %}<em class="annot">({{ op.cross_month_annotation }})</em>{% endif %}
-          {% if op.link_target_name %}<span class="link-tag">→ {{ op.link_target_name }}</span>{% endif %}
-        </span>
-        <span class="op-amount {{ 'positive' if op.amount > 0 else 'negative' }}">{{ op.amount | signed_eur(currency) }}</span>
-      </a>
+    <li class="attributed-row" data-href="/operations/{{ op.operation_id }}?return_to={{ rt }}">
+      <span class="op-date">{{ op.operation_date | frdate }}</span>
+      <span class="op-desc">
+        <a href="/operations/{{ op.operation_id }}?return_to={{ rt }}">{{ op.description }}</a>
+        {% if op.cross_month_annotation %}<em class="annot">({{ op.cross_month_annotation }})</em>{% endif %}
+        {% if op.link_target_name %}
+          {% set open_target = (
+               _("Open the linked budget {name}") if op.link_target_kind == 'budget'
+               else _("Open the linked planned operation {name}")
+             ).format(name=op.link_target_name) %}
+          <a class="link-tag" href="/targets/{{ op.link_target_kind }}/{{ op.link_target_id }}?return_to={{ rt }}"
+             aria-label="{{ open_target }}" title="{{ open_target }}">→ {{ op.link_target_name }}</a>
+        {% endif %}
+      </span>
+      <span class="op-amount {{ 'positive' if op.amount > 0 else 'negative' }}">{{ op.amount | signed_eur(currency) }}</span>
     </li>
     {% endfor %}
   </ul>

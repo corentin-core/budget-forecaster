@@ -6,7 +6,7 @@ The ranking itself belongs to the link-candidates service; this module fetches
 what it scores and dresses the result for the templates.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import date, timedelta
 from typing import NamedTuple, Protocol, TypeVar
 
@@ -183,10 +183,16 @@ def build_iterations(
     return window_label, iterations, best_iso
 
 
+def target_display_name(names: Mapping[int, str], target_id: int) -> str:
+    """Name a link target, falling back to its id when it no longer exists."""
+    return names.get(target_id, f"#{target_id}")
+
+
 class CurrentLink(NamedTuple):
     """The operation's existing link, for display on the link page."""
 
     kind: str
+    target_id: int
     target_name: str
 
 
@@ -195,13 +201,19 @@ def current_link(app: ApplicationService, operation_id: int) -> CurrentLink | No
     if (link := app.get_link_for_operation(operation_id)) is None:
         return None
     if link.target_type is LinkType.BUDGET:
-        names = {b.id: b.description for b in app.get_all_budgets()}
+        names = {b.id: b.description for b in app.get_all_budgets() if b.id is not None}
         kind = "budget"
     else:
-        names = {p.id: p.description for p in app.get_all_planned_operations()}
+        names = {
+            p.id: p.description
+            for p in app.get_all_planned_operations()
+            if p.id is not None
+        }
         kind = "planned"
     return CurrentLink(
-        kind=kind, target_name=names.get(link.target_id, f"#{link.target_id}")
+        kind=kind,
+        target_id=link.target_id,
+        target_name=target_display_name(names, link.target_id),
     )
 
 
@@ -258,8 +270,12 @@ def _existing_links(
     app: ApplicationService, target: PlannedOperation
 ) -> dict[OperationId, ExistingLink]:
     """Describe every operation's current link, for the candidate badges."""
-    budgets = {b.id: b.description for b in app.get_all_budgets()}
-    planned = {p.id: p.description for p in app.get_all_planned_operations()}
+    budgets = {b.id: b.description for b in app.get_all_budgets() if b.id is not None}
+    planned = {
+        p.id: p.description
+        for p in app.get_all_planned_operations()
+        if p.id is not None
+    }
     horizon_start = app.balance_date - LATE_HORIZON
     month_start = date.today().replace(day=1)
     described = {}
@@ -268,7 +284,7 @@ def _existing_links(
         names = budgets if is_budget else planned
         floor = month_start if is_budget else horizon_start
         described[link.operation_unique_id] = ExistingLink(
-            target_name=names.get(link.target_id, f"#{link.target_id}"),
+            target_name=target_display_name(names, link.target_id),
             iteration_date=link.iteration_date,
             is_budget=is_budget,
             is_same_target=not is_budget and link.target_id == target.id,

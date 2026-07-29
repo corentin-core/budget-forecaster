@@ -28,6 +28,8 @@ class OperationRow(NamedTuple):
 
     operation: HistoricOperation
     linked: bool
+    target_kind: str  # "budget" | "planned", empty when unlinked
+    target_id: int
     target_name: str
 
 
@@ -95,19 +97,29 @@ def _query(filters: LedgerFilters) -> str:
 def _rows(
     app: ApplicationService, operations: tuple[HistoricOperation, ...]
 ) -> tuple[OperationRow, ...]:
-    budgets = {b.id: b.description for b in app.get_all_budgets()}
-    planned = {p.id: p.description for p in app.get_all_planned_operations()}
+    budgets = {b.id: b.description for b in app.get_all_budgets() if b.id is not None}
+    planned = {
+        p.id: p.description
+        for p in app.get_all_planned_operations()
+        if p.id is not None
+    }
     links = {link.operation_unique_id: link for link in app.get_all_links()}
     rows = []
     for operation in operations:
         if (link := links.get(operation.unique_id)) is None:
-            rows.append(OperationRow(operation, False, ""))
+            rows.append(OperationRow(operation, False, "", 0, ""))
             continue
-        if link.target_type is LinkType.BUDGET:
-            name = budgets.get(link.target_id, "")
-        else:
-            name = planned.get(link.target_id, "")
-        rows.append(OperationRow(operation, True, name))
+        is_budget = link.target_type is LinkType.BUDGET
+        names = budgets if is_budget else planned
+        rows.append(
+            OperationRow(
+                operation,
+                True,
+                "budget" if is_budget else "planned",
+                link.target_id,
+                linking.target_display_name(names, link.target_id),
+            )
+        )
     return tuple(rows)
 
 
@@ -287,6 +299,7 @@ async def categorize_one(
     operation_id: int,
     request: Request,
     app: ApplicationService = Depends(get_app_service),
+    filters: LedgerFilters = Depends(get_filters),
 ) -> Response:
     """Categorize a single operation inline; swap its row + refresh the badge."""
     form = await request.form()
@@ -303,6 +316,7 @@ async def categorize_one(
         row=row,
         categories=sorted_categories(),
         currency=app.currency,
+        query=_query(filters),
     )
 
 

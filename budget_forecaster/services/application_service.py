@@ -80,6 +80,9 @@ logger = logging.getLogger(__name__)
 class UpcomingIteration(NamedTuple):
     """A single upcoming iteration of a planned operation."""
 
+    planned_operation_id: PlannedOperationId | None
+    """None for an operation that was never saved, so it cannot be opened."""
+
     iteration_date: date
     description: str
     amount: float
@@ -130,6 +133,7 @@ def get_upcoming_iterations(
                 continue
             iterations.append(
                 UpcomingIteration(
+                    planned_operation_id=op.id,
                     iteration_date=iteration_date,
                     description=op.description,
                     amount=op.amount,
@@ -177,6 +181,7 @@ def _postponed_into_window(
             continue
         moved.append(
             UpcomingIteration(
+                planned_operation_id=op.id,
                 iteration_date=moved_to,
                 description=op.description,
                 amount=op.amount,
