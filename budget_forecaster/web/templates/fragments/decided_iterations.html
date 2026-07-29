@@ -19,7 +19,7 @@
                 hx-swap="outerHTML">{{ _("Undo the decision") }}</button>
       </div>
       {% if item.decided_at %}
-      <div class="decided-when">{{ _("decided on {date}").format(date=item.decided_at | frdate) }}</div>
+      <div class="decided-when">{{ _("decided on {date}").format(date=item.decided_at | frdatetime) }}</div>
       {% endif %}
     </li>
     {% endfor %}

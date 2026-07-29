@@ -1,6 +1,6 @@
 <li class="overdue-item" id="overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}">
   <div class="overdue-head">
-    <a class="overdue-desc" href="/operations?q={{ row.description | urlencode }}"
+    <a class="overdue-desc" href="/operations?search={{ row.description | urlencode }}"
        title="{{ _('Open the ledger filtered on this payment') }}">{{ row.description }} ›</a>
     <span class="overdue-amount {{ 'positive' if row.amount > 0 else 'negative' }}">
       {{ row.amount | signed_eur(row.currency) }}
@@ -45,3 +45,4 @@
   </div>
   {% endif %}
 </li>
+{% if oob_refresh %}{% include "fragments/margin_oob.html" %}{% endif %}

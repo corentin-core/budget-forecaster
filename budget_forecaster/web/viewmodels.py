@@ -543,7 +543,7 @@ class OverdueRow(NamedTuple):
     """The operation's next own iteration, offered as the postponement default."""
 
     earliest_postpone: date
-    """A postponement must move the iteration forward, never back."""
+    """The floor of the date field: forward of the iteration, and of today."""
 
 
 class OverdueCard(NamedTuple):
@@ -590,9 +590,12 @@ def build_overdue_card(
     """
     balance_date = app.balance_date
     today = date.today()
+    operations = {
+        op.id: op for op in app.get_all_planned_operations() if op.id is not None
+    }
     rows: list[OverdueRow] = []
     for overdue in app.get_overdue_iterations():
-        op = app.get_planned_operation_by_id(overdue.planned_operation_id)
+        op = operations[overdue.planned_operation_id]
         rows.append(
             OverdueRow(
                 planned_operation_id=overdue.planned_operation_id,
@@ -604,7 +607,8 @@ def build_overdue_card(
                 counted_on=overdue.counted_on,
                 postponed_to=overdue.postponed_to,
                 next_iteration=_next_own_iteration(op, max(balance_date, today)),
-                earliest_postpone=overdue.iteration_date + timedelta(days=1),
+                earliest_postpone=max(overdue.iteration_date, today)
+                + timedelta(days=1),
             )
         )
     return OverdueCard(

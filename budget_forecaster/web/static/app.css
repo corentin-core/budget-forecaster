@@ -1094,6 +1094,10 @@ table {
   padding: 0.25rem 0.5rem;
   font-size: 0.8rem;
 }
+/* An author display rule beats the UA [hidden] rule, so say it explicitly. */
+.btn[hidden] {
+  display: none;
+}
 .inline {
   display: inline;
 }
@@ -1820,8 +1824,10 @@ a.overdue-desc:hover {
   margin-left: auto;
 }
 .overdue-actions .btn.small,
+.decided-head .btn.small,
 .postpone-form .btn.small {
-  padding: 0.5rem 0.75rem;
+  min-height: 44px;
+  padding: 0.6rem 0.9rem;
   font-size: 0.85rem;
 }
 .confirm-question {

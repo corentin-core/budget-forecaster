@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
 
 from budget_forecaster.services.application_service import ApplicationService
-from budget_forecaster.web.alerts import swile_reconnect_alert, sync_failure_alert
+from budget_forecaster.web.alerts import sync_is_broken
 from budget_forecaster.web.dependencies import get_app_service
 from budget_forecaster.web.rendering import render_template
 from budget_forecaster.web.viewmodels import (
@@ -19,16 +19,6 @@ router = APIRouter()
 
 _PAGE_SIZE = 10
 _HORIZON_DAYS = 90
-
-
-def _sync_is_broken(request: Request) -> bool:
-    """Whether a sync alert is showing, so the imported data may be incomplete."""
-    repository = request.app.state.repository
-    consent_service = request.app.state.consent_service
-    return (
-        sync_failure_alert(repository, consent_service) is not None
-        or swile_reconnect_alert(repository) is not None
-    )
 
 
 @router.get("/")
@@ -48,7 +38,15 @@ async def home(
         margin=(margin := app.get_available_margin(month_start)),
         margin_status=margin_status(margin),
         health=build_month_health(app, month_start),
-        card=build_overdue_card(app, sync_broken=_sync_is_broken(request)),
+        card=(
+            card := build_overdue_card(
+                app,
+                sync_broken=sync_is_broken(
+                    request.app.state.repository, request.app.state.consent_service
+                ),
+            )
+        ),
+        overdue_count=len(card.rows),
         uncategorized=len(app.get_uncategorized_operations()),
         upcoming=upcoming[:_PAGE_SIZE],
         upcoming_next=_PAGE_SIZE if len(upcoming) > _PAGE_SIZE else None,

@@ -1971,8 +1971,8 @@ msgstr "prochaine échéance"
 msgid "not counted"
 msgstr "non comptée"
 
-msgid "not counted: {n}"
-msgstr "non comptées : {n}"
+msgid "out of the forecast: {n}"
+msgstr "hors prévisionnel : {n}"
 
 msgid "overdue since {date}"
 msgstr "en retard depuis le {date}"
@@ -1997,3 +1997,12 @@ msgstr "reportée au {date}"
 
 msgid "decided on {date}"
 msgstr "décidé le {date}"
+
+msgid "Synchronize"
+msgstr "Synchroniser"
+
+msgid "all settled"
+msgstr "tout est traité"
+
+msgid "no longer counted"
+msgstr "plus comptée"
