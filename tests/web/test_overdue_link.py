@@ -108,6 +108,13 @@ def _margin(client: TestClient) -> float:
     return float(raw.replace("EUR", "").replace("€", "").replace(",", "."))
 
 
+def _decided_section(client: TestClient, op_id: int) -> str:
+    """The decided-occurrences markup on a planned operation's edit page."""
+    html = client.get(f"/targets/planned/{op_id}").text
+    start = html.find('class="card decided-card"')
+    return html[start : html.find("</section>", start)] if start > 0 else ""
+
+
 def _link_target(client: TestClient, operation_id: int) -> str:
     """What the operation's detail page says counts it, or an empty string."""
     html = client.get(f"/operations/{operation_id}").text
@@ -349,6 +356,24 @@ class TestDecisionBecomesMoot:
         client.post(f"/overdue/{picker.op_id}/{picker.iteration}/skip")
 
         assert client.get(picker.path).status_code == 404
+
+    def test_linking_drops_the_decision_it_supersedes(
+        self, client: TestClient, picker: Picker
+    ) -> None:
+        """A decision left behind would show an undo that undoes nothing."""
+        candidate = picker.candidate_ids(picker.page())[0]
+        postponed = date.today() + timedelta(days=20)
+        client.post(
+            f"/overdue/{picker.op_id}/{picker.iteration}/postpone",
+            data={"postponed_to": postponed.isoformat()},
+        )
+        assert postponed.strftime("%d/%m/%Y") in _decided_section(client, picker.op_id)
+
+        _link_via_operation(
+            client, candidate, "planned", picker.op_id, picker.iteration
+        )
+
+        assert _decided_section(client, picker.op_id) == ""
 
     def test_restoring_a_decision_cannot_resurrect_a_linked_iteration(
         self, client: TestClient, picker: Picker
