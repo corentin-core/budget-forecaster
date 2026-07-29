@@ -34,7 +34,10 @@ class EnableBankingSource(ApiBankSource):
             for raw in raw_transactions
             if (operation := map_transaction(raw, operation_factory)) is not None
         ]
-        self._balance = select_closing_booked_balance(
-            self._client.get_balances(account_uid)
-        )
-        self._export_date = date.today()
+        closing = select_closing_booked_balance(self._client.get_balances(account_uid))
+        if closing is not None:
+            self._balance = closing.amount
+            self._export_date = closing.reference_date or date.today()
+        else:
+            self._balance = None
+            self._export_date = date.today()

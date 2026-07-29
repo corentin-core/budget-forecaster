@@ -1,7 +1,7 @@
 """Mapping from Enable Banking payloads to domain objects."""
 
 from datetime import date
-from typing import Any
+from typing import Any, NamedTuple
 
 from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.types import Category
@@ -9,6 +9,18 @@ from budget_forecaster.domain.operation.historic_operation import HistoricOperat
 from budget_forecaster.services.operation.historic_operation_factory import (
     HistoricOperationFactory,
 )
+
+
+class ClosingBalance(NamedTuple):
+    """A closing booked balance and the date it is valid at.
+
+    reference_date is None when the payload omits it; callers fall back to the
+    fetch date then.
+    """
+
+    amount: float
+    reference_date: date | None
+
 
 # Transaction status: only booked transactions are imported.
 _BOOKED = "BOOK"
@@ -35,11 +47,19 @@ def map_transaction(
     )
 
 
-def select_closing_booked_balance(balances: tuple[dict[str, Any], ...]) -> float | None:
-    """Return the closing booked (CLBD) balance amount, or None if absent."""
+def select_closing_booked_balance(
+    balances: tuple[dict[str, Any], ...]
+) -> ClosingBalance | None:
+    """Return the closing booked (CLBD) balance with its as-of date, or None."""
     for balance in balances:
         if balance.get("balance_type") == _CLOSING_BOOKED:
-            return float(balance["balance_amount"]["amount"])
+            reference_date = balance.get("reference_date")
+            return ClosingBalance(
+                amount=float(balance["balance_amount"]["amount"]),
+                reference_date=date.fromisoformat(reference_date)
+                if reference_date
+                else None,
+            )
     return None
 
 

@@ -155,6 +155,98 @@ class TestUpdateAccount:
 
         assert result.account.balance == 1000.0
 
+
+class TestAuthoritativeBalance:
+    """An authoritative (API) snapshot overwrites the stored balance."""
+
+    def test_same_day_resync_overwrites(self) -> None:
+        """A second sync on the stored balance_date still adopts the new value."""
+        current = _make_account(balance=8.98, balance_date=date(2025, 1, 20))
+        new_params = AccountParameters(
+            name="BNP",
+            balance=206.98,
+            currency="EUR",
+            balance_date=date(2025, 1, 20),
+            operations=(),
+            authoritative=True,
+        )
+
+        result = AggregatedAccount.update_account(current, new_params)
+
+        assert result.account.balance == 206.98
+        assert result.account.balance_date == date(2025, 1, 20)
+
+    def test_non_authoritative_same_day_keeps_stale(self) -> None:
+        """A file import on the stored balance_date does not overwrite."""
+        current = _make_account(balance=8.98, balance_date=date(2025, 1, 20))
+        new_params = AccountParameters(
+            name="BNP",
+            balance=206.98,
+            currency="EUR",
+            balance_date=date(2025, 1, 20),
+            operations=(),
+        )
+
+        result = AggregatedAccount.update_account(current, new_params)
+
+        assert result.account.balance == 8.98
+
+    def test_earlier_as_of_date_heals_balance_and_date_in_lockstep(self) -> None:
+        """A snapshot dated earlier than the stored date still wins on both.
+
+        Heals a row wrongly stamped with a later date: the balance and its
+        as-of date move together, so the pair stays consistent.
+        """
+        current = _make_account(balance=607.53, balance_date=date(2025, 1, 20))
+        new_params = AccountParameters(
+            name="BNP",
+            balance=582.53,
+            currency="EUR",
+            balance_date=date(2025, 1, 19),
+            operations=(),
+            authoritative=True,
+        )
+
+        result = AggregatedAccount.update_account(current, new_params)
+
+        assert result.account.balance == 582.53
+        assert result.account.balance_date == date(2025, 1, 19)
+
+    def test_none_balance_keeps_stored_value(self) -> None:
+        """An authoritative source with no balance never overwrites with None."""
+        current = _make_account(balance=1000.0, balance_date=date(2025, 1, 20))
+        new_params = AccountParameters(
+            name="BNP",
+            balance=None,
+            currency="EUR",
+            balance_date=date(2025, 1, 21),
+            operations=(),
+            authoritative=True,
+        )
+
+        result = AggregatedAccount.update_account(current, new_params)
+
+        assert result.account.balance == 1000.0
+
+    def test_operations_still_merge(self) -> None:
+        """Adopting the balance does not skip the operation merge."""
+        existing_op = _make_operation(1, "OP1", -50.0, date(2025, 1, 10))
+        current = _make_account(balance=8.98, operations=(existing_op,))
+        new_op = _make_operation(2, "OP2", -30.0, date(2025, 1, 12))
+        new_params = AccountParameters(
+            name="BNP",
+            balance=206.98,
+            currency="EUR",
+            balance_date=date(2025, 1, 15),
+            operations=(new_op,),
+            authoritative=True,
+        )
+
+        result = AggregatedAccount.update_account(current, new_params)
+
+        assert len(result.account.operations) == 2
+        assert result.account.balance == 206.98
+
     def test_balance_date_derived_from_operations_when_none(self) -> None:
         """When balance_date is None, it is derived from operations."""
         current = _make_account(balance=1000.0, balance_date=date(2025, 1, 5))
