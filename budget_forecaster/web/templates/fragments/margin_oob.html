@@ -1,3 +1,6 @@
-{# Out-of-band refresh of the margin hero and the overdue nav badges. #}
-{% with oob = true %}{% include "fragments/margin_hero.html" %}{% endwith %}
+{# Out-of-band refresh of every figure a decision moves. #}
+{% with oob = true %}
+  {% include "fragments/margin_hero.html" %}
+  {% include "fragments/overdue_head.html" %}
+{% endwith %}
 {% include "fragments/overdue_badge_oob.html" %}

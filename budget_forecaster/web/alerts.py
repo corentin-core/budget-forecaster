@@ -83,3 +83,17 @@ def swile_reconnect_alert(
     if not recent or recent[0].status is not SyncRunStatus.FAILED:
         return None
     return SwileReconnectAlert(recent[0].ran_at, recent[0].error)
+
+
+def sync_is_broken(
+    repository: RepositoryInterface, consent_service: ConsentService | None
+) -> bool:
+    """Whether a sync alert is showing, so the imported data may be incomplete.
+
+    Decisions on overdue payments are refused in that state: an operation that
+    did happen may simply be missing.
+    """
+    return (
+        sync_failure_alert(repository, consent_service) is not None
+        or swile_reconnect_alert(repository) is not None
+    )

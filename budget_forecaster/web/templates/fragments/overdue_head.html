@@ -1,0 +1,9 @@
+<div class="card-head" id="overdue-head" {{ 'hx-swap-oob="true"' | safe if oob }}>
+  <h2>{{ _("Overdue payments") }}{% if card.rows %} ({{ card.rows | length }}){% endif %}</h2>
+  {% set uncounted = card.rows | rejectattr("counted_on") | list | length %}
+  {% if uncounted %}
+    <span class="card-note">{{ _("out of the forecast: {n}").format(n=uncounted) }}</span>
+  {% elif not card.rows %}
+    <span class="card-note">{{ _("all settled") }}</span>
+  {% endif %}
+</div>
