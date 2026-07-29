@@ -40,6 +40,11 @@ def _one_time(iteration: date) -> PlannedOperation:
     )
 
 
+def test_the_late_horizon_is_a_month() -> None:
+    """The documented value, pinned: the user docs and the design both say a month."""
+    assert LATE_HORIZON == timedelta(days=31)
+
+
 class TestUndecidedIterations:
     """Without a decision, only the age decides."""
 
@@ -211,3 +216,39 @@ class TestDecidedIterations:
             7: {first.iteration_date: first},
             9: {second.iteration_date: second},
         }
+
+
+class TestWalkWindow:
+    """The `since` bound keeps the walk off an operation's whole history."""
+
+    def test_iterations_before_the_window_are_skipped(self) -> None:
+        """A monthly operation running since 2015 must not yield a hundred entries."""
+        op = _monthly(date(2015, 1, 5))
+        past = derive_past_iterations(
+            op, _BALANCE_DATE, set(), {}, since=_BALANCE_DATE - LATE_HORIZON
+        )
+        assert [entry.iteration_date for entry in past] == [date(2025, 3, 5)]
+
+    def test_a_decision_before_the_window_is_still_returned(self) -> None:
+        """The bound limits the search, never which decisions are honoured."""
+        op = _monthly(date(2015, 1, 5))
+        resolutions = index_resolutions(
+            (
+                IterationResolution(
+                    planned_operation_id=7,
+                    iteration_date=date(2024, 6, 5),
+                    action=IterationAction.POSTPONE,
+                    postponed_to=date(2025, 4, 5),
+                ),
+            )
+        )
+        past = derive_past_iterations(
+            op,
+            _BALANCE_DATE,
+            set(),
+            resolutions[7],
+            since=_BALANCE_DATE - LATE_HORIZON,
+        )
+        decided = [entry for entry in past if entry.iteration_date == date(2024, 6, 5)]
+        assert len(decided) == 1
+        assert decided[0].state is IterationState.POSTPONED

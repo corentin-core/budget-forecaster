@@ -22,8 +22,9 @@ class IterationResolution:
 
     Attributes:
         iteration_date: The iteration's own planned date; identifies it.
+            A plain date: a datetime is refused.
         postponed_to: Required for a postponement, forbidden otherwise.
-        decided_at: Aware UTC; None until the row is read back from storage.
+        decided_at: Aware UTC; None until the decision is stored.
     """
 
     planned_operation_id: PlannedOperationId
@@ -34,6 +35,15 @@ class IterationResolution:
     decided_at: datetime | None = None
 
     def __post_init__(self) -> None:
+        # datetime subclasses date, so it type-checks everywhere and then stores an
+        # ISO string that date.fromisoformat refuses to read back.
+        for field, value in (
+            ("iteration_date", self.iteration_date),
+            ("postponed_to", self.postponed_to),
+        ):
+            if isinstance(value, datetime):
+                raise TypeError(f"{field} must be a date, got a datetime")
+
         if self.action is IterationAction.POSTPONE:
             if self.postponed_to is None:
                 raise ValueError("A postponed iteration needs a new date")

@@ -7,8 +7,9 @@ The forecast (through the actualizer) and the overdue list share this derivation
 so both agree on what "late" means.
 """
 
+from collections.abc import Mapping, Set
 from datetime import date, timedelta
-from typing import AbstractSet, Final, Mapping, NamedTuple
+from typing import Final, NamedTuple
 
 from budget_forecaster.core.types import (
     IterationAction,
@@ -40,14 +41,15 @@ class PastIteration(NamedTuple):
     """The date the forecast counts the amount on; None when it is not counted."""
 
     postponed_to: date | None = None
-    """The date the user chose, kept once it has passed and the iteration is late again."""
+    """The date the user chose, whatever the state that choice ended up producing."""
 
 
 def derive_past_iterations(
     planned_operation: PlannedOperation,
     balance_date: date,
-    matched_iterations: AbstractSet[date],
+    matched_iterations: Set[date],
     resolutions: Mapping[IterationDate, IterationResolution],
+    since: date | None = None,
 ) -> tuple[PastIteration, ...]:
     """Derive the state of every unmatched iteration due by the balance date.
 
@@ -56,6 +58,9 @@ def derive_past_iterations(
         balance_date: The account's balance date.
         matched_iterations: Iteration dates already linked to an operation.
         resolutions: The user's decisions, keyed by iteration date.
+        since: Oldest iteration to look at. A decision is always honoured, however
+            old the iteration it applies to. Defaults to the operation's own start,
+            which is unbounded for an operation backdated by years.
 
     Returns:
         The unmatched past iterations, oldest first.
@@ -65,11 +70,16 @@ def derive_past_iterations(
 
     horizon_start = balance_date - LATE_HORIZON
     late_date = balance_date + timedelta(days=1)
+    window_start = min([since, *resolutions]) if since is not None else None
     past: list[PastIteration] = []
 
-    for date_range in planned_operation.date_range.iterate_over_date_ranges():
+    for date_range in planned_operation.date_range.iterate_over_date_ranges(
+        from_date=window_start
+    ):
         if (iteration_date := date_range.start_date) > balance_date:
             break
+        if window_start is not None and iteration_date < window_start:
+            continue
         if iteration_date in matched_iterations:
             continue
 

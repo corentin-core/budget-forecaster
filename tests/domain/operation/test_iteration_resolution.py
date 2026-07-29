@@ -1,6 +1,6 @@
 """Tests for the IterationResolution invariants."""
 
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 
@@ -63,3 +63,26 @@ class TestSkipInvariants:
             action=IterationAction.SKIP,
         )
         assert resolution.postponed_to is None
+
+
+class TestDateTypeGuard:
+    """A datetime would poison every later read of the table."""
+
+    def test_datetime_iteration_date_is_refused(self) -> None:
+        """datetime subclasses date, so nothing else would catch it."""
+        with pytest.raises(TypeError, match="iteration_date must be a date"):
+            IterationResolution(
+                planned_operation_id=1,
+                iteration_date=datetime(2025, 3, 5, 12, 0),
+                action=IterationAction.SKIP,
+            )
+
+    def test_datetime_postponed_to_is_refused(self) -> None:
+        """Same guard on the chosen date."""
+        with pytest.raises(TypeError, match="postponed_to must be a date"):
+            IterationResolution(
+                planned_operation_id=1,
+                iteration_date=date(2025, 3, 5),
+                action=IterationAction.POSTPONE,
+                postponed_to=datetime(2025, 4, 2, 9, 30),
+            )

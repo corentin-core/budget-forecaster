@@ -21,6 +21,7 @@ from budget_forecaster.domain.operation.iteration_resolution import IterationRes
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.services.forecast.iteration_lifecycle import (
+    LATE_HORIZON,
     PastIteration,
     derive_past_iterations,
     index_resolutions,
@@ -109,14 +110,21 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
 
         Heuristic matching happens through automatic link creation during import,
         so an iteration without a link is one nothing was found for.
+
+        Iterations older than the late horizon are left out: they are not counted
+        either way, and walking an operation's whole history on every recompute
+        would cost more the longer it has existed. Decided ones are always
+        included, however old.
         """
         if planned_operation.id is None:
             return ()
+        balance_date = self._account.balance_date
         return derive_past_iterations(
             planned_operation,
-            self._account.balance_date,
+            balance_date,
             linked_iterations,
             self._resolutions.get(planned_operation.id, {}),
+            since=balance_date - LATE_HORIZON,
         )
 
     def _handle_past_iterations(
@@ -134,17 +142,18 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         if not past_iterations:
             return ()
 
-        postponed_date = self._account.balance_date + timedelta(days=1)
-
         result: list[PlannedOperation] = [
             planned_operation.replace(date_range=SingleDay(past.effective_date))
             for past in past_iterations
             if past.effective_date is not None
         ]
 
-        # Advance the periodic operation to start after the postponed date
+        # Resume the recurrence right after the balance date, so an iteration due
+        # the very next day is still forecast on its own date.
         if (
-            next_dr := planned_operation.date_range.next_date_range(postponed_date)
+            next_dr := planned_operation.date_range.next_date_range(
+                self._advance_floor(planned_operation)
+            )
         ) is not None:
             result.append(
                 planned_operation.replace(
@@ -162,6 +171,23 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         )
 
         return tuple(result)
+
+    def _advance_floor(self, planned_operation: PlannedOperation) -> date:
+        """The date the recurrence resumes after.
+
+        The balance date, pushed past any later iteration a linked operation has
+        already settled: an operation posted before its planned date settles that
+        iteration even though the date is still ahead.
+        """
+        floor = self._account.balance_date
+        if planned_operation.id is None:
+            return floor
+        for iteration_date in self._get_linked_iterations(planned_operation):
+            if iteration_date > floor and self._is_iteration_actualized(
+                planned_operation.id, iteration_date
+            ):
+                floor = iteration_date
+        return floor
 
     def _is_iteration_actualized(
         self, planned_op_id: PlannedOperationId, iteration_date: IterationDate

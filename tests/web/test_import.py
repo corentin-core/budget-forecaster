@@ -13,7 +13,11 @@ from budget_forecaster.web.routes import settings as settings_route
 
 _EXAMPLES = Path(__file__).resolve().parents[2] / "examples" / "data"
 _BNP_EXPORT = _EXAMPLES / "bnp-export-demo.xls"
-_SWILE_EXPORT = _EXAMPLES / "swile-export-2026-03-04.zip"
+# The demo generator stamps the Swile export with its generation date, so find it
+# by pattern: pinning the date would break the suite on every regeneration.
+_SWILE_EXPORT = next(
+    _EXAMPLES.glob("swile-export-*.zip"), _EXAMPLES / "swile-export.zip"
+)
 
 
 def _upload(client: TestClient, name: str, data: bytes) -> str:

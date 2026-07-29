@@ -9,6 +9,7 @@ from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.date_range import RecurringDateRange
 from budget_forecaster.core.types import (
     BudgetId,
+    IterationAction,
     IterationDate,
     LinkType,
     MatcherKey,
@@ -23,6 +24,9 @@ from budget_forecaster.infrastructure.persistence.persistent_account import (
     PersistentAccount,
 )
 from budget_forecaster.services.forecast.forecast_service import ForecastService
+from budget_forecaster.services.operation.iteration_resolution_service import (
+    IterationResolutionService,
+)
 from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
 )
@@ -31,19 +35,31 @@ from budget_forecaster.services.use_cases.matcher_cache import MatcherCache
 logger = logging.getLogger(__name__)
 
 
+def _produces_iteration(op: PlannedOperation, iteration_date: date) -> bool:
+    """Whether the operation's date range still yields that iteration."""
+    for date_range in op.date_range.iterate_over_date_ranges(from_date=iteration_date):
+        if date_range.start_date == iteration_date:
+            return True
+        if date_range.start_date > iteration_date:
+            return False
+    return False
+
+
 class ManageTargetsUseCase:
     """CRUD and split operations for planned operations and budgets."""
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         forecast_service: ForecastService,
         persistent_account: PersistentAccount,
         operation_link_service: OperationLinkService,
+        iteration_resolution_service: IterationResolutionService,
         matcher_cache: MatcherCache,
     ) -> None:
         self._forecast_service = forecast_service
         self._persistent_account = persistent_account
         self._operation_link_service = operation_link_service
+        self._iteration_resolution_service = iteration_resolution_service
         self._matcher_cache = matcher_cache
 
     # -------------------------------------------------------------------------
@@ -106,6 +122,8 @@ class ManageTargetsUseCase:
             len(created_links),
             op.id,
         )
+
+        self._drop_orphan_resolutions(updated_op)
 
         return updated_op
 
@@ -283,6 +301,7 @@ class ManageTargetsUseCase:
                 new_op.id,
                 split_date,
             )
+            self._migrate_resolutions_after_split(operation_id, new_op.id, split_date)
 
         logger.info(
             "Split planned operation %d at %s, created new operation %d",
@@ -347,6 +366,61 @@ class ManageTargetsUseCase:
         )
 
         return new_budget
+
+    def _drop_orphan_resolutions(self, op: PlannedOperation) -> None:
+        """Forget decisions whose iteration the operation no longer produces.
+
+        An edited start date or period leaves them behind, where they would keep
+        weighing on a forecast that has no such iteration.
+        """
+        if op.id is None:
+            return
+        for (
+            resolution
+        ) in self._iteration_resolution_service.get_resolutions_for_planned_operation(
+            op.id
+        ):
+            if not _produces_iteration(op, resolution.iteration_date):
+                self._iteration_resolution_service.restore(
+                    op.id, resolution.iteration_date
+                )
+                logger.debug(
+                    "Dropped the decision on %s: planned operation %d no longer "
+                    "iterates there",
+                    resolution.iteration_date,
+                    op.id,
+                )
+
+    def _migrate_resolutions_after_split(
+        self,
+        old_operation_id: PlannedOperationId,
+        new_operation_id: PlannedOperationId,
+        split_date: date,
+    ) -> None:
+        """Move decisions on iterations from split_date onwards to the new operation.
+
+        Left on the terminated operation they would apply to an iteration it no
+        longer has, so a skipped amount would quietly come back.
+        """
+        service = self._iteration_resolution_service
+        for resolution in service.get_resolutions_for_planned_operation(
+            old_operation_id
+        ):
+            if resolution.iteration_date < split_date:
+                continue
+            if resolution.action is IterationAction.POSTPONE:
+                assert resolution.postponed_to is not None
+                service.postpone(
+                    new_operation_id,
+                    resolution.iteration_date,
+                    resolution.postponed_to,
+                    resolution.note,
+                )
+            else:
+                service.skip(
+                    new_operation_id, resolution.iteration_date, resolution.note
+                )
+            service.restore(old_operation_id, resolution.iteration_date)
 
     def _migrate_links_after_split(
         self,
