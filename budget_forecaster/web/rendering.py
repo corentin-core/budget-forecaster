@@ -33,6 +33,7 @@ def render_template(
         "swile_alert": swile_reconnect_alert(request.app.state.repository),
         "today": date.today(),
         "uncat_count": request.app.state.app_service.count_uncategorized_operations(),
+        "overdue_count": request.app.state.app_service.count_overdue_iterations(),
         **context,
     }
     return templates.TemplateResponse(request, name, ctx, status_code=status_code)

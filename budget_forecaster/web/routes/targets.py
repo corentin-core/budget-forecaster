@@ -270,6 +270,11 @@ def _render_edit(
     status_code: int = 200,
 ) -> Response:
     categories = tuple((cat.name, cat.display_name) for cat in sorted_categories())
+    decided = (
+        app.get_iteration_resolutions(form.target_id)
+        if form.is_planned and form.target_id is not None
+        else ()
+    )
     return render_template(
         request,
         "target_edit.html",
@@ -279,5 +284,6 @@ def _render_edit(
         return_to=return_to,
         error=error,
         currency=app.currency,
+        decided=decided,
         status_code=status_code,
     )

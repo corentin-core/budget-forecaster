@@ -513,6 +513,10 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
 
         return tuple(sorted(overdue, key=lambda it: it.iteration_date))
 
+    def count_overdue_iterations(self) -> int:
+        """Count the past iterations awaiting a decision, for the nav badge."""
+        return len(self.get_overdue_iterations())
+
     def get_iteration_resolutions(
         self, op_id: PlannedOperationId
     ) -> tuple[IterationResolution, ...]:
