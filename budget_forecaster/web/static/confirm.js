@@ -4,6 +4,10 @@
 // an optional cancel. Marking the surrounding action strip data-confirm-strip
 // hides the other actions while the question is up. Clusters come back from
 // HTMX swaps, so binding runs again after each one.
+//
+// data-confirm-keep leaves the trigger in place while the question is up, and
+// makes it fold the question back: right when the trigger is what the question
+// is about, such as the operation being linked.
 
 (function () {
   let sequence = 0;
@@ -29,9 +33,10 @@
             return !el.contains(trigger);
           })
         : [];
+      const keepTrigger = holder.hasAttribute('data-confirm-keep');
 
       function open(asking) {
-        trigger.hidden = asking;
+        if (!keepTrigger) trigger.hidden = asking;
         trigger.setAttribute('aria-expanded', String(asking));
         cluster.hidden = !asking;
         siblings.forEach(function (el) {
@@ -40,8 +45,10 @@
       }
 
       trigger.addEventListener('click', function () {
-        open(true);
-        cluster.querySelector('[type=submit]').focus();
+        const asking = cluster.hidden;
+        open(asking);
+        if (asking) cluster.querySelector('[type=submit]').focus();
+        else trigger.focus();
       });
       if (cancel) {
         cancel.addEventListener('click', function () {

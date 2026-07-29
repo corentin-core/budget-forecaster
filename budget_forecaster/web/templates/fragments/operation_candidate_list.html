@@ -6,7 +6,7 @@
 {% set base = "/overdue/" ~ row.planned_operation_id ~ "/" ~ row.iteration_date %}
 <ul class="candidate-list">
   {% for c in candidates %}
-  <li class="candidate-item" data-confirm>
+  <li class="candidate-item" data-confirm data-confirm-keep>
     <button type="button" class="candidate candidate-stacked" data-confirm-trigger>
       <span class="cand-head">
         <span class="cand-desc">{{ c.description }}</span>

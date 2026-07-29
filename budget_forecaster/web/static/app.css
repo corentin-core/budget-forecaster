@@ -1518,6 +1518,10 @@ table {
 .candidate:hover {
   border-color: var(--accent);
 }
+/* An author display rule beats the UA [hidden] rule, so say it explicitly. */
+.candidate[hidden] {
+  display: none;
+}
 .cand-score {
   font-weight: 700;
   min-width: 3rem;
@@ -1572,6 +1576,10 @@ table {
 }
 .cand-badge {
   font-style: italic;
+}
+/* The row stays put while its question is up, so mark which one is asking. */
+.candidate[aria-expanded='true'] {
+  border-color: var(--accent);
 }
 .candidate-item .confirm-cluster {
   display: flex;

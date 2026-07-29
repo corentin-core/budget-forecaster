@@ -1,8 +1,9 @@
 """Link-flow view models: score-ranked candidates and the iteration window.
 
-Both directions live here. From an operation the user picks a target then an
+Both directions are here. From an operation the user picks a target then an
 iteration; from an overdue iteration the user picks the operation that is it.
-The two rank with the same score, so they agree on any single pair.
+The ranking itself belongs to the link-candidates service; this module fetches
+what it scores and dresses the result for the templates.
 """
 
 from datetime import date, timedelta
@@ -17,12 +18,16 @@ from budget_forecaster.domain.operation.operation_range import OperationRange
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.services.operation.link_candidates import (
+    CANDIDATE_WINDOW,
+    AmountMatch,
+    rank_operations,
+    rank_targets,
+)
 from budget_forecaster.services.operation.operation_link_service import (
     compute_match_score,
 )
 from budget_forecaster.services.operation.operation_service import OperationFilter
-
-_SCORE_WINDOW = timedelta(days=60)  # look this far around the op for the best score
 
 
 class Candidate(NamedTuple):
@@ -45,23 +50,11 @@ class Iteration(NamedTuple):
     score: float
 
 
-def _best_score(operation: HistoricOperation, target: OperationRange) -> float:
-    best = 0.0
-    start = operation.operation_date - _SCORE_WINDOW
-    for iteration in target.date_range.iterate_over_date_ranges(start):
-        if iteration.start_date > operation.operation_date + _SCORE_WINDOW:
-            break
-        best = max(best, compute_match_score(operation, target, iteration.start_date))
-    return best
-
-
-def _reason(operation: HistoricOperation, target: OperationRange) -> str:
-    if abs(float(operation.amount)) == abs(float(target.amount)):
+def _reason(match: AmountMatch) -> str:
+    """The hint shown next to a candidate, empty when the amount says nothing."""
+    if match is AmountMatch.EXACT:
         return _("same amount")
-    if (
-        abs(abs(float(operation.amount)) - abs(float(target.amount)))
-        <= abs(float(target.amount)) * 0.05
-    ):
+    if match is AmountMatch.CLOSE:
         return _("close amount")
     return ""
 
@@ -78,21 +71,18 @@ def build_candidates(
         targets = app.get_all_budgets()
         kind = "budget"
 
-    candidates = [
+    return tuple(
         Candidate(
             kind=kind,
-            target_id=t.id,
-            description=t.description,
-            amount=float(t.amount),
-            category_key=t.category.name,
-            score=_best_score(operation, t),
-            reason=_reason(operation, t),
+            target_id=scored.target_id,
+            description=scored.target.description,
+            amount=float(scored.target.amount),
+            category_key=scored.target.category.name,
+            score=scored.score,
+            reason=_reason(scored.amount_match),
         )
-        for t in targets
-        if t.id is not None
-    ]
-    candidates.sort(key=lambda c: c.score, reverse=True)
-    return tuple(candidates)
+        for scored in rank_targets(operation, targets)
+    )
 
 
 _MIN_SCORE = 15.0  # hide weaker candidates behind "show all"
@@ -221,13 +211,6 @@ def target_object(
 # The other direction: from an iteration, the operations that could be it
 # -----------------------------------------------------------------------------
 
-_CANDIDATE_WINDOW = timedelta(days=60)
-"""How far either side of the iteration the default candidate list reaches.
-
-A search escapes it: someone who remembers the label and gets nothing back
-concludes the operation is absent.
-"""
-
 
 class ExistingLink(NamedTuple):
     """What already counts a candidate operation, and what it would give up."""
@@ -272,11 +255,6 @@ def _existing_links(
     return described
 
 
-def _same_sign(operation: HistoricOperation, target: PlannedOperation) -> bool:
-    """Whether both are expenses or both are incomes."""
-    return (float(operation.amount) < 0) == (float(target.amount) < 0)
-
-
 def build_operation_candidates(
     app: ApplicationService,
     target: PlannedOperation,
@@ -300,32 +278,25 @@ def build_operation_candidates(
         criteria = OperationFilter(search_text=query)
     else:
         criteria = OperationFilter(
-            date_from=iteration_date - _CANDIDATE_WINDOW,
-            date_to=iteration_date + _CANDIDATE_WINDOW,
+            date_from=iteration_date - CANDIDATE_WINDOW,
+            date_to=iteration_date + CANDIDATE_WINDOW,
         )
     links = _existing_links(app, target)
 
-    candidates = [
+    return tuple(
         OperationCandidate(
-            operation_id=operation.unique_id,
-            operation_date=operation.operation_date,
-            description=operation.description,
-            amount=float(operation.amount),
-            score=compute_match_score(operation, target, iteration_date),
-            reason=_reason(operation, target),
-            existing=links.get(operation.unique_id),
+            operation_id=scored.operation.unique_id,
+            operation_date=scored.operation.operation_date,
+            description=scored.operation.description,
+            amount=float(scored.operation.amount),
+            score=scored.score,
+            reason=_reason(scored.amount_match),
+            existing=links.get(scored.operation.unique_id),
         )
-        for operation in app.get_operations(criteria)
-        if _same_sign(operation, target)
-    ]
-    candidates.sort(
-        key=lambda c: (
-            -c.score,
-            abs((c.operation_date - iteration_date).days),
-            c.operation_id,
+        for scored in rank_operations(
+            target, iteration_date, app.get_operations(criteria)
         )
     )
-    return tuple(candidates)
 
 
 _MIN_OPERATION_SCORE = 55.0
