@@ -1,6 +1,12 @@
 database_path: ./demo.db
 account_name: bnp
 account_currency: EUR
+language: fr
 inbox_path: ./data
 backup:
   enabled: false
+# Throwaway credentials so the demo starts with one command. The password is
+# "demo"; never reuse this pair for a deployment holding real data.
+web:
+  secret_key: demo-only-not-a-secret
+  password_hash: pbkdf2_sha256$480000$Vc7rpcbpOPt1G7VSSyv0yA==$qm3Dh9PjBihsS8rK01UG3G4OvZOcPveEfn9BzTfyzgU=

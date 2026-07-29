@@ -1,0 +1,28 @@
+{% if decided %}
+<section class="card decided-card">
+  <div class="card-head"><h2>{{ _("Decided occurrences") }}</h2></div>
+  <ul class="decided-list">
+    {% for item in decided %}
+    <li id="decided-{{ item.planned_operation_id }}-{{ item.iteration_date }}">
+      <div class="decided-head">
+        <span class="decided-what">
+          {{ item.iteration_date | frdate }} ·
+          {%- if item.postponed_to %}
+            {{ _("postponed to {date}").format(date=item.postponed_to | frdate) }}
+          {%- else %}
+            {{ _("not counted") }}
+          {%- endif %}
+        </span>
+        <button class="btn small" type="button"
+                hx-post="/overdue/{{ item.planned_operation_id }}/{{ item.iteration_date }}/restore"
+                hx-target="#decided-{{ item.planned_operation_id }}-{{ item.iteration_date }}"
+                hx-swap="outerHTML">{{ _("Undo the decision") }}</button>
+      </div>
+      {% if item.decided_at %}
+      <div class="decided-when">{{ _("decided on {date}").format(date=item.decided_at | frdate) }}</div>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}

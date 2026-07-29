@@ -142,6 +142,21 @@ PLANNED_OPS: list[dict] = [
     },
 ]
 
+# A recurring direct debit that never went through in M-1: its iteration is late
+# and still weighs on the forecast until the user decides what to do with it.
+MISSED_IN_M_MINUS_1 = "Home insurance"
+
+# A one-time expense nobody ever paid, old enough to be past the late horizon:
+# no longer counted, still reported as overdue.
+ONE_TIME_UNPAID = {
+    "desc": "Plumber deposit",
+    "amount": -180.00,
+    "category": Category.HOUSE_WORKS,
+    "month": M_MINUS_2,
+    "day": 20,
+    "hints": ["PLUMBER DEPOSIT"],
+}
+
 ONE_TIME_PAST = {
     "desc": "Washing machine repair",
     "amount": -400.00,
@@ -244,9 +259,15 @@ def _vary_date(base: date, days: int = 2) -> date:
 def _generate_planned_op_operations(
     month_start: date,
 ) -> list[tuple[HistoricOperation, dict]]:
-    """Generate one operation per planned op for the given month."""
+    """Generate one operation per planned op for the given month.
+
+    One debit is deliberately absent from M-1 so the demo carries a late
+    iteration awaiting a decision.
+    """
     ops: list[tuple[HistoricOperation, dict]] = []
     for po in PLANNED_OPS:
+        if month_start == M_MINUS_1 and po["desc"] == MISSED_IN_M_MINUS_1:
+            continue
         day = min(po["day"], monthrange(month_start.year, month_start.month)[1])
         op_date = _vary_date(month_start.replace(day=day))
         amount = _vary_amount(po["amount"], 0.02)
@@ -605,6 +626,26 @@ def _create_planned_operations(
         approximation_amount_ratio=0.1,
     )
     past_one_time_id = repo.upsert_planned_operation(past_planned)
+
+    # One-time never paid, in M-2: past the late horizon, so no longer counted
+    up = ONE_TIME_UNPAID
+    unpaid_planned = PlannedOperation(
+        record_id=None,
+        description=up["desc"],
+        amount=Amount(up["amount"]),
+        category=up["category"],
+        date_range=RecurringDay(
+            start_date=up["month"].replace(day=up["day"]),
+            period=relativedelta(months=1),
+            expiration_date=up["month"].replace(day=up["day"]),
+        ),
+    )
+    unpaid_planned.matcher.update_params(
+        description_hints=set(up["hints"]),
+        approximation_date_range=timedelta(days=5),
+        approximation_amount_ratio=0.1,
+    )
+    repo.upsert_planned_operation(unpaid_planned)
 
     # One-time future: security deposit this month — makes margin dip below threshold
     ft = ONE_TIME_FUTURE

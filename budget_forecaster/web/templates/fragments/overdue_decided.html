@@ -1,0 +1,18 @@
+{# The settled row, with the margin hero and nav badge refreshed out of band. #}
+<li class="overdue-item settled" id="overdue-{{ op_id }}-{{ iteration_date }}">
+  <div class="overdue-head">
+    <span class="overdue-desc">
+      {%- if outcome == "skipped" %}{{ _("No longer counted") }}{% else %}{{ _("Postponed") }}{% endif -%}
+    </span>
+    {% if released %}
+      <span class="overdue-amount positive">{{ _("margin") }} +{{ released | eur(currency) }}</span>
+    {% endif %}
+  </div>
+  <div class="overdue-actions">
+    <button class="btn small" type="button"
+            hx-post="/overdue/{{ op_id }}/{{ iteration_date }}/restore"
+            hx-target="#overdue-{{ op_id }}-{{ iteration_date }}"
+            hx-swap="outerHTML">{{ _("Undo the decision") }}</button>
+  </div>
+</li>
+{% include "fragments/margin_oob.html" %}

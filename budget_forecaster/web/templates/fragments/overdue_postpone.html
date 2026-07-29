@@ -1,0 +1,38 @@
+{# In-place postponement form: chips first, a date field behind "Other date". #}
+<li class="overdue-item expanded" id="overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}">
+  <div class="overdue-head">
+    <span class="overdue-desc">{{ row.description }}</span>
+    <span class="overdue-amount {{ 'positive' if row.amount > 0 else 'negative' }}">
+      {{ row.amount | signed_eur(row.currency) }}
+    </span>
+  </div>
+  <form hx-post="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/postpone"
+        hx-target="#overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}"
+        hx-swap="outerHTML" class="postpone-form">
+    <div class="postpone-label">{{ _("Postpone to:") }}</div>
+    <div class="chips">
+      {% if row.next_iteration %}
+      <button type="submit" class="btn small chip" name="postponed_to"
+              value="{{ row.next_iteration.isoformat() }}">
+        {{ row.next_iteration | frdate }} — {{ _("next occurrence") }}
+      </button>
+      {% endif %}
+      <button type="submit" class="btn small chip" name="postponed_to"
+              value="{{ card.tomorrow.isoformat() }}">
+        {{ _("tomorrow") }} {{ card.tomorrow | frdate }}
+      </button>
+    </div>
+    <label class="postpone-other">
+      <span>{{ _("Other date") }}</span>
+      <input type="date" name="postponed_to"
+             min="{{ row.earliest_postpone.isoformat() }}" />
+    </label>
+    <div class="overdue-actions">
+      <button type="button" class="btn small"
+              hx-get="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/row"
+              hx-target="#overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}"
+              hx-swap="outerHTML">{{ _("Cancel") }}</button>
+      <button type="submit" class="btn small primary">{{ _("Apply") }}</button>
+    </div>
+  </form>
+</li>

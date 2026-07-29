@@ -1904,3 +1904,96 @@ msgstr "créée à la demande"
 
 msgid "created at startup"
 msgstr "créée au démarrage"
+
+msgid "Bulk actions"
+msgstr "Actions groupées"
+
+msgid "Do not count"
+msgstr "Ne pas compter"
+
+msgid "No imported operation matches these. The description opens the ledger filtered on it."
+msgstr "Aucune opération importée ne correspond. Le libellé ouvre le relevé filtré dessus."
+
+msgid "No longer counted"
+msgstr "Plus comptée"
+
+msgid "Open the ledger filtered on this payment"
+msgstr "Ouvrir le relevé filtré sur cette échéance"
+
+msgid "Other date"
+msgstr "Autre date"
+
+msgid "Overdue payments"
+msgstr "Échéances en retard"
+
+msgid "Postpone to:"
+msgstr "Reporter au :"
+
+msgid "Postponed"
+msgstr "Reportée"
+
+msgid "Postpone…"
+msgstr "Reporter…"
+
+msgid "Stop counting it?"
+msgstr "Ne plus la compter ?"
+
+msgid "Sync before deciding"
+msgstr "Synchronisez avant de décider"
+
+msgid "Sync before deciding."
+msgstr "Synchronisez avant de décider."
+
+msgid "The last sync failed, so operations may be missing."
+msgstr "La dernière synchro a échoué, des opérations peuvent manquer."
+
+msgid "Unit"
+msgstr "Unité"
+
+msgid "Value"
+msgstr "Valeur"
+
+msgid "Your data stops on {date}."
+msgstr "Vos données s'arrêtent au {date}."
+
+msgid "counted on {date}"
+msgstr "comptée le {date}"
+
+msgid "due on {date}"
+msgstr "prévue le {date}"
+
+msgid "margin"
+msgstr "marge"
+
+msgid "next occurrence"
+msgstr "prochaine échéance"
+
+msgid "not counted"
+msgstr "non comptée"
+
+msgid "not counted: {n}"
+msgstr "non comptées : {n}"
+
+msgid "overdue since {date}"
+msgstr "en retard depuis le {date}"
+
+msgid "tomorrow"
+msgstr "demain"
+
+msgid "{amount} returns to your margin."
+msgstr "{amount} reviennent dans votre marge."
+
+msgid "{n} d"
+msgstr "{n} j"
+
+msgid "Undo the decision"
+msgstr "Rétablir"
+
+msgid "Decided occurrences"
+msgstr "Échéances traitées"
+
+msgid "postponed to {date}"
+msgstr "reportée au {date}"
+
+msgid "decided on {date}"
+msgstr "décidé le {date}"

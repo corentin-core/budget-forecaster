@@ -1756,3 +1756,139 @@ table {
     margin-top: 0.35rem;
   }
 }
+
+/* --- Accueil overdue card --- */
+.overdue-card .card-head {
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.card-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.overdue-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.overdue-item {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.overdue-item:last-child {
+  border-bottom: none;
+}
+.overdue-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.overdue-desc {
+  flex: 1;
+  font-weight: 600;
+}
+a.overdue-desc {
+  color: inherit;
+  text-decoration: none;
+}
+a.overdue-desc:hover {
+  text-decoration: underline;
+}
+.overdue-amount {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.overdue-meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 0.15rem;
+}
+.not-counted {
+  color: var(--warn);
+  font-weight: 600;
+}
+/* Own line, thumb-sized, destructive action kept to the right. */
+.overdue-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-height: 44px;
+  margin-top: 0.25rem;
+}
+.overdue-actions form.inline {
+  margin-left: auto;
+}
+.overdue-actions .btn.small,
+.postpone-form .btn.small {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+}
+.confirm-question {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.overdue-item.settled .overdue-desc {
+  font-weight: 400;
+  color: var(--muted);
+}
+.overdue-degraded {
+  margin: 0.5rem 0;
+}
+.muted-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.card-foot {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 0.5rem 0 0;
+}
+.postpone-label {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin-top: 0.35rem;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.35rem 0;
+}
+.postpone-other {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+.postpone-other input[type='date'] {
+  padding: 0.35rem;
+}
+
+/* --- decided occurrences on a planned operation --- */
+.decided-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.decided-list li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.decided-list li:last-child {
+  border-bottom: none;
+}
+.decided-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+}
+.decided-what {
+  flex: 1;
+}
+.decided-when {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
