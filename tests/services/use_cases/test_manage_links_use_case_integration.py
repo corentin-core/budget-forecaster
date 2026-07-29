@@ -19,6 +19,9 @@ from budget_forecaster.infrastructure.persistence.persistent_account import (
 from budget_forecaster.infrastructure.persistence.sqlite_repository import (
     SqliteRepository,
 )
+from budget_forecaster.services.operation.iteration_resolution_service import (
+    IterationResolutionService,
+)
 from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
 )
@@ -62,7 +65,9 @@ def persistent_account_fixture(repository: SqliteRepository) -> PersistentAccoun
 @pytest.fixture(name="use_case")
 def use_case_fixture(repository: SqliteRepository) -> ManageLinksUseCase:
     """Create a ManageLinksUseCase with real dependencies."""
-    return ManageLinksUseCase(OperationLinkService(repository))
+    return ManageLinksUseCase(
+        OperationLinkService(repository), IterationResolutionService(repository)
+    )
 
 
 class TestCreateManualLinkIntegration:

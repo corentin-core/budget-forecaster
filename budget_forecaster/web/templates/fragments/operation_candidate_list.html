@@ -1,0 +1,71 @@
+{#
+  Candidate operations for one fixed iteration. Every candidate asks before it
+  links: the undo is a trip through the ledger, and a linked candidate has a
+  consequence to state first.
+#}
+{% set base = "/overdue/" ~ row.planned_operation_id ~ "/" ~ row.iteration_date %}
+<ul class="candidate-list">
+  {% for c in candidates %}
+  <li class="candidate-item" data-confirm data-confirm-keep>
+    <button type="button" class="candidate candidate-stacked" data-confirm-trigger>
+      <span class="cand-head">
+        <span class="cand-desc">{{ c.description }}</span>
+        <span class="cand-amount {{ 'positive' if c.amount > 0 else 'negative' }}">{{ c.amount | signed_eur(currency) }}</span>
+      </span>
+      <span class="cand-meta">
+        {{ c.operation_date | frdate }} · {{ (c.score / 100) | pct }}
+        {%- if c.reason %} · {{ c.reason }}{% endif %}
+      </span>
+      {% if c.existing %}
+      <span class="cand-badge">
+        {%- if c.existing.is_same_target %}
+          {{ _("already counted for the {date} occurrence").format(date=c.existing.iteration_date | frdate) }}
+        {%- elif c.existing.is_budget %}
+          {{ _("already counted for {target}").format(target=c.existing.target_name) }}
+        {%- else %}
+          {{ _("already counted for {target}, {date} occurrence").format(target=c.existing.target_name, date=c.existing.iteration_date | frdate) }}
+        {%- endif %}
+      </span>
+      {% endif %}
+    </button>
+    <form method="post" action="{{ base }}/link" class="confirm-cluster" hidden>
+      <input type="hidden" name="operation_id" value="{{ c.operation_id }}" />
+      <input type="hidden" name="return_to" value="{{ return_to }}" />
+      <span class="confirm-question">
+        {%- if not c.existing %}
+          {{ _("Count this operation for the {date} occurrence?").format(date=row.iteration_date | frdate) }}
+        {%- else %}
+          {%- if c.existing.is_budget %}
+            {{ _("{target} will stop counting this operation.").format(target=c.existing.target_name) }}
+          {%- elif c.existing.iteration_date > balance_date %}
+            {{ _("{target} goes back among the upcoming payments ({date}).").format(target=c.existing.target_name, date=c.existing.iteration_date | frdate) }}
+          {%- else %}
+            {{ _("{target} goes back overdue ({date} occurrence).").format(target=c.existing.target_name, date=c.existing.iteration_date | frdate) }}
+          {%- endif %}
+          {#- Only an occurrence the forecast still expects hands its amount back. #}
+          {%- if c.existing.counted %}
+            {{ _("{amount} becomes expected again.").format(amount=c.amount | abs | eur(currency)) }}
+          {%- endif %}
+        {%- endif %}
+      </span>
+      <button type="button" class="btn small" data-confirm-cancel>{{ _("Cancel") }}</button>
+      <button type="submit" class="btn small primary">{{ _("Link") }}</button>
+    </form>
+  </li>
+  {% else %}
+  <li class="empty">
+    {%- if query %}
+      {{ _("No operation matches this search.") }}
+    {%- else %}
+      {{ _("No operation matches closely.") }}
+    {%- endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% if hidden_count %}
+<button type="button" class="btn small show-all"
+        hx-get="{{ base }}/link/candidates?all=true"
+        hx-target="#candidate-list" hx-swap="innerHTML">
+  {{ _("Show all") }} ({{ hidden_count }})
+</button>
+{% endif %}

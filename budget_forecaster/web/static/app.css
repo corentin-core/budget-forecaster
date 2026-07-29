@@ -1495,6 +1495,16 @@ table {
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
+.candidate-search {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  margin-bottom: 0.8rem;
+}
 .candidate-list {
   list-style: none;
   margin: 0;
@@ -1518,6 +1528,10 @@ table {
 .candidate:hover {
   border-color: var(--accent);
 }
+/* An author display rule beats the UA [hidden] rule, so say it explicitly. */
+.candidate[hidden] {
+  display: none;
+}
 .cand-score {
   font-weight: 700;
   min-width: 3rem;
@@ -1535,6 +1549,76 @@ table {
   border: 1px solid var(--accent);
   border-radius: 4px;
   padding: 0 0.3rem;
+}
+
+/* --- picking the operation that paid an overdue iteration --- */
+.settle-summary {
+  padding: 0.6rem;
+  background: var(--bg);
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+.candidate-item {
+  margin-bottom: 0.4rem;
+}
+/* Stacked: the description leads, and a bank label needs the width. */
+.candidate-stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.15rem;
+  min-height: 44px;
+  margin-bottom: 0;
+}
+.cand-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.cand-head .cand-desc {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cand-meta,
+.cand-badge {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.cand-badge {
+  font-style: italic;
+}
+/* The row stays put while its question is up, so mark which one is asking. */
+.candidate[aria-expanded='true'] {
+  border-color: var(--accent);
+}
+.candidate-item .confirm-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+}
+.candidate-item .confirm-cluster[hidden] {
+  display: none;
+}
+.candidate-item .confirm-question {
+  flex-basis: 100%;
+}
+.settle-rest {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.postpone-details summary {
+  display: inline-block;
+  list-style: none;
+  cursor: pointer;
+}
+.postpone-details summary::-webkit-details-marker {
+  display: none;
 }
 .iter-slot {
   margin-top: 1rem;

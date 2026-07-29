@@ -76,6 +76,14 @@ operation view. Each link targets a specific dated occurrence of a planned opera
 budget, chosen from candidates ranked by match score. See [Web App](web-app.md) for the
 step-by-step interface.
 
+The same thing works from the other end: an overdue occurrence offers the operations
+that could be it, ranked by the same score. Since a link belongs to the operation,
+linking one that another target already counts moves it rather than duplicating it. The
+occurrence it leaves goes back to being unmatched, and the forecast expects its amount
+again — unless that occurrence had already passed the late horizon, or belongs to a
+budget month already closed, in which case it had left the forecast and nothing comes
+back.
+
 ## Impact on Forecasts
 
 ### Planned Operations

@@ -130,10 +130,10 @@
     <form method="post" action="/targets/{{ form.kind }}/{{ form.target_id }}/delete"
           class="delete-form" data-confirm>
       <input type="hidden" name="return_to" value="{{ return_to }}" />
-      <button type="button" class="btn danger" data-delete-trigger>{{ _("Delete") }}</button>
+      <button type="button" class="btn danger" data-confirm-trigger>{{ _("Delete") }}</button>
       <span class="confirm-cluster" hidden>
         <span>{{ _("Delete?") }}</span>
-        <button type="button" class="btn" data-delete-cancel>{{ _("Cancel") }}</button>
+        <button type="button" class="btn" data-confirm-cancel>{{ _("Cancel") }}</button>
         <button type="submit" class="btn danger">{{ _("Confirm") }}</button>
       </span>
     </form>
@@ -147,5 +147,4 @@
 {% include "fragments/decided_iterations.html" %}
 
 <script src="/static/targets.js" defer></script>
-<script src="/static/overdue.js" defer></script>
 {% endblock %}

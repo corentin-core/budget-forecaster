@@ -245,11 +245,11 @@
            aria-label="{{ _('Download backup') }}" title="{{ _('Download backup') }}">↓</a>
         <form method="post" action="/settings/backup/delete" class="delete-form" data-confirm>
           <input type="hidden" name="name" value="{{ b.path.name }}" />
-          <button type="button" class="btn danger small icon" data-delete-trigger
+          <button type="button" class="btn danger small icon" data-confirm-trigger
                   aria-label="{{ _('Delete backup') }}" title="{{ _('Delete backup') }}">×</button>
           <span class="confirm-cluster" hidden>
             <span>{{ _("Delete?") }}</span>
-            <button type="button" class="btn small" data-delete-cancel>{{ _("Cancel") }}</button>
+            <button type="button" class="btn small" data-confirm-cancel>{{ _("Cancel") }}</button>
             <button type="submit" class="btn danger small">{{ _("Confirm") }}</button>
           </span>
         </form>
@@ -269,5 +269,4 @@
 <section class="card">
   <a class="btn" href="/logout">{{ _("Log out") }}</a>
 </section>
-<script src="/static/backups.js" defer></script>
 {% endblock %}

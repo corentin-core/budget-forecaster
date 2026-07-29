@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% set base = "/overdue/" ~ row.planned_operation_id ~ "/" ~ row.iteration_date %}
+{% block title %}{{ _("Find this payment") }} — Budget Forecaster{% endblock %}
+{% block content %}
+<section class="card link-page">
+  <p class="back"><a href="{{ return_to }}">‹ {{ _("Back") }}</a></p>
+  <h1>{{ _("Find this payment among your operations") }}</h1>
+
+  {# The row's own wording, so the user recognizes what they tapped. #}
+  <div class="settle-summary">
+    <div class="overdue-head">
+      <span class="overdue-desc">{{ row.description }}</span>
+      <span class="overdue-amount {{ 'positive' if row.amount > 0 else 'negative' }}">
+        {{ row.amount | signed_eur(row.currency) }}
+      </span>
+    </div>
+    <div class="overdue-meta">
+      {%- if row.postponed_to %}
+        {{ _("postponed from {date}").format(date=row.iteration_date | frdate) }} ·
+        {{ _("overdue since {date}").format(date=row.postponed_to | frdate) }}
+      {%- else %}
+        {{ _("due on {date}").format(date=row.iteration_date | frdate) }}
+      {%- endif %}
+      · {{ _("{n} d").format(n=row.days_overdue) }}
+      ·
+      {%- if row.counted_on %}
+        {{ _("counted on {date}").format(date=row.counted_on | frdate) }}
+      {%- else %}
+        <span class="not-counted">{{ _("not counted") }}</span>
+      {%- endif %}
+    </div>
+  </div>
+
+  {% if card.sync_broken %}
+  <p class="banner banner-failed">
+    ⚠ {{ _("The last sync failed, so the operation you are looking for may be missing.") }}
+    <a href="/settings">{{ _("Synchronize") }}</a>
+  </p>
+  {% endif %}
+
+  <input type="search" class="candidate-search" name="q" value="{{ query }}"
+         placeholder="{{ _('Search an operation…') }}"
+         hx-get="{{ base }}/link/candidates"
+         hx-target="#candidate-list" hx-swap="innerHTML"
+         hx-trigger="keyup changed delay:300ms, search" />
+
+  <div id="candidate-list">
+    {% include "fragments/operation_candidate_list.html" %}
+  </div>
+
+  <div class="settle-rest">
+    <p class="hint">{{ _("None of them? Then the payment did not happen yet.") }}</p>
+    {% if card.sync_broken %}
+    <p class="muted-note">{{ _("Sync before deciding") }}</p>
+    {% else %}
+    <div class="overdue-actions" data-confirm data-confirm-strip>
+      <details class="postpone-details">
+        <summary class="btn small">{{ _("Postpone…") }}</summary>
+        <form method="post" action="{{ base }}/postpone" class="postpone-form">
+          <input type="hidden" name="return_to" value="{{ return_to }}" />
+          <div class="chips">
+            {% if row.next_iteration %}
+            <button type="submit" class="btn small chip" name="postponed_to"
+                    value="{{ row.next_iteration.isoformat() }}">
+              {{ row.next_iteration | frdate }} — {{ _("next occurrence") }}
+            </button>
+            {% endif %}
+            <button type="submit" class="btn small chip" name="postponed_to"
+                    value="{{ card.tomorrow.isoformat() }}">
+              {{ _("tomorrow") }} {{ card.tomorrow | frdate }}
+            </button>
+          </div>
+          <label class="postpone-other">
+            <span>{{ _("Other date") }}</span>
+            <input type="date" name="postponed_to"
+                   min="{{ row.earliest_postpone.isoformat() }}" />
+          </label>
+          <button type="submit" class="btn small primary">{{ _("Apply") }}</button>
+        </form>
+      </details>
+      <form method="post" action="{{ base }}/skip" class="inline">
+        <input type="hidden" name="return_to" value="{{ return_to }}" />
+        <button type="button" class="btn small danger" data-confirm-trigger>{{ _("Do not count") }}</button>
+        <span class="confirm-cluster" hidden>
+          <span class="confirm-question">
+            {{ _("Stop counting it?") }}
+            {{ _("{amount} returns to your margin.").format(amount=row.amount | abs | eur(row.currency)) }}
+          </span>
+          <button type="button" class="btn small" data-confirm-cancel>{{ _("Cancel") }}</button>
+          <button type="submit" class="btn small danger">{{ _("Confirm") }}</button>
+        </span>
+      </form>
+    </div>
+    <p class="muted-note">{{ _("A payment made in cash has no operation to link: not counting it is the answer.") }}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

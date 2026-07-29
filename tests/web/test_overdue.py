@@ -120,20 +120,18 @@ class TestCardVisibility:
         assert f"/overdue/{overdue.op_id}/{overdue.iteration}/postpone" in card
         assert f"/overdue/{overdue.op_id}/{overdue.iteration}/skip" in card
 
-    def test_the_description_opens_the_filtered_ledger(
+    def test_the_row_leads_to_the_picker_not_a_description_filter(
         self, client: TestClient, overdue: Overdue
     ) -> None:
-        """The likeliest cause is a label that drifted, so send the user looking.
+        """A planned operation and a bank line share no word, so no filter works.
 
-        Following the link matters: the ledger filters on `search`, and a wrong
-        parameter name silently returns everything.
+        Both the description and the primary action open the picker instead.
         """
         card = _card(client)
-        href = re.search(r'href="(/operations\?[^"]+)"', card)
-        assert href, "the description should link to the ledger"
-        filtered = client.get(href.group(1).replace("&amp;", "&")).text
-        unfiltered = client.get("/operations").text
-        assert filtered.count('id="op-row-') < unfiltered.count('id="op-row-')
+        picker = f"/overdue/{overdue.op_id}/{overdue.iteration}/link"
+        assert card.count(f'href="{picker}"') == 2
+        assert "/operations?search=" not in card
+        assert client.get(picker).status_code == 200
 
     def test_nav_badge_counts_them(self, client: TestClient, overdue: Overdue) -> None:
         """The count is visible from any page, and it is the real count."""
@@ -183,6 +181,21 @@ class TestPostpone:
         assert "hx-swap-oob" in response.text
         decided = _decided_section(client, overdue.op_id)
         assert target.strftime("%d/%m/%Y") in decided
+
+    def test_a_chip_wins_over_the_empty_date_field_beside_it(
+        self, client: TestClient, overdue: Overdue
+    ) -> None:
+        """A chip and the free date field share a name; flattening the form to a
+        dict would keep the empty one and reject the request."""
+        chosen = date.today() + timedelta(days=20)
+
+        response = client.post(
+            f"/overdue/{overdue.op_id}/{overdue.iteration}/postpone",
+            data={"postponed_to": [chosen.isoformat(), ""]},
+        )
+
+        assert response.status_code == 200
+        assert chosen.strftime("%d/%m/%Y") in _decided_section(client, overdue.op_id)
 
     def test_the_postponed_iteration_shows_in_upcoming(
         self, client: TestClient, overdue: Overdue

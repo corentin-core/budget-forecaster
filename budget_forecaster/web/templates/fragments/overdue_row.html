@@ -1,7 +1,7 @@
 <li class="overdue-item" id="overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}">
   <div class="overdue-head">
-    <a class="overdue-desc" href="/operations?search={{ row.description | urlencode }}"
-       title="{{ _('Open the ledger filtered on this payment') }}">{{ row.description }} ›</a>
+    <a class="overdue-desc" href="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/link"
+       title="{{ _('Find this payment among your operations') }}">{{ row.description }} ›</a>
     <span class="overdue-amount {{ 'positive' if row.amount > 0 else 'negative' }}">
       {{ row.amount | signed_eur(row.currency) }}
     </span>
@@ -22,9 +22,15 @@
     {%- endif %}
   </div>
   {% if card.sync_broken %}
-    <div class="overdue-actions muted-note">{{ _("Sync before deciding") }}</div>
+    <div class="overdue-actions">
+      <a class="btn small primary"
+         href="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/link">{{ _("Link…") }}</a>
+      <span class="muted-note">{{ _("Sync before deciding") }}</span>
+    </div>
   {% else %}
-  <div class="overdue-actions" data-confirm>
+  <div class="overdue-actions" data-confirm data-confirm-strip>
+    <a class="btn small primary"
+       href="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/link">{{ _("Link…") }}</a>
     <button class="btn small" type="button"
             hx-get="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/postpone"
             hx-target="#overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}"
@@ -32,13 +38,13 @@
     <form hx-post="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/skip"
           hx-target="#overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}"
           hx-swap="outerHTML" class="inline">
-      <button type="button" class="btn small danger" data-delete-trigger>{{ _("Do not count") }}</button>
+      <button type="button" class="btn small danger" data-confirm-trigger>{{ _("Do not count") }}</button>
       <span class="confirm-cluster" hidden>
         <span class="confirm-question">
           {{ _("Stop counting it?") }}
           {{ _("{amount} returns to your margin.").format(amount=row.amount | abs | eur(row.currency)) }}
         </span>
-        <button type="button" class="btn small" data-delete-cancel>{{ _("Cancel") }}</button>
+        <button type="button" class="btn small" data-confirm-cancel>{{ _("Cancel") }}</button>
         <button type="submit" class="btn small danger">{{ _("Confirm") }}</button>
       </span>
     </form>

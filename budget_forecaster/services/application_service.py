@@ -266,7 +266,9 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
             iteration_resolution_service,
             matcher_cache,
         )
-        self._links_uc = ManageLinksUseCase(operation_link_service)
+        self._links_uc = ManageLinksUseCase(
+            operation_link_service, iteration_resolution_service
+        )
         self._forecast_uc = ComputeForecastUseCase(
             forecast_service, operation_link_service, iteration_resolution_service
         )

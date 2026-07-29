@@ -1911,14 +1911,14 @@ msgstr "Actions groupées"
 msgid "Do not count"
 msgstr "Ne pas compter"
 
-msgid "No imported operation matches these. The description opens the ledger filtered on it."
-msgstr "Aucune opération importée ne correspond. Le libellé ouvre le relevé filtré dessus."
+msgid "No imported operation matches these. Start with “Link…”: most often the payment happened and was not recognized."
+msgstr "Aucune opération importée ne correspond. Commencez par « Lier… » : le plus souvent le paiement a eu lieu et n'a pas été reconnu."
 
 msgid "No longer counted"
 msgstr "Plus comptée"
 
-msgid "Open the ledger filtered on this payment"
-msgstr "Ouvrir le relevé filtré sur cette échéance"
+msgid "Find this payment among your operations"
+msgstr "Retrouver ce paiement dans vos opérations"
 
 msgid "Other date"
 msgstr "Autre date"
@@ -2006,3 +2006,52 @@ msgstr "tout est traité"
 
 msgid "no longer counted"
 msgstr "plus comptée"
+
+
+msgid "Find this payment"
+msgstr "Retrouver ce paiement"
+
+msgid "Search an operation…"
+msgstr "Rechercher une opération…"
+
+msgid "Show all"
+msgstr "Tout afficher"
+
+msgid "No operation matches closely."
+msgstr "Aucune opération ne correspond nettement."
+
+msgid "No operation matches this search."
+msgstr "Aucune opération ne correspond à cette recherche."
+
+msgid "already counted for {target}"
+msgstr "déjà comptée pour {target}"
+
+msgid "already counted for {target}, {date} occurrence"
+msgstr "déjà comptée pour {target}, échéance du {date}"
+
+msgid "already counted for the {date} occurrence"
+msgstr "déjà comptée pour l'échéance du {date}"
+
+msgid "Count this operation for the {date} occurrence?"
+msgstr "Compter cette opération pour l'échéance du {date} ?"
+
+msgid "{target} will stop counting this operation."
+msgstr "{target} ne comptera plus cette opération."
+
+msgid "{target} goes back among the upcoming payments ({date})."
+msgstr "{target} revient dans les échéances à venir ({date})."
+
+msgid "{target} goes back overdue ({date} occurrence)."
+msgstr "{target} repasse en retard (échéance du {date})."
+
+msgid "The last sync failed, so the operation you are looking for may be missing."
+msgstr "La dernière synchronisation a échoué : l'opération que vous cherchez est peut-être absente."
+
+msgid "None of them? Then the payment did not happen yet."
+msgstr "Aucune ne correspond ? Alors le paiement n'a pas encore eu lieu."
+
+msgid "A payment made in cash has no operation to link: not counting it is the answer."
+msgstr "Un paiement en espèces n'a pas d'opération à lier : ne pas le compter est la réponse."
+
+msgid "{amount} becomes expected again."
+msgstr "{amount} seront de nouveau attendus."
