@@ -6,7 +6,6 @@ use cases while providing direct access to read-only service methods.
 """
 
 import logging
-from collections.abc import Mapping
 from datetime import date, timedelta
 from pathlib import Path
 from typing import NamedTuple
@@ -20,6 +19,7 @@ from budget_forecaster.core.types import (
     Category,
     ImportProgressCallback,
     IterationDate,
+    IterationState,
     LinkType,
     OperationId,
     PlannedOperationId,
@@ -28,6 +28,7 @@ from budget_forecaster.core.types import (
 from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.domain.operation.iteration_resolution import IterationResolution
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.infrastructure.persistence.persistent_account import (
@@ -42,10 +43,17 @@ from budget_forecaster.services.forecast.forecast_service import (
     MarginInfo,
     MonthlySummary,
 )
+from budget_forecaster.services.forecast.iteration_lifecycle import (
+    derive_past_iterations,
+    index_resolutions,
+)
 from budget_forecaster.services.import_service import (
     ImportResult,
     ImportService,
     ImportSummary,
+)
+from budget_forecaster.services.operation.iteration_resolution_service import (
+    IterationResolutionService,
 )
 from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
@@ -75,65 +83,90 @@ class UpcomingIteration(NamedTuple):
     amount: float
     currency: str
     period: relativedelta | None
-    late: bool = False
+    postponed_from: date | None = None
+    """The iteration's original date when the user moved it here."""
 
 
 def get_upcoming_iterations(
     planned_operations: tuple[PlannedOperation, ...],
     reference_date: date,
     horizon_days: int = 30,
-    linked_iterations: Mapping[PlannedOperationId, set[date]] | None = None,
+    resolutions: tuple[IterationResolution, ...] = (),
 ) -> tuple[UpcomingIteration, ...]:
-    """Get upcoming iterations from planned operations within a time horizon.
+    """Get the iterations due from reference_date up to the horizon.
 
-    Iterations due before reference_date that have no linked operation are
-    included as late (overdue, not yet posted), within each operation's matcher
-    tolerance window. Requires linked_iterations to tell matched from overdue.
+    Past-due iterations belong to the overdue list, not here: they are listed
+    there with the decisions they need, so this view stays strictly forward.
+    Iterations the user postponed into the window are included on their new date.
 
     Args:
         planned_operations: All planned operations.
         reference_date: The date to compute from (typically today).
         horizon_days: Number of days ahead to look.
-        linked_iterations: Iteration dates already matched, per planned operation.
+        resolutions: The user's decisions on unmatched iterations.
 
     Returns:
-        Upcoming and late iterations sorted by date ascending.
+        Upcoming iterations sorted by date ascending.
     """
     cutoff = reference_date + timedelta(days=horizon_days)
     iterations: list[UpcomingIteration] = []
+    postponed = index_resolutions(resolutions)
 
     for op in planned_operations:
         period = (
             op.date_range.period if isinstance(op.date_range, RecurringDay) else None
         )
-        matched: set[date] = set()
-        if linked_iterations is not None and op.id is not None:
-            matched = linked_iterations.get(op.id, set())
-        window_start = reference_date - op.matcher.approximation_date_range
         for date_range in op.date_range.iterate_over_date_ranges(
-            from_date=window_start
+            from_date=reference_date
         ):
             if (iteration_date := date_range.start_date) > cutoff:
                 break
-            is_upcoming = iteration_date >= reference_date
-            is_late = (
-                linked_iterations is not None
-                and window_start <= iteration_date < reference_date
-                and iteration_date not in matched
-            )
-            if is_upcoming or is_late:
-                iterations.append(
-                    UpcomingIteration(
-                        iteration_date=iteration_date,
-                        description=op.description,
-                        amount=op.amount,
-                        currency=op.currency,
-                        period=period,
-                        late=is_late,
-                    )
+            if iteration_date < reference_date:
+                continue
+            iterations.append(
+                UpcomingIteration(
+                    iteration_date=iteration_date,
+                    description=op.description,
+                    amount=op.amount,
+                    currency=op.currency,
+                    period=period,
                 )
+            )
+        if op.id is None:
+            continue
+        for resolution in postponed.get(op.id, {}).values():
+            moved_to = resolution.postponed_to
+            if moved_to is None or not reference_date <= moved_to <= cutoff:
+                continue
+            iterations.append(
+                UpcomingIteration(
+                    iteration_date=moved_to,
+                    description=op.description,
+                    amount=op.amount,
+                    currency=op.currency,
+                    period=period,
+                    postponed_from=resolution.iteration_date,
+                )
+            )
 
     return tuple(sorted(iterations, key=lambda it: it.iteration_date))
+
+
+class OverdueIteration(NamedTuple):
+    """A past iteration awaiting the user's decision, for the overdue list."""
+
+    planned_operation_id: PlannedOperationId
+    iteration_date: date
+    description: str
+    amount: float
+    currency: str
+    state: IterationState
+    days_overdue: int
+    counted_on: date | None
+    """The date the forecast counts the amount on; None when it is not counted."""
+
+    postponed_to: date | None = None
+    """The date the user had chosen, when that date passed with nothing matching it."""
 
 
 class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
@@ -149,13 +182,14 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
     Read-only methods are delegated directly to the underlying services.
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         persistent_account: PersistentAccount,
         import_service: ImportService,
         operation_service: OperationService,
         forecast_service: ForecastService,
         operation_link_service: OperationLinkService,
+        iteration_resolution_service: IterationResolutionService,
     ) -> None:
         """Initialize the application service.
 
@@ -165,6 +199,7 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
             operation_service: Service for operation CRUD.
             forecast_service: Service for forecast and target CRUD.
             operation_link_service: Service for link management.
+            iteration_resolution_service: Service for decisions on late iterations.
         """
         # Shared dependency
         matcher_cache = MatcherCache(forecast_service)
@@ -183,7 +218,7 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         )
         self._links_uc = ManageLinksUseCase(operation_link_service)
         self._forecast_uc = ComputeForecastUseCase(
-            forecast_service, operation_link_service
+            forecast_service, operation_link_service, iteration_resolution_service
         )
 
         # Direct service references for pure delegations
@@ -192,6 +227,7 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         self._forecast_service = forecast_service
         self._import_service = import_service
         self._operation_link_service = operation_link_service
+        self._iteration_resolution_service = iteration_resolution_service
 
     def save_operation_changes(self) -> None:
         """Persist in-memory operation edits (e.g. categorization) and reload.
@@ -362,16 +398,95 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         Returns:
             Upcoming iterations sorted by date ascending.
         """
-        planned_ops = self.get_all_planned_operations()
-        linked_iterations: dict[PlannedOperationId, set[date]] = {}
+        return get_upcoming_iterations(
+            self.get_all_planned_operations(),
+            date.today(),
+            horizon_days,
+            self._iteration_resolution_service.get_all_resolutions(),
+        )
+
+    def _linked_iterations_by_planned_operation(
+        self,
+    ) -> dict[PlannedOperationId, set[date]]:
+        """Index the iteration dates already matched, per planned operation."""
+        linked: dict[PlannedOperationId, set[date]] = {}
         for link in self._operation_link_service.get_all_links():
             if link.target_type == LinkType.PLANNED_OPERATION:
-                linked_iterations.setdefault(link.target_id, set()).add(
-                    link.iteration_date
-                )
-        return get_upcoming_iterations(
-            planned_ops, date.today(), horizon_days, linked_iterations
+                linked.setdefault(link.target_id, set()).add(link.iteration_date)
+        return linked
+
+    def get_overdue_iterations(self) -> tuple[OverdueIteration, ...]:
+        """Get the past iterations awaiting a decision, oldest first.
+
+        Postponed and skipped iterations are left out: the user already decided,
+        and their decision is listed on the planned operation itself.
+        """
+        balance_date = self.balance_date
+        linked = self._linked_iterations_by_planned_operation()
+        resolutions = index_resolutions(
+            self._iteration_resolution_service.get_all_resolutions()
         )
+
+        overdue: list[OverdueIteration] = []
+        for op in self.get_all_planned_operations():
+            if op.id is None:
+                continue
+            for past in derive_past_iterations(
+                op, balance_date, linked.get(op.id, set()), resolutions.get(op.id, {})
+            ):
+                if past.state not in (IterationState.LATE, IterationState.EXPIRED):
+                    continue
+                reference = past.postponed_to or past.iteration_date
+                overdue.append(
+                    OverdueIteration(
+                        planned_operation_id=past.planned_operation_id,
+                        iteration_date=past.iteration_date,
+                        description=past.description,
+                        amount=past.amount,
+                        currency=past.currency,
+                        state=past.state,
+                        days_overdue=(balance_date - reference).days,
+                        counted_on=past.effective_date,
+                        postponed_to=past.postponed_to,
+                    )
+                )
+
+        return tuple(sorted(overdue, key=lambda it: it.iteration_date))
+
+    def get_iteration_resolutions(
+        self, op_id: PlannedOperationId
+    ) -> tuple[IterationResolution, ...]:
+        """Get the decisions taken on a planned operation, oldest iteration first."""
+        return self._iteration_resolution_service.get_resolutions_for_planned_operation(
+            op_id
+        )
+
+    def skip_iteration(
+        self,
+        op_id: PlannedOperationId,
+        iteration_date: IterationDate,
+        note: str | None = None,
+    ) -> IterationResolution:
+        """Stop counting an iteration that never happened."""
+        return self._iteration_resolution_service.skip(op_id, iteration_date, note)
+
+    def postpone_iteration(
+        self,
+        op_id: PlannedOperationId,
+        iteration_date: IterationDate,
+        postponed_to: date,
+        note: str | None = None,
+    ) -> IterationResolution:
+        """Move an iteration to a later date."""
+        return self._iteration_resolution_service.postpone(
+            op_id, iteration_date, postponed_to, note
+        )
+
+    def restore_iteration(
+        self, op_id: PlannedOperationId, iteration_date: IterationDate
+    ) -> None:
+        """Drop a decision, putting the iteration back to its derived state."""
+        self._iteration_resolution_service.restore(op_id, iteration_date)
 
     def get_all_budgets(self) -> tuple[Budget, ...]:
         """Get all budgets sorted alphabetically by description."""

@@ -16,8 +16,15 @@ from budget_forecaster.core.date_range import (
     RecurringDay,
     SingleDay,
 )
-from budget_forecaster.core.types import Category, ImportStats, LinkType
+from budget_forecaster.core.types import (
+    Category,
+    ImportStats,
+    IterationAction,
+    IterationState,
+    LinkType,
+)
 from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.domain.operation.iteration_resolution import IterationResolution
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.exceptions import (
@@ -28,6 +35,9 @@ from budget_forecaster.exceptions import (
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.forecast.forecast_service import ForecastService
 from budget_forecaster.services.import_service import ImportResult, ImportService
+from budget_forecaster.services.operation.iteration_resolution_service import (
+    IterationResolutionService,
+)
 from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
 )
@@ -70,6 +80,14 @@ def mock_operation_link_service_fixture() -> MagicMock:
     return MagicMock(spec=OperationLinkService)
 
 
+@pytest.fixture(name="mock_iteration_resolution_service")
+def mock_iteration_resolution_service_fixture() -> MagicMock:
+    """Create a mock iteration resolution service."""
+    mock = MagicMock(spec=IterationResolutionService)
+    mock.get_all_resolutions.return_value = ()
+    return mock
+
+
 @pytest.fixture(name="app_service")
 def app_service_fixture(
     mock_persistent_account: MagicMock,
@@ -77,6 +95,7 @@ def app_service_fixture(
     mock_operation_service: MagicMock,
     mock_forecast_service: MagicMock,
     mock_operation_link_service: MagicMock,
+    mock_iteration_resolution_service: MagicMock,
 ) -> ApplicationService:
     """Create an ApplicationService with mock dependencies."""
     return ApplicationService(
@@ -85,6 +104,7 @@ def app_service_fixture(
         operation_service=mock_operation_service,
         forecast_service=mock_forecast_service,
         operation_link_service=mock_operation_link_service,
+        iteration_resolution_service=mock_iteration_resolution_service,
     )
 
 
@@ -1164,60 +1184,160 @@ class TestReloadForecast:
 
 
 class TestUpcomingPlannedIterations:
-    """get_upcoming_planned_iterations wires links into overdue (late) detection."""
+    """get_upcoming_planned_iterations lists what is still to come."""
 
     @staticmethod
-    def _overdue_monthly_op(days_ago: int) -> tuple[PlannedOperation, date]:
-        """A monthly income whose current iteration is `days_ago` days overdue."""
-        iteration = date.today() - relativedelta(days=days_ago)
-        op = PlannedOperation(
+    def _monthly_op(first_iteration: date) -> PlannedOperation:
+        """A monthly income starting on the given date."""
+        return PlannedOperation(
             record_id=7,
             description="Salary",
             amount=Amount(2940.0, "EUR"),
             category=Category.SALARY,
-            date_range=RecurringDay(iteration, relativedelta(months=1)),
+            date_range=RecurringDay(first_iteration, relativedelta(months=1)),
         )
-        return op, iteration
 
-    def test_overdue_unmatched_iteration_is_flagged_late(
+    def test_past_due_iteration_is_not_listed(
         self,
         app_service: ApplicationService,
         mock_forecast_service: MagicMock,
-        mock_operation_link_service: MagicMock,
     ) -> None:
-        """An overdue iteration with no link is returned flagged late."""
-        op, iteration = self._overdue_monthly_op(2)
-        mock_forecast_service.get_all_planned_operations.return_value = [op]
-        mock_operation_link_service.get_all_links.return_value = ()
+        """A past-due iteration belongs to the overdue list, not to this one."""
+        iteration = date.today() - relativedelta(days=2)
+        mock_forecast_service.get_all_planned_operations.return_value = [
+            self._monthly_op(iteration)
+        ]
 
         result = app_service.get_upcoming_planned_iterations()
 
-        late = [it for it in result if it.iteration_date == iteration]
-        assert len(late) == 1
-        assert late[0].late is True
+        assert all(it.iteration_date >= date.today() for it in result)
 
-    def test_overdue_matched_iteration_is_excluded(
+    def test_iteration_due_today_is_listed(
         self,
         app_service: ApplicationService,
         mock_forecast_service: MagicMock,
-        mock_operation_link_service: MagicMock,
     ) -> None:
-        """An overdue iteration linked to an operation is not shown."""
-        op, iteration = self._overdue_monthly_op(2)
-        mock_forecast_service.get_all_planned_operations.return_value = [op]
-        mock_operation_link_service.get_all_links.return_value = (
-            OperationLink(
-                operation_unique_id=1,
-                target_type=LinkType.PLANNED_OPERATION,
-                target_id=op.id,
-                iteration_date=iteration,
-                is_manual=False,
+        """The iteration due today is still ahead: it has not been posted yet."""
+        mock_forecast_service.get_all_planned_operations.return_value = [
+            self._monthly_op(date.today())
+        ]
+
+        result = app_service.get_upcoming_planned_iterations()
+
+        assert result[0].iteration_date == date.today()
+
+    def test_postponed_iteration_is_listed_on_its_new_date(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+        mock_iteration_resolution_service: MagicMock,
+    ) -> None:
+        """A postponed iteration shows on its new date, with where it came from."""
+        original = date.today() - relativedelta(days=10)
+        moved_to = date.today() + relativedelta(days=3)
+        mock_forecast_service.get_all_planned_operations.return_value = [
+            self._monthly_op(original)
+        ]
+        mock_iteration_resolution_service.get_all_resolutions.return_value = (
+            IterationResolution(
+                planned_operation_id=7,
+                iteration_date=original,
+                action=IterationAction.POSTPONE,
+                postponed_to=moved_to,
             ),
         )
 
         result = app_service.get_upcoming_planned_iterations()
 
-        assert all(it.iteration_date != iteration for it in result)
+        postponed = [it for it in result if it.iteration_date == moved_to]
+        assert len(postponed) == 1
+        assert postponed[0].postponed_from == original
+
+
+class TestOverdueIterations:
+    """get_overdue_iterations derives what still awaits a decision."""
+
+    @pytest.fixture(name="app_service")
+    def app_service_with_balance_date_fixture(
+        self,
+        app_service: ApplicationService,
+        mock_operation_service: MagicMock,
+    ) -> ApplicationService:
+        """Pin the balance date so overdue ages are predictable."""
+        mock_operation_service.balance_date = date(2025, 3, 20)
+        return app_service
+
+    @staticmethod
+    def _monthly_op(first_iteration: date) -> PlannedOperation:
+        """A monthly expense starting on the given date."""
+        return PlannedOperation(
+            record_id=7,
+            description="Rent",
+            amount=Amount(-850.0, "EUR"),
+            category=Category.RENT,
+            date_range=RecurringDay(first_iteration, relativedelta(months=1)),
+        )
+
+    def test_unmatched_iteration_is_late_and_still_counted(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+    ) -> None:
+        """An iteration missed a few days ago is late and stays in the forecast."""
+        mock_forecast_service.get_all_planned_operations.return_value = [
+            self._monthly_op(date(2025, 3, 5))
+        ]
+
+        result = app_service.get_overdue_iterations()
+
+        assert len(result) == 1
+        overdue = result[0]
+        assert overdue.state is IterationState.LATE
+        assert overdue.days_overdue == 15
+        assert overdue.counted_on == date(2025, 3, 21)
+
+    def test_iteration_beyond_horizon_is_expired_and_not_counted(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+    ) -> None:
+        """Past the late horizon the amount leaves the forecast but stays listed."""
+        mock_forecast_service.get_all_planned_operations.return_value = [
+            PlannedOperation(
+                record_id=7,
+                description="Insurance",
+                amount=Amount(-145.0, "EUR"),
+                category=Category.HOUSE_INSURANCE,
+                date_range=SingleDay(date(2025, 1, 10)),
+            )
+        ]
+
+        result = app_service.get_overdue_iterations()
+
+        assert len(result) == 1
+        assert result[0].state is IterationState.EXPIRED
+        assert result[0].counted_on is None
+
+    def test_matched_iteration_is_not_overdue(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+        mock_operation_link_service: MagicMock,
+    ) -> None:
+        """An iteration linked to an operation needs no decision."""
+        mock_forecast_service.get_all_planned_operations.return_value = [
+            self._monthly_op(date(2025, 3, 5))
+        ]
+        mock_operation_link_service.get_all_links.return_value = (
+            OperationLink(
+                operation_unique_id=1,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=7,
+                iteration_date=date(2025, 3, 5),
+            ),
+        )
+
+        assert not app_service.get_overdue_iterations()
 
     def test_budget_link_does_not_match_a_planned_iteration(
         self,
@@ -1225,21 +1345,74 @@ class TestUpcomingPlannedIterations:
         mock_forecast_service: MagicMock,
         mock_operation_link_service: MagicMock,
     ) -> None:
-        """A BUDGET link with the same id/date must not count as a match."""
-        op, iteration = self._overdue_monthly_op(2)
-        mock_forecast_service.get_all_planned_operations.return_value = [op]
+        """A BUDGET link with the same id and date must not count as a match."""
+        mock_forecast_service.get_all_planned_operations.return_value = [
+            self._monthly_op(date(2025, 3, 5))
+        ]
         mock_operation_link_service.get_all_links.return_value = (
             OperationLink(
                 operation_unique_id=1,
                 target_type=LinkType.BUDGET,
-                target_id=op.id,
-                iteration_date=iteration,
-                is_manual=False,
+                target_id=7,
+                iteration_date=date(2025, 3, 5),
             ),
         )
 
-        result = app_service.get_upcoming_planned_iterations()
+        result = app_service.get_overdue_iterations()
 
-        late = [it for it in result if it.iteration_date == iteration]
-        assert len(late) == 1
-        assert late[0].late is True
+        assert len(result) == 1
+        assert result[0].state is IterationState.LATE
+
+    def test_decided_iterations_leave_the_list(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+        mock_iteration_resolution_service: MagicMock,
+    ) -> None:
+        """Skipped and postponed iterations no longer await anything."""
+        mock_forecast_service.get_all_planned_operations.return_value = [
+            self._monthly_op(date(2025, 2, 5))
+        ]
+        mock_iteration_resolution_service.get_all_resolutions.return_value = (
+            IterationResolution(
+                planned_operation_id=7,
+                iteration_date=date(2025, 2, 5),
+                action=IterationAction.SKIP,
+            ),
+            IterationResolution(
+                planned_operation_id=7,
+                iteration_date=date(2025, 3, 5),
+                action=IterationAction.POSTPONE,
+                postponed_to=date(2025, 4, 2),
+            ),
+        )
+
+        assert not app_service.get_overdue_iterations()
+
+    def test_postponed_date_that_passed_is_late_again_with_provenance(
+        self,
+        app_service: ApplicationService,
+        mock_forecast_service: MagicMock,
+        mock_iteration_resolution_service: MagicMock,
+    ) -> None:
+        """A postponement nothing matched comes back, carrying its original date."""
+        mock_forecast_service.get_all_planned_operations.return_value = [
+            self._monthly_op(date(2025, 3, 5))
+        ]
+        mock_iteration_resolution_service.get_all_resolutions.return_value = (
+            IterationResolution(
+                planned_operation_id=7,
+                iteration_date=date(2025, 3, 5),
+                action=IterationAction.POSTPONE,
+                postponed_to=date(2025, 3, 15),
+            ),
+        )
+
+        result = app_service.get_overdue_iterations()
+
+        assert len(result) == 1
+        overdue = result[0]
+        assert overdue.state is IterationState.LATE
+        assert overdue.iteration_date == date(2025, 3, 5)
+        assert overdue.postponed_to == date(2025, 3, 15)
+        assert overdue.days_overdue == 5

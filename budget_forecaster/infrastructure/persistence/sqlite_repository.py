@@ -6,7 +6,7 @@
 import json
 import logging
 import sqlite3
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Iterable, Self
 
@@ -22,6 +22,7 @@ from budget_forecaster.core.date_range import (
 )
 from budget_forecaster.core.types import (
     Category,
+    IterationAction,
     LinkType,
     OperationId,
     SyncRun,
@@ -32,6 +33,7 @@ from budget_forecaster.core.types import (
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.domain.operation.iteration_resolution import IterationResolution
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.exceptions import (
@@ -507,8 +509,13 @@ class SqliteRepository(RepositoryInterface):
         return cursor.lastrowid
 
     def delete_planned_operation(self, op_id: int) -> None:
-        """Delete a planned operation."""
+        """Delete a planned operation and the iteration decisions taken on it."""
         conn = self._get_connection()
+        # The schema declares ON DELETE CASCADE, but SQLite only honours it with
+        # PRAGMA foreign_keys ON, which this connection does not set.
+        conn.execute(
+            "DELETE FROM iteration_resolutions WHERE planned_operation_id = ?", (op_id,)
+        )
         conn.execute("DELETE FROM planned_operations WHERE id = ?", (op_id,))
         conn.commit()
 
@@ -855,6 +862,78 @@ class SqliteRepository(RepositoryInterface):
             )
             for row in cursor.fetchall()
         )
+
+    # Iteration resolution methods
+
+    def upsert_iteration_resolution(self, resolution: IterationResolution) -> None:
+        """Store the decision about an iteration, replacing any previous one."""
+        conn = self._get_connection()
+        conn.execute(
+            """INSERT INTO iteration_resolutions
+                   (planned_operation_id, iteration_date, action, postponed_to,
+                    note, decided_at)
+               VALUES (?, ?, ?, ?, ?, ?)
+               ON CONFLICT(planned_operation_id, iteration_date) DO UPDATE SET
+                   action = excluded.action,
+                   postponed_to = excluded.postponed_to,
+                   note = excluded.note,
+                   decided_at = excluded.decided_at""",
+            (
+                resolution.planned_operation_id,
+                resolution.iteration_date.isoformat(),
+                resolution.action.value,
+                resolution.postponed_to.isoformat()
+                if resolution.postponed_to
+                else None,
+                resolution.note,
+                (resolution.decided_at or datetime.now(timezone.utc)).isoformat(),
+            ),
+        )
+        conn.commit()
+
+    def get_iteration_resolutions(
+        self, planned_operation_id: int | None = None
+    ) -> tuple[IterationResolution, ...]:
+        """Get stored decisions, oldest iteration first."""
+        conn = self._get_connection()
+        base = (
+            "SELECT planned_operation_id, iteration_date, action, postponed_to, "
+            "note, decided_at FROM iteration_resolutions"
+        )
+        if planned_operation_id is None:
+            cursor = conn.execute(f"{base} ORDER BY iteration_date")
+        else:
+            cursor = conn.execute(
+                f"{base} WHERE planned_operation_id = ? ORDER BY iteration_date",
+                (planned_operation_id,),
+            )
+        return tuple(
+            IterationResolution(
+                planned_operation_id=row["planned_operation_id"],
+                iteration_date=date.fromisoformat(row["iteration_date"]),
+                action=IterationAction(row["action"]),
+                postponed_to=(
+                    date.fromisoformat(row["postponed_to"])
+                    if row["postponed_to"]
+                    else None
+                ),
+                note=row["note"],
+                decided_at=datetime.fromisoformat(row["decided_at"]),
+            )
+            for row in cursor.fetchall()
+        )
+
+    def delete_iteration_resolution(
+        self, planned_operation_id: int, iteration_date: date
+    ) -> None:
+        """Delete the decision about an iteration."""
+        conn = self._get_connection()
+        conn.execute(
+            "DELETE FROM iteration_resolutions "
+            "WHERE planned_operation_id = ? AND iteration_date = ?",
+            (planned_operation_id, iteration_date.isoformat()),
+        )
+        conn.commit()
 
     # Private helpers
 

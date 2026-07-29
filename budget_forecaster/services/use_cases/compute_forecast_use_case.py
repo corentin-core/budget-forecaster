@@ -6,6 +6,9 @@ from budget_forecaster.services.account.account_analysis_report import (
     AccountAnalysisReport,
 )
 from budget_forecaster.services.forecast.forecast_service import ForecastService
+from budget_forecaster.services.operation.iteration_resolution_service import (
+    IterationResolutionService,
+)
 from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
 )
@@ -18,9 +21,11 @@ class ComputeForecastUseCase:  # pylint: disable=too-few-public-methods
         self,
         forecast_service: ForecastService,
         operation_link_service: OperationLinkService,
+        iteration_resolution_service: IterationResolutionService,
     ) -> None:
         self._forecast_service = forecast_service
         self._operation_link_service = operation_link_service
+        self._iteration_resolution_service = iteration_resolution_service
 
     def compute_report(
         self,
@@ -37,4 +42,7 @@ class ComputeForecastUseCase:  # pylint: disable=too-few-public-methods
             The computed analysis report.
         """
         links = self._operation_link_service.get_all_links()
-        return self._forecast_service.compute_report(start_date, end_date, links)
+        resolutions = self._iteration_resolution_service.get_all_resolutions()
+        return self._forecast_service.compute_report(
+            start_date, end_date, links, resolutions
+        )

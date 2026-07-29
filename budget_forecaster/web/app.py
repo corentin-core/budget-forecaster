@@ -55,6 +55,9 @@ from budget_forecaster.infrastructure.persistence.repository_interface import (
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.forecast.forecast_service import ForecastService
 from budget_forecaster.services.import_service import ImportService
+from budget_forecaster.services.operation.iteration_resolution_service import (
+    IterationResolutionService,
+)
 from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
 )
@@ -105,6 +108,9 @@ def _build_app_service(
             persistent_account, persistent_account.repository
         ),
         operation_link_service=OperationLinkService(persistent_account.repository),
+        iteration_resolution_service=IterationResolutionService(
+            persistent_account.repository
+        ),
     )
 
 

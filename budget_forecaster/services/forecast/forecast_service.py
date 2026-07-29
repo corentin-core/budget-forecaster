@@ -24,6 +24,7 @@ from budget_forecaster.core.types import (
 from budget_forecaster.domain.account.account_interface import AccountInterface
 from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.domain.operation.iteration_resolution import IterationResolution
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.i18n import _
@@ -473,6 +474,7 @@ class ForecastService:  # pylint: disable=too-many-public-methods
         start_date: date | None = None,
         end_date: date | None = None,
         operation_links: tuple[OperationLink, ...] = (),
+        iteration_resolutions: tuple[IterationResolution, ...] = (),
     ) -> AccountAnalysisReport:
         """Compute the forecast report.
 
@@ -480,6 +482,7 @@ class ForecastService:  # pylint: disable=too-many-public-methods
             start_date: Start date for the report (default: 4 months ago).
             end_date: End date for the report (default: 12 months from now).
             operation_links: Tuple of operation links to use for actualization.
+            iteration_resolutions: The user's decisions on unmatched iterations.
 
         Returns:
             The computed AccountAnalysisReport.
@@ -494,7 +497,10 @@ class ForecastService:  # pylint: disable=too-many-public-methods
         logger.info("Computing forecast report from %s to %s", start_date, end_date)
 
         analyzer = AccountAnalyzer(
-            self._account_provider.account, forecast, operation_links
+            self._account_provider.account,
+            forecast,
+            operation_links,
+            iteration_resolutions,
         )
         self._report = analyzer.compute_report(start_date, end_date)
 

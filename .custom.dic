@@ -3,6 +3,7 @@ abstractmethod
 accueil
 acount
 actualisé
+actualizer
 ajusté
 al
 algo
@@ -81,12 +82,14 @@ greying
 hh
 historicoperation
 honour
+honours
 http
 hx
 idempotency
 impl
 init
 integrations
+invariants
 iso
 iterable
 iteratively
