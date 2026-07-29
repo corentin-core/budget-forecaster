@@ -78,22 +78,41 @@ list, with a count on the Accueil tab so you see it from any page.
 
 Each overdue row says how late the payment is and whether the forecast still counts it:
 for a month it does, on the day after your balance date, then it stops being counted and
-the row says so. Either way it stays listed until you decide — nothing is dropped behind
-your back. The description is a link to your operations filtered on it, because the
-likeliest cause of a wrong alert is a label that changed and an operation that just
-needs linking.
+the row says so. Either way it stays listed until you settle it — nothing is dropped
+behind your back.
 
-Two decisions are offered. **Reporter** moves the payment to a date you pick, offered as
-the next occurrence or tomorrow before you type anything; the forecast then counts it
-there, and the upcoming list shows it on its new date with where it came from. **Ne pas
-compter** declares that the payment never happened; the confirmation tells you how much
-comes back to your margin first. The margin at the top of the page updates with your
-decision, and **Rétablir** undoes it — right away on the row, or later from the planned
-operation's own page, which lists every occurrence you decided about.
+**Lier…** is the first thing to try, and the description opens the same page. Most often
+the payment did happen and the matcher did not recognize it, so the page lists the
+operations that could be it, best first, ranked by the same score the automatic matching
+uses. Each one shows its date, that score and a hint such as "même montant". A search
+box reaches operations well outside the dates around the occurrence, for when you
+remember the label but not the day, and weak matches stay behind a **Tout afficher**
+toggle. When nothing comes close the list says so rather than filling up with
+near-misses.
 
-When a sync has failed the card withholds both actions and says so: operations are
-probably missing, and stopping to count a payment that did happen would be worse than
-waiting.
+An operation another budget or planned payment already counts is offered too — the
+matcher giving a payment to the wrong target is exactly the mistake this page exists to
+fix. It carries a note saying what counts it today, and asks before it moves: the
+confirmation tells you what the previous target gets back, whether that means an
+occurrence going back overdue, one returning to the upcoming list, or a budget simply no
+longer counting the operation. Every candidate asks before it links, since undoing means
+finding the operation in Opérations and using **Délier**.
+
+When no operation is the payment, the same page offers the two decisions. **Reporter**
+moves the payment to a date you pick, offered as the next occurrence or tomorrow before
+you type anything; the forecast then counts it there, and the upcoming list shows it on
+its new date with where it came from. **Ne pas compter** declares that the payment never
+happened; the confirmation tells you how much comes back to your margin first. Both are
+on the overdue row as well, and the margin at the top of Accueil updates with your
+decision. **Rétablir** undoes it — right away on the row, or later from the planned
+operation's own page, which lists every occurrence you decided about. A payment made in
+cash has no operation to link, so not counting it is the answer there.
+
+When a sync has failed the card and the page withhold both decisions and say so:
+operations are probably missing, and stopping to count a payment that did happen would
+be worse than waiting. Linking stays available, since an operation already imported is
+there whatever the sync left out — the page warns that what you are looking for may be
+among the missing.
 
 On Tendances, the expense breakdown donut folds small categories into a single grey
 **Other categories** slice. A slider below the donut sets the cutoff: any category below

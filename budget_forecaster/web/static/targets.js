@@ -20,26 +20,6 @@
     });
   });
 
-  // Two-step inline delete confirm (no modal).
-  document.querySelectorAll('[data-confirm]').forEach(function (form) {
-    const trigger = form.querySelector('[data-delete-trigger]');
-    const cluster = form.querySelector('.confirm-cluster');
-    const cancel = form.querySelector('[data-delete-cancel]');
-    if (!trigger || !cluster) return;
-    trigger.addEventListener('click', function () {
-      trigger.hidden = true;
-      cluster.hidden = false;
-      cluster.querySelector('[type=submit]').focus();
-    });
-    if (cancel) {
-      cancel.addEventListener('click', function () {
-        cluster.hidden = true;
-        trigger.hidden = false;
-        trigger.focus();
-      });
-    }
-  });
-
   // Whole management row is clickable (the inner link keeps keyboard/no-JS access).
   document.querySelectorAll('.target-row[data-href]').forEach(function (row) {
     row.addEventListener('click', function (event) {
