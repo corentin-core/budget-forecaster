@@ -24,6 +24,9 @@ from budget_forecaster.exceptions import (
     PlannedOperationNotFoundError,
 )
 from budget_forecaster.services.forecast.forecast_service import ForecastService
+from budget_forecaster.services.operation.iteration_resolution_service import (
+    IterationResolutionService,
+)
 from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
 )
@@ -60,11 +63,20 @@ def mock_matcher_cache_fixture() -> MagicMock:
     return MagicMock(spec=MatcherCache)
 
 
+@pytest.fixture(name="mock_resolution_service")
+def mock_resolution_service_fixture() -> MagicMock:
+    """Create a mock iteration resolution service."""
+    mock = MagicMock(spec=IterationResolutionService)
+    mock.get_resolutions_for_planned_operation.return_value = ()
+    return mock
+
+
 @pytest.fixture(name="use_case")
 def use_case_fixture(
     mock_forecast_service: MagicMock,
     mock_persistent_account: MagicMock,
     mock_operation_link_service: MagicMock,
+    mock_resolution_service: MagicMock,
     mock_matcher_cache: MagicMock,
 ) -> ManageTargetsUseCase:
     """Create a ManageTargetsUseCase with mock dependencies."""
@@ -72,6 +84,7 @@ def use_case_fixture(
         mock_forecast_service,
         mock_persistent_account,
         mock_operation_link_service,
+        mock_resolution_service,
         mock_matcher_cache,
     )
 

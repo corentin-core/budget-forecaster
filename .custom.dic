@@ -76,12 +76,14 @@ fernet
 filesystem
 focusable
 forecasted
+fromisoformat
 gettext
 grey
 greying
 hh
 historicoperation
 honour
+honoured
 honours
 http
 hx
@@ -120,6 +122,7 @@ mypy
 nav
 nullable
 oauth
+onwards
 oob
 opérations
 orchestrator
@@ -166,6 +169,8 @@ sparkline
 startswith
 stderr
 str
+subclasses
+subclasses
 subcommand
 submodules
 summarised

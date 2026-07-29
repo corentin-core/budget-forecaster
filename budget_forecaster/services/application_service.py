@@ -6,6 +6,7 @@ use cases while providing direct access to read-only service methods.
 """
 
 import logging
+from collections.abc import Iterable, Mapping, Set
 from datetime import date, timedelta
 from pathlib import Path
 from typing import NamedTuple
@@ -89,26 +90,31 @@ class UpcomingIteration(NamedTuple):
 
 def get_upcoming_iterations(
     planned_operations: tuple[PlannedOperation, ...],
-    reference_date: date,
+    balance_date: date,
     horizon_days: int = 30,
     resolutions: tuple[IterationResolution, ...] = (),
+    matched_iterations: Mapping[PlannedOperationId, Set[date]] | None = None,
 ) -> tuple[UpcomingIteration, ...]:
-    """Get the iterations due from reference_date up to the horizon.
+    """Get the iterations due after the balance date, up to the horizon.
 
-    Past-due iterations belong to the overdue list, not here: they are listed
-    there with the decisions they need, so this view stays strictly forward.
-    Iterations the user postponed into the window are included on their new date.
+    The balance date splits the two views: what is due by then is overdue and
+    listed with the decisions it needs, what comes after is still expected and
+    listed here. An iteration between the balance date and today belongs here —
+    the bank data does not cover it yet. Iterations the user postponed into the
+    window show on their new date.
 
     Args:
         planned_operations: All planned operations.
-        reference_date: The date to compute from (typically today).
-        horizon_days: Number of days ahead to look.
+        balance_date: The account's balance date.
+        horizon_days: Number of days ahead of today to look.
         resolutions: The user's decisions on unmatched iterations.
+        matched_iterations: Iteration dates already linked, per planned operation.
 
     Returns:
         Upcoming iterations sorted by date ascending.
     """
-    cutoff = reference_date + timedelta(days=horizon_days)
+    start = balance_date + timedelta(days=1)
+    cutoff = date.today() + timedelta(days=horizon_days)
     iterations: list[UpcomingIteration] = []
     postponed = index_resolutions(resolutions)
 
@@ -116,12 +122,10 @@ def get_upcoming_iterations(
         period = (
             op.date_range.period if isinstance(op.date_range, RecurringDay) else None
         )
-        for date_range in op.date_range.iterate_over_date_ranges(
-            from_date=reference_date
-        ):
+        for date_range in op.date_range.iterate_over_date_ranges(from_date=start):
             if (iteration_date := date_range.start_date) > cutoff:
                 break
-            if iteration_date < reference_date:
+            if iteration_date < start:
                 continue
             iterations.append(
                 UpcomingIteration(
@@ -134,22 +138,67 @@ def get_upcoming_iterations(
             )
         if op.id is None:
             continue
-        for resolution in postponed.get(op.id, {}).values():
-            moved_to = resolution.postponed_to
-            if moved_to is None or not reference_date <= moved_to <= cutoff:
-                continue
-            iterations.append(
-                UpcomingIteration(
-                    iteration_date=moved_to,
-                    description=op.description,
-                    amount=op.amount,
-                    currency=op.currency,
-                    period=period,
-                    postponed_from=resolution.iteration_date,
-                )
+        iterations.extend(
+            _postponed_into_window(
+                op,
+                postponed.get(op.id, {}).values(),
+                (matched_iterations or {}).get(op.id, frozenset()),
+                start,
+                cutoff,
+                period,
             )
+        )
 
     return tuple(sorted(iterations, key=lambda it: it.iteration_date))
+
+
+def _postponed_into_window(
+    op: PlannedOperation,
+    resolutions: Iterable[IterationResolution],
+    matched: Set[date],
+    start: date,
+    cutoff: date,
+    period: relativedelta | None,
+) -> tuple[UpcomingIteration, ...]:
+    """Build the entries for iterations the user moved into the window.
+
+    A link settles the iteration whatever the user decided, and a decision left
+    over from an earlier date range applies to no iteration at all.
+    """
+    moved: list[UpcomingIteration] = []
+    for resolution in resolutions:
+        moved_to = resolution.postponed_to
+        if moved_to is None or not start <= moved_to <= cutoff:
+            continue
+        if resolution.iteration_date in matched:
+            continue
+        if not _has_iteration(op, resolution.iteration_date):
+            continue
+        moved.append(
+            UpcomingIteration(
+                iteration_date=moved_to,
+                description=op.description,
+                amount=op.amount,
+                currency=op.currency,
+                period=period,
+                postponed_from=resolution.iteration_date,
+            )
+        )
+    return tuple(moved)
+
+
+def _has_iteration(op: PlannedOperation, iteration_date: date) -> bool:
+    """Whether the operation's date range still produces that iteration."""
+    for date_range in op.date_range.iterate_over_date_ranges(from_date=iteration_date):
+        if date_range.start_date == iteration_date:
+            return True
+        if date_range.start_date > iteration_date:
+            return False
+    return False
+
+
+OVERDUE_LISTING_WINDOW = relativedelta(months=6)
+"""How far back the overdue list reaches, well past the late horizon."""
 
 
 class OverdueIteration(NamedTuple):
@@ -214,6 +263,7 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
             forecast_service,
             persistent_account,
             operation_link_service,
+            iteration_resolution_service,
             matcher_cache,
         )
         self._links_uc = ManageLinksUseCase(operation_link_service)
@@ -400,9 +450,10 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         """
         return get_upcoming_iterations(
             self.get_all_planned_operations(),
-            date.today(),
+            self.balance_date,
             horizon_days,
             self._iteration_resolution_service.get_all_resolutions(),
+            self._linked_iterations_by_planned_operation(),
         )
 
     def _linked_iterations_by_planned_operation(
@@ -420,8 +471,13 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
 
         Postponed and skipped iterations are left out: the user already decided,
         and their decision is listed on the planned operation itself.
+
+        The list reaches back OVERDUE_LISTING_WINDOW, so an operation backdated by
+        years does not bury the card under iterations that left the forecast long
+        ago. Anything older stopped being counted at the late horizon.
         """
         balance_date = self.balance_date
+        since = balance_date - OVERDUE_LISTING_WINDOW
         linked = self._linked_iterations_by_planned_operation()
         resolutions = index_resolutions(
             self._iteration_resolution_service.get_all_resolutions()
@@ -432,7 +488,11 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
             if op.id is None:
                 continue
             for past in derive_past_iterations(
-                op, balance_date, linked.get(op.id, set()), resolutions.get(op.id, {})
+                op,
+                balance_date,
+                linked.get(op.id, set()),
+                resolutions.get(op.id, {}),
+                since=since,
             ):
                 if past.state not in (IterationState.LATE, IterationState.EXPIRED):
                     continue

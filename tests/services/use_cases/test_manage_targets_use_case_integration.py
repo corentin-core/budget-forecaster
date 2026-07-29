@@ -21,6 +21,9 @@ from budget_forecaster.infrastructure.persistence.sqlite_repository import (
     SqliteRepository,
 )
 from budget_forecaster.services.forecast.forecast_service import ForecastService
+from budget_forecaster.services.operation.iteration_resolution_service import (
+    IterationResolutionService,
+)
 from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
 )
@@ -80,6 +83,7 @@ def use_case_fixture(
         forecast_service,
         persistent_account,
         OperationLinkService(repository),
+        IterationResolutionService(repository),
         MatcherCache(forecast_service),
     )
 
@@ -155,3 +159,100 @@ class TestManageTargetsIntegration:
         with pytest.raises(PlannedOperationNotFoundError):
             repository.get_planned_operation_by_id(result.id)
         assert repository.get_link_for_operation(1) is None
+
+
+class TestIterationDecisionsAcrossEdits:
+    """A decision must follow the iteration it was taken on."""
+
+    @staticmethod
+    def _monthly_rent() -> PlannedOperation:
+        """A monthly rent starting in January."""
+        return PlannedOperation(
+            record_id=None,
+            description="Rent",
+            amount=Amount(-800.0),
+            category=Category.RENT,
+            date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
+        )
+
+    def test_split_moves_later_decisions_to_the_continuation(
+        self,
+        use_case: ManageTargetsUseCase,
+        repository: SqliteRepository,
+    ) -> None:
+        """Left behind, a skipped amount would quietly come back to the forecast."""
+        original = use_case.add_planned_operation(self._monthly_rent())
+        assert original.id is not None
+        service = IterationResolutionService(repository)
+        service.skip(original.id, date(2025, 2, 1))
+        service.skip(original.id, date(2025, 6, 1))
+
+        continuation = use_case.split_planned_operation_at_date(
+            original.id, date(2025, 6, 1), new_amount=Amount(-850.0)
+        )
+
+        assert [
+            r.iteration_date
+            for r in service.get_resolutions_for_planned_operation(original.id)
+        ] == [date(2025, 2, 1)]
+        assert continuation.id is not None
+        assert [
+            r.iteration_date
+            for r in service.get_resolutions_for_planned_operation(continuation.id)
+        ] == [date(2025, 6, 1)]
+
+    def test_split_keeps_a_postponement_and_its_date(
+        self,
+        use_case: ManageTargetsUseCase,
+        repository: SqliteRepository,
+    ) -> None:
+        """The chosen date survives the move."""
+        original = use_case.add_planned_operation(self._monthly_rent())
+        assert original.id is not None
+        service = IterationResolutionService(repository)
+        service.postpone(
+            original.id, date(2025, 6, 1), date(2025, 6, 20), "landlord away"
+        )
+
+        continuation = use_case.split_planned_operation_at_date(
+            original.id, date(2025, 6, 1), new_amount=Amount(-850.0)
+        )
+
+        assert continuation.id is not None
+        (moved,) = service.get_resolutions_for_planned_operation(continuation.id)
+        assert moved.postponed_to == date(2025, 6, 20)
+        assert moved.note == "landlord away"
+
+    def test_editing_the_start_date_forgets_orphan_decisions(
+        self,
+        use_case: ManageTargetsUseCase,
+        repository: SqliteRepository,
+    ) -> None:
+        """A decision on an iteration the operation no longer has applies to nothing."""
+        original = use_case.add_planned_operation(self._monthly_rent())
+        assert original.id is not None
+        service = IterationResolutionService(repository)
+        service.skip(original.id, date(2025, 2, 1))
+
+        use_case.update_planned_operation(
+            original.replace(
+                date_range=RecurringDay(date(2025, 1, 15), relativedelta(months=1))
+            )
+        )
+
+        assert service.get_resolutions_for_planned_operation(original.id) == ()
+
+    def test_editing_keeps_a_decision_that_still_applies(
+        self,
+        use_case: ManageTargetsUseCase,
+        repository: SqliteRepository,
+    ) -> None:
+        """An unrelated edit must not throw the user's decisions away."""
+        original = use_case.add_planned_operation(self._monthly_rent())
+        assert original.id is not None
+        service = IterationResolutionService(repository)
+        service.skip(original.id, date(2025, 2, 1))
+
+        use_case.update_planned_operation(original.replace(amount=Amount(-820.0)))
+
+        assert len(service.get_resolutions_for_planned_operation(original.id)) == 1
