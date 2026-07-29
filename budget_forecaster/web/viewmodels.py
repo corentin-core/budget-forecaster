@@ -4,7 +4,7 @@ Groups categories and computes consumption for the web month view and home
 health from the same database.
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import NamedTuple
 
 import pandas as pd
@@ -16,6 +16,7 @@ from budget_forecaster.core.date_range import (
     RecurringDay,
 )
 from budget_forecaster.core.duration import DurationUnit, relativedelta_to_unit
+from budget_forecaster.core.types import PlannedOperationId
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.i18n import _
@@ -508,4 +509,108 @@ def build_month_health(app: ApplicationService, month: date) -> MonthHealth | No
         actual=actual,
         ratio=ratio,
         rows=by_weight,
+    )
+
+
+def margin_status(margin: MarginInfo | None) -> str | None:
+    """Colour bucket for the available margin: bad below the threshold, warn when
+    the buffer is thin, good otherwise."""
+    if margin is None:
+        return None
+    if margin["available_margin"] < 0:
+        return "bad"
+    if margin["available_margin"] < margin["threshold"]:
+        return "warn"
+    return "good"
+
+
+class OverdueRow(NamedTuple):
+    """One row of the Accueil overdue card."""
+
+    planned_operation_id: PlannedOperationId
+    iteration_date: date
+    description: str
+    amount: float
+    currency: str
+    days_overdue: int
+    counted_on: date | None
+    """When the forecast still counts the amount; None when it no longer does."""
+
+    postponed_to: date | None
+    """The date the user had chosen, when it passed with nothing matching it."""
+
+    next_iteration: date | None
+    """The operation's next own iteration, offered as the postponement default."""
+
+    earliest_postpone: date
+    """A postponement must move the iteration forward, never back."""
+
+
+class OverdueCard(NamedTuple):
+    """The overdue card's state, including why it may refuse to act."""
+
+    rows: tuple[OverdueRow, ...]
+    sync_broken: bool
+    """A sync failed, so operations are probably missing: no decision offered."""
+
+    show_data_horizon: bool
+    """The balance date is old enough to be worth stating before deciding."""
+
+    balance_date: date
+    tomorrow: date
+
+
+_HORIZON_WORTH_SAYING = timedelta(days=3)
+
+
+def _next_own_iteration(op: PlannedOperation, after: date) -> date | None:
+    """The operation's first iteration strictly after the given date.
+
+    Offered as the postponement default, so it has to be ahead of today: an
+    occurrence that has already passed would be late again at once.
+    """
+    next_range = op.date_range.next_date_range(after)
+    return next_range.start_date if next_range is not None else None
+
+
+def build_overdue_card(
+    app: ApplicationService, *, sync_broken: bool = False
+) -> OverdueCard:
+    """Build the overdue card: what awaits a decision, and whether to offer any.
+
+    A failed sync means operations are probably missing, so the card states that
+    and offers nothing rather than inviting the user to stop counting a payment
+    that did happen. An old balance date is not enough to refuse: someone who
+    imports their statements by hand always has one, and the card says where the
+    data stops instead.
+
+    Args:
+        app: The application service.
+        sync_broken: True when a sync alert is showing.
+    """
+    balance_date = app.balance_date
+    today = date.today()
+    rows: list[OverdueRow] = []
+    for overdue in app.get_overdue_iterations():
+        op = app.get_planned_operation_by_id(overdue.planned_operation_id)
+        rows.append(
+            OverdueRow(
+                planned_operation_id=overdue.planned_operation_id,
+                iteration_date=overdue.iteration_date,
+                description=overdue.description,
+                amount=overdue.amount,
+                currency=overdue.currency,
+                days_overdue=overdue.days_overdue,
+                counted_on=overdue.counted_on,
+                postponed_to=overdue.postponed_to,
+                next_iteration=_next_own_iteration(op, max(balance_date, today)),
+                earliest_postpone=overdue.iteration_date + timedelta(days=1),
+            )
+        )
+    return OverdueCard(
+        rows=tuple(rows),
+        sync_broken=sync_broken,
+        show_data_horizon=today - balance_date > _HORIZON_WORTH_SAYING,
+        balance_date=balance_date,
+        tomorrow=today + timedelta(days=1),
     )

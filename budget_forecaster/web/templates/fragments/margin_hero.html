@@ -1,0 +1,14 @@
+<section class="card highlight margin-hero margin-{{ margin_status }}" id="margin-hero"
+         {{ 'hx-swap-oob="true"' | safe if oob }}>
+  {% if margin %}
+  <div class="metric-label">
+    {{ _("Available margin") }}
+    <span class="info" tabindex="0"
+          data-tip="{{ _('What you can spend without your projected balance dropping below the safety threshold, over the whole forecast horizon.') }} — {{ _('Safety threshold') }}: {{ margin.threshold | eur(currency) }}">ⓘ</span>
+  </div>
+  <div class="metric-value big">{{ margin.available_margin | eur(currency) }}</div>
+  {% if margin_status == "bad" %}
+    <div class="metric-sub warn-text">{{ _("Projected below your safety threshold") }}</div>
+  {% endif %}
+  {% endif %}
+</section>

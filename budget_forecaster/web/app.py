@@ -76,6 +76,7 @@ from budget_forecaster.web.routes import (
     home,
     month,
     operations,
+    overdue,
     settings,
     swile,
     targets,
@@ -244,6 +245,7 @@ def create_app(config_path: Path | None = None) -> FastAPI:
     app.include_router(operations.router)
     app.include_router(targets.router)
     app.include_router(trends.router)
+    app.include_router(overdue.router)
     app.include_router(settings.router)
     app.include_router(bank.router)
     app.include_router(swile.router)

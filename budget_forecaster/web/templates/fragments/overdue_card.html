@@ -1,0 +1,28 @@
+{% if card.rows %}
+<section class="card overdue-card">
+  <div class="card-head">
+    <h2>{{ _("Overdue payments") }} ({{ card.rows | length }})</h2>
+    {% set uncounted = card.rows | rejectattr("counted_on") | list | length %}
+    {% if uncounted %}
+      <span class="card-note">{{ _("not counted: {n}").format(n=uncounted) }}</span>
+    {% endif %}
+  </div>
+  {% if card.sync_broken %}
+  <p class="banner banner-failed overdue-degraded">
+    ⚠ {{ _("The last sync failed, so operations may be missing.") }}
+    {{ _("Sync before deciding.") }}
+    <a href="/settings">{{ _("Sync") }}</a>
+  </p>
+  {% elif card.show_data_horizon %}
+  <p class="muted-note overdue-degraded">
+    {{ _("Your data stops on {date}.").format(date=card.balance_date | frdate) }}
+  </p>
+  {% endif %}
+  <ul class="overdue-list" id="overdue-list">
+    {% for row in card.rows %}
+      {% include "fragments/overdue_row.html" %}
+    {% endfor %}
+  </ul>
+  <p class="card-foot">{{ _("No imported operation matches these. The description opens the ledger filtered on it.") }}</p>
+</section>
+{% endif %}

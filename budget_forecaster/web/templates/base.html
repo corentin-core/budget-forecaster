@@ -19,6 +19,9 @@
         {% if key == "operations" %}
         <span id="uncat-badge-{{ suffix }}" class="badge" {{ 'hidden' if not uncat_count }}>{{ uncat_count or '' }}</span>
         {% endif %}
+        {% if key == "home" %}
+        <span id="overdue-badge-{{ suffix }}" class="badge" {{ 'hidden' if not overdue_count }}>{{ overdue_count or '' }}</span>
+        {% endif %}
       </a>
       {% endfor %}
     {% endmacro %}

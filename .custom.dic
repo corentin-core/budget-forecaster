@@ -135,6 +135,7 @@ parsers
 passthrough
 plaintext
 polyline
+postponable
 pragma
 pre
 prefilled

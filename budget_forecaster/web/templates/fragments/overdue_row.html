@@ -1,0 +1,47 @@
+<li class="overdue-item" id="overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}">
+  <div class="overdue-head">
+    <a class="overdue-desc" href="/operations?q={{ row.description | urlencode }}"
+       title="{{ _('Open the ledger filtered on this payment') }}">{{ row.description }} ›</a>
+    <span class="overdue-amount {{ 'positive' if row.amount > 0 else 'negative' }}">
+      {{ row.amount | signed_eur(row.currency) }}
+    </span>
+  </div>
+  <div class="overdue-meta">
+    {%- if row.postponed_to %}
+      {{ _("postponed from {date}").format(date=row.iteration_date | frdate) }} ·
+      {{ _("overdue since {date}").format(date=row.postponed_to | frdate) }}
+    {%- else %}
+      {{ _("due on {date}").format(date=row.iteration_date | frdate) }}
+    {%- endif %}
+    · {{ _("{n} d").format(n=row.days_overdue) }}
+    ·
+    {%- if row.counted_on %}
+      {{ _("counted on {date}").format(date=row.counted_on | frdate) }}
+    {%- else %}
+      <span class="not-counted">{{ _("not counted") }}</span>
+    {%- endif %}
+  </div>
+  {% if card.sync_broken %}
+    <div class="overdue-actions muted-note">{{ _("Sync before deciding") }}</div>
+  {% else %}
+  <div class="overdue-actions" data-confirm>
+    <button class="btn small" type="button"
+            hx-get="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/postpone"
+            hx-target="#overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}"
+            hx-swap="outerHTML">{{ _("Postpone…") }}</button>
+    <form hx-post="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/skip"
+          hx-target="#overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}"
+          hx-swap="outerHTML" class="inline">
+      <button type="button" class="btn small danger" data-delete-trigger>{{ _("Do not count") }}</button>
+      <span class="confirm-cluster" hidden>
+        <span class="confirm-question">
+          {{ _("Stop counting it?") }}
+          {{ _("{amount} returns to your margin.").format(amount=row.amount | abs | eur(row.currency)) }}
+        </span>
+        <button type="button" class="btn small" data-delete-cancel>{{ _("Cancel") }}</button>
+        <button type="submit" class="btn small danger">{{ _("Confirm") }}</button>
+      </span>
+    </form>
+  </div>
+  {% endif %}
+</li>

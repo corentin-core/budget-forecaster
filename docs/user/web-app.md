@@ -73,10 +73,27 @@ Réglages lets you edit that threshold, and holds the log-out action (reachable 
 mobile, where there is no sidebar).
 
 The Accueil upcoming list covers what is still ahead of your balance date. A planned
-payment nothing matched by then is **overdue** instead: it keeps weighing on the
-forecast for a month, then stops being counted, and either way it is reported rather
-than silently dropped. An iteration you postponed appears in the upcoming list on its
-new date, annotated with where it came from.
+payment nothing matched by then is **overdue** instead, and gets its own card above the
+list, with a count on the Accueil tab so you see it from any page.
+
+Each overdue row says how late the payment is and whether the forecast still counts it:
+for a month it does, on the day after your balance date, then it stops being counted and
+the row says so. Either way it stays listed until you decide — nothing is dropped behind
+your back. The description is a link to your operations filtered on it, because the
+likeliest cause of a wrong alert is a label that changed and an operation that just
+needs linking.
+
+Two decisions are offered. **Reporter** moves the payment to a date you pick, offered as
+the next occurrence or tomorrow before you type anything; the forecast then counts it
+there, and the upcoming list shows it on its new date with where it came from. **Ne pas
+compter** declares that the payment never happened; the confirmation tells you how much
+comes back to your margin first. The margin at the top of the page updates with your
+decision, and **Rétablir** undoes it — right away on the row, or later from the planned
+operation's own page, which lists every occurrence you decided about.
+
+When a sync has failed the card withholds both actions and says so: operations are
+probably missing, and stopping to count a payment that did happen would be worse than
+waiting.
 
 On Tendances, the expense breakdown donut folds small categories into a single grey
 **Other categories** slice. A slider below the donut sets the cutoff: any category below
