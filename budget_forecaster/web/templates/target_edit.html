@@ -22,13 +22,34 @@
 
   {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
 
+  {% if seed and seed.duplicate %}
+    {% set dup = seed.duplicate %}
+    <p class="seed-notice">
+      {% if dup.already_counts %}
+        ⓘ {{ _("This operation already counts for {name}.").format(name='« ' ~ dup.description ~ ' »') }}
+      {% else %}
+        ⓘ {{ _("{name} ({amount}, {period}) may already be this payment.").format(
+                name='« ' ~ dup.description ~ ' »',
+                amount=dup.amount | signed_eur(currency),
+                period=dup.period_label) }}
+        <a href="/operations/{{ seed.operation_id }}/link?return_to={{ return_to | urlencode }}">{{
+          _("Link to {name}").format(name='« ' ~ dup.description ~ ' »') }}</a>
+      {% endif %}
+    </p>
+  {% endif %}
+
   <form id="target-form" method="post"
         action="/targets/{{ form.kind }}{{ ('/' ~ form.target_id) if not form.is_new }}">
     <input type="hidden" name="return_to" value="{{ return_to }}" />
+    {% if seed %}
+    <input type="hidden" name="source_operation_id" value="{{ seed.operation_id }}" />
+    {% endif %}
 
     <label class="field">
       <span>{{ _("Description") }}</span>
-      <input type="text" name="description" required value="{{ form.description }}" />
+      <input type="text" name="description" required value="{{ form.description }}"
+             {{ 'autofocus' if seed }} />
+      {% if seed %}<span class="hint">{{ _("From {label}").format(label='« ' ~ seed.label ~ ' »') }}</span>{% endif %}
     </label>
 
     <label class="field">
@@ -43,11 +64,26 @@
           <option value="{{ name }}" {{ 'selected' if form.category == name }}>{{ display }}</option>
         {% endfor %}
       </select>
+      {% if seed and seed.uncategorized %}
+        <span class="hint">{{ _("Categorize the operation first: occurrences only match in the same category.") }}</span>
+      {% endif %}
     </label>
+
+    {% if seed %}
+    <label class="field">
+      <span>{{ _("Recognize by") }}</span>
+      <input type="text" name="keywords" value="{{ form.keywords }}"
+             placeholder="{{ _('Comma separated') }}" />
+      <span class="hint">{{ _("A word that will come back every month") }}</span>
+    </label>
+    {% endif %}
 
     <label class="field">
       <span>{{ _("Start date") }}</span>
       <input type="date" name="start_date" required value="{{ form.start_date }}" />
+      {% if seed and seed.late_occurrences %}
+        <span class="hint">{{ _("Occurrences since this date will be expected; those without a matching operation show as overdue on Accueil.") }}</span>
+      {% endif %}
     </label>
 
     {% if form.has_duration %}
@@ -78,11 +114,13 @@
     {% if is_planned %}
     <details class="advanced">
       <summary>{{ _("Matching (advanced)") }}</summary>
+      {% if not seed %}
       <label class="field">
         <span>{{ _("Keywords") }}</span>
         <input type="text" name="keywords" value="{{ form.keywords }}"
                placeholder="{{ _('Comma separated') }}" />
       </label>
+      {% endif %}
       <label class="field">
         <span>{{ _("Date tolerance (days)") }}</span>
         <input type="number" name="approx_days" min="0" value="{{ form.approx_days }}" />

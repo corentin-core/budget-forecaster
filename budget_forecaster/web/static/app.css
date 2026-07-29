@@ -1407,6 +1407,17 @@ a.overdue-edit:focus-visible,
   margin-bottom: 1rem;
   font-size: 0.9rem;
 }
+/* Says something useful about the form without taking it over. */
+.seed-notice {
+  border-left: 3px solid var(--accent);
+  padding: 0.4rem 0.7rem;
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+.field > span.hint {
+  margin: 0.25rem 0 0;
+}
 .import-form {
   display: flex;
   align-items: center;
@@ -1509,6 +1520,11 @@ a.overdue-edit:focus-visible,
 .op-detail h1 {
   font-size: 1.2rem;
   margin: 0.3rem 0 1rem;
+}
+.op-detail .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 .back {
   margin: 0 0 0.5rem;

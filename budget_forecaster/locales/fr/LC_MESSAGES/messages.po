@@ -2064,3 +2064,27 @@ msgstr "Ouvrir l'opération planifiée liée {name}"
 
 msgid "Edit the planned operation (all occurrences)"
 msgstr "Modifier l'opération planifiée (toutes les occurrences)"
+
+msgid "From {label}"
+msgstr "D'après {label}"
+
+msgid "Recognize by"
+msgstr "Reconnaître par"
+
+msgid "A word that will come back every month"
+msgstr "Un mot qui reviendra chaque mois"
+
+msgid "{name} ({amount}, {period}) may already be this payment."
+msgstr "{name} ({amount}, {period}) pourrait déjà être ce paiement."
+
+msgid "Link to {name}"
+msgstr "Lier à {name}"
+
+msgid "This operation already counts for {name}."
+msgstr "Cette opération compte déjà pour {name}."
+
+msgid "Categorize the operation first: occurrences only match in the same category."
+msgstr "Catégorisez d'abord l'opération : les occurrences ne correspondent que dans la même catégorie."
+
+msgid "Occurrences since this date will be expected; those without a matching operation show as overdue on Accueil."
+msgstr "Les occurrences depuis cette date seront attendues ; celles sans opération correspondante apparaîtront en retard sur Accueil."

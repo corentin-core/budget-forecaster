@@ -5,7 +5,7 @@ health from the same database.
 """
 
 from datetime import date, datetime, timedelta
-from typing import NamedTuple
+from typing import Final, NamedTuple
 
 import pandas as pd
 from dateutil.relativedelta import relativedelta
@@ -16,8 +16,9 @@ from budget_forecaster.core.date_range import (
     RecurringDay,
 )
 from budget_forecaster.core.duration import DurationUnit, relativedelta_to_unit
-from budget_forecaster.core.types import LinkType, PlannedOperationId
+from budget_forecaster.core.types import Category, LinkType, PlannedOperationId
 from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
@@ -27,7 +28,14 @@ from budget_forecaster.services.forecast.forecast_service import (
     MarginInfo,
     MonthlySummary,
 )
+from budget_forecaster.services.forecast.iteration_lifecycle import LATE_HORIZON
+from budget_forecaster.services.operation.bank_labels import recognizable_name
+from budget_forecaster.services.operation.link_candidates import (
+    AmountMatch,
+    amount_match,
+)
 from budget_forecaster.web.formatting import category_name
+from budget_forecaster.web.linking import build_candidates
 
 Target = Budget | PlannedOperation
 
@@ -329,6 +337,110 @@ def build_target_form(
         approx_days=approx_days,
         approx_ratio=approx_ratio,
     )
+
+
+class DuplicateHint(NamedTuple):
+    """An existing planned operation that may already be this payment."""
+
+    target_id: int
+    description: str
+    amount: float
+    period_label: str
+    already_counts: bool
+    """The operation is linked to it, so a second entry would double-count it."""
+
+
+class OperationSeed(NamedTuple):
+    """What the create form knows about the operation it was seeded from."""
+
+    operation_id: int
+    label: str
+    """The raw bank label, kept visible under the name derived from it."""
+
+    duplicate: DuplicateHint | None
+    late_occurrences: bool
+    """The start date is far enough back to make occurrences show up overdue."""
+
+    uncategorized: bool
+
+
+_DUPLICATE_MIN_SCORE: Final = 60.0
+"""The "good match, review recommended" band of the documented score scale."""
+
+
+def build_planned_form_from_operation(operation: HistoricOperation) -> TargetFormView:
+    """Seed the planned-operation create form from an operation.
+
+    Monthly from the operation's own date, and named after the one word of its
+    label that identifies who was paid.
+    """
+    name = recognizable_name(operation.description)
+    duration_value, duration_unit = _duration_fields(None)
+    period_value, period_unit = _duration_fields(None)
+    return TargetFormView(
+        kind="planned",
+        is_new=True,
+        is_planned=True,
+        has_duration=False,
+        target_id=None,
+        description=name or operation.description,
+        amount=_amount_field(float(operation.amount)),
+        category=operation.category.name,
+        start_date=operation.operation_date.strftime("%Y-%m-%d"),
+        duration_value=duration_value,
+        duration_unit=duration_unit,
+        recurring=True,
+        period_value=period_value,
+        period_unit=period_unit,
+        end_date="",
+        can_split=False,
+        keywords=name,
+        approx_days="5",
+        approx_ratio="0.05",
+    )
+
+
+def build_operation_seed(
+    app: ApplicationService, operation: HistoricOperation
+) -> OperationSeed:
+    """Assemble the hints shown around a form seeded from this operation."""
+    return OperationSeed(
+        operation_id=operation.unique_id,
+        label=operation.description,
+        duplicate=_duplicate_hint(app, operation),
+        late_occurrences=operation.operation_date < date.today() - LATE_HORIZON,
+        uncategorized=operation.category is Category.UNCATEGORIZED,
+    )
+
+
+def _duplicate_hint(
+    app: ApplicationService, operation: HistoricOperation
+) -> DuplicateHint | None:
+    """Name the planned operation that may already cover this payment.
+
+    A high score is not enough on its own: 70 of it goes to an amount and a date
+    that any purchase near a monthly occurrence collects by coincidence. So the
+    category has to agree too, and the amount to be within the tolerance.
+    """
+    link = app.get_link_for_operation(operation.unique_id)
+    for candidate in build_candidates(app, operation, "planned"):
+        if candidate.score < _DUPLICATE_MIN_SCORE:
+            return None
+        if candidate.category_key != operation.category.name:
+            continue
+        target = app.get_planned_operation_by_id(candidate.target_id)
+        if amount_match(operation, target) is AmountMatch.OFF:
+            continue
+        return DuplicateHint(
+            target_id=candidate.target_id,
+            description=candidate.description,
+            amount=candidate.amount,
+            period_label=_period_label(target.date_range),
+            already_counts=link is not None
+            and link.target_type is LinkType.PLANNED_OPERATION
+            and link.target_id == candidate.target_id,
+        )
+    return None
 
 
 def target_form_from_submitted(

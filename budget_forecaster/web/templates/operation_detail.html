@@ -27,8 +27,10 @@
     </dd>
   </dl>
 
+  {# Both actions come back here, where the Link line names the target that won. #}
   <p class="actions">
     <a class="btn primary" href="/operations/{{ operation.unique_id }}/link?return_to={{ return_to | urlencode }}">{{ _("Link…") }}</a>
+    <a class="btn" href="/targets/planned/new?from_operation={{ operation.unique_id }}&return_to={{ self_url | urlencode }}">{{ _("Create planned operation") }}</a>
   </p>
 </section>
 {% endblock %}

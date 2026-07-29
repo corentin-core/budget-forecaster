@@ -5,24 +5,33 @@ A ``kind`` path segment ("budget" | "planned") selects the target type; both map
 to symmetric ApplicationService methods. Every write refreshes the forecast.
 """
 
+import logging
 from typing import NamedTuple
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
 
+from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.exceptions import BudgetForecasterError
 from budget_forecaster.services.application_service import ApplicationService
-from budget_forecaster.web import forms
+from budget_forecaster.web import forms, linking
 from budget_forecaster.web.dependencies import get_app_service, refresh_forecast
 from budget_forecaster.web.formatting import sorted_categories
 from budget_forecaster.web.redirects import safe_local_path
 from budget_forecaster.web.rendering import render_template
 from budget_forecaster.web.viewmodels import (
+    OperationSeed,
     Target,
     TargetFormView,
+    build_operation_seed,
+    build_planned_form_from_operation,
     build_target_form,
     build_target_list,
     target_form_from_submitted,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -102,6 +111,31 @@ async def targets_list(
     )
 
 
+def _source_operation(
+    app: ApplicationService, operation_id: int
+) -> HistoricOperation | None:
+    """The operation a form is seeded from, or None when it is not seeded.
+
+    A stale or tampered id is treated as no seed rather than an error: the form
+    still works, it just starts empty.
+    """
+    if operation_id <= 0:
+        return None
+    try:
+        return app.get_operation_by_id(operation_id)
+    except BudgetForecasterError:
+        logger.warning("No operation %d to seed the form from", operation_id)
+        return None
+
+
+def _submitted_source(
+    app: ApplicationService, submitted: dict[str, str]
+) -> HistoricOperation | None:
+    """The seed operation carried through the form, if any."""
+    raw = submitted.get("source_operation_id", "")
+    return _source_operation(app, int(raw)) if raw.lstrip("-").isdigit() else None
+
+
 @router.get("/targets/{kind}/new")
 async def new_target(
     kind: str,
@@ -109,11 +143,20 @@ async def new_target(
     app: ApplicationService = Depends(get_app_service),
     category: str = "OTHER",
     return_to: str = "/targets",
+    from_operation: int = 0,
 ) -> Response:
-    """Render the create form for a new budget or planned operation."""
+    """Render the create form, seeded from an operation when one is given."""
     _require_kind(kind)
-    form = build_target_form(kind, None, default_category=category)
-    return _render_edit(request, app, form, _safe_return_to(return_to))
+    operation = None
+    if kind == _PLANNED:
+        operation = _source_operation(app, from_operation)
+    if operation is None:
+        form = build_target_form(kind, None, default_category=category)
+        seed = None
+    else:
+        form = build_planned_form_from_operation(operation)
+        seed = build_operation_seed(app, operation)
+    return _render_edit(request, app, form, _safe_return_to(return_to), seed=seed)
 
 
 @router.get("/targets/{kind}/{target_id}")
@@ -212,7 +255,6 @@ async def split_target(
             form,
             _safe_return_to(submitted.get("return_to")),
             error=str(exc),
-            status_code=422,
         )
     refresh_forecast(app)
     return RedirectResponse(
@@ -235,7 +277,7 @@ async def _write(
         if is_planned:
             op = forms.parse_planned(submitted, app.currency, target_id)
             if action == "create":
-                app.add_planned_operation(op)
+                _link_source(app, submitted, app.add_planned_operation(op))
             else:
                 app.update_planned_operation(op)
         else:
@@ -246,18 +288,39 @@ async def _write(
                 app.update_budget(budget)
     except forms.FormError as exc:
         form = target_form_from_submitted(kind, submitted, target_id)
+        operation = _submitted_source(app, submitted) if is_planned else None
         return _render_edit(
             request,
             app,
             form,
             _safe_return_to(submitted.get("return_to")),
             error=str(exc),
-            status_code=422,
+            seed=build_operation_seed(app, operation) if operation else None,
         )
     refresh_forecast(app)
     return RedirectResponse(
         url=_safe_return_to(submitted.get("return_to")), status_code=303
     )
+
+
+def _link_source(
+    app: ApplicationService, submitted: dict[str, str], created: PlannedOperation
+) -> None:
+    """Link the operation the form was seeded from to what it just created.
+
+    The planned operation exists either way: a link that cannot be made is
+    logged, not raised back at the user.
+    """
+    if (operation := _submitted_source(app, submitted)) is None:
+        return
+    try:
+        linking.link_source_operation(app, operation.unique_id, created)
+    except BudgetForecasterError:
+        logger.warning(
+            "Could not link operation %d to new planned operation %s",
+            operation.unique_id,
+            created.id,
+        )
 
 
 def _render_edit(
@@ -267,7 +330,7 @@ def _render_edit(
     return_to: str,
     *,
     error: str = "",
-    status_code: int = 200,
+    seed: OperationSeed | None = None,
 ) -> Response:
     categories = tuple((cat.name, cat.display_name) for cat in sorted_categories())
     decided = (
@@ -278,12 +341,14 @@ def _render_edit(
     return render_template(
         request,
         "target_edit.html",
-        active="targets",
+        # Seeded from an operation, the user is mid-flow out of Opérations.
+        active="operations" if seed else "targets",
         form=form,
         categories=categories,
         return_to=return_to,
         error=error,
         currency=app.currency,
         decided=decided,
-        status_code=status_code,
+        seed=seed,
+        status_code=422 if error else 200,
     )
