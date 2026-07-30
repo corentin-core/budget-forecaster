@@ -1933,11 +1933,9 @@ msgstr "créée au démarrage"
 msgid "Bulk actions"
 msgstr "Actions groupées"
 
-msgid "Do not count"
-msgstr "Ne pas compter"
+msgid "Forget"
+msgstr "Oublier"
 
-msgid "No longer counted"
-msgstr "Plus comptée"
 
 msgid "Find this payment among your operations"
 msgstr "Retrouver ce paiement dans vos opérations"
@@ -1957,8 +1955,8 @@ msgstr "Reportée"
 msgid "Postpone…"
 msgstr "Reporter…"
 
-msgid "Stop counting it?"
-msgstr "Ne plus la compter ?"
+msgid "Forget it?"
+msgstr "L'oublier ?"
 
 msgid "Sync before deciding"
 msgstr "Synchronisez avant de décider"
@@ -1975,8 +1973,6 @@ msgstr "Unité"
 msgid "Value"
 msgstr "Valeur"
 
-msgid "Your data stops on {date}."
-msgstr "Vos données s'arrêtent au {date}."
 
 msgid "due on {date}"
 msgstr "prévue le {date}"
@@ -1993,8 +1989,6 @@ msgstr "marge"
 msgid "next occurrence"
 msgstr "prochaine échéance"
 
-msgid "not counted"
-msgstr "non comptée"
 
 msgid "out of the forecast: {n}"
 msgstr "hors prévisionnel : {n}"
@@ -2026,8 +2020,8 @@ msgstr "Synchroniser"
 msgid "all settled"
 msgstr "tout est traité"
 
-msgid "no longer counted"
-msgstr "plus comptée"
+msgid "forgotten"
+msgstr "oubliée"
 
 
 msgid "Find this payment"

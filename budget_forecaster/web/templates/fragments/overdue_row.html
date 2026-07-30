@@ -30,10 +30,10 @@
         <form hx-post="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/skip"
               hx-target="#overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}"
               hx-swap="outerHTML" class="inline" data-confirm>
-          <button type="button" class="btn small danger" data-confirm-trigger>{{ _("Do not count") }}</button>
+          <button type="button" class="btn small danger" data-confirm-trigger>{{ _("Forget") }}</button>
           <span class="confirm-cluster" hidden>
             <span class="confirm-question">
-              {{ _("Stop counting it?") }}
+              {{ _("Forget it?") }}
               {{ _("{amount} returns to your margin.").format(amount=row.amount | abs | eur(row.currency)) }}
             </span>
             <button type="button" class="btn small" data-confirm-cancel>{{ _("Cancel") }}</button>

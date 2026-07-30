@@ -122,14 +122,18 @@ finding the operation in Opérations and using **Délier**.
 When no operation is the payment, the same page offers the two decisions. **Reporter**
 moves the payment to a date you pick, offered as the next occurrence or tomorrow before
 you type anything; the forecast then counts it there, and the upcoming list shows it on
-its new date with where it came from. **Ne pas compter** declares that the payment never
+its new date with where it came from. **Oublier** declares that the payment never
 happened; the confirmation tells you how much comes back to your margin first. Both are
 on the overdue row as well, and the margin at the top of Accueil updates with your
 decision. **Rétablir** undoes it — right away on the row, or later from the planned
 operation's own page, which lists every occurrence you decided about. Linking the
 payment afterwards drops the decision from that list: the operation settles the
 occurrence, so there is nothing left to undo. A payment made in cash has no operation to
-link, so not counting it is the answer there.
+link, so forgetting it is the answer there.
+
+Both decisions land on the occurrence in front of you, never on the series: the next
+month comes back on its own date whatever you decided about this one. **Modifier
+l'opération planifiée** is the one that reaches the recurrence.
 
 When a sync has failed the card and the page withhold both decisions and say so:
 operations are probably missing, and stopping to count a payment that did happen would

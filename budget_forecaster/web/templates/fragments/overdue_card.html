@@ -12,10 +12,6 @@
     {{ _("Sync before deciding.") }}
     <a href="/settings">{{ _("Synchronize") }}</a>
   </p>
-  {% elif card.show_data_horizon %}
-  <p class="muted-note overdue-degraded">
-    {{ _("Your data stops on {date}.").format(date=card.balance_date | frdate) }}
-  </p>
   {% endif %}
   <ul class="overdue-list" id="overdue-list">
     {% for row in card.rows %}

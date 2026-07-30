@@ -357,7 +357,8 @@ class TestSkip:
     ) -> None:
         """The user sees the euro effect before confirming."""
         card = _card(client)
-        assert "Ne plus la compter ?" in card
+        # The apostrophe reaches the page escaped, so the match starts after it.
+        assert "oublier ?" in card
         assert "777,00" in card
 
     def test_records_the_decision(self, client: TestClient, overdue: Overdue) -> None:
@@ -365,9 +366,9 @@ class TestSkip:
         response = client.post(f"/overdue/{overdue.op_id}/{overdue.iteration}/skip")
 
         assert response.status_code == 200
-        assert "plus comptée" in response.text
+        assert "oubliée" in response.text
         assert 'id="margin-hero"' in response.text
-        assert "non comptée" in _decided_section(client, overdue.op_id)
+        assert "oubliée" in _decided_section(client, overdue.op_id)
 
     def test_the_amount_leaves_the_projection(
         self, client: TestClient, overdue: Overdue
@@ -486,6 +487,14 @@ class TestDegradedState:
         """Importing statements by hand always leaves an old balance date."""
         card = _card(client)
         assert "/postpone" in card
+
+    def test_the_card_does_not_restate_the_balance_date(
+        self, client: TestClient, app: FastAPI, overdue: Overdue
+    ) -> None:
+        """The summary band carries it two rows above, and the ages count from it."""
+        card = _card(client)
+
+        assert app.state.app_service.balance_date.strftime("%d/%m/%Y") not in card
 
 
 class TestUncountedIteration:

@@ -6,7 +6,7 @@
       {%- if postponed_to %}
         {{ _("postponed to {date}").format(date=postponed_to | frdate) }}
       {%- else %}
-        {{ _("no longer counted") }}
+        {{ _("forgotten") }}
       {%- endif %}
     </span>
     {% if released %}
