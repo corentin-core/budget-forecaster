@@ -220,9 +220,11 @@ class TestReachingTheNamedTarget:
         assert 'href="/operations?category=RENT"' in page.text
 
     def test_every_link_in_the_row_keeps_the_filters(self, client: TestClient) -> None:
-        """A row's links all lead back where the row was read."""
+        """A row's destinations all lead back where the row was read."""
         row = self._linked_row(client, "category=RENT")
-        assert row.count("return_to=/operations%3Fcategory%3DRENT") == 3
+        returns = re.findall(r"return_to=([^\"&]+)", row)
+        assert returns, "the row should carry return links"
+        assert set(returns) == {"/operations%3Fcategory%3DRENT"}
 
     def test_the_operation_detail_opens_the_target(self, client: TestClient) -> None:
         """The phone layout hides the ledger's link icon, so the detail page carries it."""
@@ -331,3 +333,33 @@ class TestHomeKeepsItsShape:
         assert "Rien à classer" in quiet
         assert "overdue-item" not in quiet
         assert self._slots(quiet) == busy
+
+
+class TestTheRowIsTheClickTarget:
+    """A row that highlights under the pointer takes the click anywhere on it."""
+
+    def test_a_ledger_row_opens_the_operation_it_shows(
+        self, client: TestClient
+    ) -> None:
+        """The row's destination is the one its description already points at."""
+        html = client.get("/operations").text
+        row = html.split('<tr id="op-row-')[1]
+        row = row[: row.find("</tr>")]
+        found = re.search(r'data-href="(/operations/[^"]+)"', row)
+        assert found, "a ledger row should carry its own destination"
+        href = found.group(1).replace("&amp;", "&")
+        assert client.get(href, follow_redirects=True).status_code == 200
+        # The anchor is what a keyboard and a no-JS browser use; same place.
+        assert found.group(1).split("?")[0] in row.split('<a href="')[1]
+
+    def test_an_upcoming_row_never_highlights_without_a_destination(
+        self, client: TestClient
+    ) -> None:
+        """A highlight that leads nowhere promises a click that does nothing."""
+        home = client.get("/").text
+        listing = home.split('class="upcoming-list"')[1]
+        listing = listing[: listing.find("</ul>")]
+        rows = re.findall(r"<li([^>]*)>", listing)
+        assert rows, "the demo home should list upcoming items"
+        for attributes in rows:
+            assert ("row-hover" in attributes) == ("data-href" in attributes)

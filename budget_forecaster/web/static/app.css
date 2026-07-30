@@ -171,17 +171,25 @@ a:focus-visible {
   font-weight: 600;
 }
 
-/* A row that answers the pointer. The highlight is the affordance, so the names
-   inside stop underlining — one signal per row, and it covers the whole line
-   instead of the few words that happen to be a link. The chip keeps its own,
-   because it goes somewhere else. Focus-within lights the row for the keyboard
-   too. */
+/* A row that answers the pointer, and where `data-href` says so, a row that is
+   the click target. The highlight is the affordance, so the names inside stop
+   underlining — one signal per row, covering the whole line instead of the few
+   words that happen to be a link. The chip keeps its own, because it goes
+   somewhere else.
+
+   :has(:focus-visible) and not :focus-within: clicking a link or a <summary>
+   leaves the focus inside the row, and the row would stay lit after the pointer
+   has gone. Keyboard focus still lights it. */
 .row-hover {
   transition: background var(--dur-fast) var(--ease);
 }
 .row-hover:hover,
-.row-hover:focus-within {
+.row-hover:has(:focus-visible) {
   background: var(--surface-hover);
+}
+.row-hover[data-href],
+.review tr.row-hover {
+  cursor: pointer;
 }
 .row-hover a:not(.link-tag):hover,
 .row-hover a:not(.link-tag):focus-visible,
@@ -1449,9 +1457,6 @@ a.link-tag:focus-visible {
 }
 /* The row holds two links with different destinations, so it is the row —
    not an anchor — that carries the click. */
-.attributed-row {
-  cursor: pointer;
-}
 .src-meta,
 .op-amount {
   color: var(--muted);
@@ -1764,9 +1769,6 @@ a.link-tag:focus-visible {
 .list-head h2 {
   font-size: var(--fs-base);
   margin: 0;
-}
-.target-row {
-  cursor: pointer;
 }
 .target-row.inactive {
   opacity: 0.55;

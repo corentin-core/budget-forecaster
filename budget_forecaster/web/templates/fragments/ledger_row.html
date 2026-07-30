@@ -2,7 +2,8 @@
 {# The active filters ride along, so every link comes back to the same ledger. #}
 {% set ledger_url = '/operations?' ~ query if query else '/operations' %}
 {% set back = ledger_url | urlencode %}
-<tr id="op-row-{{ row.operation.unique_id }}" class="op-row row-hover">
+<tr id="op-row-{{ row.operation.unique_id }}" class="op-row row-hover"
+    data-href="/operations/{{ row.operation.unique_id }}?return_to={{ back }}">
   <td class="select-cell">
     <input type="checkbox" name="ids" value="{{ row.operation.unique_id }}"
            class="row-select" aria-label="{{ _('Select operation') }}" />
