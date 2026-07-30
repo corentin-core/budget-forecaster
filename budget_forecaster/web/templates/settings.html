@@ -275,6 +275,11 @@
     <button type="button" data-theme="dark" aria-pressed="false">{{ _("Dark") }}</button>
   </div>
   <p class="hint">{{ _("Auto follows your device; the choice is not shared with the other users of the budget.") }}</p>
+  {# The buttons only act client-side, so say so rather than leave three dead
+     controls. #}
+  <noscript>
+    <p class="hint">{{ _("Picking a theme needs JavaScript; without it the app follows your device.") }}</p>
+  </noscript>
 </section>
 
 <section class="card">

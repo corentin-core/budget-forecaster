@@ -2122,3 +2122,6 @@ msgstr "Sombre"
 
 msgid "Auto follows your device; the choice is not shared with the other users of the budget."
 msgstr "Auto suit votre appareil ; le choix n'est pas partagé avec les autres utilisateurs du budget."
+
+msgid "Picking a theme needs JavaScript; without it the app follows your device."
+msgstr "Choisir un thème demande JavaScript ; sans lui, l'app suit votre appareil."

@@ -14,8 +14,9 @@
   --text: light-dark(#1c1f26, #e6e8ec);
   /* Text on a --text background: tooltips invert. */
   --text-inverse: light-dark(#f5f6f8, #14161a);
-  /* Text on an --accent background. */
-  --on-accent: #ffffff;
+  /* Text on an --accent background. White on the dark theme's lighter accent
+     is 3.1:1, under the 4.5:1 a button label needs, so that side inks dark. */
+  --on-accent: light-dark(#ffffff, #0d1424);
   --muted: light-dark(#6b7280, #9aa1ac);
   --border: light-dark(#e3e6ea, #2c313a);
   --accent: light-dark(#2f6df6, #5b8dff);
