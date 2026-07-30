@@ -38,6 +38,7 @@ KEYWORDS = {
 FREE = re.compile(r"^(0|1|[0-9]*\.[0-9]+)$")
 
 _COLOUR = re.compile(r"#[0-9a-fA-F]{3,8}\b|\brgba?\(")
+_TIME = re.compile(r"\d+(\.\d+)?m?s\b")
 
 # selector -> why this one stays literal. Keys are the selector as written, with
 # whitespace collapsed. Anything absent must use a token, so an entry here is a
@@ -121,6 +122,27 @@ def test_guarded_properties_use_tokens() -> None:
         if GUARDED.match(prop) and not _is_tokenised(value) and selector not in EXEMPT
     ]
     assert not offenders, "literal values outside :root:\n" + "\n".join(offenders)
+
+
+def test_motion_goes_through_the_duration_tokens() -> None:
+    """A duration written at a use site is one prefers-reduced-motion cannot
+    switch off."""
+    offenders = [
+        f"{selector} {{ {prop}: {value} }}"
+        for selector, prop, value in _declarations()
+        if prop.startswith(("transition", "animation")) and _TIME.search(value)
+    ]
+    assert not offenders, "durations outside :root:\n" + "\n".join(offenders)
+
+
+def test_reduced_motion_zeroes_every_motion_token() -> None:
+    """Reaching one token and missing another leaves half the app moving."""
+    css = STYLESHEET.read_text()
+    start = css.find("@media (prefers-reduced-motion: reduce)")
+    assert start != -1, "no prefers-reduced-motion block"
+    block = css[start : css.find("\n}\n", css.find("{", start))]
+    for token in ("--dur", "--dur-fast", "--press"):
+        assert f"{token}:" in block, f"{token} keeps its motion under reduce"
 
 
 def test_a_theme_is_one_declaration_per_token() -> None:
