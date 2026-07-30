@@ -1,6 +1,9 @@
+args
 config
 decrypt
 env
+gettext
+msgid
 stderr
 subcommand
 swile
