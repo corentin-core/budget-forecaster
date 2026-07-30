@@ -37,6 +37,8 @@ KEYWORDS = {
 # Unitless line heights and zero carry no design decision.
 FREE = re.compile(r"^(0|1|[0-9]*\.[0-9]+)$")
 
+_COLOUR = re.compile(r"#[0-9a-fA-F]{3,8}\b|\brgba?\(")
+
 # selector -> why this one stays literal. Keys are the selector as written, with
 # whitespace collapsed. Anything absent must use a token, so an entry here is a
 # deliberate exception — and `test_exemptions_are_needed` fails once it is not.
@@ -119,6 +121,29 @@ def test_guarded_properties_use_tokens() -> None:
         if GUARDED.match(prop) and not _is_tokenised(value) and selector not in EXEMPT
     ]
     assert not offenders, "literal values outside :root:\n" + "\n".join(offenders)
+
+
+def test_a_theme_is_one_declaration_per_token() -> None:
+    """No second palette: the switcher writes color-scheme and light-dark()
+    picks the side, so a duplicated dark block would ignore the switch."""
+    css = STYLESHEET.read_text()
+    assert "prefers-color-scheme" not in css
+    assert "color-scheme: light dark" in css
+
+
+def test_every_colour_token_declares_both_sides() -> None:
+    """A colour literal with no light-dark() pair is one the switcher cannot
+    move: it keeps its light value in the dark theme."""
+    offenders = [
+        decl.strip()
+        for selector, block in _rules()
+        if selector == ":root"
+        for decl in block.split(";")
+        if decl.strip().startswith("--")
+        and _COLOUR.search(decl)
+        and "light-dark(" not in decl
+    ]
+    assert not offenders, "colours with no dark side:\n" + "\n".join(offenders)
 
 
 def test_exemptions_are_needed() -> None:

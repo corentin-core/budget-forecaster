@@ -2,30 +2,34 @@
    Mobile-first: bottom nav bar; a left sidebar takes over on wide screens. */
 
 :root {
-  /* --- Colour --- */
-  --bg: #f5f6f8;
-  --surface: #ffffff;
+  /* --- Colour: one light/dark pair per token. Which side applies is decided
+     by color-scheme, which the theme switcher writes on this element, so
+     switching costs one declaration and never a second palette. --- */
+  color-scheme: light dark;
+  --bg: light-dark(#f5f6f8, #14161a);
+  --surface: light-dark(#ffffff, #1e2127);
   /* A recessed area inside a card: bar tracks, pills, inset panels. */
-  --surface-alt: #f5f6f8;
-  --surface-hover: #f5f6f8;
-  --text: #1c1f26;
+  --surface-alt: light-dark(#f5f6f8, #14161a);
+  --surface-hover: light-dark(#f5f6f8, #14161a);
+  --text: light-dark(#1c1f26, #e6e8ec);
   /* Text on a --text background: tooltips invert. */
-  --text-inverse: #f5f6f8;
-  /* Text on an --accent background. */
-  --on-accent: #ffffff;
-  --muted: #6b7280;
-  --border: #e3e6ea;
-  --accent: #2f6df6;
-  --good: #1f9d55;
-  --bad: #d64545;
-  --warn: #c77700;
-  --error-bg: #fbe0e0;
-  --error-text: #7a1616;
-  --warn-bg: #fff3cd;
-  --warn-text: #7a5b00;
-  --good-bg: #e2f4e8;
-  --good-text: #14663a;
-  --neutral-bg: #eef0f3;
+  --text-inverse: light-dark(#f5f6f8, #14161a);
+  /* Text on an --accent background. White on the dark theme's lighter accent
+     is 3.1:1, under the 4.5:1 a button label needs, so that side inks dark. */
+  --on-accent: light-dark(#ffffff, #0d1424);
+  --muted: light-dark(#6b7280, #9aa1ac);
+  --border: light-dark(#e3e6ea, #2c313a);
+  --accent: light-dark(#2f6df6, #5b8dff);
+  --good: light-dark(#1f9d55, #3fce7c);
+  --bad: light-dark(#d64545, #f0736f);
+  --warn: light-dark(#c77700, #e0a83e);
+  --error-bg: light-dark(#fbe0e0, #3a1a1a);
+  --error-text: light-dark(#7a1616, #f0a8a4);
+  --warn-bg: light-dark(#fff3cd, #3a2f0a);
+  --warn-text: light-dark(#7a5b00, #f0d78a);
+  --good-bg: light-dark(#e2f4e8, #123524);
+  --good-text: light-dark(#14663a, #7fd6a2);
+  --neutral-bg: light-dark(#eef0f3, #22252b);
 
   /* --- Type: eight steps, every literal snapped to the nearest one --- */
   --fs-2xs: 0.72rem;
@@ -61,8 +65,9 @@
   --radius-pill: 999px;
 
   /* --- Elevation and focus --- */
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --shadow-up: 0 -2px 6px rgba(0, 0, 0, 0.12);
+  --shadow: 0 1px 3px light-dark(rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.4));
+  /* 0.12 alpha is invisible on a dark --surface; the bar needs a real one. */
+  --shadow-up: 0 -2px 6px light-dark(rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.5));
   --focus-ring: 2px solid var(--accent);
 
   /* --- Layout --- */
@@ -76,33 +81,6 @@
   --control-min-h: 44px;
   /* Donut legend swatch; the sub-list indent aligns under it. */
   --swatch-w: 0.8rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14161a;
-    --surface: #1e2127;
-    --surface-alt: #14161a;
-    --surface-hover: #14161a;
-    --text: #e6e8ec;
-    --text-inverse: #14161a;
-    --muted: #9aa1ac;
-    --border: #2c313a;
-    --accent: #5b8dff;
-    --good: #3fce7c;
-    --bad: #f0736f;
-    --warn: #e0a83e;
-    --error-bg: #3a1a1a;
-    --error-text: #f0a8a4;
-    --warn-bg: #3a2f0a;
-    --warn-text: #f0d78a;
-    --good-bg: #123524;
-    --good-text: #7fd6a2;
-    --neutral-bg: #22252b;
-    --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-    /* 0.12 alpha is invisible on --surface; the bar needs a real one. */
-    --shadow-up: 0 -2px 6px rgba(0, 0, 0, 0.5);
-  }
 }
 
 * {
@@ -1649,14 +1627,24 @@ a.link-tag:focus-visible {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
-.seg a {
+/* Two forms, one look: navigating between views uses links, picking a
+   client-side setting uses buttons. */
+.seg a,
+.seg button {
   padding: var(--sp-6) var(--sp-12);
   border-radius: var(--radius-sm);
   color: var(--muted);
   font-weight: 600;
   font-size: var(--fs-sm);
 }
-.seg a.active {
+.seg button {
+  border: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+.seg a.active,
+.seg button.active {
   background: var(--surface);
   color: var(--accent);
   box-shadow: var(--shadow);

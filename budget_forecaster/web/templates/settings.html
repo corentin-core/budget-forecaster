@@ -267,6 +267,23 @@
 </section>
 
 <section class="card">
+  <div class="card-head"><h2>{{ _("Theme") }}</h2></div>
+  {# No button starts marked: theme.js reads the stored mode and marks it. #}
+  <div class="seg" data-theme-switch role="group" aria-label="{{ _('Theme') }}">
+    <button type="button" data-theme="auto" aria-pressed="false">{{ _("Auto") }}</button>
+    <button type="button" data-theme="light" aria-pressed="false">{{ _("Light") }}</button>
+    <button type="button" data-theme="dark" aria-pressed="false">{{ _("Dark") }}</button>
+  </div>
+  <p class="hint">{{ _("Auto follows your device; the choice is not shared with the other users of the budget.") }}</p>
+  {# The buttons only act client-side, so say so rather than leave three dead
+     controls. #}
+  <noscript>
+    <p class="hint">{{ _("Picking a theme needs JavaScript; without it the app follows your device.") }}</p>
+  </noscript>
+</section>
+
+<section class="card">
   <a class="btn" href="/logout">{{ _("Log out") }}</a>
 </section>
+<script src="/static/theme.js" defer></script>
 {% endblock %}
