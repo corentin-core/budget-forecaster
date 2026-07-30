@@ -2,7 +2,11 @@
   <h2>{{ _("Overdue payments") }}{% if card.rows %} ({{ card.rows | length }}){% endif %}</h2>
   {% set uncounted = card.rows | rejectattr("counted_on") | list | length %}
   {% if uncounted %}
-    <span class="card-note">{{ _("out of the forecast: {n}").format(n=uncounted) }}</span>
+    <span class="card-note">
+      {{ _("out of the forecast: {n}").format(n=uncounted) }}
+      <span class="info" tabindex="0"
+            data-tip="{{ _('The forecast stopped counting these: their amount is back in your available margin, and linking or postponing one puts it back.') }}">ⓘ</span>
+    </span>
   {% elif not card.rows %}
     <span class="card-note">{{ _("all settled") }}</span>
   {% endif %}

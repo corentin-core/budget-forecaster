@@ -85,7 +85,8 @@ def _all_upcoming(client: TestClient) -> str:
 def _margin_value(client: TestClient) -> float:
     """The available margin as the page shows it."""
     html = client.get("/").text
-    found = re.search(r'id="margin-hero".*?metric-value">([^<]+)<', html, re.S)
+    hero = html[html.find('id="margin-hero"') :]
+    found = re.search(r'metric-value">([^<]+)<', hero[: hero.find("</section>")])
     assert found, "the home page should show a margin"
     raw = found.group(1).replace("\u202f", "").replace("\xa0", "")
     raw = raw.replace(" ", "").replace("EUR", "").replace(",", ".")
@@ -536,5 +537,38 @@ class TestUndoRefreshesEverything:
 
         html = client.get("/").text
 
-        assert "Pas encore de prévisionnel" in html
-        assert 'href="/targets"' in html
+        hero = html[html.find('id="margin-hero"') :]
+        hero = hero[: hero.find("</section>")]
+        assert "Pas encore de prévisionnel" in hero
+        assert "Ajoute un budget ou une opération prévue" in hero
+        assert "margin-None" not in html
+
+
+class TestDecidingKeepsTheUndo:
+    """A decision must not swap away the row it is writing into."""
+
+    def test_the_last_decision_leaves_a_settled_row_to_undo(
+        self, client: TestClient, overdue: Overdue
+    ) -> None:
+        """Settling the only overdue payment still offers to put it back."""
+        response = client.post(
+            f"/overdue/{overdue.op_id}/{overdue.iteration}/skip",
+            headers={"HX-Request": "true"},
+        )
+
+        assert response.status_code == 200
+        assert "overdue-item settled" in response.text
+        assert f"/overdue/{overdue.op_id}/{overdue.iteration}/restore" in response.text
+
+    def test_no_response_swaps_the_card_around_its_own_row(
+        self, client: TestClient, overdue: Overdue
+    ) -> None:
+        """An out-of-band card swap would detach the row htmx targets."""
+        for action in ("skip", "postpone"):
+            response = client.post(
+                f"/overdue/{overdue.op_id}/{overdue.iteration}/{action}",
+                data={"until": "2026-12-01"},
+                headers={"HX-Request": "true"},
+            )
+            body = response.text
+            assert 'id="overdue-card"' not in body, action

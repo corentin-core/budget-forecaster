@@ -6,24 +6,23 @@
 {# One hero plus two secondary tiles. Every slot is filled on every visit, so the
    page keeps its shape between a quiet day and a busy one. #}
 <section class="summary" aria-label="{{ _('Summary') }}">
-  {% include "fragments/margin_hero.html" %}
-
-  <div class="tile">
+  <div class="tile tile-hero">
     <div class="metric-label">{{ _("Balance") }}</div>
     <div class="metric-value">{{ balance | eur(currency) }}</div>
     <div class="metric-sub">{{ _("Updated on") }} {{ balance_date | frdate }}</div>
   </div>
 
+  {% include "fragments/margin_hero.html" %}
+
   {% if uncategorized %}
   <a class="tile tile-action" href="/operations?uncategorized=true"
      title="{{ _('Imported operations without a category. Click to classify them.') }}">
-    <div class="metric-label">{{ _("To categorize") }}</div>
+    <div class="metric-label">{{ _("Operations to categorize") }}</div>
     <div class="metric-value">{{ uncategorized }}</div>
-    <div class="metric-sub">{{ _("Classify them") }} ›</div>
   </a>
   {% else %}
   <div class="tile">
-    <div class="metric-label">{{ _("To categorize") }}</div>
+    <div class="metric-label">{{ _("Operations to categorize") }}</div>
     <div class="metric-value metric-none">0</div>
     <div class="metric-sub">{{ _("Nothing to classify") }}</div>
   </div>

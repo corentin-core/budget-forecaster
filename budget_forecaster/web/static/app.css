@@ -276,9 +276,15 @@ a {
    wide screen the three sit on one row so no band holds a lone centred figure. */
 .summary {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--sp-16);
   margin-bottom: var(--sp-16);
+}
+/* Below this the two secondary tiles cannot hold an amount side by side. */
+@media (max-width: 26rem) {
+  .summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .tile {
   display: block;
@@ -293,6 +299,9 @@ a {
 }
 .tile-hero .metric-value {
   font-size: var(--fs-2xl);
+}
+.summary .tile:not(.tile-hero) .metric-value {
+  font-size: var(--fs-lg);
 }
 .tile-action {
   color: inherit;
@@ -397,6 +406,7 @@ a {
 }
 .cat-list li,
 .upcoming-list li {
+  font-size: var(--fs-sm);
   display: flex;
   justify-content: space-between;
   padding: var(--sp-6) 0;
@@ -1000,6 +1010,11 @@ a.link-tag:focus-visible {
     grid-template-columns: 1fr 1fr;
     gap: var(--sp-16);
   }
+  /* One card left (no budget or planned operation this month yet) takes the
+     whole row rather than leaving half of it empty. */
+  .home-grid:has(> .card:only-child) {
+    grid-template-columns: minmax(0, 1fr);
+  }
   /* Equal height, with the card's own link taking up the slack so the extra
      room reads as deliberate rather than as a hole. */
   .home-grid > .card {
@@ -1012,9 +1027,10 @@ a.link-tag:focus-visible {
     margin-top: auto;
     align-self: flex-start;
   }
-  /* The hero joins its two tiles on one row once there is width for it. */
+  /* The hero joins its two tiles on one row once there is width for it, all
+     three the same width so the band does not look ragged. */
   .summary {
-    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .summary .tile-hero {
     grid-column: auto;
@@ -2034,6 +2050,13 @@ a.link-tag:focus-visible {
 .card-note {
   color: var(--muted);
   font-size: var(--fs-sm);
+}
+/* Only the live list knows which of the two applies: a decided row stays on
+   screen with its undo while the server stops counting it. What matters is
+   whether anything is still undecided. */
+.overdue-card:has(.overdue-item:not(.settled)) .overdue-settled,
+.overdue-card:not(:has(.overdue-item:not(.settled))) .card-foot {
+  display: none;
 }
 .overdue-list {
   list-style: none;

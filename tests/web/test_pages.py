@@ -276,10 +276,14 @@ def _categorize_everything(client: TestClient) -> None:
     page = client.get("/operations?uncategorized=true").text
     pending = re.findall(r'name="ids" value="(\d+)"', page)
     assert pending, "the demo database should have uncategorized operations"
-    client.post(
+    response = client.post(
         "/operations/categorize",
         data={"ids": pending, "bulk_category": "groceries"},
         headers={"HX-Request": "true"},
+    )
+    assert response.status_code == 200
+    assert not re.findall(
+        r'name="ids" value="(\d+)"', client.get("/operations?uncategorized=true").text
     )
 
 
@@ -305,8 +309,12 @@ class TestHomeKeepsItsShape:
 
         html = client.get("/").text
 
-        assert "Rien à classer" in html
-        assert "Les classer" not in html
+        assert len(self._slots(html)) == len(self._slots(client.get("/").text))
+        # The band's own end tag is not the first one: the hero is a section too.
+        band = html[html.find('class="summary"') : html.find('id="overdue-card"')]
+        assert band.count('class="tile') == 3
+        assert "Rien à classer" in band
+        assert "uncategorized=true" not in band
 
     def test_the_slots_are_the_same_busy_or_quiet(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
@@ -319,4 +327,7 @@ class TestHomeKeepsItsShape:
             ApplicationService, "get_overdue_iterations", lambda self: ()
         )
 
-        assert self._slots(client.get("/").text) == busy
+        quiet = client.get("/").text
+        assert "Rien à classer" in quiet
+        assert "overdue-item" not in quiet
+        assert self._slots(quiet) == busy
