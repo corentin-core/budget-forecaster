@@ -7,9 +7,9 @@
     {% set out_of_forecast = _('The forecast stopped counting these: their amount is back in your available margin, and linking or postponing one puts it back.') %}
     <span class="card-note">
       {{ _("out of the forecast: {n}").format(n=uncounted) }}
-      <span class="info" tabindex="0" role="note"
-            aria-label="{{ out_of_forecast }}"
-            data-tip="{{ out_of_forecast }}">ⓘ</span>
+      <button type="button" class="info"
+              aria-label="{{ out_of_forecast }}"
+              data-tip="{{ out_of_forecast }}">ⓘ</button>
     </span>
   {% elif not card.rows %}
     <span class="card-note">{{ _("all settled") }}</span>

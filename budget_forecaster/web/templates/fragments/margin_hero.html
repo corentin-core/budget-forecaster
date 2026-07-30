@@ -6,8 +6,10 @@
   <div class="metric-label">
     {{ _("Available margin") }}
     {% if margin %}
-    <span class="info" tabindex="0"
-          data-tip="{{ _('What you can spend without your projected balance dropping below the safety threshold, over the whole forecast horizon.') }} — {{ _('Lowest projected balance') }}: {{ margin.lowest_balance | eur(currency) }} ({{ margin.lowest_balance_date | frdate }})">ⓘ</span>
+    {# The bubble is drawn by script and never reaches a screen reader, so the
+       same sentence is the icon's accessible name. #}
+    {% set tip = _('What you can spend without your projected balance dropping below the safety threshold, over the whole forecast horizon.') ~ ' — ' ~ _('Lowest projected balance') ~ ': ' ~ (margin.lowest_balance | eur(currency)) ~ ' (' ~ (margin.lowest_balance_date | frdate) ~ ')' %}
+    <button type="button" class="info" aria-label="{{ tip }}" data-tip="{{ tip }}">ⓘ</button>
     {% endif %}
   </div>
   {% if margin %}

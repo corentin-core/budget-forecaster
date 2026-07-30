@@ -309,10 +309,16 @@ a {
 .metric-none {
   color: var(--muted);
 }
+/* A button, because tapping it is what shows the tip; drawn as the glyph it is. */
 .info {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--fs-xs);
+  line-height: 1;
   cursor: help;
   color: var(--muted);
-  font-size: var(--fs-xs);
 }
 
 .pill {

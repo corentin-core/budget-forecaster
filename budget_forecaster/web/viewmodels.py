@@ -695,10 +695,10 @@ def build_overdue_card(
     """Build the overdue card: what awaits a decision, and whether to offer any.
 
     A failed sync means operations are probably missing, so the card states that
-    and offers nothing rather than inviting the user to stop counting a payment
-    that did happen. An old balance date is not enough to refuse: someone who
-    imports their statements by hand always has one, and the card says where the
-    data stops instead.
+    and offers no decision rather than inviting the user to forget a payment that
+    did happen. Linking and editing the series survive it. An old balance date is
+    not enough to refuse: someone who imports their statements by hand always has
+    one.
 
     Args:
         app: The application service.

@@ -2066,8 +2066,8 @@ msgstr "La dernière synchronisation a échoué : l'opération que vous cherchez
 msgid "None of them? Then the payment did not happen yet."
 msgstr "Aucune ne correspond ? Alors le paiement n'a pas encore eu lieu."
 
-msgid "A payment made in cash has no operation to link: not counting it is the answer."
-msgstr "Un paiement en espèces n'a pas d'opération à lier : ne pas le compter est la réponse."
+msgid "A payment made in cash has no operation to link: forgetting it is the answer."
+msgstr "Un paiement en espèces n'a pas d'opération à lier : l'oublier est la réponse."
 
 msgid "{amount} becomes expected again."
 msgstr "{amount} seront de nouveau attendus."

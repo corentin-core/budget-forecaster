@@ -136,10 +136,11 @@ month comes back on its own date whatever you decided about this one. **Modifier
 l'opération planifiée** is the one that reaches the recurrence.
 
 When a sync has failed the card and the page withhold both decisions and say so:
-operations are probably missing, and stopping to count a payment that did happen would
-be worse than waiting. Linking stays available, since an operation already imported is
-there whatever the sync left out — the page warns that what you are looking for may be
-among the missing.
+operations are probably missing, and forgetting a payment that did happen would be worse
+than waiting. Linking stays available, since an operation already imported is there
+whatever the sync left out — the page warns that what you are looking for may be among
+the missing. Editing the series stays available too, for the same reason: a wrong
+recurrence is wrong whatever the sync brought back.
 
 On Tendances, the expense breakdown donut folds small categories into a single grey
 **Other categories** slice. A slider below the donut sets the cutoff: any category below

@@ -21,36 +21,41 @@ from budget_forecaster.services.application_service import (
 _DESCRIPTION = "Zzz unmatched rent"
 
 
-def _listing(
-    monkeypatch: pytest.MonkeyPatch,
-    *,
-    days_overdue: int = 2,
-    postponed_to: date | None = None,
-) -> OverdueIteration:
-    """Put one made-up occurrence in the card, for a state no route can produce."""
-    iteration = OverdueIteration(
-        planned_operation_id=PlannedOperationId(11),
-        iteration_date=date(2026, 5, 20),
-        description=_DESCRIPTION,
-        amount=-850.0,
-        currency="EUR",
-        state=IterationState.LATE,
-        days_overdue=days_overdue,
-        counted_on=None,
-        postponed_to=postponed_to,
-    )
-    monkeypatch.setattr(
-        ApplicationService, "get_overdue_iterations", lambda self: (iteration,)
-    )
-    return iteration
-
-
 class Overdue(NamedTuple):
     """The unmatched iteration a test acts on."""
 
     op_id: int
     iteration: date
     amount: float
+
+
+def _list_as_postponed(
+    monkeypatch: pytest.MonkeyPatch,
+    overdue: Overdue,
+    *,
+    postponed_to: date,
+    counted_on: date,
+) -> None:
+    """List the payment as a postponement the balance date has overtaken.
+
+    Out of reach through the routes: they demand a date ahead of today, which is
+    ahead of the balance date, so only the passing of a month gets there. The id
+    comes from the fixture because the card resolves it against real operations.
+    """
+    iteration = OverdueIteration(
+        planned_operation_id=PlannedOperationId(overdue.op_id),
+        iteration_date=overdue.iteration,
+        description=_DESCRIPTION,
+        amount=-overdue.amount,
+        currency="EUR",
+        state=IterationState.LATE,
+        days_overdue=2,
+        counted_on=counted_on,
+        postponed_to=postponed_to,
+    )
+    monkeypatch.setattr(
+        ApplicationService, "get_overdue_iterations", lambda self: (iteration,)
+    )
 
 
 def _create_unmatched(
@@ -100,6 +105,13 @@ def _card(client: TestClient) -> str:
     html = client.get("/").text
     start = html.find('class="card overdue-card"')
     return html[start : html.find("</section>", start)] if start > 0 else ""
+
+
+def _row(client: TestClient, target: Overdue) -> str:
+    """One row of the card, since the demo data puts several in it."""
+    card = _card(client)
+    start = card.find(f'id="overdue-{target.op_id}-{target.iteration}"')
+    return card[start : card.find("</li>", start)] if start > 0 else ""
 
 
 def _all_upcoming(client: TestClient) -> str:
@@ -172,26 +184,33 @@ class TestCardVisibility:
         assert "Lier…" in card
 
     def test_a_postponement_the_balance_date_overtook_reads_as_one_clause(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+        self,
+        client: TestClient,
+        app: FastAPI,
+        overdue: Overdue,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         """Both dates matter to the next decision, so one clause holds them."""
-        _listing(monkeypatch, postponed_to=date(2026, 6, 28))
+        balance_date = app.state.app_service.balance_date
+        chosen = balance_date - timedelta(days=2)
+        _list_as_postponed(monkeypatch, overdue, postponed_to=chosen, counted_on=chosen)
 
         card = _card(client)
 
-        assert "reportée du 20/05/2026 au 28/06/2026" in card
+        origin = overdue.iteration.strftime("%d/%m/%Y")
+        assert f"reportée du {origin} au {chosen.strftime('%d/%m/%Y')}" in card
         assert "en retard depuis le" not in card
 
     def test_an_occurrence_due_on_the_balance_date_claims_no_age(
-        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+        self, client: TestClient, app: FastAPI
     ) -> None:
         """The count runs from the balance date, where it is 0 and says nothing."""
-        _listing(monkeypatch, days_overdue=0)
+        due = _create_unmatched(client, app, days_before_balance=0, amount="-321")
 
-        card = _card(client)
+        row = _row(client, due)
 
-        assert "de retard" not in card
-        assert "prévue le 20/05/2026" in card
+        assert f"prévue le {due.iteration.strftime('%d/%m/%Y')}" in row
+        assert "de retard" not in row
 
     def test_offers_both_decisions(self, client: TestClient, overdue: Overdue) -> None:
         """Postpone and stop-counting are both reachable from the row."""
@@ -221,6 +240,15 @@ class TestCardVisibility:
 
         assert "<summary" in card
         assert " open>" not in card
+
+    def test_what_the_summary_shows_stops_before_the_issues(
+        self, client: TestClient, overdue: Overdue
+    ) -> None:
+        """Folding is worth nothing if the actions sit in the part always shown."""
+        card = _card(client)
+
+        assert card.index("</summary>") < card.index("overdue-panel")
+        assert card.index("overdue-panel") < card.index("Reporter…")
 
     def test_cancelling_a_date_leaves_the_issues_on_screen(
         self, client: TestClient, overdue: Overdue
@@ -357,8 +385,7 @@ class TestSkip:
     ) -> None:
         """The user sees the euro effect before confirming."""
         card = _card(client)
-        # The apostrophe reaches the page escaped, so the match starts after it.
-        assert "oublier ?" in card
+        assert "L&#39;oublier ?" in card  # the apostrophe reaches the page escaped
         assert "777,00" in card
 
     def test_records_the_decision(self, client: TestClient, overdue: Overdue) -> None:
@@ -373,7 +400,7 @@ class TestSkip:
     def test_the_amount_leaves_the_projection(
         self, client: TestClient, overdue: Overdue
     ) -> None:
-        """Not counting it raises the margin the user is looking at."""
+        """Forgetting it raises the margin the user is looking at."""
         before = _margin_value(client)
 
         client.post(f"/overdue/{overdue.op_id}/{overdue.iteration}/skip")
@@ -397,6 +424,8 @@ class TestRestore:
         assert response.status_code == 200
         assert _DESCRIPTION in response.text
         assert _decided_section(client, overdue.op_id) == ""
+        # Undoing means another decision is coming: the row keeps its issues up.
+        assert " open>" in response.text
 
     def test_reachable_from_the_planned_operation(
         self, client: TestClient, overdue: Overdue
