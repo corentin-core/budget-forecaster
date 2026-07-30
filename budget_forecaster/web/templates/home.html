@@ -3,10 +3,10 @@
 {% block content %}
 <h1 class="sr-only">{{ _("Home") }}</h1>
 
-{# One hero plus two secondary tiles. Every slot is filled on every visit, so the
+{# Three readings of the same rank. Every slot is filled on every visit, so the
    page keeps its shape between a quiet day and a busy one. #}
 <section class="summary" aria-label="{{ _('Summary') }}">
-  <div class="tile tile-hero">
+  <div class="tile">
     <div class="metric-label">{{ _("Balance") }}</div>
     <div class="metric-value">{{ balance | eur(currency) }}</div>
     <div class="metric-sub">{{ _("Updated on") }} {{ balance_date | frdate }}</div>

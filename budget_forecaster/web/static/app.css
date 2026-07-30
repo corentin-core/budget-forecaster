@@ -255,7 +255,6 @@ a {
 }
 .warn-text {
   color: var(--bad);
-  font-weight: 600;
 }
 .metric-label {
   color: var(--muted);
@@ -293,15 +292,11 @@ a {
   border-radius: var(--radius-lg);
   padding: var(--sp-16);
 }
-.tile-hero {
+.summary .tile:first-child {
   grid-column: 1 / -1;
-  box-shadow: var(--shadow);
 }
-.tile-hero .metric-value {
-  font-size: var(--fs-2xl);
-}
-.summary .tile:not(.tile-hero) .metric-value {
-  font-size: var(--fs-lg);
+.summary .metric-value {
+  font-size: var(--fs-xl);
 }
 .tile-action {
   color: inherit;
@@ -1027,12 +1022,12 @@ a.link-tag:focus-visible {
     margin-top: auto;
     align-self: flex-start;
   }
-  /* The hero joins its two tiles on one row once there is width for it, all
-     three the same width so the band does not look ragged. */
+  /* One row of three once there is width for it, all the same width so the
+     band does not look ragged. */
   .summary {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .summary .tile-hero {
+  .summary .tile:first-child {
     grid-column: auto;
   }
 }
