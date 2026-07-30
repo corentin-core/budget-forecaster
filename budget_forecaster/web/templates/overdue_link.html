@@ -14,21 +14,7 @@
         {{ row.amount | signed_eur(row.currency) }}
       </span>
     </div>
-    <div class="overdue-meta">
-      {%- if row.postponed_to %}
-        {{ _("postponed from {date}").format(date=row.iteration_date | frdate) }} ·
-        {{ _("overdue since {date}").format(date=row.postponed_to | frdate) }}
-      {%- else %}
-        {{ _("due on {date}").format(date=row.iteration_date | frdate) }}
-      {%- endif %}
-      · {{ _("{n} d").format(n=row.days_overdue) }}
-      ·
-      {%- if row.counted_on %}
-        {{ _("counted on {date}").format(date=row.counted_on | frdate) }}
-      {%- else %}
-        <span class="not-counted">{{ _("not counted") }}</span>
-      {%- endif %}
-    </div>
+    {% include "fragments/overdue_facts.html" %}
   </div>
 
   {% if card.sync_broken %}

@@ -1,0 +1,17 @@
+{# What makes the decision: how late, for when, and whether the forecast still
+   counts it. Shared by the Accueil row and the picker page, one tap apart, so
+   the same occurrence never reads two ways.
+
+   No age on the day it falls due: the count runs from the balance date, where
+   it is 0, and the due date already says it. #}
+{# A span, not a div: it also renders inside the row's summary. #}
+<span class="overdue-meta">
+  {%- if row.days_overdue %}{{ _("{n} d late").format(n=row.days_overdue) }} · {% endif -%}
+  {%- if row.postponed_to -%}
+    {{ _("postponed from {origin} to {date}").format(origin=row.iteration_date | frdate, date=row.postponed_to | frdate) }}
+  {%- else -%}
+    {{ _("due on {date}").format(date=row.iteration_date | frdate) }}
+  {%- endif -%}
+  {#- The card head counts these under the same words, with the ⓘ that explains them. -#}
+  {%- if not row.counted_on %} · <span class="not-counted">{{ _("out of the forecast") }}</span>{% endif -%}
+</span>

@@ -92,20 +92,24 @@ decision you took while the row was there is kept for good, so a postponement ma
 time still moves the amount long after. Linking the payment stays possible whenever you
 find it, from the operation's own row in Opérations.
 
-The pencil beside the description opens the planned operation itself, for when the
-payment keeps arriving late or off-amount and the recurrence is what needs fixing. It
-edits the whole series, not the occurrence in front of you — for a single date,
-**Reporter** on the row is the tool, and the edit page can split the recurrence from a
-date. Names in the Accueil upcoming list open the same page.
+A row shows only what it takes to recognize the payment: its name, how late it is, and
+its amount. Tapping it unfolds the issues that occurrence can take, so a card holding
+three of them stays a list rather than a wall of buttons. Cancelling a date or undoing a
+decision leaves the row open, since another decision is usually coming.
 
-**Lier…** is the first thing to try, and the description opens the same page. Most often
-the payment did happen and the matcher did not recognize it, so the page lists the
-operations that could be it, best first, ranked by the same score the automatic matching
-uses. Each one shows its date, that score and a hint such as "même montant". A search
-box reaches operations well outside the dates around the occurrence, for when you
-remember the label but not the day, and weak matches stay behind a **Tout afficher**
-toggle. When nothing comes close the list says so rather than filling up with
-near-misses.
+**Modifier l'opération planifiée**, the last of those issues, opens the planned
+operation itself, for when the payment keeps arriving late or off-amount and the
+recurrence is what needs fixing. It edits the whole series, not the occurrence in front
+of you — for a single date, **Reporter** is the tool, and the edit page can split the
+recurrence from a date. Names in the Accueil upcoming list open the same page.
+
+**Lier…** is the first thing to try. Most often the payment did happen and the matcher
+did not recognize it, so the page lists the operations that could be it, best first,
+ranked by the same score the automatic matching uses. Each one shows its date, that
+score and a hint such as "même montant". A search box reaches operations well outside
+the dates around the occurrence, for when you remember the label but not the day, and
+weak matches stay behind a **Tout afficher** toggle. When nothing comes close the list
+says so rather than filling up with near-misses.
 
 An operation another budget or planned payment already counts is offered too — the
 matcher giving a payment to the wrong target is exactly the mistake this page exists to

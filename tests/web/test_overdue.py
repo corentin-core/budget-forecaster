@@ -12,9 +12,37 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.core.types import IterationState, PlannedOperationId
+from budget_forecaster.services.application_service import (
+    ApplicationService,
+    OverdueIteration,
+)
 
 _DESCRIPTION = "Zzz unmatched rent"
+
+
+def _listing(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    days_overdue: int = 2,
+    postponed_to: date | None = None,
+) -> OverdueIteration:
+    """Put one made-up occurrence in the card, for a state no route can produce."""
+    iteration = OverdueIteration(
+        planned_operation_id=PlannedOperationId(11),
+        iteration_date=date(2026, 5, 20),
+        description=_DESCRIPTION,
+        amount=-850.0,
+        currency="EUR",
+        state=IterationState.LATE,
+        days_overdue=days_overdue,
+        counted_on=None,
+        postponed_to=postponed_to,
+    )
+    monkeypatch.setattr(
+        ApplicationService, "get_overdue_iterations", lambda self: (iteration,)
+    )
+    return iteration
 
 
 class Overdue(NamedTuple):
@@ -123,7 +151,47 @@ class TestCardVisibility:
         card = _card(client)
         assert _DESCRIPTION in card
         assert "777,00" in card
-        assert "7 j" in card
+        assert "7 j de retard" in card
+
+    def test_the_row_states_only_the_facts_a_decision_turns_on(
+        self, client: TestClient, overdue: Overdue
+    ) -> None:
+        """That the forecast still counts it is the default, so it goes unsaid."""
+        card = _card(client)
+
+        assert f"prévue le {overdue.iteration.strftime('%d/%m/%Y')}" in card
+        assert "comptée le" not in card
+
+    def test_the_card_stops_short_of_explaining_itself(
+        self, client: TestClient, overdue: Overdue
+    ) -> None:
+        """The advice was a paragraph under the list; the filled button carries it."""
+        card = _card(client)
+
+        assert "Aucune opération importée ne correspond" not in card
+        assert "Lier…" in card
+
+    def test_a_postponement_the_balance_date_overtook_reads_as_one_clause(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Both dates matter to the next decision, so one clause holds them."""
+        _listing(monkeypatch, postponed_to=date(2026, 6, 28))
+
+        card = _card(client)
+
+        assert "reportée du 20/05/2026 au 28/06/2026" in card
+        assert "en retard depuis le" not in card
+
+    def test_an_occurrence_due_on_the_balance_date_claims_no_age(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The count runs from the balance date, where it is 0 and says nothing."""
+        _listing(monkeypatch, days_overdue=0)
+
+        card = _card(client)
+
+        assert "de retard" not in card
+        assert "prévue le 20/05/2026" in card
 
     def test_offers_both_decisions(self, client: TestClient, overdue: Overdue) -> None:
         """Postpone and stop-counting are both reachable from the row."""
@@ -131,18 +199,36 @@ class TestCardVisibility:
         assert f"/overdue/{overdue.op_id}/{overdue.iteration}/postpone" in card
         assert f"/overdue/{overdue.op_id}/{overdue.iteration}/skip" in card
 
-    def test_the_row_leads_to_the_picker_not_a_description_filter(
+    def test_one_route_to_the_picker_and_no_description_filter(
         self, client: TestClient, overdue: Overdue
     ) -> None:
         """A planned operation and a bank line share no word, so no filter works.
 
-        Both the description and the primary action open the picker instead.
+        The action is the only way in: a second link on the description was the
+        same destination twice.
         """
         card = _card(client)
         picker = f"/overdue/{overdue.op_id}/{overdue.iteration}/link"
-        assert card.count(f'href="{picker}"') == 2
+        assert card.count(f'href="{picker}"') == 1
         assert "/operations?search=" not in card
         assert client.get(picker).status_code == 200
+
+    def test_the_row_holds_its_issues_folded_until_asked(
+        self, client: TestClient, overdue: Overdue
+    ) -> None:
+        """Four buttons per row is what made the card the densest thing on Accueil."""
+        card = _card(client)
+
+        assert "<summary" in card
+        assert " open>" not in card
+
+    def test_cancelling_a_date_leaves_the_issues_on_screen(
+        self, client: TestClient, overdue: Overdue
+    ) -> None:
+        """The tap that opened the row is not spent by backing out of one form."""
+        response = client.get(f"/overdue/{overdue.op_id}/{overdue.iteration}/row")
+
+        assert " open>" in response.text
 
     def test_the_row_opens_the_planned_operation(
         self, client: TestClient, overdue: Overdue
@@ -381,6 +467,19 @@ class TestDegradedState:
 
         assert response.status_code == 409
 
+    def test_editing_the_series_survives_it(
+        self,
+        client: TestClient,
+        overdue: Overdue,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Fixing the recurrence is not a decision on incomplete data."""
+        _break_the_sync(monkeypatch)
+
+        card = _card(client)
+
+        assert f'href="/targets/planned/{overdue.op_id}?return_to=/"' in card
+
     def test_an_old_balance_date_alone_does_not_withhold_them(
         self, client: TestClient, overdue: Overdue
     ) -> None:
@@ -399,7 +498,7 @@ class TestUncountedIteration:
         card = _card(client)
 
         assert _DESCRIPTION in card
-        assert "non comptée" in card
+        assert "hors prévisionnel" in card
 
     def test_it_can_still_be_pulled_back(
         self, client: TestClient, app: FastAPI

@@ -1936,9 +1936,6 @@ msgstr "Actions groupées"
 msgid "Do not count"
 msgstr "Ne pas compter"
 
-msgid "No imported operation matches these. Start with “Link…”: most often the payment happened and was not recognized."
-msgstr "Aucune opération importée ne correspond. Commencez par « Lier… » : le plus souvent le paiement a eu lieu et n'a pas été reconnu."
-
 msgid "No longer counted"
 msgstr "Plus comptée"
 
@@ -1981,11 +1978,14 @@ msgstr "Valeur"
 msgid "Your data stops on {date}."
 msgstr "Vos données s'arrêtent au {date}."
 
-msgid "counted on {date}"
-msgstr "comptée le {date}"
-
 msgid "due on {date}"
 msgstr "prévue le {date}"
+
+msgid "{n} d late"
+msgstr "{n} j de retard"
+
+msgid "postponed from {origin} to {date}"
+msgstr "reportée du {origin} au {date}"
 
 msgid "margin"
 msgstr "marge"
@@ -1999,17 +1999,14 @@ msgstr "non comptée"
 msgid "out of the forecast: {n}"
 msgstr "hors prévisionnel : {n}"
 
-msgid "overdue since {date}"
-msgstr "en retard depuis le {date}"
+msgid "out of the forecast"
+msgstr "hors prévisionnel"
 
 msgid "tomorrow"
 msgstr "demain"
 
 msgid "{amount} returns to your margin."
 msgstr "{amount} reviennent dans votre marge."
-
-msgid "{n} d"
-msgstr "{n} j"
 
 msgid "Undo the decision"
 msgstr "Rétablir"
@@ -2089,6 +2086,9 @@ msgstr "Ouvrir l'opération planifiée liée {name}"
 
 msgid "Edit the planned operation (all occurrences)"
 msgstr "Modifier l'opération planifiée (toutes les occurrences)"
+
+msgid "Edit the planned operation"
+msgstr "Modifier l'opération planifiée"
 
 msgid "From {label}"
 msgstr "D'après {label}"

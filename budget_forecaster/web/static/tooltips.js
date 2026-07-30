@@ -29,23 +29,35 @@
       current = null;
     }
 
-    document.querySelectorAll('[data-tip]').forEach(function (el) {
-      el.addEventListener('mouseenter', function () {
-        show(el);
-      });
-      el.addEventListener('mouseleave', hide);
-      el.addEventListener('focus', function () {
-        show(el);
-      });
-      el.addEventListener('blur', hide);
-      el.addEventListener('click', function (e) {
-        e.stopPropagation();
-        if (current === el) {
-          hide();
-        } else {
+    function bind() {
+      document.querySelectorAll('[data-tip]').forEach(function (el) {
+        if (el.dataset.tipBound) return;
+        el.dataset.tipBound = '1';
+        el.addEventListener('mouseenter', function () {
           show(el);
-        }
+        });
+        el.addEventListener('mouseleave', hide);
+        el.addEventListener('focus', function () {
+          show(el);
+        });
+        el.addEventListener('blur', hide);
+        el.addEventListener('click', function (e) {
+          e.stopPropagation();
+          if (current === el) {
+            hide();
+          } else {
+            show(el);
+          }
+        });
       });
+    }
+
+    bind();
+    // Out-of-band swaps bring back the margin and overdue headings with their
+    // icons: without this, a tip dies on the first decision of the session.
+    document.body.addEventListener('htmx:afterSwap', function () {
+      if (current && !current.isConnected) hide();
+      bind();
     });
 
     // A tap/click anywhere else dismisses the bubble.

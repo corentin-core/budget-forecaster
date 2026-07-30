@@ -2046,11 +2046,9 @@ a.link-tag:focus-visible {
   color: var(--muted);
   font-size: var(--fs-sm);
 }
-/* Only the live list knows which of the two applies: a decided row stays on
-   screen with its undo while the server stops counting it. What matters is
-   whether anything is still undecided. */
-.overdue-card:has(.overdue-item:not(.settled)) .overdue-settled,
-.overdue-card:not(:has(.overdue-item:not(.settled))) .card-foot {
+/* Only the live list knows whether anything is still undecided: a decided row
+   stays on screen with its undo while the server stops counting it. */
+.overdue-card:has(.overdue-item:not(.settled)) .overdue-settled {
   display: none;
 }
 .overdue-list {
@@ -2065,6 +2063,30 @@ a.link-tag:focus-visible {
 .overdue-item:last-child {
   border-bottom: none;
 }
+/* The whole row is the toggle, so it takes the pointer and the marker is ours. */
+.overdue-summary {
+  cursor: pointer;
+  list-style: none;
+  padding: var(--sp-4) 0;
+}
+.overdue-summary::-webkit-details-marker {
+  display: none;
+}
+.overdue-caret::before {
+  content: '▾';
+  color: var(--muted);
+}
+details[open] > .overdue-summary .overdue-caret::before {
+  content: '▴';
+}
+/* The issues this occurrence can take, off the scan path until asked for. The
+   recess is what gives the buttons an edge to show against. */
+.overdue-disclosure > .overdue-panel {
+  background: var(--surface-alt);
+  border-radius: var(--radius-md);
+  padding: var(--sp-8) var(--sp-10);
+  margin-top: var(--sp-8);
+}
 .overdue-head {
   display: flex;
   align-items: baseline;
@@ -2074,33 +2096,11 @@ a.link-tag:focus-visible {
   flex: 1;
   font-weight: 600;
 }
-a.overdue-desc {
-  color: inherit;
-  text-decoration: none;
-}
-a.overdue-desc:hover {
-  text-decoration: underline;
-}
-/* Thumb-sized like the actions below, and centred so a wrapping description
-   does not drag it around. */
-a.overdue-edit {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  align-self: center;
-  min-width: var(--control-min-h);
-  min-height: var(--control-min-h);
-  font-size: var(--fs-sm);
-  text-decoration: none;
-  opacity: 0.7;
-}
-a.overdue-edit:hover {
-  opacity: 1;
-}
 .overdue-amount {
   white-space: nowrap;
 }
 .overdue-meta {
+  display: block;
   color: var(--muted);
   font-size: var(--fs-sm);
   margin-top: var(--sp-2);
@@ -2109,7 +2109,8 @@ a.overdue-edit:hover {
   color: var(--warn);
   font-weight: 600;
 }
-/* Own line, thumb-sized, destructive action kept to the right. */
+/* Thumb-sized. The two decisions travel together so the confirm question can
+   take their place; editing the series sits apart, to the right. */
 .overdue-actions {
   display: flex;
   align-items: center;
@@ -2118,8 +2119,17 @@ a.overdue-edit:hover {
   min-height: var(--control-min-h);
   margin-top: var(--sp-4);
 }
-.overdue-actions form.inline {
-  margin-left: auto;
+/* A group for the confirm question to replace, not a box: its two buttons wrap
+   with the rest of the strip instead of taking a line of their own. */
+.overdue-decisions {
+  display: contents;
+}
+/* Only where the strip has room to spare: pushed right on a narrow screen, it
+   lands alone on a line of its own. */
+@media (min-width: 1024px) {
+  .overdue-edit {
+    margin-left: auto;
+  }
 }
 .overdue-actions .btn.small,
 .decided-head .btn.small,
@@ -2141,11 +2151,6 @@ a.overdue-edit:hover {
 .muted-note {
   color: var(--muted);
   font-size: var(--fs-sm);
-}
-.card-foot {
-  color: var(--muted);
-  font-size: var(--fs-xs);
-  margin: var(--sp-8) 0 0;
 }
 .postpone-label {
   color: var(--muted);
