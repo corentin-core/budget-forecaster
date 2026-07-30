@@ -2,10 +2,14 @@
   <h2>{{ _("Overdue payments") }}{% if card.rows %} ({{ card.rows | length }}){% endif %}</h2>
   {% set uncounted = card.rows | rejectattr("counted_on") | list | length %}
   {% if uncounted %}
+    {# The bubble is drawn by script and never reaches a screen reader, so the
+       same sentence is the icon's accessible name. #}
+    {% set out_of_forecast = _('The forecast stopped counting these: their amount is back in your available margin, and linking or postponing one puts it back.') %}
     <span class="card-note">
       {{ _("out of the forecast: {n}").format(n=uncounted) }}
-      <span class="info" tabindex="0"
-            data-tip="{{ _('The forecast stopped counting these: their amount is back in your available margin, and linking or postponing one puts it back.') }}">ⓘ</span>
+      <button type="button" class="info"
+              aria-label="{{ out_of_forecast }}"
+              data-tip="{{ out_of_forecast }}">ⓘ</button>
     </span>
   {% elif not card.rows %}
     <span class="card-note">{{ _("all settled") }}</span>

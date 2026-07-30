@@ -92,20 +92,24 @@ decision you took while the row was there is kept for good, so a postponement ma
 time still moves the amount long after. Linking the payment stays possible whenever you
 find it, from the operation's own row in Opérations.
 
-The pencil beside the description opens the planned operation itself, for when the
-payment keeps arriving late or off-amount and the recurrence is what needs fixing. It
-edits the whole series, not the occurrence in front of you — for a single date,
-**Reporter** on the row is the tool, and the edit page can split the recurrence from a
-date. Names in the Accueil upcoming list open the same page.
+A row shows only what it takes to recognize the payment: its name, how late it is, and
+its amount. Tapping it unfolds the issues that occurrence can take, so a card holding
+three of them stays a list rather than a wall of buttons. Cancelling a date or undoing a
+decision leaves the row open, since another decision is usually coming.
 
-**Lier…** is the first thing to try, and the description opens the same page. Most often
-the payment did happen and the matcher did not recognize it, so the page lists the
-operations that could be it, best first, ranked by the same score the automatic matching
-uses. Each one shows its date, that score and a hint such as "même montant". A search
-box reaches operations well outside the dates around the occurrence, for when you
-remember the label but not the day, and weak matches stay behind a **Tout afficher**
-toggle. When nothing comes close the list says so rather than filling up with
-near-misses.
+**Modifier l'opération planifiée**, the last of those issues, opens the planned
+operation itself, for when the payment keeps arriving late or off-amount and the
+recurrence is what needs fixing. It edits the whole series, not the occurrence in front
+of you — for a single date, **Reporter** is the tool, and the edit page can split the
+recurrence from a date. Names in the Accueil upcoming list open the same page.
+
+**Lier…** is the first thing to try. Most often the payment did happen and the matcher
+did not recognize it, so the page lists the operations that could be it, best first,
+ranked by the same score the automatic matching uses. Each one shows its date, that
+score and a hint such as "même montant". A search box reaches operations well outside
+the dates around the occurrence, for when you remember the label but not the day, and
+weak matches stay behind a **Tout afficher** toggle. When nothing comes close the list
+says so rather than filling up with near-misses.
 
 An operation another budget or planned payment already counts is offered too — the
 matcher giving a payment to the wrong target is exactly the mistake this page exists to
@@ -118,20 +122,25 @@ finding the operation in Opérations and using **Délier**.
 When no operation is the payment, the same page offers the two decisions. **Reporter**
 moves the payment to a date you pick, offered as the next occurrence or tomorrow before
 you type anything; the forecast then counts it there, and the upcoming list shows it on
-its new date with where it came from. **Ne pas compter** declares that the payment never
+its new date with where it came from. **Oublier** declares that the payment never
 happened; the confirmation tells you how much comes back to your margin first. Both are
 on the overdue row as well, and the margin at the top of Accueil updates with your
 decision. **Rétablir** undoes it — right away on the row, or later from the planned
 operation's own page, which lists every occurrence you decided about. Linking the
 payment afterwards drops the decision from that list: the operation settles the
 occurrence, so there is nothing left to undo. A payment made in cash has no operation to
-link, so not counting it is the answer there.
+link, so forgetting it is the answer there.
+
+Both decisions land on the occurrence in front of you, never on the series: the next
+month comes back on its own date whatever you decided about this one. **Modifier
+l'opération planifiée** is the one that reaches the recurrence.
 
 When a sync has failed the card and the page withhold both decisions and say so:
-operations are probably missing, and stopping to count a payment that did happen would
-be worse than waiting. Linking stays available, since an operation already imported is
-there whatever the sync left out — the page warns that what you are looking for may be
-among the missing.
+operations are probably missing, and forgetting a payment that did happen would be worse
+than waiting. Linking stays available, since an operation already imported is there
+whatever the sync left out — the page warns that what you are looking for may be among
+the missing. Editing the series stays available too, for the same reason: a wrong
+recurrence is wrong whatever the sync brought back.
 
 On Tendances, the expense breakdown donut folds small categories into a single grey
 **Other categories** slice. A slider below the donut sets the cutoff: any category below

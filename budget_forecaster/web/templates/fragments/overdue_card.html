@@ -12,16 +12,11 @@
     {{ _("Sync before deciding.") }}
     <a href="/settings">{{ _("Synchronize") }}</a>
   </p>
-  {% elif card.show_data_horizon %}
-  <p class="muted-note overdue-degraded">
-    {{ _("Your data stops on {date}.").format(date=card.balance_date | frdate) }}
-  </p>
   {% endif %}
   <ul class="overdue-list" id="overdue-list">
     {% for row in card.rows %}
       {% include "fragments/overdue_row.html" %}
     {% endfor %}
   </ul>
-  <p class="card-foot">{{ _("No imported operation matches these. Start with “Link…”: most often the payment happened and was not recognized.") }}</p>
   <p class="empty overdue-settled">{{ _("Every planned payment is settled.") }}</p>
 </section>

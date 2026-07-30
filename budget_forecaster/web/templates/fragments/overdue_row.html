@@ -1,59 +1,51 @@
+{# The row is the disclosure: what and how much is all it takes to recognize an
+   occurrence, and the issues it can take are one tap away, not repeated down
+   the card. Open when the user was already acting on it, closed on arrival. #}
 <li class="overdue-item" id="overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}">
-  <div class="overdue-head">
-    <a class="overdue-desc" href="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/link"
-       title="{{ _('Find this payment among your operations') }}">{{ row.description }} ›</a>
-    {# Editing reaches the whole series, so the label says so rather than hinting
-       at this occurrence, which "Postpone…" beside it already handles. #}
-    <a class="overdue-edit" href="/targets/planned/{{ row.planned_operation_id }}?return_to=/"
-       aria-label="{{ _('Edit the planned operation (all occurrences)') }}"
-       title="{{ _('Edit the planned operation (all occurrences)') }}">✏️</a>
-    <span class="overdue-amount {{ 'positive' if row.amount > 0 else 'negative' }}">
-      {{ row.amount | signed_eur(row.currency) }}
-    </span>
-  </div>
-  <div class="overdue-meta">
-    {%- if row.postponed_to %}
-      {{ _("postponed from {date}").format(date=row.iteration_date | frdate) }} ·
-      {{ _("overdue since {date}").format(date=row.postponed_to | frdate) }}
-    {%- else %}
-      {{ _("due on {date}").format(date=row.iteration_date | frdate) }}
-    {%- endif %}
-    · {{ _("{n} d").format(n=row.days_overdue) }}
-    ·
-    {%- if row.counted_on %}
-      {{ _("counted on {date}").format(date=row.counted_on | frdate) }}
-    {%- else %}
-      <span class="not-counted">{{ _("not counted") }}</span>
-    {%- endif %}
-  </div>
-  {% if card.sync_broken %}
-    <div class="overdue-actions">
+  <details class="overdue-disclosure"{{ ' open' | safe if row_open }}>
+    <summary class="overdue-summary">
+      <span class="overdue-head">
+        <span class="overdue-desc">{{ row.description }}</span>
+        <span class="overdue-amount {{ 'positive' if row.amount > 0 else 'negative' }}">
+          {{ row.amount | signed_eur(row.currency) }}
+        </span>
+        <span class="overdue-caret" aria-hidden="true"></span>
+      </span>
+      {% include "fragments/overdue_facts.html" %}
+    </summary>
+    {# Editing reaches the whole series, so the label says the target, and a
+       broken sync does not take it away: the recurrence is often what needs
+       fixing. #}
+    <div class="overdue-panel overdue-actions">
       <a class="btn small primary"
          href="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/link">{{ _("Link…") }}</a>
-      <span class="muted-note">{{ _("Sync before deciding") }}</span>
+      {% if card.sync_broken %}
+        <span class="muted-note">{{ _("Sync before deciding") }}</span>
+      {% else %}
+      <div class="overdue-decisions" data-confirm-strip>
+        <button class="btn small" type="button"
+                hx-get="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/postpone"
+                hx-target="#overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}"
+                hx-swap="outerHTML">{{ _("Postpone…") }}</button>
+        <form hx-post="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/skip"
+              hx-target="#overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}"
+              hx-swap="outerHTML" class="inline" data-confirm>
+          <button type="button" class="btn small danger" data-confirm-trigger>{{ _("Forget") }}</button>
+          <span class="confirm-cluster" hidden>
+            <span class="confirm-question">
+              {{ _("Forget it?") }}
+              {{ _("{amount} returns to your margin.").format(amount=row.amount | abs | eur(row.currency)) }}
+            </span>
+            <button type="button" class="btn small" data-confirm-cancel>{{ _("Cancel") }}</button>
+            <button type="submit" class="btn small danger">{{ _("Confirm") }}</button>
+          </span>
+        </form>
+      </div>
+      {% endif %}
+      <a class="btn small overdue-edit" href="/targets/planned/{{ row.planned_operation_id }}?return_to=/"
+         title="{{ _('Edit the planned operation (all occurrences)') }}"
+         aria-label="{{ _('Edit the planned operation (all occurrences)') }}">{{ _("Edit the planned operation") }}</a>
     </div>
-  {% else %}
-  <div class="overdue-actions" data-confirm data-confirm-strip>
-    <a class="btn small primary"
-       href="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/link">{{ _("Link…") }}</a>
-    <button class="btn small" type="button"
-            hx-get="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/postpone"
-            hx-target="#overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}"
-            hx-swap="outerHTML">{{ _("Postpone…") }}</button>
-    <form hx-post="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/skip"
-          hx-target="#overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}"
-          hx-swap="outerHTML" class="inline">
-      <button type="button" class="btn small danger" data-confirm-trigger>{{ _("Do not count") }}</button>
-      <span class="confirm-cluster" hidden>
-        <span class="confirm-question">
-          {{ _("Stop counting it?") }}
-          {{ _("{amount} returns to your margin.").format(amount=row.amount | abs | eur(row.currency)) }}
-        </span>
-        <button type="button" class="btn small" data-confirm-cancel>{{ _("Cancel") }}</button>
-        <button type="submit" class="btn small danger">{{ _("Confirm") }}</button>
-      </span>
-    </form>
-  </div>
-  {% endif %}
+  </details>
 </li>
 {% if oob_refresh %}{% include "fragments/margin_oob.html" %}{% endif %}

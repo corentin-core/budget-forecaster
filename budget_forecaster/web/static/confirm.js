@@ -56,6 +56,15 @@
           trigger.focus();
         });
       }
+
+      // Folding the row that holds the question is a way out of it too, so the
+      // row does not come back later with the question still armed.
+      const disclosure = trigger.closest('details');
+      if (disclosure) {
+        disclosure.addEventListener('toggle', function () {
+          if (!disclosure.open) open(false);
+        });
+      }
     });
   }
 

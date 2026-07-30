@@ -55,8 +55,8 @@
 <section class="card margin-card">
   <div class="metric-label">
     {{ _("Available margin") }}
-    <span class="info" tabindex="0"
-          data-tip="{{ _('What you can spend without your projected balance dropping below the safety threshold, over the whole forecast horizon.') }} — {{ _('Safety threshold') }}: {{ view.margin.threshold | eur(currency) }}">ⓘ</span>
+    {% set tip = _('What you can spend without your projected balance dropping below the safety threshold, over the whole forecast horizon.') ~ ' — ' ~ _('Safety threshold') ~ ': ' ~ (view.margin.threshold | eur(currency)) %}
+    <button type="button" class="info" aria-label="{{ tip }}" data-tip="{{ tip }}">ⓘ</button>
   </div>
   <div class="metric-value">{{ view.margin.available_margin | eur(currency) }}</div>
   <div class="metric-sub">

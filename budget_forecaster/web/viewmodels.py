@@ -676,14 +676,7 @@ class OverdueCard(NamedTuple):
     sync_broken: bool
     """A sync failed, so operations are probably missing: no decision offered."""
 
-    show_data_horizon: bool
-    """The balance date is old enough to be worth stating before deciding."""
-
-    balance_date: date
     tomorrow: date
-
-
-_HORIZON_WORTH_SAYING = timedelta(days=3)
 
 
 def _next_own_iteration(op: PlannedOperation, after: date) -> date | None:
@@ -702,10 +695,10 @@ def build_overdue_card(
     """Build the overdue card: what awaits a decision, and whether to offer any.
 
     A failed sync means operations are probably missing, so the card states that
-    and offers nothing rather than inviting the user to stop counting a payment
-    that did happen. An old balance date is not enough to refuse: someone who
-    imports their statements by hand always has one, and the card says where the
-    data stops instead.
+    and offers no decision rather than inviting the user to forget a payment that
+    did happen. Linking and editing the series survive it. An old balance date is
+    not enough to refuse: someone who imports their statements by hand always has
+    one.
 
     Args:
         app: The application service.
@@ -737,7 +730,5 @@ def build_overdue_card(
     return OverdueCard(
         rows=tuple(rows),
         sync_broken=sync_broken,
-        show_data_horizon=today - balance_date > _HORIZON_WORTH_SAYING,
-        balance_date=balance_date,
         tomorrow=today + timedelta(days=1),
     )

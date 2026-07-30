@@ -1933,14 +1933,9 @@ msgstr "créée au démarrage"
 msgid "Bulk actions"
 msgstr "Actions groupées"
 
-msgid "Do not count"
-msgstr "Ne pas compter"
+msgid "Forget"
+msgstr "Oublier"
 
-msgid "No imported operation matches these. Start with “Link…”: most often the payment happened and was not recognized."
-msgstr "Aucune opération importée ne correspond. Commencez par « Lier… » : le plus souvent le paiement a eu lieu et n'a pas été reconnu."
-
-msgid "No longer counted"
-msgstr "Plus comptée"
 
 msgid "Find this payment among your operations"
 msgstr "Retrouver ce paiement dans vos opérations"
@@ -1960,8 +1955,8 @@ msgstr "Reportée"
 msgid "Postpone…"
 msgstr "Reporter…"
 
-msgid "Stop counting it?"
-msgstr "Ne plus la compter ?"
+msgid "Forget it?"
+msgstr "L'oublier ?"
 
 msgid "Sync before deciding"
 msgstr "Synchronisez avant de décider"
@@ -1978,14 +1973,15 @@ msgstr "Unité"
 msgid "Value"
 msgstr "Valeur"
 
-msgid "Your data stops on {date}."
-msgstr "Vos données s'arrêtent au {date}."
-
-msgid "counted on {date}"
-msgstr "comptée le {date}"
 
 msgid "due on {date}"
 msgstr "prévue le {date}"
+
+msgid "{n} d late"
+msgstr "{n} j de retard"
+
+msgid "postponed from {origin} to {date}"
+msgstr "reportée du {origin} au {date}"
 
 msgid "margin"
 msgstr "marge"
@@ -1993,23 +1989,18 @@ msgstr "marge"
 msgid "next occurrence"
 msgstr "prochaine échéance"
 
-msgid "not counted"
-msgstr "non comptée"
 
 msgid "out of the forecast: {n}"
 msgstr "hors prévisionnel : {n}"
 
-msgid "overdue since {date}"
-msgstr "en retard depuis le {date}"
+msgid "out of the forecast"
+msgstr "hors prévisionnel"
 
 msgid "tomorrow"
 msgstr "demain"
 
 msgid "{amount} returns to your margin."
 msgstr "{amount} reviennent dans votre marge."
-
-msgid "{n} d"
-msgstr "{n} j"
 
 msgid "Undo the decision"
 msgstr "Rétablir"
@@ -2029,8 +2020,8 @@ msgstr "Synchroniser"
 msgid "all settled"
 msgstr "tout est traité"
 
-msgid "no longer counted"
-msgstr "plus comptée"
+msgid "forgotten"
+msgstr "oubliée"
 
 
 msgid "Find this payment"
@@ -2075,8 +2066,8 @@ msgstr "La dernière synchronisation a échoué : l'opération que vous cherchez
 msgid "None of them? Then the payment did not happen yet."
 msgstr "Aucune ne correspond ? Alors le paiement n'a pas encore eu lieu."
 
-msgid "A payment made in cash has no operation to link: not counting it is the answer."
-msgstr "Un paiement en espèces n'a pas d'opération à lier : ne pas le compter est la réponse."
+msgid "A payment made in cash has no operation to link: forgetting it is the answer."
+msgstr "Un paiement en espèces n'a pas d'opération à lier : l'oublier est la réponse."
 
 msgid "{amount} becomes expected again."
 msgstr "{amount} seront de nouveau attendus."
@@ -2089,6 +2080,9 @@ msgstr "Ouvrir l'opération planifiée liée {name}"
 
 msgid "Edit the planned operation (all occurrences)"
 msgstr "Modifier l'opération planifiée (toutes les occurrences)"
+
+msgid "Edit the planned operation"
+msgstr "Modifier l'opération planifiée"
 
 msgid "From {label}"
 msgstr "D'après {label}"

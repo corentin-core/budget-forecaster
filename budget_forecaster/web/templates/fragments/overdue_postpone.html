@@ -1,5 +1,5 @@
 {# In-place postponement form: chips first, a date field behind "Other date". #}
-<li class="overdue-item expanded" id="overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}">
+<li class="overdue-item" id="overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}">
   <div class="overdue-head">
     <span class="overdue-desc">{{ row.description }}</span>
     <span class="overdue-amount {{ 'positive' if row.amount > 0 else 'negative' }}">

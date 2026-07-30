@@ -10,7 +10,7 @@
           {%- if item.postponed_to %}
             {{ _("postponed to {date}").format(date=item.postponed_to | frdate) }}
           {%- else %}
-            {{ _("not counted") }}
+            {{ _("forgotten") }}
           {%- endif %}
         </span>
         <button class="btn small" type="button"

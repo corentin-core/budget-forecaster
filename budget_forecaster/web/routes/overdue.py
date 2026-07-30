@@ -258,7 +258,11 @@ async def row_fragment(
     request: Request,
     app: ApplicationService = Depends(get_app_service),
 ) -> Response:
-    """Return the row as it stands, used to cancel out of the postpone form."""
+    """Return the row as it stands, used to cancel out of the postpone form.
+
+    Open: the user was deciding a second ago, and cancelling one date should not
+    cost them the tap that got the issues on screen.
+    """
     target = _find_target(request, app, op_id, _parse_iteration_date(iteration_date))
     return render_template(
         request,
@@ -267,6 +271,7 @@ async def row_fragment(
         card=target.card,
         row=target.row,
         currency=app.currency,
+        row_open=True,
     )
 
 
@@ -417,11 +422,13 @@ async def restore(
         return render_template(
             request, "fragments/overdue_gone.html", active="home", **context
         )
+    # Open: undoing a decision means another one is coming.
     return render_template(
         request,
         "fragments/overdue_row.html",
         active="home",
         row=row,
         oob_refresh=True,
+        row_open=True,
         **context,
     )
