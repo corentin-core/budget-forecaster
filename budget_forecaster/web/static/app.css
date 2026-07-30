@@ -1775,10 +1775,12 @@ a.link-tag:focus-visible {
 .cand-amount {
   white-space: nowrap;
 }
+/* Why this candidate matched: a label inside the button that is the action, so
+   it stays quiet — the same call as the linked-target chip. */
 .cand-reason {
   font-size: var(--fs-2xs);
-  color: var(--accent);
-  border: 1px solid var(--accent);
+  color: var(--muted);
+  border: 1px solid var(--border);
   border-radius: var(--radius-xs);
   padding: 0 var(--sp-4);
 }
