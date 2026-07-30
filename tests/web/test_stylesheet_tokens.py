@@ -2,6 +2,9 @@
 
 Without this, each use site writes its own literal: that is how the file reached
 eighteen font sizes and five near-identical paddings.
+
+Not guarded yet, because each needs its own token first: `border` (a hairline
+width), `width` / `height`, and `font-weight`.
 """
 
 from __future__ import annotations
@@ -13,10 +16,12 @@ STYLESHEET = (
     Path(__file__).parents[2] / "budget_forecaster" / "web" / "static" / "app.css"
 )
 
-# Properties whose value must resolve to a token.
 GUARDED = re.compile(
-    r"^(font-size|border-radius|box-shadow|min-height|color|background-color|outline"
-    r"|padding(-top|-right|-bottom|-left)?|margin(-top|-right|-bottom|-left)?|gap)$"
+    r"^(font-size|line-height|border-radius|box-shadow|min-height|color"
+    r"|background|background-color|outline|outline-offset"
+    r"|padding(-top|-right|-bottom|-left|-inline|-block)?"
+    r"|margin(-top|-right|-bottom|-left|-inline|-block)?"
+    r"|(row-|column-)?gap)$"
 )
 
 KEYWORDS = {
@@ -29,55 +34,81 @@ KEYWORDS = {
     "currentColor",
 }
 
-# Values that carry no design decision, whatever the property.
-FREE_VALUES = {"0", "50%", "100vh", "100%"}
+# Unitless line heights and zero carry no design decision.
+FREE = re.compile(r"^(0|1|[0-9]*\.[0-9]+)$")
 
-# (selector, property) -> why this one stays literal. Anything not listed must
-# use a token, so adding an entry here is a deliberate, reviewed exception.
-EXEMPT: dict[tuple[str, str], str] = {
-    (".bottombar .badge", "margin-left"): "nudge off the centre line, not spacing",
-    (".chart-dot", "margin"): "negative half of its own width",
-    (".sr-only", "margin"): "the visually-hidden clip trick",
-    (".donut-total", "font-size"): "SVG user units in a viewBox, not a font size",
-    (".donut-legend .legend-members ul", "padding"): "indent derived from swatch + gap",
+# selector -> why this one stays literal. Keys are the selector as written, with
+# whitespace collapsed. Anything absent must use a token, so an entry here is a
+# deliberate exception — and `test_exemptions_are_needed` fails once it is not.
+EXEMPT: dict[str, str] = {
+    ".bottombar .badge": "nudge off the centre line, not spacing",
+    ".chart-dot": "negative half of its own width",
+    ".sr-only": "the visually-hidden clip trick",
+    ".donut-total": "SVG user units in a viewBox, not a font size",
+    ".login-body": "a full-viewport login screen",
 }
+
+_VAR = re.compile(r"var\(\s*(--[\w-]+)\s*\)")
+_ENV = re.compile(r"env\([^()]*\)")
+_CALL = re.compile(r"[\w-]*\(")
+
+
+def _rules() -> list[tuple[str, str]]:
+    """Every (selector, declaration block) pair, comments stripped."""
+    css = re.sub(r"/\*.*?\*/", "", STYLESHEET.read_text(), flags=re.S)
+    rules: list[tuple[str, str]] = []
+    pending: list[str] = []
+    buffer = ""
+    for char in css:
+        if char == "{":
+            pending.append(" ".join(buffer.split()))
+            buffer = ""
+        elif char == "}":
+            rules.append((pending.pop() if pending else "", buffer))
+            buffer = ""
+        else:
+            buffer += char
+    return rules
 
 
 def _declarations() -> list[tuple[str, str, str]]:
-    """Every (selector, property, value) in the stylesheet, tokens themselves aside."""
-    css = re.sub(r"/\*.*?\*/", "", STYLESHEET.read_text(), flags=re.S)
-    found: list[tuple[str, str, str]] = []
-    stack: list[str] = []
-    for chunk in re.split(r"([{}])", css):
-        if chunk == "{":
-            continue
-        if chunk == "}":
-            if stack:
-                stack.pop()
-            continue
-        head, _, decls = chunk.rpartition(";")
-        body = f"{head};{decls}" if head else decls
-        for decl in body.split(";"):
+    """Every (selector, property, value), token definitions aside."""
+    found = []
+    for selector, block in _rules():
+        for decl in block.split(";"):
             prop, sep, value = decl.partition(":")
-            if not sep:
-                continue
-            prop, value = prop.strip(), value.strip()
-            if prop and value and not prop.startswith("--"):
-                found.append((stack[-1] if stack else "", prop, value))
-        selector = decls.strip().splitlines()[-1].strip() if decls.strip() else ""
-        stack.append(selector)
+            prop, value = prop.strip().lower(), value.strip()
+            if sep and prop and value and not prop.startswith("--"):
+                found.append((selector, prop, value))
     return found
 
 
-_FUNCTION = re.compile(r"[a-z-]*\((?:[^()]|\([^()]*\))*\)")
+def _strip_calls(value: str) -> str:
+    """Bare the arguments so a literal cannot hide inside a function.
+
+    `var(--x, 7px)` keeps its fallback: that is a literal wearing a token's
+    clothes. `env()` names a platform inset, so it goes whole.
+    """
+    value = _ENV.sub(" ", _VAR.sub(" ", value))
+    return _CALL.sub(" ", value).replace(")", " ").replace(",", " ")
 
 
 def _is_tokenised(value: str) -> bool:
-    """True when nothing outside a function call is a bare literal."""
+    """True when nothing left after resolving tokens is a bare literal."""
+    # A percentage is a mix ratio inside color-mix(), a length anywhere else.
+    ratio = "color-mix(" in value
+    parts = _strip_calls(value).split()
     return all(
-        part in KEYWORDS or part in FREE_VALUES
-        for part in _FUNCTION.sub(" ", value).split()
+        part in KEYWORDS
+        or FREE.match(part)
+        or _is_operator(part)
+        or (ratio and part.endswith("%"))
+        for part in parts
     )
+
+
+def _is_operator(part: str) -> bool:
+    return part in {"+", "-", "*", "/", "solid", "dashed", "in", "srgb"}
 
 
 def test_guarded_properties_use_tokens() -> None:
@@ -85,14 +116,18 @@ def test_guarded_properties_use_tokens() -> None:
     offenders = [
         f"{selector} {{ {prop}: {value} }}"
         for selector, prop, value in _declarations()
-        if GUARDED.match(prop)
-        and not _is_tokenised(value)
-        and (selector, prop) not in EXEMPT
+        if GUARDED.match(prop) and not _is_tokenised(value) and selector not in EXEMPT
     ]
     assert not offenders, "literal values outside :root:\n" + "\n".join(offenders)
 
 
-def test_exemptions_still_apply() -> None:
-    """An exemption matching nothing is stale."""
-    live = {(selector, prop) for selector, prop, _ in _declarations()}
-    assert not [key for key in EXEMPT if key not in live]
+def test_exemptions_are_needed() -> None:
+    """An exemption whose value would now pass on its own is stale."""
+    stale = [
+        selector
+        for selector, prop, value in _declarations()
+        if selector in EXEMPT and GUARDED.match(prop) and not _is_tokenised(value)
+    ]
+    assert set(EXEMPT) == set(
+        stale
+    ), f"stale exemptions: {sorted(set(EXEMPT) - set(stale))}"

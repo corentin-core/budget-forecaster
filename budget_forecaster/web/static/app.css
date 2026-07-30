@@ -25,6 +25,7 @@
   --warn-text: #7a5b00;
   --good-bg: #e2f4e8;
   --good-text: #14663a;
+  --neutral-bg: #eef0f3;
 
   /* --- Type: eight steps, every literal snapped to the nearest one --- */
   --fs-2xs: 0.72rem;
@@ -73,6 +74,8 @@
   --axis-gutter: 4.5rem;
   /* Touch target floor. */
   --control-min-h: 44px;
+  /* Donut legend swatch; the sub-list indent aligns under it. */
+  --swatch-w: 0.8rem;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -95,6 +98,7 @@
     --warn-text: #f0d78a;
     --good-bg: #123524;
     --good-text: #7fd6a2;
+    --neutral-bg: #22252b;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
     /* 0.12 alpha is invisible on --surface; the bar needs a real one. */
     --shadow-up: 0 -2px 6px rgba(0, 0, 0, 0.5);
@@ -111,6 +115,7 @@ body {
   background: var(--bg);
   color: var(--text);
   line-height: 1.4;
+  font-variant-numeric: tabular-nums;
 }
 
 a {
@@ -120,7 +125,7 @@ a {
 
 :focus-visible {
   outline: var(--focus-ring);
-  outline-offset: 2px;
+  outline-offset: var(--sp-2);
 }
 
 .brand {
@@ -208,7 +213,7 @@ a {
   color: var(--good-text);
 }
 .banner-cancelled {
-  background: var(--surface-alt);
+  background: var(--neutral-bg);
   color: var(--muted);
 }
 /* --- Cards --- */
@@ -546,7 +551,7 @@ table {
   gap: var(--sp-8);
   margin-bottom: var(--sp-12);
 }
-.filters input,
+.filters input:not([type='checkbox']),
 .filters select {
   min-height: var(--control-min-h);
   padding: var(--sp-6) var(--sp-8);
@@ -601,14 +606,8 @@ a.link-tag {
 a.link-tag:hover,
 a.link-tag:focus-visible {
   background: var(--accent);
-  color: var(--text-inverse);
+  color: var(--on-accent);
   text-decoration: underline;
-}
-a.link-tag:focus-visible,
-a.overdue-edit:focus-visible,
-.link-action:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: 2px;
 }
 
 /* --- Trends: balance curve --- */
@@ -804,8 +803,8 @@ a.overdue-edit:focus-visible,
   font-size: var(--fs-sm);
 }
 .donut-legend .swatch {
-  width: 0.8rem;
-  height: 0.8rem;
+  width: var(--swatch-w);
+  height: var(--swatch-w);
   border-radius: var(--radius-2xs);
   flex: 0 0 auto;
 }
@@ -827,7 +826,7 @@ a.overdue-edit:focus-visible,
   list-style: none;
   margin: 0;
   /* Indent aligns the sub-list under the label: swatch width + gap. */
-  padding: var(--sp-2) 0 var(--sp-4) calc(0.8rem + var(--sp-8));
+  padding: var(--sp-2) 0 var(--sp-4) calc(var(--swatch-w) + var(--sp-8));
 }
 .donut-legend .legend-members li {
   border-bottom: none;
@@ -1215,7 +1214,6 @@ a.overdue-edit:focus-visible,
   /* A nav row is flex: without this the count is what gets squeezed, and a
      two-digit badge loses its second digit. */
   flex-shrink: 0;
-  min-width: 1.1rem;
   margin-left: var(--sp-6);
   padding: var(--sp-4) var(--sp-6);
   font-size: var(--fs-2xs);
