@@ -600,6 +600,9 @@ msgstr "Modifications enregistrées"
 msgid "Split from a date"
 msgstr "Scinder à partir d'une date"
 
+msgid "Saving is paused while this section is open."
+msgstr "L'enregistrement est suspendu tant que cette section est ouverte."
+
 msgid "Date must be after first iteration"
 msgstr "La date doit être après la première itération"
 

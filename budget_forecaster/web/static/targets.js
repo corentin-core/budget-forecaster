@@ -20,6 +20,20 @@
     });
   });
 
+  // One primary action at a time: while the split section is open, Save would
+  // submit the form above it and silently ignore the split fields.
+  const splitSection = document.querySelector('[data-split-section]');
+  const saveButton = document.querySelector('[data-save-button]');
+  if (splitSection && saveButton) {
+    const note = splitSection.querySelector('[data-split-note]');
+    const syncSplit = function () {
+      saveButton.disabled = splitSection.open;
+      if (note) note.hidden = !splitSection.open;
+    };
+    syncSplit();
+    splitSection.addEventListener('toggle', syncSplit);
+  }
+
   // Whole management row is clickable (the inner link keeps keyboard/no-JS access).
   document.querySelectorAll('.target-row[data-href]').forEach(function (row) {
     row.addEventListener('click', function (event) {

@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import RedirectResponse, Response
+from starlette.datastructures import FormData
 
 from budget_forecaster.core.types import Category, LinkType
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
@@ -76,6 +77,17 @@ def get_filters(
         uncategorized_only=uncategorized,
     )
     return LedgerFilters(search, category, date_from, date_to, uncategorized, criteria)
+
+
+def filters_from_form(form: FormData) -> LedgerFilters:
+    """Parse the filter bar from a posted body: htmx sends it there, not in the URL."""
+    return get_filters(
+        search=str(form.get("search", "")),
+        category=str(form.get("category", "")),
+        date_from=str(form.get("date_from", "")),
+        date_to=str(form.get("date_to", "")),
+        uncategorized=str(form.get("uncategorized", "")) == "true",
+    )
 
 
 def _query(filters: LedgerFilters) -> str:
@@ -324,10 +336,10 @@ async def categorize_one(
 async def categorize_bulk(
     request: Request,
     app: ApplicationService = Depends(get_app_service),
-    filters: LedgerFilters = Depends(get_filters),
 ) -> Response:
     """Categorize the selected operations; re-render the ledger + badge."""
     form = await request.form()
+    filters = filters_from_form(form)
     category = _category(str(form.get("bulk_category", "")))
     ids = tuple(
         int(i)
@@ -335,7 +347,9 @@ async def categorize_bulk(
         if isinstance(i, str) and i.lstrip("-").isdigit()
     )
     if category is None or not ids:
-        return RedirectResponse(url="/operations", status_code=303)
+        query = _query(filters)
+        url = f"/operations?{query}" if query else "/operations"
+        return RedirectResponse(url=url, status_code=303)
     app.categorize_operations(ids, category)
     app.save_operation_changes()
     refresh_forecast(app)
