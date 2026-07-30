@@ -1,4 +1,9 @@
-{% if card.rows %}
+{# Always rendered, settled or not: a card that vanishes moves everything below
+   it, and the reader has to find their bearings again.
+
+   Which of the settled line and the list applies is left to CSS, because a
+   decided row lives on in the list client-side and the server no longer counts
+   it. #}
 <section class="card overdue-card" id="overdue-card">
   {% include "fragments/overdue_head.html" %}
   {% if card.sync_broken %}
@@ -18,5 +23,5 @@
     {% endfor %}
   </ul>
   <p class="card-foot">{{ _("No imported operation matches these. Start with “Link…”: most often the payment happened and was not recognized.") }}</p>
+  <p class="empty overdue-settled">{{ _("Every planned payment is settled.") }}</p>
 </section>
-{% endif %}

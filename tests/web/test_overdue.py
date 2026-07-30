@@ -68,7 +68,7 @@ def overdue_fixture(client: TestClient, app: FastAPI) -> Overdue:
 
 
 def _card(client: TestClient) -> str:
-    """The overdue card's markup, or an empty string when it is hidden."""
+    """The overdue card's markup; it is always on the page, settled or not."""
     html = client.get("/").text
     start = html.find('class="card overdue-card"')
     return html[start : html.find("</section>", start)] if start > 0 else ""
@@ -85,7 +85,8 @@ def _all_upcoming(client: TestClient) -> str:
 def _margin_value(client: TestClient) -> float:
     """The available margin as the page shows it."""
     html = client.get("/").text
-    found = re.search(r'metric-value big">([^<]+)<', html)
+    hero = html[html.find('id="margin-hero"') :]
+    found = re.search(r'metric-value">([^<]+)<', hero[: hero.find("</section>")])
     assert found, "the home page should show a margin"
     raw = found.group(1).replace("\u202f", "").replace("\xa0", "")
     raw = raw.replace(" ", "").replace("EUR", "").replace(",", ".")
@@ -100,16 +101,20 @@ def _decided_section(client: TestClient, op_id: int) -> str:
 
 
 class TestCardVisibility:
-    """The card only exists when something needs a decision."""
+    """The card holds its place whether or not anything needs a decision."""
 
-    def test_hidden_when_nothing_awaits_a_decision(
+    def test_says_so_when_nothing_awaits_a_decision(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """No card at all, rather than an empty one."""
+        """A settled card, so the cards below it do not move between visits."""
         monkeypatch.setattr(
             ApplicationService, "get_overdue_iterations", lambda self: ()
         )
-        assert _card(client) == ""
+
+        card = _card(client)
+
+        assert "réglées" in card
+        assert "overdue-item" not in card
 
     def test_lists_the_unmatched_iteration(
         self, client: TestClient, overdue: Overdue
@@ -522,15 +527,48 @@ class TestUndoRefreshesEverything:
         assert "margin-hero" not in response.text
         assert _decided_section(client, overdue.op_id) == ""
 
-    def test_no_hero_when_there_is_no_margin(
+    def test_the_hero_says_there_is_no_forecast_yet(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """An empty styled card at the top of Accueil is worse than nothing."""
+        """The slot stays, pointing at what would fill it."""
         monkeypatch.setattr(
             ApplicationService, "get_available_margin", lambda self, month: None
         )
 
         html = client.get("/").text
 
-        assert "margin-hero" not in html
+        hero = html[html.find('id="margin-hero"') :]
+        hero = hero[: hero.find("</section>")]
+        assert "Pas encore de prévisionnel" in hero
+        assert "Ajoute un budget ou une opération prévue" in hero
         assert "margin-None" not in html
+
+
+class TestDecidingKeepsTheUndo:
+    """A decision must not swap away the row it is writing into."""
+
+    def test_the_last_decision_leaves_a_settled_row_to_undo(
+        self, client: TestClient, overdue: Overdue
+    ) -> None:
+        """Settling the only overdue payment still offers to put it back."""
+        response = client.post(
+            f"/overdue/{overdue.op_id}/{overdue.iteration}/skip",
+            headers={"HX-Request": "true"},
+        )
+
+        assert response.status_code == 200
+        assert "overdue-item settled" in response.text
+        assert f"/overdue/{overdue.op_id}/{overdue.iteration}/restore" in response.text
+
+    def test_no_response_swaps_the_card_around_its_own_row(
+        self, client: TestClient, overdue: Overdue
+    ) -> None:
+        """An out-of-band card swap would detach the row htmx targets."""
+        for action in ("skip", "postpone"):
+            response = client.post(
+                f"/overdue/{overdue.op_id}/{overdue.iteration}/{action}",
+                data={"until": "2026-12-01"},
+                headers={"HX-Request": "true"},
+            )
+            body = response.text
+            assert 'id="overdue-card"' not in body, action

@@ -1,4 +1,8 @@
-{# Out-of-band refresh of every figure a decision moves. #}
+{# Out-of-band refresh of every figure a decision moves.
+
+   The card itself is never swapped here: a decided row stays on screen with its
+   undo, so the card is not empty even when the server has no rows left to list.
+   Swapping it would detach the row htmx is about to write into. #}
 {% with oob = true %}
   {% include "fragments/margin_hero.html" %}
   {% include "fragments/overdue_head.html" %}

@@ -3,10 +3,14 @@
 import re
 from datetime import date
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from budget_forecaster.services.application_service import UpcomingIteration
+from budget_forecaster.services.application_service import (
+    ApplicationService,
+    UpcomingIteration,
+)
 from budget_forecaster.web.formatting import format_eur
 from budget_forecaster.web.routes.home import _PAGE_SIZE as _UPCOMING_PAGE_SIZE
 from budget_forecaster.web.routes.operations import _PAGE_SIZE
@@ -265,3 +269,65 @@ class TestReachingTheNamedTarget:
         assert tagged, "a drill-down should show an attributed linked operation"
         assert 'class="attributed-row" data-href="/operations/' in tagged
         assert client.get(self._target_href(tagged)).status_code == 200
+
+
+def _categorize_everything(client: TestClient) -> None:
+    """Leave nothing for Home's categorize tile to count."""
+    page = client.get("/operations?uncategorized=true").text
+    pending = re.findall(r'name="ids" value="(\d+)"', page)
+    assert pending, "the demo database should have uncategorized operations"
+    response = client.post(
+        "/operations/categorize",
+        data={"ids": pending, "bulk_category": "groceries"},
+        headers={"HX-Request": "true"},
+    )
+    assert response.status_code == 200
+    assert not re.findall(
+        r'name="ids" value="(\d+)"', client.get("/operations?uncategorized=true").text
+    )
+
+
+class TestHomeKeepsItsShape:
+    """Home fills every slot on every visit, so nothing moves between them."""
+
+    @staticmethod
+    def _slots(html: str) -> list[str]:
+        """Which slots the page holds, in order, ignoring their state."""
+        names = {
+            'class="tile': "tile",
+            'id="overdue-card"': "overdue",
+            'class="card"': "card",
+        }
+        found = re.findall(r'class="tile\b|id="overdue-card"|class="card"', html)
+        return [names[match] for match in found]
+
+    def test_the_categorize_slot_stays_when_there_is_nothing_to_do(
+        self, client: TestClient
+    ) -> None:
+        """Zero reads as a settled count, not as a missing tile."""
+        _categorize_everything(client)
+
+        html = client.get("/").text
+
+        assert len(self._slots(html)) == len(self._slots(client.get("/").text))
+        # The band's own end tag is not the first one: the hero is a section too.
+        band = html[html.find('class="summary"') : html.find('id="overdue-card"')]
+        assert band.count('class="tile') == 3
+        assert "Rien à classer" in band
+        assert "uncategorized=true" not in band
+
+    def test_the_slots_are_the_same_busy_or_quiet(
+        self, client: TestClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The page keeps its structure whether or not anything needs attention."""
+        busy = self._slots(client.get("/").text)
+
+        _categorize_everything(client)
+        monkeypatch.setattr(
+            ApplicationService, "get_overdue_iterations", lambda self: ()
+        )
+
+        quiet = client.get("/").text
+        assert "Rien à classer" in quiet
+        assert "overdue-item" not in quiet
+        assert self._slots(quiet) == busy

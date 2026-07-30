@@ -1407,6 +1407,28 @@ msgstr "Dépenses prévues ce mois-ci"
 msgid "Operations to categorize"
 msgstr "Opérations à catégoriser"
 
+msgid ""
+"The forecast stopped counting these: their amount is back in your available "
+"margin, and linking or postponing one puts it back."
+msgstr ""
+"Le prévisionnel ne les compte plus : leur montant est revenu dans ta marge "
+"disponible, et les associer ou les reporter le remet."
+
+msgid "Nothing to classify"
+msgstr "Rien à classer"
+
+msgid "No forecast yet"
+msgstr "Pas encore de prévisionnel"
+
+msgid "Add a budget or a planned operation"
+msgstr "Ajoute un budget ou une opération prévue"
+
+msgid "Every planned payment is settled."
+msgstr "Toutes les échéances prévues sont réglées."
+
+msgid "Summary"
+msgstr "Résumé"
+
 msgid "What you can still spend this month after remaining budgets and planned operations, keeping your safety threshold."
 msgstr "Ce qu'il te reste à dépenser ce mois-ci une fois déduits les budgets et opérations planifiés restants, en gardant ton seuil de sécurité."
 

@@ -240,7 +240,6 @@ a {
   font-weight: 600;
 }
 
-.highlight,
 .margin-card {
   text-align: center;
 }
@@ -256,7 +255,6 @@ a {
 }
 .warn-text {
   color: var(--bad);
-  font-weight: 600;
 }
 .metric-label {
   color: var(--muted);
@@ -267,36 +265,49 @@ a {
   font-weight: 700;
   margin: var(--sp-4) 0;
 }
-.metric-value.big {
-  font-size: var(--fs-2xl);
-}
 .metric-sub {
   color: var(--muted);
   font-size: var(--fs-sm);
 }
 
-/* Balance is the headline number; the two secondary stats sit below it. */
-.stat-row {
-  display: flex;
-  flex-wrap: wrap;
+/* --- Home: the summary band --- */
+/* One hero and two secondary tiles. Mobile stacks the hero over the pair; on a
+   wide screen the three sit on one row so no band holds a lone centred figure. */
+.summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--sp-16);
   margin-bottom: var(--sp-16);
 }
-.stat {
-  flex: 1;
-  min-width: 8rem;
-  margin-bottom: 0;
-  text-align: center;
+/* Below this the two secondary tiles cannot hold an amount side by side. */
+@media (max-width: 26rem) {
+  .summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
-.stat .metric-value {
-  font-size: var(--fs-lg);
-}
-.stat-link {
-  color: inherit;
+.tile {
   display: block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-16);
 }
-.stat-link:hover {
+.summary .tile:first-child {
+  grid-column: 1 / -1;
+}
+.summary .metric-value {
+  font-size: var(--fs-xl);
+}
+.tile-action {
+  color: inherit;
+}
+.tile-action:hover,
+.tile-action:focus-visible {
   border-color: var(--accent);
+}
+/* A settled slot still holds its place, quietly. */
+.metric-none {
+  color: var(--muted);
 }
 .info {
   cursor: help;
@@ -390,6 +401,7 @@ a {
 }
 .cat-list li,
 .upcoming-list li {
+  font-size: var(--fs-sm);
   display: flex;
   justify-content: space-between;
   padding: var(--sp-6) 0;
@@ -986,12 +998,37 @@ a.link-tag:focus-visible {
     max-width: var(--content-max-wide);
     padding: var(--sp-24) var(--sp-32);
   }
-  /* Tile the two lower home cards side by side on wide screens. */
+  /* Tile the two lower home cards side by side on wide screens, at equal
+     height so the row does not end on a ragged edge. */
   .home-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--sp-16);
-    align-items: start;
+  }
+  /* One card left (no budget or planned operation this month yet) takes the
+     whole row rather than leaving half of it empty. */
+  .home-grid:has(> .card:only-child) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* Equal height, with the card's own link taking up the slack so the extra
+     room reads as deliberate rather than as a hole. */
+  .home-grid > .card {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0;
+  }
+  .home-grid > .card > .card-link,
+  .home-grid > .card > .more-btn {
+    margin-top: auto;
+    align-self: flex-start;
+  }
+  /* One row of three once there is width for it, all the same width so the
+     band does not look ragged. */
+  .summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .summary .tile:first-child {
+    grid-column: auto;
   }
 }
 
@@ -2008,6 +2045,13 @@ a.link-tag:focus-visible {
 .card-note {
   color: var(--muted);
   font-size: var(--fs-sm);
+}
+/* Only the live list knows which of the two applies: a decided row stays on
+   screen with its undo while the server stops counting it. What matters is
+   whether anything is still undecided. */
+.overdue-card:has(.overdue-item:not(.settled)) .overdue-settled,
+.overdue-card:not(:has(.overdue-item:not(.settled))) .card-foot {
+  display: none;
 }
 .overdue-list {
   list-style: none;

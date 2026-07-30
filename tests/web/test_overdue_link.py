@@ -102,7 +102,9 @@ def _card(client: TestClient) -> str:
 
 def _margin(client: TestClient) -> float:
     """The available margin as the home page shows it."""
-    found = re.search(r'metric-value big">([^<]+)<', client.get("/").text)
+    hero = client.get("/").text
+    hero = hero[hero.find('id="margin-hero"') :]
+    found = re.search(r'metric-value">([^<]+)<', hero[: hero.find("</section>")])
     assert found, "the home page should show a margin"
     raw = found.group(1).replace(" ", "").replace("\xa0", "").replace(" ", "")
     return float(raw.replace("EUR", "").replace("€", "").replace(",", "."))
