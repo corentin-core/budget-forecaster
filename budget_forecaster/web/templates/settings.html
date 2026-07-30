@@ -141,7 +141,7 @@
   {% else %}
   <p class="hint">{{ _("Run the Swile Enroll bookmarklet on team.swile.co; it copies the token to paste here.") }}</p>
   {% endif %}
-  <p><a href="https://team.swile.co" target="_blank" rel="noopener noreferrer">{{ _("Open team.swile.co") }} ↗</a></p>
+  <p><a class="action-link" href="https://team.swile.co" target="_blank" rel="noopener noreferrer">{{ _("Open team.swile.co") }} ↗</a></p>
   <form method="post" action="/settings/swile/enroll" class="swile-enroll-form">
     <label class="field">
       <span>{{ _("Refresh token") }}</span>
