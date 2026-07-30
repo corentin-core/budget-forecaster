@@ -1,24 +1,22 @@
 {# Second in the band: the balance is the fact, this is what it leaves you. The
-   colour carries the verdict, so the figure does not need the largest step. #}
+   colour carries the verdict, and the detail lives in the tooltip so the tile
+   holds no more text than its neighbours. #}
 <section class="tile margin-hero margin-{{ margin_status or 'none' }}" id="margin-hero"
          {{ 'hx-swap-oob="true"' | safe if oob }}>
   <div class="metric-label">
     {{ _("Available margin") }}
     {% if margin %}
     <span class="info" tabindex="0"
-          data-tip="{{ _('What you can spend without your projected balance dropping below the safety threshold, over the whole forecast horizon.') }}">ⓘ</span>
+          data-tip="{{ _('What you can spend without your projected balance dropping below the safety threshold, over the whole forecast horizon.') }} — {{ _('Lowest projected balance') }}: {{ margin.lowest_balance | eur(currency) }} ({{ margin.lowest_balance_date | frdate }})">ⓘ</span>
     {% endif %}
   </div>
   {% if margin %}
     <div class="metric-value">{{ margin.available_margin | eur(currency) }}</div>
     {% if margin_status == "bad" %}
       <div class="metric-sub warn-text">{{ _("Projected below your safety threshold") }}</div>
+    {% else %}
+      <div class="metric-sub">{{ _("Safety threshold") }} {{ margin.threshold | eur(currency) }}</div>
     {% endif %}
-    <div class="metric-sub">
-      {{ _("Lowest projected balance") }}: {{ margin.lowest_balance | eur(currency) }}
-      ({{ margin.lowest_balance_date | frdate }}) ·
-      {{ _("Safety threshold") }} {{ margin.threshold | eur(currency) }}
-    </div>
   {% else %}
     <div class="metric-value metric-none">—</div>
     <div class="metric-sub">
