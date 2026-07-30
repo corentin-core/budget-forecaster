@@ -2107,3 +2107,18 @@ msgstr "Catégorisez d'abord l'opération : les occurrences ne correspondent que
 
 msgid "Occurrences since this date will be expected; those without a matching operation show as overdue on Accueil."
 msgstr "Les occurrences depuis cette date seront attendues ; celles sans opération correspondante apparaîtront en retard sur Accueil."
+
+msgid "Theme"
+msgstr "Thème"
+
+msgid "Auto"
+msgstr "Auto"
+
+msgid "Light"
+msgstr "Clair"
+
+msgid "Dark"
+msgstr "Sombre"
+
+msgid "Auto follows your device; the choice is not shared with the other users of the budget."
+msgstr "Auto suit votre appareil ; le choix n'est pas partagé avec les autres utilisateurs du budget."

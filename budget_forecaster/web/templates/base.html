@@ -5,6 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{% block title %}Budget Forecaster{% endblock %}</title>
     <link rel="stylesheet" href="/static/app.css" />
+    {# Inline and not deferred: a stored theme has to be on the element before
+       the first paint, or the reader gets a flash of the other one. #}
+    <script>
+      try {
+        var storedTheme = localStorage.getItem('theme');
+        if (storedTheme === 'light' || storedTheme === 'dark') {
+          document.documentElement.style.colorScheme = storedTheme;
+        }
+      } catch (e) {
+        /* Storage denied: the device theme stays in charge. */
+      }
+    </script>
     <script src="/static/htmx.min.js" defer></script>
   </head>
   <body>

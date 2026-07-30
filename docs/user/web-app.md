@@ -62,7 +62,7 @@ to start if neither source provides both secrets.
 | Budgets    | All budgets and planned operations, whatever month they fall in; create, edit, split, delete  |
 | Opérations | The full ledger, filterable by search text, category, month, and "uncategorized"              |
 | Tendances  | Balance evolution over time and expense breakdown by category                                 |
-| Réglages   | Bank connection status and sync history, manual file import, and the margin threshold         |
+| Réglages   | Bank connection and sync history, manual import, backups, the margin threshold, the theme     |
 
 Navigation is a bottom bar on phones and a left sidebar on wider screens, each tab with
 an icon.
@@ -269,3 +269,13 @@ message and nothing is imported.
 
 Keep the Swile export under its original name. The `.zip` is recognized by its
 `swile-export-YYYY-MM-DD.zip` name, so a renamed file is not accepted.
+
+## Theme
+
+Réglages holds a Theme switcher: **Auto**, **Clair**, **Sombre**. Auto follows what your
+phone or computer is set to, including a change made while the app stays open. Picking
+Clair or Sombre overrides it and repaints straight away, with no reload.
+
+The choice is stored in the browser, so it is per device and per browser: your phone can
+be dark while the desktop stays light, and the other users of the budget keep their own.
+Everything else in Réglages is shared.

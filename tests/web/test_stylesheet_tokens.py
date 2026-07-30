@@ -121,6 +121,14 @@ def test_guarded_properties_use_tokens() -> None:
     assert not offenders, "literal values outside :root:\n" + "\n".join(offenders)
 
 
+def test_a_theme_is_one_declaration_per_token() -> None:
+    """No second palette: the switcher writes color-scheme and light-dark()
+    picks the side, so a duplicated dark block would ignore the switch."""
+    css = STYLESHEET.read_text()
+    assert "prefers-color-scheme" not in css
+    assert "color-scheme: light dark" in css
+
+
 def test_exemptions_are_needed() -> None:
     """An exemption whose value would now pass on its own is stale."""
     stale = [
