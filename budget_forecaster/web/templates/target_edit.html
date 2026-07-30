@@ -32,7 +32,7 @@
                 name='« ' ~ dup.description ~ ' »',
                 amount=dup.amount | signed_eur(currency),
                 period=dup.period_label) }}
-        <a href="/operations/{{ seed.operation_id }}/link?return_to={{ return_to | urlencode }}">{{
+        <a class="action-link" href="/operations/{{ seed.operation_id }}/link?return_to={{ return_to | urlencode }}">{{
           _("Link to {name}").format(name='« ' ~ dup.description ~ ' »') }}</a>
       {% endif %}
     </p>

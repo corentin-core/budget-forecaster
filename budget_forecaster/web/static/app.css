@@ -118,9 +118,41 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* A name that happens to be navigable is content, not a URL: it keeps the text
+   colour and says what it is on hover and on keyboard focus. --accent is for
+   actions. */
 a {
-  color: var(--accent);
+  color: inherit;
   text-decoration: none;
+}
+a:hover,
+a:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+/* Buttons, chips, tiles and nav items: the shape already says it is clickable,
+   so the underline above would only add noise. */
+.btn:hover,
+.btn:focus-visible,
+.tile-action:hover,
+.tile-action:focus-visible,
+.nav-item:hover,
+.nav-item:focus-visible,
+.seg a:hover,
+.seg a:focus-visible,
+.period-switch a:hover,
+.period-switch a:focus-visible,
+.bookmarklet:hover,
+.bookmarklet:focus-visible,
+.link-action:hover,
+.link-action:focus-visible {
+  text-decoration: none;
+}
+
+/* An action written as words, wherever there is no room for a button. */
+.action-link {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 :focus-visible {
@@ -196,6 +228,7 @@ a {
 }
 .banner a {
   margin-left: var(--sp-8);
+  color: var(--accent);
   font-weight: 600;
 }
 .banner-expiring {
@@ -237,6 +270,7 @@ a {
 .card-link {
   display: inline-block;
   margin-top: var(--sp-8);
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -297,9 +331,6 @@ a {
 }
 .summary .metric-value {
   font-size: var(--fs-xl);
-}
-.tile-action {
-  color: inherit;
 }
 .tile-action:hover,
 .tile-action:focus-visible {
@@ -429,18 +460,6 @@ a {
   flex: 1;
   padding: 0 var(--sp-8);
 }
-/* A name that happens to be navigable reads as content, not as a URL. */
-.up-desc a,
-.attributed-list .op-desc a {
-  color: inherit;
-  text-decoration: none;
-}
-.up-desc a:hover,
-.up-desc a:focus-visible,
-.attributed-list .op-desc a:hover,
-.attributed-list .op-desc a:focus-visible {
-  text-decoration: underline;
-}
 .positive {
   color: var(--good);
 }
@@ -464,6 +483,7 @@ a {
   margin: 0;
 }
 .month-nav a {
+  color: var(--accent);
   font-size: var(--fs-lg);
   padding: 0 var(--sp-12);
 }
@@ -601,13 +621,15 @@ table {
 .load-more-cell {
   text-align: center;
 }
+/* The name of the linked target: a label, quiet enough to sit on 100 ledger
+   rows without turning the column blue. The chip is what makes it navigable. */
 .link-tag {
   display: inline-block;
   vertical-align: middle;
   max-width: 14rem;
   font-size: var(--fs-2xs);
-  color: var(--accent);
-  border: 1px solid var(--accent);
+  color: var(--muted);
+  border: 1px solid var(--border);
   border-radius: var(--radius-xs);
   padding: var(--sp-2) var(--sp-6);
   margin-left: var(--sp-8);
@@ -615,8 +637,7 @@ table {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* Only the anchor form navigates; the same look is used as a plain badge
-   elsewhere, so the affordance has to be on a.link-tag alone. */
+/* Only the anchor form navigates, so the affordance belongs on it alone. */
 a.link-tag {
   text-decoration: none;
   cursor: pointer;
@@ -624,6 +645,7 @@ a.link-tag {
 a.link-tag:hover,
 a.link-tag:focus-visible {
   background: var(--accent);
+  border-color: var(--accent);
   color: var(--on-accent);
   text-decoration: underline;
 }
@@ -1272,16 +1294,23 @@ a.link-tag:focus-visible {
 }
 
 /* --- Month: category drill-down --- */
+/* A category name, drillable: same affordance as a navigable name, because a
+   whole column of them in accent reads as a page of URLs. */
 .cat-toggle {
   background: none;
   border: none;
   padding: 0;
-  color: var(--accent);
+  color: inherit;
   font: inherit;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   cursor: pointer;
   text-align: left;
+}
+.cat-toggle:hover,
+.cat-toggle:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 .cat-toggle[aria-expanded='true']::after {
   content: ' ▾';
@@ -1667,6 +1696,11 @@ a.link-tag:focus-visible {
   margin: 0 0 var(--sp-8);
   font-size: var(--fs-sm);
 }
+/* Going back is an action, not a label. */
+.back a,
+.back-link a {
+  color: var(--accent);
+}
 .op-summary {
   display: flex;
   flex-wrap: wrap;
@@ -1741,10 +1775,12 @@ a.link-tag:focus-visible {
 .cand-amount {
   white-space: nowrap;
 }
+/* Why this candidate matched: a label inside the button that is the action, so
+   it stays quiet — the same call as the linked-target chip. */
 .cand-reason {
   font-size: var(--fs-2xs);
-  color: var(--accent);
-  border: 1px solid var(--accent);
+  color: var(--muted);
+  border: 1px solid var(--border);
   border-radius: var(--radius-xs);
   padding: 0 var(--sp-4);
 }
