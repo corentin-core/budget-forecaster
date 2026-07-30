@@ -1,5 +1,5 @@
 {% for item in upcoming %}
-  <li>
+  <li class="row-hover">
     <span class="up-date">{{ item.iteration_date | frdate }}</span>
     <span class="up-desc">
       {%- if item.planned_operation_id %}

@@ -46,7 +46,7 @@
       <tbody>
         {% for row in rows %}
         {% set target_url = "/targets/" ~ row.kind ~ "/" ~ row.id ~ "?return_to=" ~ (base | urlencode) %}
-        <tr class="target-row {{ '' if row.active else 'inactive' }}" tabindex="0" role="link"
+        <tr class="target-row row-hover {{ '' if row.active else 'inactive' }}" tabindex="0" role="link"
             data-href="{{ target_url }}">
           <td data-label="{{ _('Description') }}"><a href="{{ target_url }}">{{ row.description }}</a></td>
           <td class="num {{ 'positive' if row.amount > 0 else 'negative' }}"

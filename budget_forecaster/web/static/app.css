@@ -171,6 +171,25 @@ a:focus-visible {
   font-weight: 600;
 }
 
+/* A row that answers the pointer. The highlight is the affordance, so the names
+   inside stop underlining — one signal per row, and it covers the whole line
+   instead of the few words that happen to be a link. The chip keeps its own,
+   because it goes somewhere else. Focus-within lights the row for the keyboard
+   too. */
+.row-hover {
+  transition: background var(--dur-fast) var(--ease);
+}
+.row-hover:hover,
+.row-hover:focus-within {
+  background: var(--surface-hover);
+}
+.row-hover a:not(.link-tag):hover,
+.row-hover a:not(.link-tag):focus-visible,
+.row-hover .cat-toggle:hover,
+.row-hover .cat-toggle:focus-visible {
+  text-decoration: none;
+}
+
 :focus-visible {
   outline: var(--focus-ring);
   outline-offset: var(--sp-2);
@@ -1432,10 +1451,6 @@ a.link-tag:focus-visible {
    not an anchor — that carries the click. */
 .attributed-row {
   cursor: pointer;
-  transition: background var(--dur-fast) var(--ease);
-}
-.attributed-row:hover {
-  background: var(--surface-hover);
 }
 .src-meta,
 .op-amount {
@@ -1487,13 +1502,6 @@ a.link-tag:focus-visible {
   .ledger .desc {
     overflow-wrap: anywhere;
   }
-}
-/* The ledger answers the pointer like the other lists do. */
-.op-row {
-  transition: background var(--dur-fast) var(--ease);
-}
-.op-row:hover {
-  background: var(--surface-hover);
 }
 .cat-actions {
   display: flex;
@@ -1759,10 +1767,6 @@ a.link-tag:focus-visible {
 }
 .target-row {
   cursor: pointer;
-  transition: background var(--dur-fast) var(--ease);
-}
-.target-row:hover {
-  background: var(--surface-hover);
 }
 .target-row.inactive {
   opacity: 0.55;

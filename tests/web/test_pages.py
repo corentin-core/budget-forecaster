@@ -267,7 +267,7 @@ class TestReachingTheNamedTarget:
             "",
         )
         assert tagged, "a drill-down should show an attributed linked operation"
-        assert 'class="attributed-row" data-href="/operations/' in tagged
+        assert re.search(r'class="attributed-row[^"]*" data-href="/operations/', tagged)
         assert client.get(self._target_href(tagged)).status_code == 200
 
 
