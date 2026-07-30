@@ -1,6 +1,16 @@
 {# Out-of-band refresh of every figure a decision moves. #}
 {% with oob = true %}
   {% include "fragments/margin_hero.html" %}
-  {% include "fragments/overdue_head.html" %}
 {% endwith %}
+{% if card.rows %}
+  {% with oob = true %}
+    {% include "fragments/overdue_head.html" %}
+  {% endwith %}
+{% else %}
+  {# The last one just settled: swap the whole card, head included, so it shows
+     its settled state instead of an empty list. #}
+  {% with card_oob = true, oob = false %}
+    {% include "fragments/overdue_card.html" %}
+  {% endwith %}
+{% endif %}
 {% include "fragments/overdue_badge_oob.html" %}

@@ -68,7 +68,7 @@ def overdue_fixture(client: TestClient, app: FastAPI) -> Overdue:
 
 
 def _card(client: TestClient) -> str:
-    """The overdue card's markup, or an empty string when it is hidden."""
+    """The overdue card's markup; it is always on the page, settled or not."""
     html = client.get("/").text
     start = html.find('class="card overdue-card"')
     return html[start : html.find("</section>", start)] if start > 0 else ""
@@ -85,7 +85,7 @@ def _all_upcoming(client: TestClient) -> str:
 def _margin_value(client: TestClient) -> float:
     """The available margin as the page shows it."""
     html = client.get("/").text
-    found = re.search(r'metric-value big">([^<]+)<', html)
+    found = re.search(r'id="margin-hero".*?metric-value">([^<]+)<', html, re.S)
     assert found, "the home page should show a margin"
     raw = found.group(1).replace("\u202f", "").replace("\xa0", "")
     raw = raw.replace(" ", "").replace("EUR", "").replace(",", ".")
@@ -100,16 +100,20 @@ def _decided_section(client: TestClient, op_id: int) -> str:
 
 
 class TestCardVisibility:
-    """The card only exists when something needs a decision."""
+    """The card holds its place whether or not anything needs a decision."""
 
-    def test_hidden_when_nothing_awaits_a_decision(
+    def test_says_so_when_nothing_awaits_a_decision(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """No card at all, rather than an empty one."""
+        """A settled card, so the cards below it do not move between visits."""
         monkeypatch.setattr(
             ApplicationService, "get_overdue_iterations", lambda self: ()
         )
-        assert _card(client) == ""
+
+        card = _card(client)
+
+        assert "réglées" in card
+        assert "overdue-item" not in card
 
     def test_lists_the_unmatched_iteration(
         self, client: TestClient, overdue: Overdue
@@ -522,15 +526,15 @@ class TestUndoRefreshesEverything:
         assert "margin-hero" not in response.text
         assert _decided_section(client, overdue.op_id) == ""
 
-    def test_no_hero_when_there_is_no_margin(
+    def test_the_hero_says_there_is_no_forecast_yet(
         self, client: TestClient, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """An empty styled card at the top of Accueil is worse than nothing."""
+        """The slot stays, pointing at what would fill it."""
         monkeypatch.setattr(
             ApplicationService, "get_available_margin", lambda self, month: None
         )
 
         html = client.get("/").text
 
-        assert "margin-hero" not in html
-        assert "margin-None" not in html
+        assert "Pas encore de prévisionnel" in html
+        assert 'href="/targets"' in html

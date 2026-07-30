@@ -1,14 +1,28 @@
-{% if margin %}
-<section class="card highlight margin-hero margin-{{ margin_status }}" id="margin-hero"
+{# The one figure the page leads on. Present even with no forecast, so the
+   summary band keeps its shape from one visit to the next. #}
+<section class="tile tile-hero margin-hero margin-{{ margin_status }}" id="margin-hero"
          {{ 'hx-swap-oob="true"' | safe if oob }}>
   <div class="metric-label">
     {{ _("Available margin") }}
+    {% if margin %}
     <span class="info" tabindex="0"
           data-tip="{{ _('What you can spend without your projected balance dropping below the safety threshold, over the whole forecast horizon.') }} — {{ _('Safety threshold') }}: {{ margin.threshold | eur(currency) }}">ⓘ</span>
+    {% endif %}
   </div>
-  <div class="metric-value big">{{ margin.available_margin | eur(currency) }}</div>
-  {% if margin_status == "bad" %}
-    <div class="metric-sub warn-text">{{ _("Projected below your safety threshold") }}</div>
+  {% if margin %}
+    <div class="metric-value">{{ margin.available_margin | eur(currency) }}</div>
+    <div class="metric-sub">
+      {% if margin_status == "bad" %}
+        <span class="warn-text">{{ _("Projected below your safety threshold") }}</span>
+      {% else %}
+        {{ _("Safety threshold") }} {{ margin.threshold | eur(currency) }}
+      {% endif %}
+    </div>
+  {% else %}
+    <div class="metric-value metric-none">—</div>
+    <div class="metric-sub">
+      {{ _("No forecast yet") }} ·
+      <a href="/targets">{{ _("Add a budget or a planned operation") }}</a>
+    </div>
   {% endif %}
 </section>
-{% endif %}

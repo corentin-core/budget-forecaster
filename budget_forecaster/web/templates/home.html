@@ -1,25 +1,36 @@
 {% extends "base.html" %}
 {% block title %}{{ _("Home") }} — Budget Forecaster{% endblock %}
 {% block content %}
-{% include "fragments/margin_hero.html" %}
+<h1 class="sr-only">{{ _("Home") }}</h1>
 
-<section class="card highlight balance-card">
-  <div class="metric-label">{{ _("Balance") }}</div>
-  <div class="metric-value {{ 'big' if not margin }}">{{ balance | eur(currency) }}</div>
-  <div class="metric-sub">{{ _("Updated on") }} {{ balance_date | frdate }}</div>
+{# One hero plus two secondary tiles. Every slot is filled on every visit, so the
+   page keeps its shape between a quiet day and a busy one. #}
+<section class="summary" aria-label="{{ _('Summary') }}">
+  {% include "fragments/margin_hero.html" %}
+
+  <div class="tile">
+    <div class="metric-label">{{ _("Balance") }}</div>
+    <div class="metric-value">{{ balance | eur(currency) }}</div>
+    <div class="metric-sub">{{ _("Updated on") }} {{ balance_date | frdate }}</div>
+  </div>
+
+  {% if uncategorized %}
+  <a class="tile tile-action" href="/operations?uncategorized=true"
+     title="{{ _('Imported operations without a category. Click to classify them.') }}">
+    <div class="metric-label">{{ _("To categorize") }}</div>
+    <div class="metric-value">{{ uncategorized }}</div>
+    <div class="metric-sub">{{ _("Classify them") }} ›</div>
+  </a>
+  {% else %}
+  <div class="tile">
+    <div class="metric-label">{{ _("To categorize") }}</div>
+    <div class="metric-value metric-none">0</div>
+    <div class="metric-sub">{{ _("Nothing to classify") }}</div>
+  </div>
+  {% endif %}
 </section>
 
 {% include "fragments/overdue_card.html" %}
-
-{% if uncategorized %}
-<div class="stat-row">
-  <a class="card stat stat-link" href="/operations?uncategorized=true"
-     title="{{ _('Imported operations without a category. Click to classify them.') }}">
-    <div class="metric-label">{{ _("Operations to categorize") }}</div>
-    <div class="metric-value">{{ uncategorized }}</div>
-  </a>
-</div>
-{% endif %}
 
 <div class="home-grid">
 {% if health %}

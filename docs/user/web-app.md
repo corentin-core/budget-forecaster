@@ -55,26 +55,33 @@ to start if neither source provides both secrets.
 
 ## Sections
 
-| Section    | What it shows                                                                                |
-| ---------- | -------------------------------------------------------------------------------------------- |
-| Accueil    | Balance, available margin for the month, this-month expense health, upcoming operations      |
-| Mois       | Per-category planned vs actual for one month; switch months from the URL or the arrows       |
-| Budgets    | All budgets and planned operations, whatever month they fall in; create, edit, split, delete |
-| Opérations | The full ledger, filterable by search text, category, month, and "uncategorized"             |
-| Tendances  | Balance evolution over time and expense breakdown by category                                |
-| Réglages   | Bank connection status and sync history, manual file import, and the margin threshold        |
+| Section    | What it shows                                                                                 |
+| ---------- | --------------------------------------------------------------------------------------------- |
+| Accueil    | Available margin, balance, what is left to categorize, overdue payments, this month, upcoming |
+| Mois       | Per-category planned vs actual for one month; switch months from the URL or the arrows        |
+| Budgets    | All budgets and planned operations, whatever month they fall in; create, edit, split, delete  |
+| Opérations | The full ledger, filterable by search text, category, month, and "uncategorized"              |
+| Tendances  | Balance evolution over time and expense breakdown by category                                 |
+| Réglages   | Bank connection status and sync history, manual file import, and the margin threshold         |
 
 Navigation is a bottom bar on phones and a left sidebar on wider screens, each tab with
 an icon.
 
-Accueil leads with the **available margin**, coloured green / amber / red against your
-safety threshold, so an at-a-glance screen tells you whether you are within budget.
-Réglages lets you edit that threshold, and holds the log-out action (reachable on
-mobile, where there is no sidebar).
+Accueil opens on a summary band: the **available margin** as the one figure to read
+first, coloured green / amber / red against your safety threshold, with your balance and
+the number of operations left to categorize beside it. Réglages lets you edit that
+threshold, and holds the log-out action (reachable on mobile, where there is no
+sidebar).
+
+Every part of Accueil keeps its place whether or not it has something to say. With
+nothing left to categorize the tile shows a quiet zero; with every planned payment
+settled the overdue card says so instead of disappearing; with no forecast yet the
+margin points you at Budgets. So the page reads the same from one visit to the next, and
+you find things where you left them.
 
 The Accueil upcoming list covers what is still ahead of your balance date. A planned
-payment nothing matched by then is **overdue** instead, and gets its own card above the
-list, with a count on the Accueil tab so you see it from any page.
+payment nothing matched by then is **overdue** instead, and appears in its own card
+above the list, with a count on the Accueil tab so you see it from any page.
 
 Each overdue row says how late the payment is and whether the forecast still counts it:
 for a month it does, on the day after your balance date, then it stops being counted and
