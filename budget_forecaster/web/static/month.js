@@ -28,18 +28,6 @@
   );
 })();
 
-// Clicking an attributed operation row opens it. Delegated, because the rows
-// arrive with the drill-down fragment; the inner links keep their own targets.
-(function () {
-  'use strict';
-
-  document.addEventListener('click', function (event) {
-    var row = event.target.closest('.attributed-row[data-href]');
-    if (!row || event.target.closest('a')) return;
-    window.location.href = row.dataset.href;
-  });
-})();
-
 // Expand/collapse a category drill-down under its month row. The open category
 // is mirrored into the URL (?open=<cat>) so the back button and the "return to"
 // links from edit/detail pages land back on the same expanded row.
@@ -69,16 +57,29 @@
     window.history.replaceState(null, '', url);
   }
 
+  function toggle(btn) {
+    if (btn.getAttribute('aria-expanded') === 'true') {
+      collapse(btn);
+      syncUrl(null);
+    } else {
+      expand(btn, true);
+      syncUrl(btn.dataset.cat);
+    }
+  }
+
   document.querySelectorAll('.cat-toggle').forEach(function (btn) {
     btn.addEventListener('click', function () {
-      if (btn.getAttribute('aria-expanded') === 'true') {
-        collapse(btn);
-        syncUrl(null);
-      } else {
-        expand(btn, true);
-        syncUrl(btn.dataset.cat);
-      }
+      toggle(btn);
     });
+  });
+
+  // The row highlights as one, so the figures open the drill-down too — the
+  // category name is where the keyboard and a no-JS reader reach it.
+  document.addEventListener('click', function (event) {
+    if (event.target.closest('a, button, select, input, label, summary')) return;
+    var row = event.target.closest('.review tr.row-hover');
+    var btn = row && row.querySelector('.cat-toggle');
+    if (btn) toggle(btn);
   });
 
   // Re-open the category carried in the URL (a previous expand, or a "return to"

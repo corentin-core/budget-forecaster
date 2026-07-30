@@ -3,7 +3,7 @@
    the card. Open when the user was already acting on it, closed on arrival. #}
 <li class="overdue-item" id="overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}">
   <details class="overdue-disclosure"{{ ' open' | safe if row_open }}>
-    <summary class="overdue-summary">
+    <summary class="overdue-summary row-hover">
       <span class="overdue-head">
         <span class="overdue-desc">{{ row.description }}</span>
         <span class="overdue-amount {{ 'positive' if row.amount > 0 else 'negative' }}">

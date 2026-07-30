@@ -1,5 +1,7 @@
 {% for item in upcoming %}
-  <li>
+  {%- set target = ('/targets/planned/' ~ item.planned_operation_id ~ '?return_to=/')
+                   if item.planned_operation_id else none %}
+  <li {% if target %}class="row-hover" data-href="{{ target }}"{% endif %}>
     <span class="up-date">{{ item.iteration_date | frdate }}</span>
     <span class="up-desc">
       {%- if item.planned_operation_id %}

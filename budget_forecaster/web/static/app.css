@@ -7,11 +7,15 @@
      switching costs one declaration and never a second palette. --- */
   color-scheme: light dark;
   --bg: light-dark(#f5f6f8, #14161a);
-  --surface: light-dark(#ffffff, #1e2127);
+  /* Dark: a shadow on a dark background is invisible, so what raises a card is
+     the surface being lighter than the page. */
+  --surface: light-dark(#ffffff, #23272f);
   /* A recessed area inside a card: bar tracks, pills, inset panels. */
   --surface-alt: light-dark(#f5f6f8, #14161a);
   --surface-hover: light-dark(#f5f6f8, #14161a);
-  --text: light-dark(#1c1f26, #e6e8ec);
+  /* Not pure black on white: a softer ink is what stops a dense table from
+     vibrating. */
+  --text: light-dark(#22262e, #e6e8ec);
   /* Text on a --text background: tooltips invert. */
   --text-inverse: light-dark(#f5f6f8, #14161a);
   /* Text on an --accent background. White on the dark theme's lighter accent
@@ -19,6 +23,9 @@
   --on-accent: light-dark(#ffffff, #0d1424);
   --muted: light-dark(#6b7280, #9aa1ac);
   --border: light-dark(#e3e6ea, #2c313a);
+  /* The edge of a raised surface: the shadow separates it, so the line only
+     has to keep the corner crisp. */
+  --border-subtle: light-dark(#edeff2, #2b3038);
   --accent: light-dark(#2f6df6, #5b8dff);
   --good: light-dark(#1f9d55, #3fce7c);
   --bad: light-dark(#d64545, #f0736f);
@@ -53,24 +60,45 @@
   --sp-12: 12px;
   --sp-14: 14px;
   --sp-16: 16px;
+  --sp-20: 20px;
   --sp-24: 24px;
   --sp-32: 32px;
 
   /* --- Radii --- */
-  --radius-2xs: 2px;
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  --radius-2xs: 3px;
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
   --radius-pill: 999px;
 
-  /* --- Elevation and focus --- */
-  --shadow: 0 1px 3px light-dark(rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.4));
+  /* --- Elevation and focus: two layers, a contact shadow and a wide diluted
+     one. A single layer is what makes a card look printed on the page. --- */
+  --shadow: 0 1px 2px light-dark(rgba(15, 23, 42, 0.05), rgba(0, 0, 0, 0.3)),
+    0 8px 24px -6px light-dark(rgba(15, 23, 42, 0.1), rgba(0, 0, 0, 0.45));
+  /* Hover: the same shape, lifted. */
+  --shadow-lift: 0 2px 4px light-dark(rgba(15, 23, 42, 0.06), rgba(0, 0, 0, 0.35)),
+    0 14px 32px -8px light-dark(rgba(15, 23, 42, 0.14), rgba(0, 0, 0, 0.55));
+  /* Small parts — a tooltip, the pill of a segmented control — sit close to
+     the surface: the wide layer would read as a halo on them. */
+  --shadow-sm: 0 1px 2px light-dark(rgba(15, 23, 42, 0.08), rgba(0, 0, 0, 0.4));
   /* 0.12 alpha is invisible on a dark --surface; the bar needs a real one. */
   --shadow-up: 0 -2px 6px light-dark(rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.5));
   --focus-ring: 2px solid var(--accent);
 
-  /* --- Layout --- */
+  /* --- Motion. Every duration goes through these, which is what lets
+     prefers-reduced-motion switch the whole app off in one place. --- */
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --ease: cubic-bezier(0.2, 0, 0.2, 1);
+  /* How far a control gives under the finger. */
+  --press: translateY(1px);
+
+  /* --- Layout ---
+     Air, in two steps: a phone spends its width on content, a wide screen has
+     room to spare. Both are raised in the wide block below. */
+  --card-pad: var(--sp-20);
+  --stack-gap: var(--sp-16);
   --nav-h: 56px;
   --sidebar-w: 200px;
   --content-max: 900px;
@@ -83,6 +111,16 @@
   --swatch-w: 0.8rem;
 }
 
+/* Asking for less motion turns off every transition and the press, because
+   both go through tokens. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur: 0ms;
+    --press: none;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -92,7 +130,7 @@ body {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg);
   color: var(--text);
-  line-height: 1.4;
+  line-height: 1.5;
   font-variant-numeric: tabular-nums;
 }
 
@@ -131,6 +169,33 @@ a:focus-visible {
 .action-link {
   color: var(--accent);
   font-weight: 600;
+}
+
+/* A row that answers the pointer, and where `data-href` says so, a row that is
+   the click target. The highlight is the affordance, so the names inside stop
+   underlining — one signal per row, covering the whole line instead of the few
+   words that happen to be a link. The chip keeps its own, because it goes
+   somewhere else.
+
+   :has(:focus-visible) and not :focus-within: clicking a link or a <summary>
+   leaves the focus inside the row, and the row would stay lit after the pointer
+   has gone. Keyboard focus still lights it. */
+.row-hover {
+  transition: background var(--dur-fast) var(--ease);
+}
+.row-hover:hover,
+.row-hover:has(:focus-visible) {
+  background: var(--surface-hover);
+}
+.row-hover[data-href],
+.review tr.row-hover {
+  cursor: pointer;
+}
+.row-hover a:not(.link-tag):hover,
+.row-hover a:not(.link-tag):focus-visible,
+.row-hover .cat-toggle:hover,
+.row-hover .cat-toggle:focus-visible {
+  text-decoration: none;
 }
 
 :focus-visible {
@@ -172,6 +237,11 @@ a:focus-visible {
   font-size: var(--fs-2xs);
   color: var(--muted);
   text-align: center;
+}
+/* Both bars, one rule: the bottom one and the sidebar set the colours, this
+   only says how they change. */
+.nav-item {
+  transition: color var(--dur) var(--ease), background var(--dur) var(--ease);
 }
 .nav-icon {
   font-size: var(--fs-md);
@@ -230,10 +300,10 @@ a:focus-visible {
 /* --- Cards --- */
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: var(--sp-16);
-  margin-bottom: var(--sp-16);
+  padding: var(--card-pad);
+  margin-bottom: var(--stack-gap);
   box-shadow: var(--shadow);
 }
 .card-head {
@@ -243,7 +313,7 @@ a:focus-visible {
 }
 .card-head h2 {
   font-size: var(--fs-base);
-  margin: 0 0 var(--sp-8);
+  margin: 0 0 var(--sp-12);
 }
 .card-link {
   display: inline-block;
@@ -288,8 +358,8 @@ a:focus-visible {
 .summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--sp-16);
-  margin-bottom: var(--sp-16);
+  gap: var(--stack-gap);
+  margin-bottom: var(--stack-gap);
 }
 /* Below this the two secondary tiles cannot hold an amount side by side. */
 @media (max-width: 26rem) {
@@ -300,9 +370,10 @@ a:focus-visible {
 .tile {
   display: block;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
-  padding: var(--sp-16);
+  box-shadow: var(--shadow);
+  padding: var(--card-pad);
 }
 .summary .tile:first-child {
   grid-column: 1 / -1;
@@ -310,9 +381,16 @@ a:focus-visible {
 .summary .metric-value {
   font-size: var(--fs-xl);
 }
+.tile-action {
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
 .tile-action:hover,
 .tile-action:focus-visible {
   border-color: var(--accent);
+  box-shadow: var(--shadow-lift);
+}
+.tile-action:active {
+  transform: var(--press);
 }
 /* A settled slot still holds its place, quietly. */
 .metric-none {
@@ -371,7 +449,7 @@ a:focus-visible {
 .subhead {
   font-size: var(--fs-sm);
   color: var(--muted);
-  margin: var(--sp-14) 0 var(--sp-4);
+  margin: var(--sp-20) 0 var(--sp-6);
 }
 
 /* Readable Actual/Planned columns on the home month summary. */
@@ -404,6 +482,13 @@ a:focus-visible {
   color: var(--accent);
   font-weight: 600;
   cursor: pointer;
+  transition: border-color var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.more-btn:hover {
+  border-color: var(--accent);
+}
+.more-btn:active {
+  transform: var(--press);
 }
 
 /* --- Lists --- */
@@ -479,7 +564,7 @@ table {
 .review td,
 .ledger th,
 .ledger td {
-  padding: var(--sp-6) var(--sp-8);
+  padding: var(--sp-8) var(--sp-10);
   border-bottom: 1px solid var(--border);
   text-align: left;
 }
@@ -510,7 +595,7 @@ table {
   line-height: 1.3;
   padding: var(--sp-6) var(--sp-10);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-sm);
   pointer-events: none;
 }
 .section-row td {
@@ -619,6 +704,7 @@ table {
 a.link-tag {
   text-decoration: none;
   cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), color var(--dur) var(--ease);
 }
 a.link-tag:hover,
 a.link-tag:focus-visible {
@@ -775,7 +861,7 @@ a.link-tag:focus-visible {
 }
 .slice {
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: opacity var(--dur) var(--ease);
 }
 .slices.faded .slice {
   opacity: 0.3;
@@ -931,7 +1017,7 @@ a.link-tag:focus-visible {
 }
 .login-card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: var(--sp-24);
   width: 100%;
@@ -967,6 +1053,11 @@ a.link-tag:focus-visible {
 
 /* --- Desktop: sidebar replaces the bottom bar --- */
 @media (min-width: 1024px) {
+  /* The width a phone spends on content is spare room here. */
+  :root {
+    --card-pad: var(--sp-24);
+    --stack-gap: var(--sp-24);
+  }
   .bottombar {
     display: none;
   }
@@ -1009,7 +1100,7 @@ a.link-tag:focus-visible {
   .home-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--sp-16);
+    gap: var(--stack-gap);
   }
   /* One card left (no budget or planned operation this month yet) takes the
      whole row rather than leaving half of it empty. */
@@ -1214,6 +1305,22 @@ a.link-tag:focus-visible {
   font-size: var(--fs-sm);
   text-align: center;
   cursor: pointer;
+  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+/* A filled button answers with its fill, an outlined one with its edge — and a
+   destructive one keeps its red, hover included. */
+.btn:hover:not(.primary, .danger) {
+  border-color: var(--accent);
+}
+.btn.primary:hover {
+  background: color-mix(in srgb, var(--accent) 88%, var(--text));
+}
+.btn.danger:hover {
+  background: color-mix(in srgb, var(--bad) 10%, transparent);
+}
+.btn:active {
+  transform: var(--press);
 }
 .btn.primary {
   background: var(--accent);
@@ -1350,12 +1457,6 @@ a.link-tag:focus-visible {
 }
 /* The row holds two links with different destinations, so it is the row —
    not an anchor — that carries the click. */
-.attributed-row {
-  cursor: pointer;
-}
-.attributed-row:hover {
-  background: var(--surface-hover);
-}
 .src-meta,
 .op-amount {
   color: var(--muted);
@@ -1643,11 +1744,21 @@ a.link-tag:focus-visible {
   font-family: inherit;
   cursor: pointer;
 }
+.seg a,
+.seg button {
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+/* The idle side of the control answers the pointer too, or only the option you
+   already picked reacts. */
+.seg a:hover:not(.active),
+.seg button:hover:not(.active) {
+  color: var(--text);
+}
 .seg a.active,
 .seg button.active {
   background: var(--surface);
   color: var(--accent);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-sm);
 }
 .list-head {
   display: flex;
@@ -1658,12 +1769,6 @@ a.link-tag:focus-visible {
 .list-head h2 {
   font-size: var(--fs-base);
   margin: 0;
-}
-.target-row {
-  cursor: pointer;
-}
-.target-row:hover {
-  background: var(--surface-hover);
 }
 .target-row.inactive {
   opacity: 0.55;
@@ -1745,9 +1850,13 @@ a.link-tag:focus-visible {
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   text-align: left;
+  transition: border-color var(--dur) var(--ease), transform var(--dur-fast) var(--ease);
 }
 .candidate:hover {
   border-color: var(--accent);
+}
+.candidate:active {
+  transform: var(--press);
 }
 /* An author display rule beats the UA [hidden] rule, so say it explicitly. */
 .candidate[hidden] {
@@ -1972,6 +2081,7 @@ a.link-tag:focus-visible {
   padding: var(--sp-8) var(--sp-10);
   border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
 }
 .bank-option:hover {
   background: color-mix(in srgb, var(--good) 10%, transparent);
@@ -1983,18 +2093,6 @@ a.link-tag:focus-visible {
   display: inline;
   margin-left: var(--sp-8);
 }
-.link-button {
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  color: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
 /* --- Backups --- */
 .backups {
   width: 100%;

@@ -33,15 +33,4 @@
     syncSplit();
     splitSection.addEventListener('toggle', syncSplit);
   }
-
-  // Whole management row is clickable (the inner link keeps keyboard/no-JS access).
-  document.querySelectorAll('.target-row[data-href]').forEach(function (row) {
-    row.addEventListener('click', function (event) {
-      if (event.target.closest('a')) return;
-      window.location.href = row.dataset.href;
-    });
-    row.addEventListener('keydown', function (event) {
-      if (event.key === 'Enter') window.location.href = row.dataset.href;
-    });
-  });
 })();

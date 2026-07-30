@@ -16,7 +16,7 @@
 
 {% macro cat_row(row) %}
   {% set month_str = view.month.strftime('%Y-%m') %}
-  <tr class="{{ 'income' if row.is_income else 'expense' }}">
+  <tr class="row-hover {{ 'income' if row.is_income else 'expense' }}">
     <td class="cat">
       <button type="button" class="cat-toggle" aria-expanded="false"
               data-target="detail-{{ row.key }}"

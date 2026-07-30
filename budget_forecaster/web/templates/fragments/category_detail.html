@@ -13,7 +13,7 @@
   {% if detail.sources %}
   <ul class="source-list">
     {% for s in detail.sources %}
-    <li>
+    <li class="row-hover">
       <a href="/targets/{{ s.kind }}/{{ s.source_id }}?return_to={{ rt }}">
         <span class="src-desc">{{ s.description }}</span>
         <span class="src-meta">{{ s.amount | signed_eur(currency) }} · {{ s.periodicity }}</span>
@@ -32,7 +32,7 @@
        whole line stays clickable through data-href, the description carries the
        real anchor for the keyboard and for no-JS. #}
     {% for op in detail.operations %}
-    <li class="attributed-row" data-href="/operations/{{ op.operation_id }}?return_to={{ rt }}">
+    <li class="attributed-row row-hover" data-href="/operations/{{ op.operation_id }}?return_to={{ rt }}">
       <span class="op-date">{{ op.operation_date | frdate }}</span>
       <span class="op-desc">
         <a href="/operations/{{ op.operation_id }}?return_to={{ rt }}">{{ op.description }}</a>
