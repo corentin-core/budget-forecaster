@@ -2061,6 +2061,9 @@ a.link-tag:focus-visible {
   grid-template-columns: auto 1fr;
   gap: var(--sp-6) var(--sp-16);
   margin: 0;
+  /* The rows holding a control are taller than their label, which would leave
+     the label hanging at the top edge. */
+  align-items: center;
 }
 .detail-grid dt {
   color: var(--muted);
