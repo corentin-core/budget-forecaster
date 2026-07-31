@@ -21,6 +21,12 @@
     document.documentElement.style.setProperty('--bulk-h', height + 'px');
   }
 
+  // Read from the select: a reload restores a value the page never saw picked,
+  // and a button tracked on change alone would stay dead in front of it.
+  function syncApply() {
+    applyEl.disabled = !categoryEl.value;
+  }
+
   function sync() {
     var n = selected().length;
     countEl.textContent = n;
@@ -28,6 +34,7 @@
     document.querySelectorAll('.row-category').forEach(function (sel) {
       sel.disabled = n > 0;
     });
+    syncApply();
     reserve();
   }
 
@@ -35,10 +42,7 @@
 
   document.addEventListener('change', function (e) {
     if (e.target.classList.contains('row-select')) sync();
-  });
-
-  categoryEl.addEventListener('change', function () {
-    applyEl.disabled = !categoryEl.value;
+    if (e.target === categoryEl) syncApply();
   });
 
   bar.querySelector('[data-bulk-clear]').addEventListener('click', function () {
