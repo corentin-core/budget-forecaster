@@ -67,6 +67,11 @@ to start if neither source provides both secrets.
 Navigation is a bottom bar on phones and a left sidebar on wider screens, each tab with
 an icon.
 
+Wherever a figure needs a word of explanation, an ⓘ sits next to it: tap or hover it and
+the explanation appears. It works the same on a phone as on a desktop — nothing is
+explained by hovering alone. In Mois, where the column headers do not fit on a phone,
+**Ce que veulent dire les colonnes** under the table opens the same definitions.
+
 Accueil opens on a summary band: the **available margin** as the one figure to read
 first, coloured green / amber / red against your safety threshold, with your balance and
 the number of operations left to categorize beside it. Réglages lets you edit that

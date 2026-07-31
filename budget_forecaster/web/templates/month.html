@@ -3,7 +3,9 @@
 
 {% macro consumption_bar(c) %}
   {% if c %}
-    <div class="bar {{ 'bad' if c.bad else 'good' }}" title="{{ c.ratio | pct }}">
+    {# No tip on the bar: the row navigates from anywhere on it, and rows.js runs
+       first, so a bubble here would never be read. The ratio is printed anyway. #}
+    <div class="bar {{ 'bad' if c.bad else 'good' }}">
       <span class="bar-fill" style="width: {{ ((c.ratio if c.ratio < 1.0 else 1.0) * 100) | round(1) }}%"></span>
       <span class="bar-pct">{{ c.ratio | pct }}</span>
     </div>
@@ -54,9 +56,9 @@
 {% if view.show_margin and view.margin %}
 <section class="card margin-card">
   <div class="metric-label">
-    {{ _("Available margin") }}
     {% set tip = _('What you can spend without your projected balance dropping below the safety threshold, over the whole forecast horizon.') ~ ' — ' ~ _('Safety threshold') ~ ': ' ~ (view.margin.threshold | eur(currency)) %}
-    <button type="button" class="info" aria-label="{{ tip }}" data-tip="{{ tip }}">ⓘ</button>
+    <span class="tip-anchor">{{ _("Available margin") }}
+      <button type="button" class="info" aria-label="{{ tip }}" data-tip="{{ tip }}">ⓘ</button></span>
   </div>
   <div class="metric-value">{{ view.margin.available_margin | eur(currency) }}</div>
   <div class="metric-sub">
@@ -70,16 +72,23 @@
 {% if not view.planned_expenses and not view.planned_income and not view.unforecasted %}
   <p class="empty">{{ _("No data for this month") }}</p>
 {% else %}
+{# Defined once, read twice: the header tip on a wide screen, the glossary below
+   the table everywhere. #}
+{% set columns = [
+     (_("Category"), _("Expense or income category"), false),
+     (_("Planned"), _("Amount budgeted for this month"), true),
+     (_("Actual"), _("Amount actually spent or received so far"), true),
+     (_("Forecast"), _("End-of-month projection (actual plus remaining planned)"), true),
+     (_("Remaining"), _("Left before reaching the forecast (Forecast minus Actual)"), true),
+     (_("Consumption"), _("Share of the budget already used (Actual / Planned)"), true),
+   ] %}
 <section class="card">
   <table class="review">
     <thead>
       <tr>
-        <th data-tip="{{ _('Expense or income category') }}">{{ _("Category") }}</th>
-        <th class="num" data-tip="{{ _('Amount budgeted for this month') }}">{{ _("Planned") }}</th>
-        <th class="num" data-tip="{{ _('Amount actually spent or received so far') }}">{{ _("Actual") }}</th>
-        <th class="num" data-tip="{{ _('End-of-month projection (actual plus remaining planned)') }}">{{ _("Forecast") }}</th>
-        <th class="num" data-tip="{{ _('Left before reaching the forecast (Forecast minus Actual)') }}">{{ _("Remaining") }}</th>
-        <th class="num" data-tip="{{ _('Share of the budget already used (Actual / Planned)') }}">{{ _("Consumption") }}</th>
+        {% for label, definition, num in columns %}
+          <th class="{{ 'num' if num }}" data-tip="{{ definition }}">{{ label }}</th>
+        {% endfor %}
       </tr>
     </thead>
     <tbody>
@@ -127,6 +136,17 @@
       </tr>
     </tbody>
   </table>
+  {# The header row is hidden below 1024px, so its tips are unreachable there.
+     A disclosure needs no JS and answers the keyboard and a screen reader too. #}
+  <details class="glossary">
+    <summary>{{ _("What the columns mean") }}</summary>
+    <dl>
+      {% for label, definition, num in columns %}
+        <dt>{{ label }}</dt>
+        <dd>{{ definition }}</dd>
+      {% endfor %}
+    </dl>
+  </details>
 </section>
 {% endif %}
 

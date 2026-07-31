@@ -5,12 +5,11 @@
     {# The bubble is drawn by script and never reaches a screen reader, so the
        same sentence is the icon's accessible name. #}
     {% set out_of_forecast = _('The forecast stopped counting these: their amount is back in your available margin, and linking or postponing one puts it back.') %}
-    <span class="card-note">
-      {{ _("out of the forecast: {n}").format(n=uncounted) }}
-      <button type="button" class="info"
-              aria-label="{{ out_of_forecast }}"
-              data-tip="{{ out_of_forecast }}">ⓘ</button>
-    </span>
+    {# The count and the glyph go in through the placeholder, so the sentence
+       stays one msgid and the glyph cannot wrap away from the figure. #}
+    {% set counted %}<span class="tip-anchor">{{ uncounted }} <button type="button" class="info"
+       aria-label="{{ out_of_forecast }}" data-tip="{{ out_of_forecast }}">ⓘ</button></span>{% endset %}
+    <span class="card-note">{{ _("out of the forecast: {n}").format(n=counted) | safe }}</span>
   {% elif not card.rows %}
     <span class="card-note">{{ _("all settled") }}</span>
   {% endif %}

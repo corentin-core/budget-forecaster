@@ -107,6 +107,9 @@
   --axis-gutter: 4.5rem;
   /* Touch target floor. */
   --control-min-h: 44px;
+  /* A glyph riding inside a line of text cannot take the 44px floor without
+     pushing its neighbours apart; 24px is the WCAG 2.5.8 minimum. */
+  --tap-min: 24px;
   /* Donut legend swatch; the sub-list indent aligns under it. */
   --swatch-w: 0.8rem;
 }
@@ -353,8 +356,8 @@ a:focus-visible {
 }
 
 /* --- Home: the summary band --- */
-/* One hero and two secondary tiles. Mobile stacks the hero over the pair; on a
-   wide screen the three sit on one row so no band holds a lone centred figure. */
+/* Mobile stacks the first tile over the other two; on a wide screen the three
+   sit on one row so no band holds a lone centred figure. */
 .summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -384,6 +387,12 @@ a:focus-visible {
 .tile-action {
   transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
+/* Hover and focus are the only signals a pointer needs; a phone has neither, so
+   the tile has to say it goes somewhere without being touched. */
+.tile-action .metric-sub {
+  color: var(--accent);
+  font-weight: 600;
+}
 .tile-action:hover,
 .tile-action:focus-visible {
   border-color: var(--accent);
@@ -398,6 +407,7 @@ a:focus-visible {
 }
 /* A button, because tapping it is what shows the tip; drawn as the glyph it is. */
 .info {
+  position: relative;
   padding: 0;
   border: 0;
   background: none;
@@ -406,6 +416,21 @@ a:focus-visible {
   line-height: 1;
   cursor: help;
   color: var(--muted);
+}
+/* A glyph that wrapped away from the words it belongs to explains nothing, so it
+   travels with the last of them. */
+.tip-anchor {
+  white-space: nowrap;
+}
+/* The glyph is a third of a thumb, so the target is grown around it instead of
+   around the box: the line it rides in keeps its height. */
+.info::after {
+  content: '';
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  transform: translate(-50%, -50%);
 }
 
 .pill {
@@ -426,7 +451,6 @@ a:focus-visible {
   overflow: hidden;
   display: flex;
   align-items: center;
-  cursor: help;
 }
 .overall-fill {
   position: absolute;
@@ -577,10 +601,38 @@ table {
   text-align: right;
   white-space: nowrap;
 }
+/* The dotted underline is the affordance for a tip carried by a word. Anything
+   with no room for it gets an .info glyph instead, or becomes visible text. */
 .review th[data-tip],
 .review .section-row td[data-tip] {
   text-decoration: underline dotted var(--muted);
   text-underline-offset: 3px;
+}
+/* The header row is hidden below 1024px, so the definitions live here too. */
+.glossary {
+  margin-top: var(--sp-16);
+  font-size: var(--fs-sm);
+}
+/* Padding rather than a height, so the native marker survives: any display
+   other than list-item takes the triangle away, and with it the only sign that
+   the line opens. */
+.glossary summary {
+  color: var(--muted);
+  cursor: pointer;
+  padding: var(--sp-8) 0;
+}
+.glossary dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--sp-4) var(--sp-12);
+  margin: var(--sp-8) 0 0;
+}
+.glossary dt {
+  font-weight: 600;
+}
+.glossary dd {
+  margin: 0;
+  color: var(--muted);
 }
 [data-tip] {
   cursor: help;
@@ -1001,8 +1053,8 @@ a.link-tag:focus-visible {
   margin-left: var(--sp-6);
   padding: 0 var(--sp-6);
   border-radius: var(--radius-sm);
-  background: var(--border);
-  color: var(--muted);
+  background: var(--neutral-bg);
+  color: var(--text);
   font-size: var(--fs-2xs);
   font-weight: 500;
 }
@@ -2258,6 +2310,18 @@ details[open] > .overdue-summary .overdue-caret::before {
   .overdue-edit {
     margin-left: auto;
   }
+}
+/* The scope of an edit was in a title, which a phone never shows. Kept visible
+   but quieter than the action it qualifies. A .btn is an inline-flex row, so the
+   scope needs a line of its own or it overflows past the border. */
+.btn-scope {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-weight: 400;
+  font-size: var(--fs-2xs);
+}
+.overdue-edit {
+  flex-wrap: wrap;
 }
 .overdue-actions .btn.small,
 .decided-head .btn.small,
