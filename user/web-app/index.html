@@ -1,0 +1,1714 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://corentin-core.github.io/budget-forecaster/user/web-app/">
+      
+      
+        <link rel="prev" href="../available-margin/">
+      
+      
+        <link rel="next" href="../deployment/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Web App - Budget Forecaster</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#web-app" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Budget Forecaster" class="md-header__button md-logo" aria-label="Budget Forecaster" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Budget Forecaster
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Web App
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/corentin-core/budget-forecaster" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    corentin-core/budget-forecaster
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Budget Forecaster" class="md-nav__button md-logo" aria-label="Budget Forecaster" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Budget Forecaster
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/corentin-core/budget-forecaster" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    corentin-core/budget-forecaster
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    User Guide
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    User Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enable-banking/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Enable Banking
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../backup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Backup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../forecast/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecast
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../operation-links/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operation Links
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../available-margin/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Available Margin
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web App
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web App
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#running-the-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running the app
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sections
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#categorizing-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Categorizing operations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#linking-an-operation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linking an operation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#forecasting-a-payment-you-just-saw" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Forecasting a payment you just saw
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#budgets-and-planned-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Budgets and planned operations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#linking-a-bank" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linking a bank
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consent-banner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consent banner
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sync-history-and-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sync history and failures
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#swile-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Swile sync
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#manual-file-import" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual file import
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#theme" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Theme
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../deployment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Deployment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/forecast/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecast
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/account/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Account
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/planned-operations-budgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Planned Operations & Budgets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/persistence/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Persistence
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quality
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Quality
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quality/operation-links/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operation Links
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quality/forecast-calculation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Forecast Calculation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quality/split-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Split Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quality/monthly-review/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Monthly Review
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quality/archive-operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Archive Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#running-the-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running the app
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sections" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sections
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#categorizing-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Categorizing operations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#linking-an-operation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linking an operation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#forecasting-a-payment-you-just-saw" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Forecasting a payment you just saw
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#budgets-and-planned-operations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Budgets and planned operations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#linking-a-bank" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Linking a bank
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#consent-banner" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Consent banner
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sync-history-and-failures" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sync history and failures
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#swile-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Swile sync
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#manual-file-import" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Manual file import
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#theme" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Theme
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="web-app">Web app</h1>
+<p>A mobile-first web interface over your budget database. It shows your balance, monthly
+review, operations ledger, trends, and connection status, and lets you categorize
+operations, link them to budgets or planned operations, and manage budgets and planned
+operations. Every interaction stays on the page or opens a dedicated page — there are no
+blocking pop-up dialogs. To run it as a background service reachable from your phone and
+other PCs over Tailscale, see the <a href="../deployment/">deployment guide</a>.</p>
+<h2 id="running-the-app">Running the app</h2>
+<p>The app is served by uvicorn as a factory:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>uvicorn<span class="w"> </span>--factory<span class="w"> </span>budget_forecaster.web.app:create_app
+</code></pre></div>
+<p>By default it reads <code>config.yaml</code> from the working directory. Point it at another config
+with an environment variable:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="nv">BUDGET_CONFIG</span><span class="o">=</span>~/.config/budget-forecaster/config.yaml<span class="w"> </span>uvicorn<span class="w"> </span>--factory<span class="w"> </span>budget_forecaster.web.app:create_app
+</code></pre></div>
+<p>The app binds to <code>127.0.0.1:8000</code> by default. Open <a href="http://127.0.0.1:8000">http://127.0.0.1:8000</a> and sign in
+with the shared password.</p>
+<h2 id="authentication">Authentication</h2>
+<p>Access is gated by a single shared password, so you and anyone you share it with reach
+the same household budget. The password never leaves the server: each device just opens
+the URL, lands on the login page, and types the password. There is nothing to install or
+configure on the phones and PCs that connect.</p>
+<p>The server needs two secrets: a signing key for the session cookie and the password
+hash.</p>
+<p>Generate the password hash once (prompts for the password, keeps it off your shell
+history):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>python<span class="w"> </span>-m<span class="w"> </span>budget_forecaster.main<span class="w"> </span>hash-password
+</code></pre></div>
+<p>Provide both secrets through the environment (recommended for a deployed server):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">BUDGET_WEB_SECRET_KEY</span><span class="o">=</span><span class="s2">&quot;a-long-random-string&quot;</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">BUDGET_WEB_PASSWORD_HASH</span><span class="o">=</span><span class="s2">&quot;pbkdf2_sha256</span><span class="nv">$480000</span>$<span class="s2">....&quot;</span>
+</code></pre></div>
+<p>For local development you can instead put them in a <code>web:</code> section of the config file
+(see Configuration). The environment always wins over the config file. The app refuses
+to start if neither source provides both secrets.</p>
+<h2 id="sections">Sections</h2>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>What it shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Accueil</td>
+<td>Available margin, balance, what is left to categorize, overdue payments, this month, upcoming</td>
+</tr>
+<tr>
+<td>Mois</td>
+<td>Per-category planned vs actual for one month; switch months from the URL or the arrows</td>
+</tr>
+<tr>
+<td>Budgets</td>
+<td>All budgets and planned operations, whatever month they fall in; create, edit, split, delete</td>
+</tr>
+<tr>
+<td>Opérations</td>
+<td>The full ledger, filterable by search text, category, month, and "uncategorized"</td>
+</tr>
+<tr>
+<td>Tendances</td>
+<td>Balance evolution over time and expense breakdown by category</td>
+</tr>
+<tr>
+<td>Réglages</td>
+<td>Bank connection and sync history, manual import, backups, the margin threshold, the theme</td>
+</tr>
+</tbody>
+</table>
+<p>Navigation is a bottom bar on phones and a left sidebar on wider screens, each tab with
+an icon.</p>
+<p>Wherever a figure needs a word of explanation, an ⓘ sits next to it: tap or hover it and
+the explanation appears. It works the same on a phone as on a desktop — nothing is
+explained by hovering alone. In Mois, where the column headers do not fit on a phone,
+<strong>Ce que veulent dire les colonnes</strong> under the table opens the same definitions.</p>
+<p>Accueil opens on a summary band: the <strong>available margin</strong> as the one figure to read
+first, coloured green / amber / red against your safety threshold, with your balance and
+the number of operations left to categorize beside it. Réglages lets you edit that
+threshold, and holds the log-out action (reachable on mobile, where there is no
+sidebar).</p>
+<p>Every part of Accueil keeps its place whether or not it has something to say. With
+nothing left to categorize the tile shows a quiet zero; with every planned payment
+settled the overdue card says so instead of disappearing; with no forecast yet the
+margin points you at Budgets. So the page reads the same from one visit to the next, and
+you find things where you left them.</p>
+<p>The Accueil upcoming list covers what is still ahead of your balance date. A planned
+payment nothing matched by then is <strong>overdue</strong> instead, and appears in its own card
+above the list, with a count on the Accueil tab so you see it from any page.</p>
+<p>Each overdue row says how late the payment is and whether the forecast still counts it:
+for a month it does, on the day after your balance date, then it stops being counted and
+the row says so. It stays listed a second month, which is there for you to notice it,
+and then the row leaves the card, taking its two decisions with it — by that point the
+amount has been out of the forecast for a month, so there is nothing left to settle. A
+decision you took while the row was there is kept for good, so a postponement made in
+time still moves the amount long after. Linking the payment stays possible whenever you
+find it, from the operation's own row in Opérations.</p>
+<p>A row shows only what it takes to recognize the payment: its name, how late it is, and
+its amount. Tapping it unfolds the issues that occurrence can take, so a card holding
+three of them stays a list rather than a wall of buttons. Cancelling a date or undoing a
+decision leaves the row open, since another decision is usually coming.</p>
+<p><strong>Modifier l'opération planifiée</strong>, the last of those issues, opens the planned
+operation itself, for when the payment keeps arriving late or off-amount and the
+recurrence is what needs fixing. It edits the whole series, not the occurrence in front
+of you — for a single date, <strong>Reporter</strong> is the tool, and the edit page can split the
+recurrence from a date. Names in the Accueil upcoming list open the same page.</p>
+<p><strong>Lier…</strong> is the first thing to try. Most often the payment did happen and the matcher
+did not recognize it, so the page lists the operations that could be it, best first,
+ranked by the same score the automatic matching uses. Each one shows its date, that
+score and a hint such as "même montant". A search box reaches operations well outside
+the dates around the occurrence, for when you remember the label but not the day, and
+weak matches stay behind a <strong>Tout afficher</strong> toggle. When nothing comes close the list
+says so rather than filling up with near-misses.</p>
+<p>An operation another budget or planned payment already counts is offered too — the
+matcher giving a payment to the wrong target is exactly the mistake this page exists to
+fix. It carries a note saying what counts it today, and asks before it moves: the
+confirmation tells you what the previous target gets back, whether that means an
+occurrence going back overdue, one returning to the upcoming list, or a budget simply no
+longer counting the operation. Every candidate asks before it links, since undoing means
+finding the operation in Opérations and using <strong>Délier</strong>.</p>
+<p>When no operation is the payment, the same page offers the two decisions. <strong>Reporter</strong>
+moves the payment to a date you pick, offered as the next occurrence or tomorrow before
+you type anything; the forecast then counts it there, and the upcoming list shows it on
+its new date with where it came from. <strong>Oublier</strong> declares that the payment never
+happened; the confirmation tells you how much comes back to your margin first. Both are
+on the overdue row as well, and the margin at the top of Accueil updates with your
+decision. <strong>Rétablir</strong> undoes it — right away on the row, or later from the planned
+operation's own page, which lists every occurrence you decided about. Linking the
+payment afterwards drops the decision from that list: the operation settles the
+occurrence, so there is nothing left to undo. A payment made in cash has no operation to
+link, so forgetting it is the answer there.</p>
+<p>Both decisions land on the occurrence in front of you, never on the series: the next
+month comes back on its own date whatever you decided about this one. <strong>Modifier
+l'opération planifiée</strong> is the one that reaches the recurrence.</p>
+<p>When a sync has failed the card and the page withhold both decisions and say so:
+operations are probably missing, and forgetting a payment that did happen would be worse
+than waiting. Linking stays available, since an operation already imported is there
+whatever the sync left out — the page warns that what you are looking for may be among
+the missing. Editing the series stays available too, for the same reason: a wrong
+recurrence is wrong whatever the sync brought back.</p>
+<p>On Tendances, the expense breakdown donut folds small categories into a single grey
+<strong>Other categories</strong> slice. A slider below the donut sets the cutoff: any category below
+that share of the period total is folded in, and the donut re-renders live as you drag.
+Set it to 0% to show every category separately. The folded categories and their amounts
+are listed under the Other slice in the legend. The setting is remembered across visits.</p>
+<h2 id="categorizing-operations">Categorizing operations</h2>
+<p>In Opérations, each row carries a category dropdown: change it and the row updates on
+the spot. The "N to categorize" badge on the Operations tab counts what is still
+uncategorized and drops as you go.</p>
+<p>An operation's own page carries the same dropdown, on the Catégorie line. It is where
+you have the date, the amount and the link in front of you, so the category can be fixed
+there rather than by finding the row again in the ledger.</p>
+<p>To categorize several at once, tick the rows you want. A bar appears at the bottom with
+a category picker; choose one and apply it to the whole selection. It starts on
+"Choisissez une catégorie…", and "Catégoriser" stays out of reach until you pick one, so
+the selection never takes a category you did not name. On a phone the picker takes a
+line of its own, with the count and both buttons below it. While rows are selected you
+always categorize one way at a time: the per-row dropdowns step aside, disabled on a
+wide screen and replaced on a phone by the category in plain grey text, so you keep
+seeing which rows are already sorted while you choose. Clear the selection to go back to
+per-row editing.</p>
+<h2 id="linking-an-operation">Linking an operation</h2>
+<p>Open an operation, then "Lier…". A search box narrows the candidates, and weak matches
+stay behind a "show all" toggle so the list is short by default. The link page lists
+candidate targets ranked by how well they match, each with its match score and a hint
+such as "même montant". Pick a target and its dated occurrences appear below; the best
+match is preselected. Step the window with the arrows when the occurrence you want is
+further out. Confirm to create the link, or use "Délier" on an already-linked operation
+to remove it.</p>
+<h2 id="forecasting-a-payment-you-just-saw">Forecasting a payment you just saw</h2>
+<p>A recurring payment showing up in the ledger for the first time can become a planned
+operation without retyping it. Open the operation, then "Créer une opération planifiée":
+the form arrives filled from the payment — amount, category, its own date as the start
+date, monthly recurrence — and named after the one word of the bank label that says who
+was paid, with the raw label kept underneath so you can rename it. "Reconnaître par"
+holds that same word as the keyword future payments must contain; trim it to what will
+come back every month, since a reference number or a month never will.</p>
+<p>Saving links the payment to the first occurrence, so it counts straight away. An
+operation already linked to something else keeps that link. You land back on the
+operation, where the "Lien" line names whatever counts it.</p>
+<p>When an existing planned operation already fits the payment, a note above the form names
+it and offers to link to it instead — worth taking, since a second entry for the same
+payment would be forecast twice every month. Starting from an old payment also warns
+you: the occurrences since that date are expected too, and those with no matching
+operation show up as overdue on Accueil.</p>
+<h2 id="budgets-and-planned-operations">Budgets and planned operations</h2>
+<p>The month drill-down and the Budgets tab both edit the same items.</p>
+<ul>
+<li><strong>In context</strong>: in Mois, tap a category to expand its budgets, planned operations, and
+  the operations attributed to them. Tap any of them to edit it.</li>
+<li><strong>All of them</strong>: the Budgets tab lists every budget and planned operation, whatever
+  month they fall in — the place to reach items that don't appear in the current month
+  (an annual budget, say). Budgets and planned operations sit under their own sub-tabs;
+  each list has a search box, a category filter, and shows only active items by default
+  (untick "active only" to see expired ones).</li>
+</ul>
+<p>Editing opens on its own page with a working back button. From there you set the amount,
+category, dates, and recurrence, or delete the item (deletion asks for a confirmation
+inline first). Saving returns you to wherever you came from.</p>
+<p>Splitting a recurring item from a chosen date is a separate submission, below the Save
+button: open <strong>Split from a date</strong>, give the date and the new values, then confirm with
+<strong>Split</strong>. Save is paused while that section is open, since it would store the item
+unchanged and drop what you typed there. The original segment stops the day before the
+split and keeps its history; the new one runs from the split date onward, so both appear
+in the list.</p>
+<h2 id="linking-a-bank">Linking a bank</h2>
+<p>When Enable Banking is configured but no bank is linked yet, Réglages shows a <strong>Link a
+bank</strong> button. It opens a page listing the banks in your country, with a filter box;
+pick yours and continue. You're sent to your bank to sign in and authorize access, then
+brought back automatically, and a confirmation appears on Réglages. Your bank password
+stays with your bank.</p>
+<p>Once a bank is linked, the same page offers <strong>Renew</strong> to re-authorize before the consent
+expires — the expiry banner links straight to it. The
+<a href="../enable-banking/">Enable Banking guide</a> covers the portal setup and the <code>redirect_url</code>
+the callback needs.</p>
+<h2 id="consent-banner">Consent banner</h2>
+<p>When a bank connection is configured and its consent is expiring (within 14 days) or
+already expired, a banner appears on every page with a link to renew it. No banner shows
+when the connection is valid or when Enable Banking is not configured.</p>
+<h2 id="sync-history-and-failures">Sync history and failures</h2>
+<p>Your data refreshes on its own through a background sync that runs while the host is on.
+The Sync card in Réglages lists the recent runs — when each ran, its source (Bank or
+Swile), whether it succeeded, how many operations were new or duplicates, and the
+resulting balance (or the error, for a failed run). Because that sync runs outside the
+app, a failure would otherwise go unnoticed: when the most recent run failed, a red
+banner appears on every page pointing to Réglages.</p>
+<p>The banner clears once a later sync succeeds. It also stays silent for a failure that
+predates your current bank authorization — if a sync failed because the consent had
+expired and you have since renewed it, that old failure is treated as resolved and no
+banner shows. A failure that happened under the current authorization (a bank outage,
+say) still raises the banner.</p>
+<p>A single "Sync now" button in the Sync card syncs every connected source at once (the
+bank and Swile), without waiting for the next scheduled run. Each source records its own
+run. A source you have not connected is skipped, and one source failing does not stop
+the others. The button is hidden when nothing is connected yet.</p>
+<h2 id="swile-sync">Swile sync</h2>
+<p>Swile syncs alongside the bank, through the same "Sync now" button and the same daily
+timer. See the <a href="../swile-sync/">Swile sync guide</a> for the one-time enrollment.</p>
+<h2 id="manual-file-import">Manual file import</h2>
+<p>Manual import stays available as a fallback (for example if a Swile reconnect is due).
+The Imports section of Réglages takes a bank export directly: pick a BNP <code>.xls</code> or a
+Swile <code>.zip</code> and press Import. The file goes through the same import as the automatic
+sync, so operations are deduplicated and categorized the same way.</p>
+<p>The result appears right below the button: the account, its balance date, and how many
+operations were new or skipped as duplicates. An unsupported file is refused with a
+message and nothing is imported.</p>
+<p>Keep the Swile export under its original name. The <code>.zip</code> is recognized by its
+<code>swile-export-YYYY-MM-DD.zip</code> name, so a renamed file is not accepted.</p>
+<h2 id="theme">Theme</h2>
+<p>Réglages holds a Theme switcher: <strong>Auto</strong>, <strong>Clair</strong>, <strong>Sombre</strong>. Auto follows what your
+phone or computer is set to, including a change made while the app stays open. Picking
+Clair or Sombre overrides it and repaints straight away, with no reload.</p>
+<p>The choice is stored in the browser, so it is per device and per browser: your phone can
+be dark while the desktop stays light, and the other users of the budget keep their own.
+Everything else in Réglages is shared.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.sections", "navigation.expand", "content.code.copy"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
