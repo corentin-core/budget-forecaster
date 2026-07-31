@@ -72,8 +72,8 @@
 {% if not view.planned_expenses and not view.planned_income and not view.unforecasted %}
   <p class="empty">{{ _("No data for this month") }}</p>
 {% else %}
-{# Defined once, read twice: the header tip on a wide screen, the glossary below
-   the table everywhere. #}
+{# Every label of this table, defined once: the tip that hovers on a wide screen
+   and the glossary that replaces it on a narrow one read the same list. #}
 {% set columns = [
      (_("Category"), _("Expense or income category"), false),
      (_("Planned"), _("Amount budgeted for this month"), true),
@@ -82,6 +82,16 @@
      (_("Remaining"), _("Left before reaching the forecast (Forecast minus Actual)"), true),
      (_("Consumption"), _("Share of the budget already used (Actual / Planned)"), true),
    ] %}
+{% set sections = {
+     "expenses": (_("Planned expenses"), _("Expense categories with a budget this month")),
+     "income": (_("Planned income"), _("Income categories with a budget this month")),
+     "unforecasted": (_("Unforecasted"), _("Categories with activity but no budget set")),
+   } %}
+{% macro section_row(section) %}
+  <tr class="section-row">
+    <td colspan="6" data-tip="{{ section[1] }}">{{ section[0] }}</td>
+  </tr>
+{% endmacro %}
 <section class="card">
   <table class="review">
     <thead>
@@ -93,21 +103,15 @@
     </thead>
     <tbody>
       {% if view.planned_expenses %}
-        <tr class="section-row">
-          <td colspan="6" data-tip="{{ _('Expense categories with a budget this month') }}">{{ _("Planned expenses") }}</td>
-        </tr>
+        {{ section_row(sections.expenses) }}
         {% for row in view.planned_expenses %}{{ cat_row(row) }}{% endfor %}
       {% endif %}
       {% if view.planned_income %}
-        <tr class="section-row">
-          <td colspan="6" data-tip="{{ _('Income categories with a budget this month') }}">{{ _("Planned income") }}</td>
-        </tr>
+        {{ section_row(sections.income) }}
         {% for row in view.planned_income %}{{ cat_row(row) }}{% endfor %}
       {% endif %}
       {% if view.unforecasted %}
-        <tr class="section-row">
-          <td colspan="6" data-tip="{{ _('Categories with activity but no budget set') }}">{{ _("Unforecasted") }}</td>
-        </tr>
+        {{ section_row(sections.unforecasted) }}
         {% for row in view.unforecasted %}{{ cat_row(row) }}{% endfor %}
       {% endif %}
       <tr class="subtotal-row">
@@ -136,12 +140,17 @@
       </tr>
     </tbody>
   </table>
-  {# The header row is hidden below 1024px, so its tips are unreachable there.
-     A disclosure needs no JS and answers the keyboard and a screen reader too. #}
+  {# The header row is hidden below 1024px, so its tips are unreachable there, and
+     a section row has no room for one either. A disclosure needs no JS and
+     answers the keyboard and a screen reader too. #}
   <details class="glossary">
-    <summary>{{ _("What the columns mean") }}</summary>
+    <summary>{{ _("What the labels mean") }}</summary>
     <dl>
       {% for label, definition, num in columns %}
+        <dt>{{ label }}</dt>
+        <dd>{{ definition }}</dd>
+      {% endfor %}
+      {% for label, definition in sections.values() %}
         <dt>{{ label }}</dt>
         <dd>{{ definition }}</dd>
       {% endfor %}

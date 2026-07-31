@@ -595,13 +595,6 @@ table {
   text-align: right;
   white-space: nowrap;
 }
-/* The dotted underline is the affordance for a tip carried by a word. Anything
-   with no room for it gets an .info glyph instead, or becomes visible text. */
-.review th[data-tip],
-.review .section-row td[data-tip] {
-  text-decoration: underline dotted var(--muted);
-  text-underline-offset: 3px;
-}
 /* Hidden while the header row is there to carry the tips; shown at the width
    that drops it. */
 .glossary {

@@ -2116,8 +2116,8 @@ msgstr "Choisir un thème demande JavaScript ; sans lui, l'app suit votre appare
 
 
 
-msgid "What the columns mean"
-msgstr "Ce que veulent dire les colonnes"
+msgid "What the labels mean"
+msgstr "Ce que veulent dire les libellés"
 
 msgid "Backups, newest first. An automatic one is taken at startup."
 msgstr "Sauvegardes, les plus récentes en premier. Une sauvegarde automatique est prise au démarrage."
