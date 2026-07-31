@@ -151,17 +151,35 @@ def test_one_block_per_selector_and_at_rule() -> None:
 
     The later block only overrides the properties it declares, so the reader
     who wrote it thinking it replaced the first one is wrong about the rest.
+
+    Sharing a comma group is how a stylesheet says "these two, same treatment",
+    so it takes a block naming the selector on its own to count as a second
+    opinion about it.
     """
-    seen: dict[tuple[str, str], int] = {}
-    for context, selector in _at_rule_selectors():
-        if context.startswith("@media"):
-            seen[(context, selector)] = seen.get((context, selector), 0) + 1
+    blocks: dict[tuple[str, str], set[int]] = {}
+    alone: set[tuple[str, str]] = set()
+    for index, (context, header) in enumerate(_at_rule_selectors()):
+        if not context.startswith("@media"):
+            continue
+        parts = [part.strip() for part in header.split(",") if part.strip()]
+        for selector in parts:
+            blocks.setdefault((context, selector), set()).add(index)
+            if len(parts) == 1:
+                alone.add((context, selector))
     offenders = [
         f"{context} {{ {selector} }}"
-        for (context, selector), n in seen.items()
-        if n > 1
+        for (context, selector), indices in blocks.items()
+        if len(indices) > 1 and (context, selector) in alone
     ]
     assert not offenders, "selector split across blocks:\n" + "\n".join(offenders)
+
+
+def test_the_selected_row_still_states_its_category() -> None:
+    """Two rules make the swap; either one alone hides the category outright."""
+    css = " ".join(STYLESHEET.read_text().split())
+    selecting = "body:has(.bulk-bar:not([hidden]))"
+    assert f"{selecting} .cat-actions {{ display: none" in css
+    assert f"{selecting} .cat-label {{ display: block" in css
 
 
 def test_motion_goes_through_the_duration_tokens() -> None:

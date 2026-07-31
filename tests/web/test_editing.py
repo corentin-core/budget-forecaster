@@ -329,17 +329,19 @@ class TestCategorize:
         )
         assert response.status_code == 303
 
-    def test_bulk_bar_opens_on_no_category(self, client: TestClient) -> None:
+    def test_bulk_picker_names_no_category_at_first(self, client: TestClient) -> None:
         """The bulk picker names no category until the user does, and the button
         that would apply it cannot be pressed meanwhile."""
         html = client.get("/operations").text
-        bulk_bar = re.search(r'<div id="bulk-bar".*?</div>', html, re.S).group(0)
-        first_option = re.search(r"<option[^>]*>", bulk_bar).group(0)
-        assert 'value=""' in first_option
-        apply_button = re.search(r"<button[^>]*data-bulk-apply[^>]*>", bulk_bar).group(
-            0
+        bulk_bar = re.search(r'<div id="bulk-bar".*?</div>', html, re.S)
+        assert bulk_bar, "no bulk bar on the ledger"
+        first_option = re.search(r"<option[^>]*>", bulk_bar.group(0))
+        apply_button = re.search(
+            r"<button[^>]*data-bulk-apply[^>]*>", bulk_bar.group(0)
         )
-        assert "disabled" in apply_button
+        assert first_option and apply_button, "the bulk bar lost its picker"
+        assert 'value=""' in first_option.group(0)
+        assert "disabled" in apply_button.group(0)
 
     def test_row_states_its_category_in_text_too(self, client: TestClient) -> None:
         """Selecting rows takes the select away on a phone, so the row also says
@@ -349,9 +351,10 @@ class TestCategorize:
         assert rows
         for row in rows[:5]:
             chosen = re.search(r'<option value="([a-z_]+)" selected', row)
-            label = re.search(r'class="cat-label">([^<]+)<', row)
+            label = re.search(r'class="cat-label">(.*?)</span>\s*</td>', row, re.S)
             assert chosen and label, "a row states no category"
-            assert label.group(1).strip() == category_name(chosen.group(1))
+            spoken = re.sub(r"<[^>]+>", "", label.group(1)).strip()
+            assert spoken.endswith(category_name(chosen.group(1)))
 
     def test_bulk_categorize_with_no_category_changes_nothing(
         self, client: TestClient
