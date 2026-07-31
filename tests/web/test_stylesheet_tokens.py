@@ -74,6 +74,28 @@ def _rules() -> list[tuple[str, str]]:
     return rules
 
 
+def _at_rule_selectors() -> list[tuple[str, str]]:
+    """Every (at-rule context, selector) pair, in file order."""
+    css = re.sub(r"/\*.*?\*/", "", STYLESHEET.read_text(), flags=re.S)
+    stack: list[str] = []
+    found: list[tuple[str, str]] = []
+    buffer = ""
+    for char in css:
+        if char == "{":
+            header = " ".join(buffer.split())
+            if not header.startswith("@") and stack:
+                found.append((" ".join(stack), header))
+            stack.append(header)
+            buffer = ""
+        elif char == "}":
+            if stack:
+                stack.pop()
+            buffer = ""
+        else:
+            buffer += char
+    return found
+
+
 def _declarations() -> list[tuple[str, str, str]]:
     """Every (selector, property, value), token definitions aside."""
     found = []
@@ -122,6 +144,42 @@ def test_guarded_properties_use_tokens() -> None:
         if GUARDED.match(prop) and not _is_tokenised(value) and selector not in EXEMPT
     ]
     assert not offenders, "literal values outside :root:\n" + "\n".join(offenders)
+
+
+def test_one_block_per_selector_and_at_rule() -> None:
+    """A selector written twice under one condition is a rule that half-wins.
+
+    The later block only overrides the properties it declares, so the reader
+    who wrote it thinking it replaced the first one is wrong about the rest.
+
+    Sharing a comma group is how a stylesheet says "these two, same treatment",
+    so it takes a block naming the selector on its own to count as a second
+    opinion about it.
+    """
+    blocks: dict[tuple[str, str], set[int]] = {}
+    alone: set[tuple[str, str]] = set()
+    for index, (context, header) in enumerate(_at_rule_selectors()):
+        if not context.startswith("@media"):
+            continue
+        parts = [part.strip() for part in header.split(",") if part.strip()]
+        for selector in parts:
+            blocks.setdefault((context, selector), set()).add(index)
+            if len(parts) == 1:
+                alone.add((context, selector))
+    offenders = [
+        f"{context} {{ {selector} }}"
+        for (context, selector), indices in blocks.items()
+        if len(indices) > 1 and (context, selector) in alone
+    ]
+    assert not offenders, "selector split across blocks:\n" + "\n".join(offenders)
+
+
+def test_the_selected_row_still_states_its_category() -> None:
+    """Two rules make the swap; either one alone hides the category outright."""
+    css = " ".join(STYLESHEET.read_text().split())
+    selecting = "body:has(.bulk-bar:not([hidden]))"
+    assert f"{selecting} .cat-actions {{ display: none" in css
+    assert f"{selecting} .cat-label {{ display: block" in css
 
 
 def test_motion_goes_through_the_duration_tokens() -> None:

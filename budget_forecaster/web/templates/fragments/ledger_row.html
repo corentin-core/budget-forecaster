@@ -37,5 +37,8 @@
       <a class="link-action" href="/operations/{{ row.operation.unique_id }}/link?return_to={{ back }}"
          aria-label="{{ _('Link') }}">🔗</a>
     </div>
+    {# What the select says, for the phone where selecting rows takes it away.
+       The prefix is what the select's own label gave a screen reader. #}
+    <span class="cat-label"><span class="sr-only">{{ _("Category:") }} </span>{{ row.operation.category.value | category_name }}</span>
   </td>
 </tr>

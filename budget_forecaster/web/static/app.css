@@ -100,6 +100,12 @@
   --card-pad: var(--sp-20);
   --stack-gap: var(--sp-16);
   --nav-h: 56px;
+  /* What the bottom nav really occupies. A phone that reserves the bottom strip
+     for its gesture bar makes the nav taller, and whatever sits above it moves
+     up in step. Zero elsewhere. */
+  --nav-total: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
+  /* What the bulk bar covers, written by the ledger script while it is up. */
+  --bulk-h: 0px;
   --sidebar-w: 200px;
   --content-max: 900px;
   --content-max-wide: 1500px;
@@ -222,7 +228,10 @@ a:focus-visible {
   bottom: 0;
   left: 0;
   right: 0;
-  height: var(--nav-h);
+  /* --nav-total, not --nav-h: the padding is inside the box, so a floor of
+     --nav-h would leave the bar shorter than what sits above it reserves. */
+  min-height: var(--nav-total);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   display: flex;
   background: var(--surface);
   border-top: 1px solid var(--border);
@@ -265,7 +274,9 @@ a:focus-visible {
 
 .content {
   padding: var(--sp-16);
-  padding-bottom: calc(var(--nav-h) + var(--sp-16));
+  /* --bulk-h is non-zero only while the bar is up, which is what keeps the last
+     rows from hiding under it. */
+  padding-bottom: calc(var(--nav-total) + var(--bulk-h) + var(--sp-16));
   max-width: var(--content-max);
   margin: 0 auto;
 }
@@ -364,7 +375,7 @@ a:focus-visible {
   gap: var(--stack-gap);
   margin-bottom: var(--stack-gap);
 }
-/* Below this the two secondary tiles cannot hold an amount side by side. */
+/* Below this the two tiles sharing a row cannot hold an amount side by side. */
 @media (max-width: 26rem) {
   .summary {
     grid-template-columns: minmax(0, 1fr);
@@ -1135,6 +1146,9 @@ a.link-tag:focus-visible {
     margin-right: 0;
     max-width: var(--content-max-wide);
     padding: var(--sp-24) var(--sp-32);
+    /* The shorthand above drops what the phone rule reserved. No bottom nav
+       here, so the bulk bar is the only thing covering the last rows. */
+    padding-bottom: calc(var(--bulk-h) + var(--sp-24));
   }
   /* Tile the two lower home cards side by side on wide screens, at equal
      height so the row does not end on a ragged edge. */
@@ -1233,8 +1247,9 @@ a.link-tag:focus-visible {
     border: none;
     text-align: left;
   }
-  /* Operations ledger becomes a stacked card per row: date + amount on top,
-     description full-width below. Keeps the amount always visible. */
+  /* Operations ledger becomes a stacked card per row, in three lines: tick box,
+     date and amount on top, then the description, then the category select.
+     The cells travel in DOM order, so the last two are placed by `order`. */
   .ledger,
   .ledger tbody {
     display: block;
@@ -1245,13 +1260,17 @@ a.link-tag:focus-visible {
   .ledger tr {
     display: flex;
     flex-wrap: wrap;
-    align-items: baseline;
+    align-items: center;
     padding: var(--sp-8) 0;
     border-bottom: 1px solid var(--border);
   }
   .ledger td {
     border: none;
     padding: 0;
+  }
+  .ledger .select-cell {
+    flex: 0 0 auto;
+    margin-right: var(--sp-8);
   }
   .ledger .date {
     color: var(--muted);
@@ -1260,11 +1279,14 @@ a.link-tag:focus-visible {
     margin-left: auto;
   }
   .ledger .desc {
+    order: 1;
     flex-basis: 100%;
     margin-top: var(--sp-2);
   }
   .ledger .cat {
-    display: none;
+    order: 2;
+    flex-basis: 100%;
+    margin-top: var(--sp-6);
   }
   .ledger .load-more-cell,
   .ledger .empty {
@@ -1319,7 +1341,7 @@ a.link-tag:focus-visible {
 }
 
 /* ===================================================================
-   Editing (#305): buttons, badges, drill-down, forms, bulk bar, link
+   Editing: buttons, badges, drill-down, forms, bulk bar, link
    =================================================================== */
 
 .sr-only {
@@ -1595,19 +1617,25 @@ a.link-tag:focus-visible {
 .row-category:disabled {
   opacity: 0.5;
 }
+/* Stands in for the select where the select cannot be shown. Plain muted text:
+   the only categorize path open at that moment is the bulk bar. */
+.cat-label {
+  display: none;
+  color: var(--muted);
+}
 
 /* Sticky bulk-action bar, docked directly above the bottom nav. */
 .bulk-bar {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: var(--nav-h);
+  bottom: var(--nav-total);
   z-index: 9;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-8);
   padding: var(--sp-10) var(--sp-16);
-  padding-bottom: calc(var(--sp-10) + env(safe-area-inset-bottom));
   background: var(--surface);
   border-top: 1px solid var(--border);
   box-shadow: var(--shadow-up);
@@ -1620,8 +1648,9 @@ a.link-tag:focus-visible {
   color: var(--muted);
 }
 .bulk-bar select {
+  /* A floor: the two buttons otherwise squeeze it down to a sliver. */
   flex: 1;
-  min-width: 0;
+  min-width: 10rem;
   min-height: var(--control-min-h);
   padding: var(--sp-6) var(--sp-6);
   border: 1px solid var(--border);
@@ -2043,9 +2072,11 @@ a.link-tag:focus-visible {
 
 /* --- Desktop tweaks --- */
 @media (min-width: 1024px) {
+  /* On the bottom edge here, so the reserved strip is the bar's own to clear. */
   .bulk-bar {
     bottom: 0;
     left: var(--sidebar-w);
+    padding-bottom: calc(var(--sp-10) + env(safe-area-inset-bottom, 0px));
   }
   .link-cols {
     display: grid;
@@ -2058,30 +2089,37 @@ a.link-tag:focus-visible {
   }
 }
 
-/* --- Mobile: keep the category select visible in the ledger (it holds the
-   inline categorize control), and lay targets out as cards --- */
+/* --- Mobile: the inline categorize control takes the width of its own line,
+   the bulk bar takes two lines, and targets lay out as cards --- */
 @media (max-width: 1023px) {
-  .ledger tr {
-    align-items: center;
-  }
-  .ledger .cat {
-    flex-basis: 100%;
-    margin-top: var(--sp-6);
-  }
-  .ledger .cat::before {
-    content: none;
-  }
   .cat-actions .row-category {
     flex: 1;
     max-width: none;
+    /* A line of its own is room enough to be thumb-sized; and under 16px iOS
+       zooms the page when the select takes focus. */
+    min-height: var(--control-min-h);
+    font-size: var(--fs-base);
   }
   /* Link is reached by tapping the operation (→ detail page); no inline icon. */
   .link-action {
     display: none;
   }
-  .ledger .select-cell {
-    flex: 0 0 auto;
-    margin-right: var(--sp-8);
+  /* Selecting rows hands the job to the bulk bar, so the inert select gives up
+     its place — to the category as text, still needed to choose the rows. */
+  body:has(.bulk-bar:not([hidden])) .cat-actions {
+    display: none;
+  }
+  body:has(.bulk-bar:not([hidden])) .cat-label {
+    display: block;
+  }
+  /* The category comes first, full width; the count and both buttons share the
+     line below it. */
+  .bulk-bar select {
+    order: -1;
+    flex-basis: 100%;
+  }
+  .bulk-count {
+    flex: 1;
   }
 
   .review tr.target-row {
