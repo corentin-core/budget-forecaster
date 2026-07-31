@@ -13,9 +13,8 @@
       </span>
       {% include "fragments/overdue_facts.html" %}
     </summary>
-    {# Editing reaches the whole series, so the scope is written where every
-       device reads it, and a broken sync does not take the action away: the
-       recurrence is often what needs fixing. #}
+    {# A broken sync does not take the edit away: the recurrence is often what
+       needs fixing. #}
     <div class="overdue-panel overdue-actions">
       <a class="btn small primary"
          href="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/link">{{ _("Link…") }}</a>
@@ -42,10 +41,7 @@
         </form>
       </div>
       {% endif %}
-      <a class="btn small overdue-edit" href="/targets/planned/{{ row.planned_operation_id }}?return_to=/">
-        {{ _("Edit the planned operation") }}
-        <span class="btn-scope">{{ _("(all occurrences)") }}</span>
-      </a>
+      <a class="btn small overdue-edit" href="/targets/planned/{{ row.planned_operation_id }}?return_to=/">{{ _("Edit the planned operation") }}</a>
     </div>
   </details>
 </li>

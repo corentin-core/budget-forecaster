@@ -2114,11 +2114,7 @@ msgstr "Auto suit votre appareil ; le choix n'est pas partagé avec les autres u
 msgid "Picking a theme needs JavaScript; without it the app follows your device."
 msgstr "Choisir un thème demande JavaScript ; sans lui, l'app suit votre appareil."
 
-msgid "Classify them"
-msgstr "Les classer"
 
-msgid "(all occurrences)"
-msgstr "(toutes les occurrences)"
 
 msgid "What the columns mean"
 msgstr "Ce que veulent dire les colonnes"
