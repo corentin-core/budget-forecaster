@@ -58,12 +58,15 @@
       }
     });
 
+    // Leaving the element closes what hovering opened. A clicked tip stays: the
+    // pointer has to travel to reach a long bubble, and the click that opened it
+    // was a deliberate ask.
     if (hoverable) {
       document.addEventListener('mouseover', function (event) {
         var el = event.target.closest('[data-tip]');
         if (el) {
           if (current !== el) show(el, 'hover');
-        } else if (current) {
+        } else if (current && shownBy === 'hover') {
           hide();
         }
       });
@@ -75,7 +78,11 @@
       var el = event.target.closest('[data-tip]');
       if (el && el.matches(':focus-visible')) show(el, 'focus');
     });
-    document.addEventListener('focusout', hide);
+    // Only the tipped element losing focus counts. An htmx swap that replaces a
+    // focused control elsewhere blurs it too, and that must not take the bubble.
+    document.addEventListener('focusout', function (event) {
+      if (event.target === current) hide();
+    });
 
     // An out-of-band swap detaches the element the bubble points at, leaving it
     // floating over content it no longer describes.
