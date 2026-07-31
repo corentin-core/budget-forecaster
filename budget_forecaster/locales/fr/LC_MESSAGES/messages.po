@@ -1923,6 +1923,9 @@ msgstr "Manuelle"
 msgid "Bulk actions"
 msgstr "Actions groupées"
 
+msgid "Choose a category…"
+msgstr "Choisissez une catégorie…"
+
 msgid "Forget"
 msgstr "Oublier"
 

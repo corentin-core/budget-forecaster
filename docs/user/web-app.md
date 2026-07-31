@@ -160,9 +160,12 @@ the spot. The "N to categorize" badge on the Operations tab counts what is still
 uncategorized and drops as you go.
 
 To categorize several at once, tick the rows you want. A bar appears at the bottom with
-a category picker; choose one and apply it to the whole selection. While rows are
-selected the per-row dropdowns are disabled, so you always categorize one way at a time.
-Clear the selection to go back to per-row editing.
+a category picker; choose one and apply it to the whole selection. It starts on
+"Choisissez une catégorie…", and "Catégoriser" stays out of reach until you pick one, so
+the selection never takes a category you did not name. On a phone the picker takes a
+line of its own, with the count and both buttons below it. While rows are selected you
+always categorize one way at a time: the per-row dropdowns step aside — hidden on a
+phone, disabled on a wider screen. Clear the selection to go back to per-row editing.
 
 ## Linking an operation
 
