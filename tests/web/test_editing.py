@@ -10,6 +10,8 @@ from datetime import date
 
 from fastapi.testclient import TestClient
 
+from budget_forecaster.web.formatting import category_name
+
 _RECURRING_BUDGET = {
     "description": "Test Budget",
     "amount": "-300",
@@ -338,6 +340,18 @@ class TestCategorize:
             0
         )
         assert "disabled" in apply_button
+
+    def test_row_states_its_category_in_text_too(self, client: TestClient) -> None:
+        """Selecting rows takes the select away on a phone, so the row also says
+        its category in plain text. The two must not disagree."""
+        html = client.get("/operations").text
+        rows = re.findall(r'<tr id="op-row-\d+".*?</tr>', html, re.S)
+        assert rows
+        for row in rows[:5]:
+            chosen = re.search(r'<option value="([a-z_]+)" selected', row)
+            label = re.search(r'class="cat-label">([^<]+)<', row)
+            assert chosen and label, "a row states no category"
+            assert label.group(1).strip() == category_name(chosen.group(1))
 
     def test_bulk_categorize_with_no_category_changes_nothing(
         self, client: TestClient

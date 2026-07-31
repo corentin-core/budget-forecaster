@@ -164,8 +164,10 @@ a category picker; choose one and apply it to the whole selection. It starts on
 "Choisissez une catégorie…", and "Catégoriser" stays out of reach until you pick one, so
 the selection never takes a category you did not name. On a phone the picker takes a
 line of its own, with the count and both buttons below it. While rows are selected you
-always categorize one way at a time: the per-row dropdowns step aside — hidden on a
-phone, disabled on a wider screen. Clear the selection to go back to per-row editing.
+always categorize one way at a time: the per-row dropdowns step aside, disabled on a
+wide screen and replaced on a phone by the category in plain grey text, so you keep
+seeing which rows are already sorted while you choose. Clear the selection to go back to
+per-row editing.
 
 ## Linking an operation
 

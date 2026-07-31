@@ -1617,6 +1617,12 @@ a.link-tag:focus-visible {
 .row-category:disabled {
   opacity: 0.5;
 }
+/* Stands in for the select where the select cannot be shown. Plain muted text:
+   the only categorize path open at that moment is the bulk bar. */
+.cat-label {
+  display: none;
+  color: var(--muted);
+}
 
 /* Sticky bulk-action bar, docked directly above the bottom nav. */
 .bulk-bar {
@@ -2098,10 +2104,13 @@ a.link-tag:focus-visible {
   .link-action {
     display: none;
   }
-  /* Selecting rows hands the job to the bulk bar, and the row selects go inert:
-     a column of greyed controls, worth the space back. */
-  body:has(.bulk-bar:not([hidden])) .ledger .cat {
+  /* Selecting rows hands the job to the bulk bar, so the inert select gives up
+     its place — to the category as text, still needed to choose the rows. */
+  body:has(.bulk-bar:not([hidden])) .cat-actions {
     display: none;
+  }
+  body:has(.bulk-bar:not([hidden])) .cat-label {
+    display: block;
   }
   /* The category comes first, full width; the count and both buttons share the
      line below it. */
