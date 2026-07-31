@@ -327,6 +327,32 @@ class TestCategorize:
         )
         assert response.status_code == 303
 
+    def test_bulk_bar_opens_on_no_category(self, client: TestClient) -> None:
+        """The bulk picker names no category until the user does, and the button
+        that would apply it cannot be pressed meanwhile."""
+        html = client.get("/operations").text
+        bulk_bar = re.search(r'<div id="bulk-bar".*?</div>', html, re.S).group(0)
+        first_option = re.search(r"<option[^>]*>", bulk_bar).group(0)
+        assert 'value=""' in first_option
+        apply_button = re.search(r"<button[^>]*data-bulk-apply[^>]*>", bulk_bar).group(
+            0
+        )
+        assert "disabled" in apply_button
+
+    def test_bulk_categorize_with_no_category_changes_nothing(
+        self, client: TestClient
+    ) -> None:
+        """The placeholder reaching the server categorizes nothing."""
+        before = self._uncategorized_ids(client)
+        assert len(before) >= 2
+        response = client.post(
+            "/operations/categorize",
+            data={"ids": before[:2], "bulk_category": ""},
+            follow_redirects=False,
+        )
+        assert response.status_code == 303
+        assert self._uncategorized_ids(client) == before
+
 
 class TestLinkFlow:
     """The two-step link page and unlink."""

@@ -74,6 +74,28 @@ def _rules() -> list[tuple[str, str]]:
     return rules
 
 
+def _at_rule_selectors() -> list[tuple[str, str]]:
+    """Every (at-rule context, selector) pair, in file order."""
+    css = re.sub(r"/\*.*?\*/", "", STYLESHEET.read_text(), flags=re.S)
+    stack: list[str] = []
+    found: list[tuple[str, str]] = []
+    buffer = ""
+    for char in css:
+        if char == "{":
+            header = " ".join(buffer.split())
+            if not header.startswith("@") and stack:
+                found.append((" ".join(stack), header))
+            stack.append(header)
+            buffer = ""
+        elif char == "}":
+            if stack:
+                stack.pop()
+            buffer = ""
+        else:
+            buffer += char
+    return found
+
+
 def _declarations() -> list[tuple[str, str, str]]:
     """Every (selector, property, value), token definitions aside."""
     found = []
@@ -122,6 +144,24 @@ def test_guarded_properties_use_tokens() -> None:
         if GUARDED.match(prop) and not _is_tokenised(value) and selector not in EXEMPT
     ]
     assert not offenders, "literal values outside :root:\n" + "\n".join(offenders)
+
+
+def test_one_block_per_selector_and_at_rule() -> None:
+    """A selector written twice under one condition is a rule that half-wins.
+
+    The later block only overrides the properties it declares, so the reader
+    who wrote it thinking it replaced the first one is wrong about the rest.
+    """
+    seen: dict[tuple[str, str], int] = {}
+    for context, selector in _at_rule_selectors():
+        if context.startswith("@media"):
+            seen[(context, selector)] = seen.get((context, selector), 0) + 1
+    offenders = [
+        f"{context} {{ {selector} }}"
+        for (context, selector), n in seen.items()
+        if n > 1
+    ]
+    assert not offenders, "selector split across blocks:\n" + "\n".join(offenders)
 
 
 def test_motion_goes_through_the_duration_tokens() -> None:
