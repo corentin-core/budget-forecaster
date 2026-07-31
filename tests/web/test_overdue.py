@@ -264,7 +264,8 @@ class TestCardVisibility:
         """Fixing the amount, the day or the keywords starts from the row."""
         card = _card(client)
         assert f'href="/targets/planned/{overdue.op_id}?return_to=/"' in card
-        assert "toutes les occurrences" in card
+        # The apostrophe is escaped by the template.
+        assert "Modifier l&#39;opération planifiée" in card
 
     def test_nav_badge_counts_them(self, client: TestClient, overdue: Overdue) -> None:
         """The count is visible from any page, and it is the real count."""

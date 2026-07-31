@@ -125,6 +125,11 @@
       });
     });
     donut.addEventListener('mouseleave', clear);
+    // A touch screen never fires mouseleave, so a tap elsewhere is what closes
+    // the tooltip. Not stopPropagation on the slice: see tooltips.js.
+    document.addEventListener('click', function (event) {
+      if (!event.target.closest('.slice')) clear();
+    });
   }
 
   function init() {

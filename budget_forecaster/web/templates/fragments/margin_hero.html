@@ -4,12 +4,14 @@
 <section class="tile margin-hero margin-{{ margin_status or 'none' }}" id="margin-hero"
          {{ 'hx-swap-oob="true"' | safe if oob }}>
   <div class="metric-label">
-    {{ _("Available margin") }}
     {% if margin %}
     {# The bubble is drawn by script and never reaches a screen reader, so the
        same sentence is the icon's accessible name. #}
     {% set tip = _('What you can spend without your projected balance dropping below the safety threshold, over the whole forecast horizon.') ~ ' — ' ~ _('Lowest projected balance') ~ ': ' ~ (margin.lowest_balance | eur(currency)) ~ ' (' ~ (margin.lowest_balance_date | frdate) ~ ')' %}
-    <button type="button" class="info" aria-label="{{ tip }}" data-tip="{{ tip }}">ⓘ</button>
+    <span class="tip-anchor">{{ _("Available margin") }}
+      <button type="button" class="info" aria-label="{{ tip }}" data-tip="{{ tip }}">ⓘ</button></span>
+    {% else %}
+    {{ _("Available margin") }}
     {% endif %}
   </div>
   {% if margin %}

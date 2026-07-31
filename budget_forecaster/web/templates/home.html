@@ -15,8 +15,7 @@
   {% include "fragments/margin_hero.html" %}
 
   {% if uncategorized %}
-  <a class="tile tile-action" href="/operations?uncategorized=true"
-     title="{{ _('Imported operations without a category. Click to classify them.') }}">
+  <a class="tile tile-action" href="/operations?uncategorized=true">
     <div class="metric-label">{{ _("Operations to categorize") }}</div>
     <div class="metric-value">{{ uncategorized }}</div>
   </a>
@@ -36,13 +35,16 @@
 <section class="card">
   <div class="card-head"><h2>{{ _("Planned expenses this month") }}</h2></div>
   {% if health.ratio is not none %}
-    <div class="overall-bar {{ 'bad' if health.ratio > 1.01 else 'good' }}"
-         tabindex="0"
-         title="{{ _('Actual') }} {{ health.actual | abs | eur(currency) }} · {{ _('Planned') }} {{ health.planned | abs | eur(currency) }}">
+    <div class="overall-bar {{ 'bad' if health.ratio > 1.01 else 'good' }}">
       <span class="overall-fill"
             style="width: {{ ((health.ratio if health.ratio < 1.0 else 1.0) * 100) | round(1) }}%"></span>
       <span class="overall-pct">{{ health.ratio | pct }}</span>
     </div>
+    {# The bar only draws the ratio; the two amounts behind it are worth reading. #}
+    <p class="metric-sub">
+      {{ _("Actual") }} {{ health.actual | abs | eur(currency) }} ·
+      {{ _("Planned") }} {{ health.planned | abs | eur(currency) }}
+    </p>
   {% endif %}
 
   <h3 class="subhead">{{ _("Largest items") }}</h3>

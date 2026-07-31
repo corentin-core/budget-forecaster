@@ -17,7 +17,7 @@
            else _("Open the linked planned operation {name}")
          ).format(name=row.target_name) %}
       <a class="link-tag" href="/targets/{{ row.target_kind }}/{{ row.target_id }}?return_to={{ back }}"
-         aria-label="{{ open_target }}" title="{{ open_target }}">→ {{ row.target_name }}</a>
+         aria-label="{{ open_target }}">→ {{ row.target_name }}</a>
     {% endif %}
   </td>
   <td class="num {{ 'positive' if row.operation.amount > 0 else 'negative' }}"
@@ -35,7 +35,7 @@
         {% endfor %}
       </select>
       <a class="link-action" href="/operations/{{ row.operation.unique_id }}/link?return_to={{ back }}"
-         aria-label="{{ _('Link') }}" title="{{ _('Link') }}">🔗</a>
+         aria-label="{{ _('Link') }}">🔗</a>
     </div>
   </td>
 </tr>

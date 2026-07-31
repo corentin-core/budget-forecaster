@@ -21,9 +21,7 @@
                     stroke-dashoffset="{{ slice.offset }}"
                     data-label="{{ slice.label }}"
                     data-detail="{{ slice.fraction | pct }} · {{ slice.amount | eur(currency) }}"
-                    data-average="{{ slice.average | eur(currency) }} {{ _('per month') }}">
-              <title>{{ slice.label }} — {{ slice.amount | eur(currency) }}</title>
-            </circle>
+                    data-average="{{ slice.average | eur(currency) }} {{ _('per month') }}"></circle>
           {% endfor %}
         </g>
         <text x="100" y="104" text-anchor="middle" class="donut-total">

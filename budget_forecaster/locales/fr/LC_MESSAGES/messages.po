@@ -1432,8 +1432,6 @@ msgstr "Résumé"
 msgid "What you can still spend this month after remaining budgets and planned operations, keeping your safety threshold."
 msgstr "Ce qu'il te reste à dépenser ce mois-ci une fois déduits les budgets et opérations planifiés restants, en gardant ton seuil de sécurité."
 
-msgid "Imported operations without a category. Click to classify them."
-msgstr "Opérations importées sans catégorie. Clique pour les classer."
 
 
 msgid "Largest items"
@@ -1912,23 +1910,15 @@ msgstr "Sauvegarde inconnue."
 msgid "Restore undone."
 msgstr "Restauration annulée."
 
-msgid "Backups, newest first."
-msgstr "Sauvegardes, les plus récentes en premier."
 
 msgid "Safety copy"
 msgstr "Copie de sécurité"
 
-msgid "created before a restore"
-msgstr "créée avant une restauration"
 
 msgid "Manual"
 msgstr "Manuelle"
 
-msgid "created on demand"
-msgstr "créée à la demande"
 
-msgid "created at startup"
-msgstr "créée au démarrage"
 
 msgid "Bulk actions"
 msgstr "Actions groupées"
@@ -2078,8 +2068,6 @@ msgstr "Ouvrir le budget lié {name}"
 msgid "Open the linked planned operation {name}"
 msgstr "Ouvrir l'opération planifiée liée {name}"
 
-msgid "Edit the planned operation (all occurrences)"
-msgstr "Modifier l'opération planifiée (toutes les occurrences)"
 
 msgid "Edit the planned operation"
 msgstr "Modifier l'opération planifiée"
@@ -2125,3 +2113,11 @@ msgstr "Auto suit votre appareil ; le choix n'est pas partagé avec les autres u
 
 msgid "Picking a theme needs JavaScript; without it the app follows your device."
 msgstr "Choisir un thème demande JavaScript ; sans lui, l'app suit votre appareil."
+
+
+
+msgid "What the labels mean"
+msgstr "Ce que veulent dire les libellés"
+
+msgid "Backups, newest first. An automatic one is taken at startup."
+msgstr "Sauvegardes, les plus récentes en premier. Une sauvegarde automatique est prise au démarrage."

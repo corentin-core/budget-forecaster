@@ -43,7 +43,7 @@
                else _("Open the linked planned operation {name}")
              ).format(name=op.link_target_name) %}
           <a class="link-tag" href="/targets/{{ op.link_target_kind }}/{{ op.link_target_id }}?return_to={{ rt }}"
-             aria-label="{{ open_target }}" title="{{ open_target }}">→ {{ op.link_target_name }}</a>
+             aria-label="{{ open_target }}">→ {{ op.link_target_name }}</a>
         {% endif %}
       </span>
       <span class="op-amount {{ 'positive' if op.amount > 0 else 'negative' }}">{{ op.amount | signed_eur(currency) }}</span>
