@@ -189,6 +189,7 @@ async def operation_detail(
         active="operations",
         operation=operation,
         current=linking.current_link(app, operation_id),
+        categories=sorted_categories(),
         currency=app.currency,
         return_to=_safe_back(return_to),
     )
@@ -312,20 +313,33 @@ async def categorize_one(
     request: Request,
     app: ApplicationService = Depends(get_app_service),
     filters: LedgerFilters = Depends(get_filters),
+    view: str = "row",
 ) -> Response:
-    """Categorize a single operation inline; swap its row + refresh the badge."""
+    """Categorize a single operation; swap back what the caller shows of it.
+
+    The ledger asks for its row, the detail page for its category field. Both get
+    the badge refreshed out of band.
+    """
     form = await request.form()
     if (category := _category(str(form.get("category", "")))) is None:
         return Response(status_code=400)
     app.categorize_operations((operation_id,), category)
     app.save_operation_changes()
     refresh_forecast(app)
-    row = _rows(app, (app.get_operation_by_id(operation_id),))[0]
+    operation = app.get_operation_by_id(operation_id)
+    if view == "detail":
+        return render_template(
+            request,
+            "fragments/detail_cat_and_badge.html",
+            active="operations",
+            operation=operation,
+            categories=sorted_categories(),
+        )
     return render_template(
         request,
         "fragments/row_and_badge.html",
         active="operations",
-        row=row,
+        row=_rows(app, (operation,))[0],
         categories=sorted_categories(),
         currency=app.currency,
         query=_query(filters),

@@ -1,0 +1,14 @@
+{# The category field of the detail page: the same select the ledger row carries,
+   swapping itself so the page around it stays put. #}
+<dd id="op-category">
+  <select class="detail-category" name="category"
+          hx-post="/operations/{{ operation.unique_id }}/categorize?view=detail"
+          hx-target="#op-category"
+          hx-swap="outerHTML"
+          hx-trigger="change"
+          aria-label="{{ _('Category') }}">
+    {% for c in categories %}
+      <option value="{{ c.value }}" {{ 'selected' if operation.category == c }}>{{ c.value | category_name }}</option>
+    {% endfor %}
+  </select>
+</dd>
