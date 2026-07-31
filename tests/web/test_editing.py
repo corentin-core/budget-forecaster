@@ -1,4 +1,4 @@
-"""Write routes (#305): target CRUD/split, categorize, link, and the drill-down.
+"""Write routes: target CRUD/split, categorize, link, and the drill-down.
 
 Each test drives the HTTP layer over a copy of the demo database and checks the
 observable result (persisted state, refreshed fragment, forecast reload).
@@ -286,6 +286,48 @@ class TestCategorize:
         )
         after = self._uncategorized_ids(client)
         assert len(after) == len(before) - 1
+
+    def test_the_detail_page_offers_the_category_as_a_select(
+        self, client: TestClient
+    ) -> None:
+        """The detail page carries an editable category, starting on the one the
+        operation has."""
+        ids = self._uncategorized_ids(client)
+        assert ids, "demo database should have uncategorized operations"
+        html = client.get(f"/operations/{ids[0]}").text
+        select = re.search(r'<select class="detail-category".*?</select>', html, re.S)
+        assert select, "the detail page should carry a category select"
+        assert '<option value="uncategorized" selected>' in select.group(0)
+
+    def test_detail_categorize_swaps_the_field_and_the_badge(
+        self, client: TestClient
+    ) -> None:
+        """The field comes back alone, with the badge OOB, and the value persists."""
+        ids = self._uncategorized_ids(client)
+        response = client.post(
+            f"/operations/{ids[0]}/categorize?view=detail",
+            data={"category": "groceries"},
+            headers={"HX-Request": "true"},
+        )
+        assert response.status_code == 200
+        assert 'id="op-category"' in response.text
+        assert 'hx-swap-oob="true"' in response.text
+        assert 'id="op-row-' not in response.text
+        reloaded = client.get(f"/operations/{ids[0]}").text
+        assert '<option value="groceries" selected>' in reloaded
+
+    def test_detail_categorize_rejects_an_unknown_category(
+        self, client: TestClient
+    ) -> None:
+        """An unknown value is refused here as it is from the ledger row."""
+        ids = self._uncategorized_ids(client)
+        response = client.post(
+            f"/operations/{ids[0]}/categorize?view=detail",
+            data={"category": "not-a-category"},
+            headers={"HX-Request": "true"},
+        )
+        assert response.status_code == 400
+        assert self._uncategorized_ids(client) == ids
 
     def test_bulk_categorize_applies_to_all_selected(self, client: TestClient) -> None:
         """Bulk categorization re-renders the ledger area and the badge."""

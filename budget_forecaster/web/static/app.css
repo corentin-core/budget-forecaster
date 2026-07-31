@@ -2061,6 +2061,9 @@ a.link-tag:focus-visible {
   grid-template-columns: auto 1fr;
   gap: var(--sp-6) var(--sp-16);
   margin: 0;
+  /* The rows holding a control are taller than their label, which would leave
+     the label hanging at the top edge. */
+  align-items: center;
 }
 .detail-grid dt {
   color: var(--muted);
@@ -2068,6 +2071,22 @@ a.link-tag:focus-visible {
 }
 .detail-grid dd {
   margin: 0;
+}
+/* The one editable line of the detail grid, so it wears the form-control look
+   rather than the ledger's dense one. Capped: the grid column is the width left
+   over, which a category name never needs. 1rem keeps iOS from zooming the page
+   when the select takes focus. */
+.detail-category {
+  width: 100%;
+  max-width: 16rem;
+  min-height: var(--control-min-h);
+  padding: var(--sp-8);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-base);
 }
 
 /* --- Desktop tweaks --- */

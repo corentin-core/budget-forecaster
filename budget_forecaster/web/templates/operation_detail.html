@@ -13,7 +13,7 @@
     <dt>{{ _("Amount") }}</dt>
     <dd class="{{ 'positive' if operation.amount > 0 else 'negative' }}">{{ operation.amount | signed_eur(currency) }}</dd>
     <dt>{{ _("Category") }}</dt>
-    <dd>{{ operation.category.value | category_name }}</dd>
+    {% include "fragments/detail_category.html" %}
     <dt>{{ _("Link") }}</dt>
     <dd>
       {% if current %}

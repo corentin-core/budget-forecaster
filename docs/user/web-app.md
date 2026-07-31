@@ -159,6 +159,10 @@ In Opérations, each row carries a category dropdown: change it and the row upda
 the spot. The "N to categorize" badge on the Operations tab counts what is still
 uncategorized and drops as you go.
 
+An operation's own page carries the same dropdown, on the Catégorie line. It is where
+you have the date, the amount and the link in front of you, so the category can be fixed
+there rather than by finding the row again in the ledger.
+
 To categorize several at once, tick the rows you want. A bar appears at the bottom with
 a category picker; choose one and apply it to the whole selection. It starts on
 "Choisissez une catégorie…", and "Catégoriser" stays out of reach until you pick one, so
