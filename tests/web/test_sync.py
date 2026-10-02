@@ -8,13 +8,15 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from budget_forecaster.core.types import SyncRun, SyncRunStatus
+from budget_forecaster.exceptions import DatabaseBusyError
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent import (
     ConsentStatus,
 )
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent_service import (
     ConsentState,
 )
-from budget_forecaster.web.routes import settings as settings_route
+from budget_forecaster.infrastructure.db_lock import writer_lock
+from budget_forecaster.web import scheduled_sync
 
 
 def _repo_with_runs(*runs: SyncRun) -> Mock:
@@ -107,12 +109,12 @@ class TestSyncNow:
                 ),
             )
 
-        monkeypatch.setattr(settings_route, "sync_all_sources", fake_sync_all)
+        monkeypatch.setattr(scheduled_sync, "sync_all_sources", fake_sync_all)
         monkeypatch.setattr(
             app.state.app_service, "reload_account", lambda: steps.append("reload")
         )
         monkeypatch.setattr(
-            settings_route, "refresh_forecast", lambda _app: steps.append("refresh")
+            scheduled_sync, "refresh_forecast", lambda _app: steps.append("refresh")
         )
 
         response = client.post("/settings/sync", follow_redirects=False)
@@ -135,7 +137,7 @@ class TestSyncNow:
                 ),
             )
 
-        monkeypatch.setattr(settings_route, "sync_all_sources", fake_sync_all)
+        monkeypatch.setattr(scheduled_sync, "sync_all_sources", fake_sync_all)
         monkeypatch.setattr(
             app.state.app_service, "reload_account", lambda: steps.append("reload")
         )
@@ -144,3 +146,15 @@ class TestSyncNow:
 
         assert response.status_code == 303
         assert not steps
+
+
+def test_running_app_holds_the_writer_lock(app: FastAPI) -> None:
+    """While the app serves, no other process may take the writer lock."""
+    database_path = app.state.config.database_path
+    with TestClient(app):
+        with pytest.raises(DatabaseBusyError), writer_lock(
+            database_path, blocking=False
+        ):
+            pass
+    with writer_lock(database_path, blocking=False):
+        pass

@@ -6,6 +6,7 @@ combines them all.
 """
 
 from abc import ABC, abstractmethod
+from contextlib import AbstractContextManager
 from typing import Self
 
 from budget_forecaster.core.types import (
@@ -309,6 +310,10 @@ class RepositoryInterface(
 
         This method should be called when the repository is no longer needed.
         """
+
+    @abstractmethod
+    def transaction(self) -> AbstractContextManager[None]:
+        """Group the block's writes into one transaction, rolled back on error."""
 
     @abstractmethod
     def __enter__(self) -> Self:

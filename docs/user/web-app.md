@@ -247,12 +247,14 @@ when the connection is valid or when Enable Banking is not configured.
 
 ## Sync history and failures
 
-Your data refreshes on its own through a background sync that runs while the host is on.
-The Sync card in Réglages lists the recent runs — when each ran, its source (Bank or
-Swile), whether it succeeded, how many operations were new or duplicates, and the
-resulting balance (or the error, for a failed run). Because that sync runs outside the
-app, a failure would otherwise go unnoticed: when the most recent run failed, a red
-banner appears on every page pointing to Réglages.
+Your data refreshes on its own: the app syncs once a day while it runs, and right away
+at startup when the last sync is a day old. The Sync card in Réglages lists the recent
+runs — when each ran, its source (Bank or Swile), whether it succeeded, how many
+operations were new or duplicates, and the resulting balance (or the error, for a failed
+run). Because that sync runs unattended, a failure would otherwise go unnoticed: when
+the most recent run failed, a red banner appears on every page pointing to Réglages. A
+failed sync is not retried before the next day; press "Sync now" once the cause is
+fixed.
 
 The banner clears once a later sync succeeds. It also stays silent for a failure that
 predates your current bank authorization — if a sync failed because the consent had
@@ -268,7 +270,7 @@ the others. The button is hidden when nothing is connected yet.
 ## Swile sync
 
 Swile syncs alongside the bank, through the same "Sync now" button and the same daily
-timer. See the [Swile sync guide](swile-sync.md) for the one-time enrollment.
+sync. See the [Swile sync guide](swile-sync.md) for the one-time enrollment.
 
 ## Manual file import
 

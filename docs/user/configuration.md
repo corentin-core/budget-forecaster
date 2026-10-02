@@ -50,7 +50,7 @@ backup:
 #   - name: swile
 #     external_id: "..."          # Swile wallet id
 
-# Optional - Enable Banking API source (used by the `sync` command)
+# Optional - Enable Banking API source (used by the bank sync)
 # enable_banking:
 #   application_id: "your-application-id"
 #   private_key_path: ~/.config/budget-forecaster/enable_banking_key.pem
@@ -93,13 +93,13 @@ backup:
 | `language`               | no       | `en`                   | UI and export language (`en` or `fr`)      |
 | `logging`                | no       | basic INFO logging     | Python dictConfig format for logging setup |
 | `accounts`               | no       | _(none)_               | External id (IBAN / Swile id) per account  |
-| `enable_banking`         | no       | _(disabled)_           | Enable Banking credentials for `sync`      |
+| `enable_banking`         | no       | _(disabled)_           | Enable Banking credentials for the sync    |
 | `web.secret_key`         | no       | _(env var)_            | Session cookie signing key for the web app |
 | `web.password_hash`      | no       | _(env var)_            | Shared login password hash for the web app |
 
 ## Syncing bank data (Enable Banking)
 
-The `sync` command imports transactions and the account balance directly from the bank
+The bank sync imports transactions and the account balance directly from the bank
 through Enable Banking, as an alternative to loading exported files. Setup and usage are
 covered in the [Enable Banking guide](enable-banking.md); this section documents the
 `enable_banking` configuration keys.

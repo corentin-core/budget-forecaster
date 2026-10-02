@@ -1,5 +1,6 @@
 """Swile enrollment and sync routes over the real app with a faked client."""
 
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
 from fastapi import FastAPI
@@ -165,7 +166,7 @@ class TestSettingsCard:
 
 
 class TestStartupSync:
-    """The web app syncs Swile at startup when a token is enrolled."""
+    """The web app syncs at startup when a token is enrolled and a sync is due."""
 
     def test_startup_syncs_when_enrolled(self, app: FastAPI) -> None:
         """Booting with a stored token records an OK Swile run."""
@@ -186,6 +187,23 @@ class TestStartupSync:
             assert booted.get("/health").status_code == 200
         run = _latest_swile_run(app)
         assert run is not None and run.status is SyncRunStatus.FAILED
+
+    def test_no_startup_sync_after_a_recent_run(self, app: FastAPI) -> None:
+        """A sync recorded less than a day ago is not repeated at startup."""
+        recent = SyncRun(
+            datetime.now(timezone.utc) - timedelta(hours=1),
+            SyncRunStatus.OK,
+            new_count=0,
+            duplicate_count=0,
+            source=SyncSource.SWILE,
+        )
+        with SqliteRepository(app.state.config.database_path) as repo:
+            repo.add_sync_run(recent)
+        app.state.swile_client = _fake_client()
+        app.state.swile_token_store.save("stored-rt")
+        with TestClient(app):
+            pass
+        assert _latest_swile_run(app) == recent
 
     def test_no_startup_sync_without_enrollment(self, app: FastAPI) -> None:
         """Booting without a token records no Swile run."""

@@ -56,24 +56,45 @@ class PersistentAccount:
         return AggregatedAccount(aggregated_name, accounts)
 
     def next_operation_factory(self) -> HistoricOperationFactory:
-        """Create an operation factory seeded past the highest existing id.
+        """Create an operation factory seeded past the highest known id.
 
         Keeps operation ids unique whatever the source (file import, API sync).
+        Ids still referenced by a link count too, so a link left on a deleted
+        operation never attaches to a new one.
         """
-        last_id = max((op.unique_id for op in self.account.operations), default=0)
+        last_id = max(
+            (
+                *(op.unique_id for op in self.account.operations),
+                *(
+                    link.operation_unique_id
+                    for link in self._repository.get_all_links()
+                ),
+            ),
+            default=0,
+        )
         return HistoricOperationFactory(last_id)
 
     def save(self) -> None:
-        """Save the accounts, then move links for any cross-source reconciliation.
+        """Save the accounts and move the reconciled links, all or nothing.
 
-        Links are moved only after the operations are persisted, so a failed
-        save leaves the stored links untouched rather than orphaning them.
+        A failure rolls the whole save back and reloads the accounts, so the
+        merge that failed is dropped from memory as well as from storage.
         """
-        self._repository.set_aggregated_account_name(self.account.name)
-        for acc in self.accounts:
-            self._repository.upsert_account(acc)
-        for reconciliation in self._pending_reconciliations:
-            self._move_link(reconciliation)
+        try:
+            with self._repository.transaction():
+                self._repository.set_aggregated_account_name(self.account.name)
+                for acc in self.accounts:
+                    self._repository.upsert_account(acc)
+                for reconciliation in self._pending_reconciliations:
+                    self._move_link(reconciliation)
+        except Exception:
+            self._pending_reconciliations = ()
+            try:
+                self.reload()
+            except Exception:  # pylint: disable=broad-except
+                # Keep the save's error, the one worth reporting.
+                logger.exception("Reload after a failed save failed")
+            raise
         self._pending_reconciliations = ()
 
     def reload(self) -> None:

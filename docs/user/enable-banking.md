@@ -1,8 +1,8 @@
 # Enable Banking
 
 Enable Banking imports your transactions and account balance directly from your bank
-over Open Banking (PSD2), as an alternative to loading exported files. Once set up, a
-single `sync` command replaces the manual export-and-load routine.
+over Open Banking (PSD2), as an alternative to loading exported files. Once set up, the
+web app syncs on its own and replaces the manual export-and-load routine.
 
 The free "restricted production" tier is self-service (no business verification) and
 gives access to your own linked accounts only. It covers BNP Paribas and other French
@@ -63,11 +63,12 @@ what each key means and its default.
 
 ## Usage
 
-You link and renew a bank in the **web app**; two CLI commands cover the rest:
+You link, renew and sync a bank in the **web app**, which also syncs on its own once a
+day. Two CLI commands cover the rest:
 
 ```bash
-budget-forecaster sync            # import transactions and balance
 budget-forecaster consent-status  # show whether the consent is valid, expiring, or expired
+budget-forecaster sync            # import transactions and balance, web app stopped only
 ```
 
 ### Linking a bank
@@ -91,14 +92,19 @@ See the [web app guide](web-app.md) for how the flow looks on the connection pag
 
 ### Syncing
 
-`sync` reads the stored consent and imports transactions and the balance, so you never
-paste an account id by hand:
+A sync reads the stored consent and imports transactions and the balance, so you never
+paste an account id by hand. The web app syncs once a day on its own, and the **Sync
+now** button in Réglages syncs right away.
+
+The `sync` command does the same from a terminal, but only while the web app is stopped:
+the web app is the only process that writes the database while it runs, so the command
+refuses to start then.
 
 ```
 Synced bnp: 12 new, 320 duplicates skipped. Balance: 1543.20 EUR
 ```
 
-Re-running `sync` is safe. Already-imported operations are skipped, and operations that
+Re-running a sync is safe. Already-imported operations are skipped, and operations that
 overlap with a manual file import are reconciled rather than duplicated.
 
 When the account is declared in the `accounts` registry, its IBAN becomes its stable

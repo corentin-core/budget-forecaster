@@ -70,8 +70,10 @@ categorizes transactions, and generates balance forecasts.
 
 The **Presentation** layer provides user interfaces: a web app for interactive use and a
 CLI for scripted operations. Both delegate to **Services**, which orchestrate business
-logic. The CLI runs the `sync` command to pull transactions and balance from an API bank
-source into the local database.
+logic. The web app also syncs every connected API source once a day
+(`web/scheduled_sync.py`), since it is the only process writing the database while it
+runs: it holds a writer lock (`infrastructure/db_lock.py`) for its lifetime, and the CLI
+`sync` command refuses to start while that lock is held.
 
 The **Services** layer coordinates domain objects and implements use cases.
 `ApplicationService` is a thin facade that delegates orchestration to focused use cases:
@@ -84,9 +86,10 @@ The **Services** layer coordinates domain objects and implements use cases.
 - `ComputeForecastUseCase`: Forecast report computation
 - `MatcherCache`: Shared lazy-loaded cache of operation matchers
 
-The `sync` CLI command uses `SyncUseCase` directly (outside `ApplicationService`): it
-fetches operations and balance from an API bank source, merges them through the same
-deduplicating path as file import, then creates heuristic links.
+Syncs use `SyncUseCase` directly (outside `ApplicationService`): it fetches operations
+and balance from an API bank source, merges them through the same deduplicating path as
+file import, then creates heuristic links. Every save runs in one SQLite transaction
+(`SqliteRepository.transaction`), so a failure stores nothing of it.
 
 Lower-level services handle specific concerns:
 

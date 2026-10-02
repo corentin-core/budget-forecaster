@@ -10,7 +10,7 @@ from typing import NamedTuple
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse, Response
 
-from budget_forecaster.core.types import SyncRun, SyncRunStatus, SyncSource
+from budget_forecaster.core.types import SyncRun, SyncSource
 from budget_forecaster.exceptions import (
     BackupError,
     BudgetForecasterError,
@@ -28,11 +28,9 @@ from budget_forecaster.infrastructure.bank_sources.enable_banking.consent import
 from budget_forecaster.infrastructure.bank_sources.enable_banking.consent_service import (
     ConsentService,
 )
-from budget_forecaster.infrastructure.bank_sources.swile_oauth.client import SwileClient
 from budget_forecaster.infrastructure.bank_sources.swile_oauth.token_store import (
     SwileTokenStore,
 )
-from budget_forecaster.infrastructure.bank_sources.sync_all import sync_all_sources
 from budget_forecaster.infrastructure.config import Config
 from budget_forecaster.infrastructure.persistence.repository_interface import (
     RepositoryInterface,
@@ -42,6 +40,7 @@ from budget_forecaster.infrastructure.persistence.sqlite_repository import (
 )
 from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.services.import_service import ImportResult
+from budget_forecaster.web import scheduled_sync
 from budget_forecaster.web.backup_flash import (
     BackupFlash,
     clear_backup_flash,
@@ -54,7 +53,6 @@ from budget_forecaster.web.dependencies import (
     get_config,
     get_consent_service,
     get_repository,
-    get_swile_client,
     get_swile_token_store,
     refresh_forecast,
 )
@@ -151,27 +149,9 @@ async def settings(
 
 
 @router.post("/settings/sync")
-async def sync_now(
-    app: ApplicationService = Depends(get_app_service),
-    consent_service: ConsentService | None = Depends(get_consent_service),
-    repository: RepositoryInterface = Depends(get_repository),
-    config: Config = Depends(get_config),
-    swile_token_store: SwileTokenStore = Depends(get_swile_token_store),
-    swile_client: SwileClient = Depends(get_swile_client),
-) -> Response:
-    """Sync every connected source, then refresh the cached account and forecast once.
-
-    The sync does blocking network I/O on the event-loop thread (the shared SQLite
-    connection is bound to it, so it can't be offloaded). A slow source stalls other
-    requests for its duration — acceptable at personal scale, manual and rare. Reload
-    only when at least one source succeeded, so reload_account tolerates an empty DB.
-    """
-    runs = sync_all_sources(
-        repository, config, consent_service, swile_token_store, swile_client
-    )
-    if any(run.status is SyncRunStatus.OK for run in runs):
-        app.reload_account()
-        refresh_forecast(app)
+async def sync_now(request: Request) -> Response:
+    """Sync every connected source, then refresh the cached account and forecast."""
+    scheduled_sync.sync_and_refresh(request.app.state)
     return RedirectResponse(url="/settings", status_code=303)
 
 
@@ -374,7 +354,7 @@ async def restore_backup(
     """Restore a backup, snapshotting current data first, then reload the app.
 
     Closes the shared connection before the swap so the reopen reads the
-    restored file. Uses a non-blocking lock: if the daily sync holds it, fail
+    restored file. Uses a non-blocking lock: if another process holds it, fail
     fast with a retry message rather than hanging the request.
     """
     form = await request.form()
