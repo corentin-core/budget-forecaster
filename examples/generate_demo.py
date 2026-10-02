@@ -61,16 +61,13 @@ M_MINUS_3 = BASE - relativedelta(months=3)
 M_MINUS_2 = BASE - relativedelta(months=2)
 M_MINUS_1 = BASE - relativedelta(months=1)
 M_CURRENT = BASE
-BALANCE_DATE = M_MINUS_1 - timedelta(days=1) + relativedelta(months=1)  # last day M-1
+BALANCE_DATE = BASE - timedelta(days=1)  # last day M-1
 
 
 # ---------------------------------------------------------------------------
 # Unique ID counter
 # ---------------------------------------------------------------------------
-_id_counter = itertools.count(1)
-
-
-ID_COUNTER = _id_counter
+ID_COUNTER = itertools.count(1)
 
 
 # ---------------------------------------------------------------------------
@@ -924,8 +921,11 @@ def generate_demo_db(
         account_name: Name for the aggregated account.
         seed: Random seed for reproducibility.
     """
+    global ID_COUNTER  # pylint: disable=global-statement
     if seed is not None:
         random.seed(seed)
+    # Restart ids so a second database in the same process starts at 1 too.
+    ID_COUNTER = itertools.count(1)
     repo = SqliteRepository(db_path)
     repo.initialize()
     repo.set_aggregated_account_name(account_name)
