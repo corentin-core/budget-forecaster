@@ -53,7 +53,6 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -e ".[dev]"
-          pip install pylint pylint-pytest pyenchant
       - name: Run pylint
         run: pylint budget_forecaster/ --rcfile=.pylintrc --load-plugins=pylint_pytest
 
