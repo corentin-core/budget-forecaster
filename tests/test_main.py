@@ -13,6 +13,7 @@ from budget_forecaster.infrastructure.bank_sources.swile_oauth import (
 from budget_forecaster.infrastructure.bank_sources.swile_oauth.token_store import (
     SwileTokenStore,
 )
+from budget_forecaster.infrastructure.db_lock import writer_lock
 from budget_forecaster.infrastructure.persistence.sqlite_repository import (
     SqliteRepository,
 )
@@ -75,7 +76,7 @@ def test_sync_syncs_swile_from_cli(
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """With a web secret key and a stored token, the CLI syncs Swile (the timer path)."""
+    """With a web secret key and a stored token, the CLI syncs Swile too."""
     key = "cli-swile-secret"
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     monkeypatch.setenv("BUDGET_WEB_SECRET_KEY", key)
@@ -111,6 +112,20 @@ def test_sync_exits_when_a_source_failed(
     with pytest.raises(SystemExit) as exc_info:
         _run_cli_sync(tmp_path, monkeypatch)
     assert exc_info.value.code == 1
+
+
+def test_sync_refuses_while_the_web_app_runs(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The web app holds the writer lock: the command exits before opening the DB."""
+    with writer_lock(tmp_path / "x.db"):
+        with pytest.raises(SystemExit) as exc_info:
+            _run_cli_sync(tmp_path, monkeypatch)
+    assert exc_info.value.code == 1
+    assert "web app is running" in capsys.readouterr().err
+    assert not (tmp_path / "x.db").exists()
 
 
 def test_hash_password_prints_verifiable_hash(

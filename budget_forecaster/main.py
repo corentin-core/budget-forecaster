@@ -5,9 +5,11 @@ import getpass
 import logging
 import os
 import sys
+from contextlib import ExitStack
 from pathlib import Path
 
 from budget_forecaster.core.types import SyncRun, SyncRunStatus, SyncSource
+from budget_forecaster.exceptions import DatabaseBusyError
 from budget_forecaster.infrastructure.bank_sources.enable_banking.client import (
     EnableBankingClient,
 )
@@ -23,7 +25,7 @@ from budget_forecaster.infrastructure.bank_sources.swile_oauth.token_store impor
 from budget_forecaster.infrastructure.bank_sources.sync_all import sync_all_sources
 from budget_forecaster.infrastructure.bootstrap import open_repository
 from budget_forecaster.infrastructure.config import Config, EnableBankingConfig
-from budget_forecaster.infrastructure.db_lock import database_lock
+from budget_forecaster.infrastructure.db_lock import database_lock, writer_lock
 from budget_forecaster.web.auth import hash_password
 from budget_forecaster.web.config import ENV_SECRET_KEY
 
@@ -109,9 +111,20 @@ def _run_sync(config_path: Path) -> None:
     consent_service = _consent_service(config)
     swile_token_store = _swile_token_store(config)
 
-    # Hold the lock for the whole session so a web-app restore cannot swap the
-    # database file while this process has it open.
-    with database_lock(config.database_path):
+    with ExitStack() as locks:
+        # A second writer would save over changes the web app never loaded.
+        try:
+            locks.enter_context(writer_lock(config.database_path, blocking=False))
+        except DatabaseBusyError:
+            print(
+                "The web app is running and syncs on its own; "
+                "use its Sync button instead.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        # Hold the lock for the whole session so a web-app restore cannot swap
+        # the database file while this process has it open.
+        locks.enter_context(database_lock(config.database_path))
         repository = open_repository(config)
         try:
             runs = sync_all_sources(
@@ -173,7 +186,9 @@ def main() -> None:
         default=default_config_path,
     )
     subparsers = parser.add_subparsers(dest="command")
-    subparsers.add_parser("sync", help="Sync a linked bank account via Enable Banking")
+    subparsers.add_parser(
+        "sync", help="Sync every connected source while the web app is stopped"
+    )
     subparsers.add_parser(
         "consent-status", help="Show the Enable Banking consent status and expiry"
     )

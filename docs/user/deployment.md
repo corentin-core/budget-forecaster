@@ -1,7 +1,8 @@
 # Deployment
 
 How to run the [web app](web-app.md) as a background service, reachable from your phone
-and other PCs over your private Tailscale network, with the bank sync on a daily timer.
+and other PCs over your private Tailscale network, syncing every connected source once a
+day.
 
 The app binds to `127.0.0.1` only and is never exposed to the public internet: Tailscale
 is the sole entry point, and it terminates HTTPS with a valid certificate for your
@@ -91,15 +92,22 @@ Install the units as user services (no root; they run under your account):
 
 ```bash
 mkdir -p ~/.config/systemd/user
-cp deploy/systemd/budget-web.service deploy/systemd/budget-sync.service deploy/systemd/budget-sync.timer ~/.config/systemd/user/
+cp deploy/systemd/budget-web.service ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now budget-web.service
-systemctl --user enable --now budget-sync.timer
 ```
 
-The daily timer syncs every connected source. It reads `service.env`, so keep
-`BUDGET_WEB_SECRET_KEY` there (the same key the web app uses) for Swile to sync too;
-without it the timer syncs only the bank.
+The web app syncs every connected source itself: at startup when the last sync is a day
+old, then once a day. It is the only process that writes the database, so while it runs
+the `sync` command refuses to start; use the **Sync now** button instead.
+
+If you set up an earlier version, remove the old sync timer:
+
+```bash
+systemctl --user disable --now budget-sync.timer
+rm ~/.config/systemd/user/budget-sync.service ~/.config/systemd/user/budget-sync.timer
+systemctl --user daemon-reload
+```
 
 Let the services keep running after you log out, and start on boot:
 
@@ -112,7 +120,6 @@ Check status and logs:
 ```bash
 systemctl --user status budget-web.service
 journalctl --user -u budget-web.service -f
-systemctl --user list-timers budget-sync.timer
 ```
 
 ### 5. Bank callback
@@ -201,8 +208,8 @@ Install WSL2 with a recent Ubuntu, then:
    tailscale serve --bg http://localhost:8000
    ```
 
-The app and the sync timer still run under systemd inside WSL; only the tailnet entry
-point moves to Windows. Follow the common setup for everything except step 3
-(Tailscale), which the above replaces. Where the common setup writes `<node>` (bank
-callback, Access), use the reclaimed hostname above — the whole point of reclaiming it
-is that `<node>` stays the same after moving to Windows.
+The app still runs under systemd inside WSL; only the tailnet entry point moves to
+Windows. Follow the common setup for everything except step 3 (Tailscale), which the
+above replaces. Where the common setup writes `<node>` (bank callback, Access), use the
+reclaimed hostname above — the whole point of reclaiming it is that `<node>` stays the
+same after moving to Windows.

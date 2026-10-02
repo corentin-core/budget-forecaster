@@ -1,9 +1,12 @@
-"""Tests for the cross-process database lock."""
+"""Tests for the cross-process database and writer locks."""
 
 import fcntl
 from pathlib import Path
 
-from budget_forecaster.infrastructure.db_lock import database_lock
+import pytest
+
+from budget_forecaster.exceptions import DatabaseBusyError
+from budget_forecaster.infrastructure.db_lock import database_lock, writer_lock
 
 
 def _try_lock(path: Path) -> bool:
@@ -45,3 +48,20 @@ class TestDatabaseLock:
         with database_lock(db_path):
             pass
         assert (tmp_path / "nested" / "budget.db.lock").exists()
+
+
+class TestWriterLock:
+    """The writer lock is exclusive and independent from the database lock."""
+
+    def test_second_writer_is_refused(self, tmp_path: Path) -> None:
+        """A non-blocking second writer fails while the first holds the lock."""
+        db_path = tmp_path / "budget.db"
+        with writer_lock(db_path):
+            with pytest.raises(DatabaseBusyError), writer_lock(db_path, blocking=False):
+                pass
+
+    def test_independent_from_database_lock(self, tmp_path: Path) -> None:
+        """Holding the writer lock leaves the database lock free for a restore."""
+        db_path = tmp_path / "budget.db"
+        with writer_lock(db_path):
+            assert _try_lock(tmp_path / "budget.db.lock") is True

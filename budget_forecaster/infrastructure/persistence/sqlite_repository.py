@@ -3,12 +3,14 @@
 # pylint: disable=too-many-arguments,too-many-positional-arguments
 # pylint: disable=too-many-public-methods
 
+import functools
 import json
 import logging
 import sqlite3
+from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Iterable, Self
+from typing import Callable, Concatenate, Iterable, Iterator, ParamSpec, Self, TypeVar
 
 from dateutil.relativedelta import relativedelta
 
@@ -52,6 +54,22 @@ from budget_forecaster.infrastructure.persistence.repository_interface import (
 
 logger = logging.getLogger(__name__)
 
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def _atomic(
+    method: Callable[Concatenate["SqliteRepository", P], R]
+) -> Callable[Concatenate["SqliteRepository", P], R]:
+    """Run the repository method inside a transaction."""
+
+    @functools.wraps(method)
+    def wrapper(self: "SqliteRepository", *args: P.args, **kwargs: P.kwargs) -> R:
+        with self.transaction():
+            return method(self, *args, **kwargs)
+
+    return wrapper
+
 
 class SqliteRepository(RepositoryInterface):
     """Repository for persisting account data in SQLite."""
@@ -59,6 +77,7 @@ class SqliteRepository(RepositoryInterface):
     def __init__(self, db_path: Path) -> None:
         self._db_path = db_path
         self._connection: sqlite3.Connection | None = None
+        self._transaction_depth = 0
 
     def _get_connection(self) -> sqlite3.Connection:
         """Get or create a database connection."""
@@ -66,6 +85,29 @@ class SqliteRepository(RepositoryInterface):
             self._connection = sqlite3.connect(self._db_path)
             self._connection.row_factory = sqlite3.Row
         return self._connection
+
+    @contextmanager
+    def transaction(self) -> Iterator[None]:
+        """Run the block's writes as one transaction, rolled back on any error.
+
+        Every writing method runs in one, so a write that fails midway never
+        leaves half of it stored. Nested blocks join the outermost one: an error
+        caught inside the outer block does not undo the inner block's writes.
+        """
+        conn = self._get_connection()
+        if outermost := self._transaction_depth == 0:
+            conn.execute("BEGIN IMMEDIATE")
+        self._transaction_depth += 1
+        try:
+            yield
+            if outermost:
+                conn.commit()
+        except BaseException:
+            if outermost:
+                conn.rollback()
+            raise
+        finally:
+            self._transaction_depth -= 1
 
     def _get_schema_version(self) -> int:
         """Get the current schema version from the database."""
@@ -136,6 +178,7 @@ class SqliteRepository(RepositoryInterface):
         row = cursor.fetchone()
         return row["name"] if row else None
 
+    @_atomic
     def set_aggregated_account_name(self, name: str) -> None:
         """Set or update the aggregated account name."""
         conn = self._get_connection()
@@ -143,7 +186,6 @@ class SqliteRepository(RepositoryInterface):
             conn.execute("INSERT INTO aggregated_accounts (name) VALUES (?)", (name,))
         else:
             conn.execute("UPDATE aggregated_accounts SET name = ?", (name,))
-        conn.commit()
 
     # Account methods
 
@@ -196,6 +238,7 @@ class SqliteRepository(RepositoryInterface):
         row = cursor.fetchone()
         return row["id"] if row else None
 
+    @_atomic
     def upsert_account(self, account: Account) -> None:
         """Insert or update an account."""
         conn = self._get_connection()
@@ -242,7 +285,6 @@ class SqliteRepository(RepositoryInterface):
 
         # Insert operations
         self._insert_operations(account_id, account.operations)
-        conn.commit()
 
     def _insert_operations(
         self, account_id: int, operations: Iterable[HistoricOperation]
@@ -293,6 +335,7 @@ class SqliteRepository(RepositoryInterface):
 
     # Operation methods
 
+    @_atomic
     def update_operation(self, operation: HistoricOperation) -> None:
         """Update a single operation."""
         conn = self._get_connection()
@@ -309,7 +352,6 @@ class SqliteRepository(RepositoryInterface):
                 operation.unique_id,
             ),
         )
-        conn.commit()
 
     def operation_exists(self, unique_id: int) -> bool:
         """Check if an operation exists."""
@@ -344,6 +386,7 @@ class SqliteRepository(RepositoryInterface):
             raise BudgetNotFoundError(budget_id)
         return self._row_to_budget(row)
 
+    @_atomic
     def upsert_budget(self, budget: Budget) -> int:
         """Insert or update a budget. Returns the budget id."""
         conn = self._get_connection()
@@ -370,7 +413,6 @@ class SqliteRepository(RepositoryInterface):
                     budget.id,
                 ),
             )
-            conn.commit()
             return budget.id
         # Insert new
         cursor = conn.execute(
@@ -391,16 +433,15 @@ class SqliteRepository(RepositoryInterface):
                 date_range_data["end_date"],
             ),
         )
-        conn.commit()
         if cursor.lastrowid is None:
             raise PersistenceError("Failed to insert budget")
         return cursor.lastrowid
 
+    @_atomic
     def delete_budget(self, budget_id: int) -> None:
         """Delete a budget."""
         conn = self._get_connection()
         conn.execute("DELETE FROM budgets WHERE id = ?", (budget_id,))
-        conn.commit()
 
     def _row_to_budget(self, row: sqlite3.Row) -> Budget:
         """Convert a database row to a Budget object."""
@@ -447,6 +488,7 @@ class SqliteRepository(RepositoryInterface):
             raise PlannedOperationNotFoundError(op_id)
         return self._row_to_planned_operation(row)
 
+    @_atomic
     def upsert_planned_operation(self, op: PlannedOperation) -> int:
         """Insert or update a planned operation. Returns the operation id."""
         conn = self._get_connection()
@@ -481,7 +523,6 @@ class SqliteRepository(RepositoryInterface):
                     op.id,
                 ),
             )
-            conn.commit()
             return op.id
         # Insert new
         cursor = conn.execute(
@@ -503,11 +544,11 @@ class SqliteRepository(RepositoryInterface):
                 op.matcher.approximation_amount_ratio,
             ),
         )
-        conn.commit()
         if cursor.lastrowid is None:
             raise PersistenceError("Failed to insert planned operation")
         return cursor.lastrowid
 
+    @_atomic
     def delete_planned_operation(self, op_id: int) -> None:
         """Delete a planned operation and the iteration decisions taken on it."""
         conn = self._get_connection()
@@ -517,7 +558,6 @@ class SqliteRepository(RepositoryInterface):
             "DELETE FROM iteration_resolutions WHERE planned_operation_id = ?", (op_id,)
         )
         conn.execute("DELETE FROM planned_operations WHERE id = ?", (op_id,))
-        conn.commit()
 
     def _row_to_planned_operation(self, row: sqlite3.Row) -> PlannedOperation:
         """Convert a database row to a PlannedOperation object."""
@@ -726,6 +766,7 @@ class SqliteRepository(RepositoryInterface):
         )
         return tuple(self._row_to_operation_link(row) for row in cursor.fetchall())
 
+    @_atomic
     def upsert_link(self, link: OperationLink) -> None:
         """Insert or update a link, preserving the id on update."""
         conn = self._get_connection()
@@ -748,8 +789,8 @@ class SqliteRepository(RepositoryInterface):
                 link.notes,
             ),
         )
-        conn.commit()
 
+    @_atomic
     def delete_link(self, operation_unique_id: OperationId) -> None:
         """Delete the link for an operation."""
         conn = self._get_connection()
@@ -757,8 +798,8 @@ class SqliteRepository(RepositoryInterface):
             "DELETE FROM operation_links WHERE operation_unique_id = ?",
             (operation_unique_id,),
         )
-        conn.commit()
 
+    @_atomic
     def delete_automatic_links_for_target(
         self, target_type: LinkType, target_id: TargetId
     ) -> None:
@@ -769,8 +810,8 @@ class SqliteRepository(RepositoryInterface):
                WHERE target_type = ? AND target_id = ? AND is_manual = FALSE""",
             (target_type, target_id),
         )
-        conn.commit()
 
+    @_atomic
     def delete_links_for_target(
         self, target_type: LinkType, target_id: TargetId
     ) -> None:
@@ -781,7 +822,6 @@ class SqliteRepository(RepositoryInterface):
                WHERE target_type = ? AND target_id = ?""",
             (target_type, target_id),
         )
-        conn.commit()
 
     # Settings methods
 
@@ -799,6 +839,7 @@ class SqliteRepository(RepositoryInterface):
         row = cursor.fetchone()
         return row["value"] if row else None
 
+    @_atomic
     def set_setting(self, key: str, value: str) -> None:
         """Set a setting value (insert or update).
 
@@ -811,10 +852,10 @@ class SqliteRepository(RepositoryInterface):
             "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
             (key, value),
         )
-        conn.commit()
 
     # Sync-run methods
 
+    @_atomic
     def add_sync_run(self, run: SyncRun) -> None:
         """Record one bank-sync run (success or failure)."""
         conn = self._get_connection()
@@ -832,7 +873,6 @@ class SqliteRepository(RepositoryInterface):
                 run.source.value,
             ),
         )
-        conn.commit()
 
     def get_recent_sync_runs(
         self, limit: int, source: SyncSource | None = None
@@ -865,6 +905,7 @@ class SqliteRepository(RepositoryInterface):
 
     # Iteration resolution methods
 
+    @_atomic
     def upsert_iteration_resolution(self, resolution: IterationResolution) -> None:
         """Store the decision about an iteration, replacing any previous one."""
         conn = self._get_connection()
@@ -889,7 +930,6 @@ class SqliteRepository(RepositoryInterface):
                 (resolution.decided_at or datetime.now(timezone.utc)).isoformat(),
             ),
         )
-        conn.commit()
 
     def get_iteration_resolutions(
         self, planned_operation_id: int | None = None
@@ -923,6 +963,7 @@ class SqliteRepository(RepositoryInterface):
             for row in cursor.fetchall()
         )
 
+    @_atomic
     def delete_iteration_resolution(
         self, planned_operation_id: int, iteration_date: date
     ) -> None:
@@ -933,7 +974,6 @@ class SqliteRepository(RepositoryInterface):
             "WHERE planned_operation_id = ? AND iteration_date = ?",
             (planned_operation_id, iteration_date.isoformat()),
         )
-        conn.commit()
 
     # Private helpers
 

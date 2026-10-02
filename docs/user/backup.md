@@ -90,9 +90,6 @@ After a successful restore, an **Undo** button restores that safety copy, return
 the state you had just before. Undo is a single step: once used, the safety copy is
 consumed and no further undo is offered.
 
-If the daily sync happens to be running, a restore reports that a sync is in progress —
-wait a moment and try again.
-
 ### Manual restore (fallback)
 
 You can still restore by hand if the app is not running:
