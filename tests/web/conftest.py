@@ -1,4 +1,4 @@
-"""Fixtures for the web layer: a real app over a copy of the demo database."""
+"""Fixtures for the web layer: a real app over a copy of a fresh demo database."""
 
 import shutil
 from collections.abc import Iterator
@@ -11,9 +11,21 @@ from fastapi.testclient import TestClient
 from budget_forecaster.i18n import setup_i18n
 from budget_forecaster.web.app import create_app
 from budget_forecaster.web.auth import hash_password
+from examples.generate_demo import generate_demo_db
 
 PASSWORD = "test-pass"
-_DEMO_DB = Path(__file__).resolve().parents[2] / "examples" / "demo.db"
+
+
+@pytest.fixture(name="demo_db", scope="session")
+def demo_db_fixture(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """Generate the demo database once per run, dated relative to today.
+
+    The committed examples/demo.db is dated from the day it was generated, so
+    pages that compare its operations with today drift as it ages.
+    """
+    path = tmp_path_factory.mktemp("demo") / "demo.db"
+    generate_demo_db(path, seed=42)
+    return path
 
 
 @pytest.fixture(autouse=True)
@@ -25,7 +37,9 @@ def _restore_i18n() -> Iterator[None]:
 
 
 @pytest.fixture(name="config_path")
-def config_path_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+def config_path_fixture(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, demo_db: Path
+) -> Path:
     """Write a config pointing at a private copy of the demo database.
 
     Secrets go in the config file, so env vars must not leak in and win.
@@ -38,7 +52,7 @@ def config_path_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path
     # user state dir (the app resolves both from XDG_STATE_HOME).
     monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "state"))
     database = tmp_path / "demo.db"
-    shutil.copy(_DEMO_DB, database)
+    shutil.copy(demo_db, database)
     config = tmp_path / "config.yaml"
     config.write_text(
         f"database_path: {database}\n"

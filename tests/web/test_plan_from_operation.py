@@ -10,6 +10,7 @@ from datetime import date
 from typing import NamedTuple
 
 import pytest
+from dateutil.relativedelta import relativedelta
 from fastapi.testclient import TestClient
 
 
@@ -160,7 +161,8 @@ class TestSeededForm:
         self, client: TestClient
     ) -> None:
         """Months of occurrences with nothing to match them land on Accueil."""
-        old = _unlinked(client, date_to="2026-04-30")
+        two_months_ago = date.today() - relativedelta(months=2)
+        old = _unlinked(client, date_to=two_months_ago.isoformat())
         assert "apparaîtront en retard" in _seeded_page(client, old)
 
     def test_says_nothing_about_lateness_for_a_recent_operation(
