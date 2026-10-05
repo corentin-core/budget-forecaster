@@ -813,3 +813,86 @@ class TestUpsertResolution:
         assert len(agg.accounts) == 1
         assert agg.accounts[0].external_id == "FR76"
         assert len(agg.accounts[0].operations) == 1
+
+
+_V4_REF = "3f2a9c1e-5b7d-4ade-b7ec-2218df32ede5"
+_V7_REF = "019f6a2b-8c3d-7ade-b7ec-2218df32ede5"
+
+
+class TestRenumberedSourceRef:
+    """A source moving a transaction from a UUIDv4 to a UUIDv7 id keeps one op."""
+
+    @staticmethod
+    def _sync(
+        existing: HistoricOperation, incoming: HistoricOperation
+    ) -> tuple[HistoricOperation, ...]:
+        params = AccountParameters(
+            name="Swile",
+            balance=None,
+            currency="EUR",
+            balance_date=date(2026, 8, 31),
+            operations=(incoming,),
+        )
+        current = _make_account(name="Swile", operations=(existing,))
+        return AggregatedAccount.update_account(current, params).account.operations
+
+    def test_existing_op_adopts_the_new_id(self) -> None:
+        """The categorized op stays and carries the v7 id; no copy is added."""
+        existing = _make_operation(
+            1, "PICARD", -14.2, date(2026, 8, 3), Category.GROCERIES, source_ref=_V4_REF
+        )
+        incoming = _make_operation(
+            2, "PICARD", -14.2, date(2026, 8, 3), source_ref=_V7_REF
+        )
+
+        (kept,) = self._sync(existing, incoming)
+
+        assert (kept.unique_id, kept.category, kept.source_ref) == (
+            1,
+            Category.GROCERIES,
+            _V7_REF,
+        )
+
+    @pytest.mark.parametrize(
+        ("amount", "operation_date"),
+        [(-14.3, date(2026, 8, 3)), (-14.2, date(2026, 8, 4))],
+        ids=["other amount", "other date"],
+    )
+    def test_same_tail_on_another_transaction_is_kept(
+        self, amount: float, operation_date: date
+    ) -> None:
+        """A shared tail alone never merges two transactions."""
+        existing = _make_operation(
+            1, "PICARD", -14.2, date(2026, 8, 3), source_ref=_V4_REF
+        )
+        incoming = _make_operation(
+            2, "PICARD", amount, operation_date, source_ref=_V7_REF
+        )
+
+        assert len(self._sync(existing, incoming)) == 2
+
+    def test_same_day_same_amount_transactions_stay_distinct(self) -> None:
+        """Two genuine purchases differ by tail, so both are kept."""
+        existing = _make_operation(
+            1, "PICARD", -14.2, date(2026, 8, 3), source_ref=_V4_REF
+        )
+        incoming = _make_operation(
+            2,
+            "PICARD",
+            -14.2,
+            date(2026, 8, 3),
+            source_ref="019f6a2b-8c3d-7bcd-a111-000000000001",
+        )
+
+        assert len(self._sync(existing, incoming)) == 2
+
+    def test_non_uuid_refs_are_not_matched_by_tail(self) -> None:
+        """Opaque refs sharing a suffix are distinct transactions."""
+        existing = _make_operation(
+            1, "CB", -3.5, date(2026, 8, 3), source_ref="2026080300001-ab12"
+        )
+        incoming = _make_operation(
+            2, "CB", -3.5, date(2026, 8, 3), source_ref="2026080300002-ab12"
+        )
+
+        assert len(self._sync(existing, incoming)) == 2

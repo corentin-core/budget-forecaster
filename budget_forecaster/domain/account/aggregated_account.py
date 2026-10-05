@@ -7,6 +7,7 @@ from budget_forecaster.core.types import Category, ImportStats, OperationId
 from budget_forecaster.domain.account.account import Account, AccountParameters
 from budget_forecaster.domain.operation import cross_source
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.domain.operation.transaction_key import transaction_key
 
 
 class Reconciliation(NamedTuple):
@@ -40,12 +41,60 @@ def _is_cross_source_duplicate(
     )
 
 
-def _matches_known_ref(operation: HistoricOperation, existing_refs: set[str]) -> bool:
-    """Whether the op's reference or content ref already exists (exact dedup)."""
-    keys = {operation.content_ref}
-    if operation.source_ref is not None:
-        keys.add(operation.source_ref)
-    return not keys.isdisjoint(existing_refs)
+class _KnownOps:
+    """The existing ops, looked up by exact ref and by transaction key."""
+
+    def __init__(self, existing: tuple[HistoricOperation, ...]) -> None:
+        self._existing = existing
+        self._refs = {op.source_ref or op.content_ref for op in existing}
+        self._by_key = {
+            key: index
+            for index, op in enumerate(existing)
+            if op.source_ref is not None
+            and (key := transaction_key(op.source_ref)) is not None
+        }
+
+    def matches_ref(self, operation: HistoricOperation) -> bool:
+        """Whether the op's reference or content ref already exists (exact dedup)."""
+        keys = {operation.content_ref}
+        if operation.source_ref is not None:
+            keys.add(operation.source_ref)
+        return not keys.isdisjoint(self._refs)
+
+    def adopt_renumbered_id(
+        self,
+        operation: HistoricOperation,
+        replacements: dict[int, HistoricOperation],
+    ) -> bool:
+        """Give the op's new id to its renumbered twin, so later syncs match exactly.
+
+        Returns whether a twin was found, i.e. the incoming op is a duplicate.
+        """
+        if (index := self._renumbered_twin(operation)) is None:
+            return False
+        twin = replacements.get(index, self._existing[index])
+        replacements[index] = twin.replace(source_ref=operation.source_ref)
+        return True
+
+    def _renumbered_twin(self, operation: HistoricOperation) -> int | None:
+        """Index of the existing op the source renumbered into this one, if any.
+
+        Same transaction key, date and amount: a key alone is not trusted to merge.
+        """
+        if operation.source_ref is None:
+            return None
+        if (key := transaction_key(operation.source_ref)) is None:
+            return None
+        if (index := self._by_key.get(key)) is None:
+            return None
+        twin = self._existing[index]
+        if twin.operation_date != operation.operation_date:
+            return None
+        if cross_source.amount_cents(twin.amount) != cross_source.amount_cents(
+            operation.amount
+        ):
+            return None
+        return index
 
 
 def _reconcile_rank(
@@ -156,10 +205,12 @@ class AggregatedAccount:
         amount and date. A reconciled pair keeps the API op (dropping the file
         op) and the API op adopts the file's category. Cross-source matching is
         one-to-one, so distinct transactions sharing an amount and date are not
-        collapsed. Incoming ops are processed in (date, id) order so an
-        ambiguous cluster resolves the same way as the purge migration.
+        collapsed. An op the source renumbered (UUIDv4 to v7, same tail) is the
+        existing op, which adopts the new id. Incoming ops are processed in
+        (date, id) order so an ambiguous cluster resolves the same way as the
+        purge migration.
         """
-        existing_refs = {op.source_ref or op.content_ref for op in existing}
+        known = _KnownOps(existing)
         reconciled: set[int] = set()
         replacements: dict[int, HistoricOperation] = {}
         dropped: set[int] = set()
@@ -170,7 +221,9 @@ class AggregatedAccount:
         for operation in sorted(
             incoming, key=lambda op: (op.operation_date, op.unique_id)
         ):
-            if _matches_known_ref(operation, existing_refs):
+            if known.matches_ref(operation):
+                continue
+            if known.adopt_renumbered_id(operation, replacements):
                 continue
             candidates = [
                 index
@@ -187,7 +240,7 @@ class AggregatedAccount:
                 key=partial(_reconcile_rank, operation.operation_date, existing),
             )
             reconciled.add(match_index)
-            existing_op = existing[match_index]
+            existing_op = replacements.get(match_index, existing[match_index])
             if existing_op.source_ref is not None:
                 # Existing op is the API record we keep; the incoming file copy
                 # only lends its category.
