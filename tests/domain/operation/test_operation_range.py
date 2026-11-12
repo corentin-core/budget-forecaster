@@ -33,6 +33,19 @@ class TestOperationRange:
             == 100.0
         )
 
+    def test_amount_on_period_inside_a_longer_period(self) -> None:
+        """A month inside a three-month period gets only its own days."""
+        quarter = OperationRange(
+            "Quarter",
+            Amount(-920, "EUR"),
+            Category.LEISURE,
+            DateRange(date(2025, 7, 1), relativedelta(months=3)),
+        )
+
+        assert quarter.amount_on_period(
+            date(2025, 8, 1), date(2025, 8, 31)
+        ) == pytest.approx(-920 * 31 / 92)
+
     def test_amount_on_period_partial_period(
         self, operation_range: OperationRange
     ) -> None:

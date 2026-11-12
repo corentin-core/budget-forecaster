@@ -8,7 +8,7 @@ into the period it is linked to.
 
 from datetime import date
 
-from budget_forecaster.core.types import LinkType
+from budget_forecaster.core.types import IterationDate, LinkType
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.operation_link import OperationLink
 
@@ -39,3 +39,13 @@ def linked_month(
         return operation_date.replace(day=1)
     clamped = min(max(operation_date, period.start_date), period.last_date)
     return clamped.replace(day=1)
+
+
+def budget_period_start(budget: Budget, iteration_date: IterationDate) -> IterationDate:
+    """Return the start of the budget period holding a link's iteration date.
+
+    A manual link keeps its iteration date when the budget is edited, so the date
+    may no longer be a period start.
+    """
+    period = budget.date_range.current_date_range(iteration_date)
+    return period.start_date if period is not None else iteration_date

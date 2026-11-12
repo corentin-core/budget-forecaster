@@ -26,7 +26,10 @@ from budget_forecaster.core.types import (
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.iteration_resolution import IterationResolution
-from budget_forecaster.domain.operation.link_attribution import linked_month
+from budget_forecaster.domain.operation.link_attribution import (
+    budget_period_start,
+    linked_month,
+)
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.services.account.account_analysis_report import (
     AccountAnalysisReport,
@@ -252,8 +255,17 @@ class AccountAnalyzer:
                         link.iteration_date
                     )
                 case LinkType.BUDGET:
+                    budget = next(
+                        (b for b in self._forecast.budgets if b.id == link.target_id),
+                        None,
+                    )
+                    period_start = (
+                        budget_period_start(budget, link.iteration_date)
+                        if budget is not None
+                        else link.iteration_date
+                    )
                     budget_linked_amounts[
-                        link.target_id, link.iteration_date
+                        link.target_id, period_start
                     ] += operation.amount
 
         return _LinkIndexes(
@@ -387,7 +399,8 @@ class AccountAnalyzer:
         for budget in self._forecast.budgets:
             if budget.id is None:
                 continue
-            for period in budget.date_range.iterate_over_date_ranges(report_start):
+            # From the first period: one longer than the recurrence still covers later months
+            for period in budget.date_range.iterate_over_date_ranges():
                 if period.is_expired(report_start):
                     continue
                 if period.is_future(report_end):

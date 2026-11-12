@@ -18,6 +18,7 @@ from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.iteration_resolution import IterationResolution
+from budget_forecaster.domain.operation.link_attribution import budget_period_start
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.services.forecast.iteration_lifecycle import (
@@ -99,7 +100,13 @@ class ForecastActualizer:  # pylint: disable=too-few-public-methods
         """Get operation IDs linked to a budget for a specific iteration."""
         if budget.id is None:
             return set()
-        return self._linked_op_ids.get((budget.id, iteration_date), set())
+        return {
+            op_id
+            for (budget_id, linked_date), op_ids in self._linked_op_ids.items()
+            if budget_id == budget.id
+            and budget_period_start(budget, linked_date) == iteration_date
+            for op_id in op_ids
+        }
 
     def _get_past_iterations(
         self,

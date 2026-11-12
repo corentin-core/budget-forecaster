@@ -137,14 +137,10 @@ class OperationRange(OperationRangeInterface):
                 continue
 
             amount_per_day = self.amount / dr.total_duration.days
-            # incomplete period, two cases:
-            # 1. dr.start_date < start_date
-            # 2. dr.last_date > end_date
+            # incomplete period: count the days it shares with [start_date, end_date]
             days_in_period = (
-                (dr.last_date - start_date).days + 1
-                if dr.start_date < start_date
-                else (end_date - dr.start_date).days + 1
-            )
+                min(dr.last_date, end_date) - max(dr.start_date, start_date)
+            ).days + 1
             amount += amount_per_day * days_in_period
 
         return amount

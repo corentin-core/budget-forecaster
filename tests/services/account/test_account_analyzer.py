@@ -623,6 +623,72 @@ class TestMultiMonthBudget:
         assert df.loc[str(Category.LEISURE)]["2025-07-01"]["Actual"] == -300
 
 
+class TestEditedBudget:
+    """Links made before a budget was edited still consume its periods."""
+
+    def test_link_from_an_older_period_shape_still_consumes(self) -> None:
+        """A link dated Aug 1, made when the budget was monthly, consumes Jul-Aug."""
+        holidays = _holidays_account(
+            date(2025, 8, 20),
+            ((date(2025, 7, 15), -300.0), (date(2025, 8, 10), -500.0)),
+        )
+        budget = Budget(
+            record_id=1,
+            description="Holidays",
+            amount=Amount(-1000.0),
+            category=Category.LEISURE,
+            date_range=RecurringDateRange(
+                DateRange(date(2025, 7, 1), relativedelta(months=2)),
+                relativedelta(months=2),
+            ),
+        )
+        links = tuple(
+            OperationLink(
+                operation_unique_id=op_id,
+                target_type=LinkType.BUDGET,
+                target_id=1,
+                iteration_date=iteration_date,
+                is_manual=True,
+            )
+            for op_id, iteration_date in ((1, date(2025, 7, 1)), (2, date(2025, 8, 1)))
+        )
+        analyzer = AccountAnalyzer(holidays, Forecast((), (budget,)), links)
+
+        df = analyzer.compute_budget_forecast(date(2025, 7, 1), date(2025, 8, 31))
+
+        row = df.loc[str(Category.LEISURE)]
+        assert row["2025-07-01"]["Forecast"] == -300
+        assert row["2025-08-01"]["Forecast"] == -700
+
+    def test_period_longer_than_its_recurrence_keeps_its_remaining(self) -> None:
+        """Three-month periods starting every month all count in March."""
+        empty = Account(
+            name="Test",
+            balance=5000.0,
+            currency="EUR",
+            balance_date=date(2025, 3, 10),
+            operations=(),
+        )
+        budget = Budget(
+            record_id=1,
+            description="Rolling",
+            amount=Amount(-300.0),
+            category=Category.LEISURE,
+            date_range=RecurringDateRange(
+                DateRange(date(2025, 1, 1), relativedelta(months=3)),
+                relativedelta(months=1),
+            ),
+        )
+        analyzer = AccountAnalyzer(empty, Forecast((), (budget,)))
+
+        df = analyzer.compute_budget_forecast(date(2025, 3, 1), date(2025, 4, 30))
+
+        # Each period spreads its 300 over its days from March 11: the January
+        # period ends in March, the February one in April, the March one in May
+        march = df.loc[str(Category.LEISURE)]["2025-03-01"]
+        assert march["Forecast"] == round(-300 - 300 * 21 / 51 - 300 * 21 / 82)
+
+
 class TestComputeBudgetStatistics:
     """Tests for compute_budget_statistics."""
 
