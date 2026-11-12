@@ -175,6 +175,38 @@ flowchart TD
     BEST -->|Yes| LINK[Create link with iteration date]
 ```
 
+## Automatic Categorization
+
+After every file import and every sync, each uncategorized operation gets a guessed
+category, saved before heuristic linking runs. Linking filters candidates by category,
+so an imported payment can only reach its planned operation once it is categorized.
+
+```mermaid
+flowchart TD
+    OP[Uncategorized operation] --> MANUAL{Left uncategorized by hand?}
+    MANUAL -->|Yes| KEEP[Left alone]
+    MANUAL -->|No| PLANNED{One planned operation matches hints, amount and date?}
+    PLANNED -->|Yes| P[Its category, source planned]
+    PLANNED -->|No| HISTORY{Last 5 manual categorizations of the payee agree, at least 3?}
+    HISTORY -->|Yes| H[That category, source history]
+    HISTORY -->|No| RULE{A built-in keyword matches?}
+    RULE -->|Yes| R[The rule's category, source rule]
+    RULE -->|No| KEEP
+```
+
+- A planned operation is skipped when two matching planned operations disagree on the
+  category.
+- The payee is a label signature: the description without digits, accents and month
+  words, plus the amount sign.
+- Only manual categories vote in the history, so a wrong guess is never copied to the
+  next operations of the same payee.
+- Built-in rules match whole words, and leave out payees selling a bit of everything,
+  such as Amazon or a meal-voucher card.
+
+Each operation records how its category was set: `manual`, `planned`, `history` or
+`rule`. The categories the BNP export maps get `rule`. Any category the user sets
+becomes `manual`, and an automatic category never replaces it.
+
 ## Categorization Flow
 
 ```mermaid

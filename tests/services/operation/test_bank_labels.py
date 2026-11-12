@@ -2,7 +2,10 @@
 
 import pytest
 
-from budget_forecaster.services.operation.bank_labels import recognizable_name
+from budget_forecaster.services.operation.bank_labels import (
+    label_signature,
+    recognizable_name,
+)
 
 
 class TestRecognizableName:
@@ -32,3 +35,29 @@ class TestRecognizableName:
     def test_gives_up_on_an_all_noise_label(self, label: str) -> None:
         """Nothing beats a keyword that would reject every future operation."""
         assert recognizable_name(label) == ""
+
+
+class TestLabelSignature:
+    """The part of a label shared by every payment to the same payee."""
+
+    @pytest.mark.parametrize(
+        ("label", "expected"),
+        [
+            (
+                "FACTURE CARTE DU 120925 INTERMARCHE TADEN CARTE 4974XX1234",
+                "DU INTERMARCHE TADEN",
+            ),
+            ("PRLV SEPA EDF ECHEANCE MARS 2025", "EDF"),
+            ("Crédit Titres Resto", "TITRES RESTO"),
+            ("DELICES D'ITALI", "DELICES D ITALI"),
+        ],
+    )
+    def test_drops_what_changes_between_payments(
+        self, label: str, expected: str
+    ) -> None:
+        """Dates, references, months, channel words and accents drop out."""
+        assert label_signature(label) == expected
+
+    def test_a_cheque_names_nobody(self) -> None:
+        """A cheque's payee is not in its label, so no cheque teaches another."""
+        assert label_signature("CHEQUE 1234567") == ""

@@ -161,6 +161,19 @@ class OperationMatcher:  # pylint: disable=too-many-public-methods
             approx_after=self.approximation_date_range,
         )
 
+    def match_except_category(self, operation: HistoricOperation) -> bool:
+        """Check if the operation would match once given this target's category.
+
+        Requires description hints: without them, any operation of the right
+        amount and date would take the category.
+        """
+        return (
+            not self._out_of_range(operation)
+            and self.match_description(operation)
+            and self.match_amount(operation)
+            and self.match_date_range(operation)
+        )
+
     def _match_heuristic(self, operation: HistoricOperation) -> bool:
         """Check if the operation matches using heuristic rules only.
 

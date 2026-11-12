@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.types import Category
+from budget_forecaster.core.types import Category, CategorySource
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.exceptions import OperationNotFoundError
@@ -183,6 +183,7 @@ class TestOperationService:
         """update_operation changes the category."""
         result = service.update_operation(3, category=Category.LEISURE)
         assert result.category == Category.LEISURE
+        assert result.category_source == CategorySource.MANUAL
         mock_account_manager.replace_operation.assert_called_once()
 
     def test_update_operation_not_found(self, service: OperationService) -> None:

@@ -24,6 +24,7 @@ from budget_forecaster.core.types import (
     LinkType,
 )
 from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.iteration_resolution import IterationResolution
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
@@ -153,7 +154,15 @@ class TestImportFile:
         mock_import_service.import_file.return_value = mock_result
 
         # Setup operations
-        operations = (MagicMock(),)
+        operations = (
+            HistoricOperation(
+                unique_id=1,
+                description="CB SHOP",
+                amount=Amount(-10.0),
+                category=Category.GROCERIES,
+                operation_date=date(2026, 9, 1),
+            ),
+        )
         mock_persistent_account.account.operations = operations
 
         # Setup matchers

@@ -11,6 +11,9 @@ from budget_forecaster.services.bank_sync_service import BankSyncService
 from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
 )
+from budget_forecaster.services.use_cases.auto_categorize import (
+    categorize_pending_operations,
+)
 from budget_forecaster.services.use_cases.matcher_cache import MatcherCache
 
 logger = logging.getLogger(__name__)
@@ -32,8 +35,10 @@ class SyncUseCase:  # pylint: disable=too-few-public-methods
         self._matcher_cache = matcher_cache
 
     def sync(self, account_uid: str, date_from: date | None = None) -> ImportStats:
-        """Sync the account, then link the resulting operations to targets."""
+        """Sync the account, guess categories, then link operations to targets."""
         stats = self._sync_service.sync(account_uid, date_from)
+
+        categorize_pending_operations(self._persistent_account, self._matcher_cache)
 
         operations = self._persistent_account.account.operations
         if matchers := self._matcher_cache.get_matchers():

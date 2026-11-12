@@ -24,6 +24,7 @@ from budget_forecaster.core.date_range import (
 )
 from budget_forecaster.core.types import (
     Category,
+    CategorySource,
     IterationAction,
     LinkType,
     OperationId,
@@ -294,8 +295,8 @@ class SqliteRepository(RepositoryInterface):
         conn.executemany(
             """INSERT INTO operations
                (unique_id, account_id, description, category, date, amount, currency,
-                source_ref)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                source_ref, category_source)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             [
                 (
                     op.unique_id,
@@ -306,6 +307,7 @@ class SqliteRepository(RepositoryInterface):
                     op.amount,
                     op.currency,
                     op.source_ref,
+                    op.category_source,
                 )
                 for op in operations
             ],
@@ -316,7 +318,7 @@ class SqliteRepository(RepositoryInterface):
         conn = self._get_connection()
         cursor = conn.execute(
             """SELECT unique_id, description, category, date, amount, currency,
-                      source_ref
+                      source_ref, category_source
                FROM operations WHERE account_id = ?
                ORDER BY date DESC""",
             (account_id,),
@@ -329,6 +331,11 @@ class SqliteRepository(RepositoryInterface):
                 operation_date=date.fromisoformat(row["date"]),
                 amount=Amount(row["amount"], row["currency"]),
                 source_ref=row["source_ref"],
+                category_source=(
+                    CategorySource(row["category_source"])
+                    if row["category_source"] is not None
+                    else None
+                ),
             )
             for row in cursor.fetchall()
         ]
@@ -341,11 +348,13 @@ class SqliteRepository(RepositoryInterface):
         conn = self._get_connection()
         conn.execute(
             """UPDATE operations
-               SET description = ?, category = ?, date = ?, amount = ?, currency = ?
+               SET description = ?, category = ?, category_source = ?, date = ?,
+                   amount = ?, currency = ?
                WHERE unique_id = ?""",
             (
                 operation.description,
                 operation.category.value,
+                operation.category_source,
                 operation.operation_date.isoformat(),
                 operation.amount,
                 operation.currency,

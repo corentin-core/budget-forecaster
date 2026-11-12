@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from budget_forecaster.core.types import Category
+from budget_forecaster.core.types import Category, CategorySource
 from budget_forecaster.infrastructure.bank_sources.bnp_paribas.bnp_paribas_bank_adapter import (
     BnpParibasBankAdapter,
 )
@@ -162,6 +162,27 @@ class TestBnpParibasBankAdapterCategories:
 
         # "Transports / Transport en commun" -> matches "transport"
         assert ops_by_desc["NAVIGO PASS"].category == Category.PUBLIC_TRANSPORT
+
+    def test_mapped_categories_are_reviewable_guesses(
+        self,
+        adapter: BnpParibasBankAdapter,
+        operation_factory: HistoricOperationFactory,
+        bnp_export: Path,
+    ) -> None:
+        """A bank-mapped category is a rule, an unmapped one has no source."""
+        adapter.load_bank_export(bnp_export, operation_factory)
+
+        sources = {
+            op.category_source
+            for op in adapter.operations
+            if op.category != Category.UNCATEGORIZED
+        }
+        assert sources == {CategorySource.RULE}
+        assert all(
+            op.category_source is None
+            for op in adapter.operations
+            if op.category == Category.UNCATEGORIZED
+        )
 
     def test_unknown_category_falls_back_to_uncategorized(
         self,

@@ -14,8 +14,9 @@ from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.date_range import RecurringDay
-from budget_forecaster.core.types import Category
+from budget_forecaster.core.types import Category, CategorySource
 from budget_forecaster.domain.account.account import Account
+from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.infrastructure.bank_sources.enable_banking.source import (
     EnableBankingSource,
@@ -197,3 +198,74 @@ class TestSyncIntegration:
         links = repository.get_all_links()
         assert len(links) > 0
         assert all(not link.is_manual for link in links)
+
+
+class TestSyncCategorizes:
+    """A sync stores guessed categories before linking."""
+
+    def test_planned_operation_categorizes_then_links(
+        self, repository: SqliteRepository
+    ) -> None:
+        """A synced operation matching a planned operation's hints takes its
+        category, which lets heuristic linking link it."""
+        repository.upsert_planned_operation(
+            PlannedOperation(
+                record_id=None,
+                description="Rent",
+                amount=Amount(-800.0),
+                category=Category.RENT,
+                date_range=RecurringDay(date(2026, 1, 1), relativedelta(months=1)),
+            ).set_matcher_params(description_hints={"RENT"})
+        )
+        _seed_account(repository)
+        persistent_account = PersistentAccount(repository)
+        use_case, _ = _build_use_case(repository, persistent_account)
+
+        use_case.sync("acc-1")
+
+        rent = _stored(repository, "RENT")
+        assert (rent.category, rent.category_source) == (
+            Category.RENT,
+            CategorySource.PLANNED,
+        )
+        link = repository.get_link_for_operation(rent.unique_id)
+        assert link is not None and not link.is_manual
+
+    def test_history_categorizes_a_known_payee(
+        self, repository: SqliteRepository
+    ) -> None:
+        """Three manual categorizations of COFFEE categorize the synced one."""
+        factory = HistoricOperationFactory(100)
+        history = tuple(
+            factory.create_operation(
+                "COFFEE",
+                Amount(-3.5),
+                Category.LEISURE,
+                date(2025, month, 10),
+                category_source=CategorySource.MANUAL,
+            )
+            for month in (1, 2, 3)
+        )
+        _seed_account(repository, history)
+        persistent_account = PersistentAccount(repository)
+        use_case, _ = _build_use_case(repository, persistent_account)
+
+        use_case.sync("acc-1")
+
+        coffee = _stored(repository, "COFFEE", date(2026, 1, 10))
+        assert (coffee.category, coffee.category_source) == (
+            Category.LEISURE,
+            CategorySource.HISTORY,
+        )
+        assert _stored(repository, "SALARY").category == Category.UNCATEGORIZED
+
+
+def _stored(
+    repository: SqliteRepository, description: str, on: date | None = None
+) -> HistoricOperation:
+    """The persisted operation with this description (and date)."""
+    return next(
+        op
+        for op in PersistentAccount(repository).account.operations
+        if op.description == description and (on is None or op.operation_date == on)
+    )

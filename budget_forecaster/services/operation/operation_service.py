@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any, Callable, NamedTuple
 
-from budget_forecaster.core.types import Category
+from budget_forecaster.core.types import Category, CategorySource
 from budget_forecaster.domain.account.account_interface import AccountInterface
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.operation_link import OperationLink
@@ -178,7 +178,9 @@ class OperationService:
 
         kwargs: dict[str, object] = {}
         if category is not None:
+            # Re-picking the same category confirms a guess: it becomes the user's.
             kwargs["category"] = category
+            kwargs["category_source"] = CategorySource.MANUAL
         if description is not None:
             kwargs["description"] = description
 

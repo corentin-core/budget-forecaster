@@ -6,6 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from budget_forecaster.core.types import LinkType, MatcherKey
 from budget_forecaster.services.import_service import (
     ImportResult,
     ImportService,
@@ -93,7 +94,9 @@ class TestImportFile:
         mock_import_service.import_file.return_value = ImportResult(
             path=Path("test.xlsx"), success=True, stats=MagicMock()
         )
-        mock_matcher_cache.get_matchers.return_value = {"key": MagicMock()}
+        mock_matcher_cache.get_matchers.return_value = {
+            MatcherKey(LinkType.BUDGET, 1): MagicMock()
+        }
         mock_operation_link_service.create_heuristic_links.return_value = []
 
         use_case.import_file(Path("test.xlsx"))
@@ -135,7 +138,9 @@ class TestImportFromInbox:
             total_duplicates_skipped=0,
             results=(),
         )
-        mock_matcher_cache.get_matchers.return_value = {"key": MagicMock()}
+        mock_matcher_cache.get_matchers.return_value = {
+            MatcherKey(LinkType.BUDGET, 1): MagicMock()
+        }
         mock_operation_link_service.create_heuristic_links.return_value = []
 
         use_case.import_from_inbox()

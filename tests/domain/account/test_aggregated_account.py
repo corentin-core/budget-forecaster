@@ -5,7 +5,7 @@ from datetime import date
 import pytest
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.types import Category, ImportStats
+from budget_forecaster.core.types import Category, CategorySource, ImportStats
 from budget_forecaster.domain.account.account import Account, AccountParameters
 from budget_forecaster.domain.account.aggregated_account import (
     AggregatedAccount,
@@ -14,13 +14,15 @@ from budget_forecaster.domain.account.aggregated_account import (
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 
 
-def _make_operation(
+def _make_operation(  # pylint: disable=too-many-arguments
     unique_id: int,
     description: str,
     amount: float,
     operation_date: date,
     category: Category = Category.UNCATEGORIZED,
     source_ref: str | None = None,
+    *,
+    category_source: CategorySource | None = None,
 ) -> HistoricOperation:
     return HistoricOperation(
         unique_id=unique_id,
@@ -29,6 +31,7 @@ def _make_operation(
         category=category,
         operation_date=operation_date,
         source_ref=source_ref,
+        category_source=category_source,
     )
 
 
@@ -515,6 +518,79 @@ class TestCrossSourceReconciliation:
         assert survivor.unique_id == 2
         assert survivor.description == "VIR SEPA RECU /DE ELUM"
         assert survivor.category == Category.SALARY
+
+    def test_kept_api_op_inherits_file_category_source(self) -> None:
+        """The file's category comes with how it was set, so a bank guess stays
+        reviewable."""
+        file_op = _make_operation(
+            1,
+            "VIREMENT DE ELUM",
+            3574.0,
+            date(2025, 1, 10),
+            category=Category.SALARY,
+            category_source=CategorySource.RULE,
+        )
+        current = _make_account(operations=(file_op,))
+        api_op = _make_operation(
+            2, "VIR SEPA RECU /DE ELUM", 3574.0, date(2025, 1, 12), source_ref="ref-1"
+        )
+
+        result = AggregatedAccount.update_account(current, self._params((api_op,)))
+
+        (survivor,) = result.account.operations
+        assert survivor.category_source == CategorySource.RULE
+
+    def test_file_op_left_uncategorized_by_hand_stays_so(self) -> None:
+        """The API copy keeps the user's choice, so no guess replaces it later."""
+        file_op = _make_operation(
+            1,
+            "CB CARREFOUR",
+            -42.0,
+            date(2025, 1, 10),
+            category=Category.UNCATEGORIZED,
+            category_source=CategorySource.MANUAL,
+        )
+        current = _make_account(operations=(file_op,))
+        api_op = _make_operation(
+            2, "CARTE CARREFOUR", -42.0, date(2025, 1, 10), source_ref="ref-1"
+        )
+
+        result = AggregatedAccount.update_account(current, self._params((api_op,)))
+
+        (survivor,) = result.account.operations
+        assert (survivor.category, survivor.category_source) == (
+            Category.UNCATEGORIZED,
+            CategorySource.MANUAL,
+        )
+
+    def test_manual_category_of_stored_api_op_survives_a_file_import(self) -> None:
+        """A file import never overwrites what the user chose on the API op."""
+        api_op = _make_operation(
+            1,
+            "VIR SEPA RECU /DE ELUM",
+            3574.0,
+            date(2025, 1, 12),
+            category=Category.OTHER,
+            source_ref="ref-1",
+            category_source=CategorySource.MANUAL,
+        )
+        current = _make_account(operations=(api_op,))
+        file_op = _make_operation(
+            2,
+            "VIREMENT DE ELUM",
+            3574.0,
+            date(2025, 1, 10),
+            category=Category.SALARY,
+            category_source=CategorySource.RULE,
+        )
+
+        result = AggregatedAccount.update_account(current, self._params((file_op,)))
+
+        (survivor,) = result.account.operations
+        assert (survivor.category, survivor.category_source) == (
+            Category.OTHER,
+            CategorySource.MANUAL,
+        )
 
     def test_existing_api_op_adopts_incoming_file_category(self) -> None:
         """When the API op is stored and uncategorized, it adopts the file's."""

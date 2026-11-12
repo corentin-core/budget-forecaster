@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# pylint: disable=too-many-lines
 """Generate date-relative demo data for the Budget Forecaster application.
 
 All dates are relative to today so the demo always feels "current".
@@ -30,7 +31,7 @@ from budget_forecaster.core.date_range import (
     RecurringDateRange,
     RecurringDay,
 )
-from budget_forecaster.core.types import Category, LinkType
+from budget_forecaster.core.types import Category, CategorySource, LinkType
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
@@ -850,6 +851,23 @@ def _add_current_month_ops(
     all_swile_ops.extend(_generate_current_month_swile_operations())
 
 
+def _as_user_categorized(
+    ops: list[HistoricOperation],
+) -> tuple[HistoricOperation, ...]:
+    """Mark the demo's categories as the user's, sorted by date."""
+    return tuple(
+        sorted(
+            (
+                op
+                if op.category == Category.UNCATEGORIZED
+                else op.replace(category_source=CategorySource.MANUAL)
+                for op in ops
+            ),
+            key=lambda o: o.operation_date,
+        )
+    )
+
+
 def _save_accounts(
     repo: SqliteRepository,
     bnp_ops: list[HistoricOperation],
@@ -865,7 +883,7 @@ def _save_accounts(
         balance=bnp_balance,
         currency="EUR",
         balance_date=BALANCE_DATE,
-        operations=tuple(sorted(bnp_ops, key=lambda o: o.operation_date)),
+        operations=_as_user_categorized(bnp_ops),
     )
     repo.upsert_account(bnp_account)
 
@@ -874,7 +892,7 @@ def _save_accounts(
         balance=swile_balance,
         currency="EUR",
         balance_date=BALANCE_DATE,
-        operations=tuple(sorted(swile_ops, key=lambda o: o.operation_date)),
+        operations=_as_user_categorized(swile_ops),
     )
     repo.upsert_account(swile_account)
 
