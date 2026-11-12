@@ -14,9 +14,10 @@ from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.date_range import RecurringDay
-from budget_forecaster.core.types import Category, CategorySource
+from budget_forecaster.core.types import Category, CategorySource, LinkType
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
+from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.infrastructure.bank_sources.enable_banking.source import (
     EnableBankingSource,
@@ -258,6 +259,49 @@ class TestSyncCategorizes:
             CategorySource.HISTORY,
         )
         assert _stored(repository, "SALARY").category == Category.UNCATEGORIZED
+
+    def test_linked_operation_takes_its_target_category(
+        self, repository: SqliteRepository
+    ) -> None:
+        """An operation linked by hand takes its target's category, not a rule's."""
+        loan_id = repository.upsert_planned_operation(
+            PlannedOperation(
+                record_id=None,
+                description="Loan",
+                amount=Amount(-50.0),
+                category=Category.HOUSE_LOAN,
+                date_range=RecurringDay(date(2025, 1, 5), relativedelta(months=1)),
+            )
+        )
+        payment = HistoricOperation(
+            unique_id=500,
+            description="PRLV SEPA CARREFOUR BANQUE",
+            amount=Amount(-50.0),
+            category=Category.UNCATEGORIZED,
+            operation_date=date(2025, 1, 5),
+        )
+        _seed_account(repository, (payment,))
+        repository.upsert_link(
+            OperationLink(
+                operation_unique_id=500,
+                target_type=LinkType.PLANNED_OPERATION,
+                target_id=loan_id,
+                iteration_date=date(2025, 1, 5),
+                is_manual=True,
+            )
+        )
+        persistent_account = PersistentAccount(repository)
+        use_case, _ = _build_use_case(repository, persistent_account)
+
+        use_case.sync("acc-1")
+
+        stored = _stored(repository, "PRLV SEPA CARREFOUR BANQUE")
+        assert (stored.category, stored.category_source) == (
+            Category.HOUSE_LOAN,
+            CategorySource.PLANNED,
+        )
+        link = repository.get_link_for_operation(stored.unique_id)
+        assert link is not None and link.is_manual
 
 
 def _stored(

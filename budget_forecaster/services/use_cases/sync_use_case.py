@@ -38,7 +38,11 @@ class SyncUseCase:  # pylint: disable=too-few-public-methods
         """Sync the account, guess categories, then link operations to targets."""
         stats = self._sync_service.sync(account_uid, date_from)
 
-        categorize_pending_operations(self._persistent_account, self._matcher_cache)
+        categorize_pending_operations(
+            self._persistent_account,
+            self._matcher_cache,
+            self._operation_link_service,
+        )
 
         operations = self._persistent_account.account.operations
         if matchers := self._matcher_cache.get_matchers():
