@@ -8,7 +8,15 @@ import re
 import unicodedata
 from datetime import date
 
+from dateutil.relativedelta import relativedelta
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
+
+from budget_forecaster.core.date_range import RecurringDay
+from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.infrastructure.persistence.sqlite_repository import (
+    SqliteRepository,
+)
 
 _RECURRING_BUDGET = {
     "description": "Test Budget",
@@ -597,3 +605,168 @@ class TestDrilldownAndReload:
         )
         month_page = client.get(f"/month/{this_month:%Y-%m}").text
         assert "123" in month_page
+
+
+def _end_button(client: TestClient, kind: str, target_id: int) -> bool:
+    """Whether the edit page offers to end the target today."""
+    page = client.get(f"/targets/{kind}/{target_id}").text
+    return f'action="/targets/{kind}/{target_id}/end"' in page
+
+
+def _end(client: TestClient, kind: str, target_id: int) -> None:
+    """Confirm the End button, as its inline confirmation does."""
+    response = client.post(
+        f"/targets/{kind}/{target_id}/end",
+        data={"return_to": "/targets"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 303
+
+
+def _repository(app: FastAPI) -> SqliteRepository:
+    """A fresh connection: the app's one is bound to its serving thread."""
+    return SqliteRepository(app.state.config.database_path)
+
+
+def _linked_running_planned(app: FastAPI) -> PlannedOperation:
+    """A demo planned operation that recurs forever and has matched payments.
+
+    Only one with a single keyword: the demo's other planned operations ask for
+    a second keyword their labels lack, so any save drops their links.
+    """
+    with _repository(app) as repo:
+        linked = {link.target_id for link in repo.get_all_links()}
+        planned = repo.get_all_planned_operations()
+    for op in planned:
+        if (
+            isinstance(op.date_range, RecurringDay)
+            and op.date_range.last_date == date.max
+            and op.date_range.start_date < date.today()
+            and len(op.matcher.description_hints) == 1
+            and op.id in linked
+        ):
+            return op
+    raise AssertionError("the demo should hold a linked, running planned operation")
+
+
+def _links_of(app: FastAPI, target_id: int) -> set[tuple[int, date]]:
+    """The operations linked to a planned operation, with their occurrence."""
+    with _repository(app) as repo:
+        links = repo.get_links_for_planned_operation(target_id)
+    return {(link.operation_unique_id, link.iteration_date) for link in links}
+
+
+class TestEndNow:
+    """The End button stops a running recurrence today and keeps its past."""
+
+    def test_ending_a_planned_operation_keeps_its_past(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """Past payments stay linked, and nothing after today is expected."""
+        op = _linked_running_planned(app)
+        assert op.id is not None
+        links_before = _links_of(app, op.id)
+
+        _end(client, "planned", op.id)
+
+        with _repository(app) as repo:
+            ended = repo.get_planned_operation_by_id(op.id)
+        assert ended.date_range.last_date == date.today()
+        assert _links_of(app, op.id) == links_before
+        assert all(
+            occurrence.start_date <= date.today()
+            for occurrence in ended.date_range.iterate_over_date_ranges()
+        )
+
+    def test_an_ended_target_leaves_the_active_list(self, client: TestClient) -> None:
+        """Under the default "active only" filter, the ended budget is gone."""
+        start = date.today().replace(day=1) - relativedelta(months=3)
+        client.post(
+            "/targets/budget",
+            data={**_RECURRING_BUDGET, "start_date": start.isoformat()},
+            follow_redirects=False,
+        )
+        budget_id = _budget_id(client, "Test Budget")
+        assert "Test Budget" in client.get("/targets").text
+
+        _end(client, "budget", budget_id)
+
+        assert "Test Budget" not in client.get("/targets").text
+        assert budget_id in _budget_ids(client, "Test Budget")
+
+    def test_ending_a_budget_drops_the_running_period(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """A monthly budget ended mid-month keeps its earlier months only."""
+        start = date.today().replace(day=1) - relativedelta(months=3)
+        client.post(
+            "/targets/budget",
+            data={**_RECURRING_BUDGET, "start_date": start.isoformat()},
+            follow_redirects=False,
+        )
+        budget_id = _budget_id(client, "Test Budget")
+
+        _end(client, "budget", budget_id)
+
+        with _repository(app) as repo:
+            budget = repo.get_budget_by_id(budget_id)
+        periods = list(budget.date_range.iterate_over_date_ranges())
+        assert [p.start_date for p in periods] == [
+            start + relativedelta(months=n) for n in range(3)
+        ]
+
+    def test_the_button_is_offered_on_a_running_recurrence_only(
+        self, client: TestClient
+    ) -> None:
+        """One-off, not started yet, and already ended targets get no button."""
+        start = date.today().replace(day=1) - relativedelta(months=3)
+        cases = {
+            "Running": {"start_date": start.isoformat()},
+            "One-off": {"start_date": start.isoformat(), "recurring": ""},
+            "Not yet": {
+                "start_date": (date.today() + relativedelta(months=1)).isoformat()
+            },
+            "Over": {
+                "start_date": start.isoformat(),
+                "end_date": (start + relativedelta(months=1)).isoformat(),
+            },
+        }
+        for description, fields in cases.items():
+            client.post(
+                "/targets/budget",
+                data={**_RECURRING_BUDGET, "description": description, **fields},
+                follow_redirects=False,
+            )
+        offered = {
+            description: _end_button(client, "budget", _budget_id(client, description))
+            for description in cases
+        }
+        assert offered == {
+            "Running": True,
+            "One-off": False,
+            "Not yet": False,
+            "Over": False,
+        }
+
+    def test_a_stale_end_does_not_reopen_an_ended_target(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """Ending a target already over leaves its earlier end date alone."""
+        start = date.today().replace(day=1) - relativedelta(months=3)
+        end = start + relativedelta(months=1)
+        client.post(
+            "/targets/budget",
+            data={
+                **_RECURRING_BUDGET,
+                "start_date": start.isoformat(),
+                "end_date": end.isoformat(),
+            },
+            follow_redirects=False,
+        )
+        budget_id = _budget_id(client, "Test Budget")
+
+        _end(client, "budget", budget_id)
+
+        with _repository(app) as repo:
+            budget = repo.get_budget_by_id(budget_id)
+        assert budget.date_range.last_date == end

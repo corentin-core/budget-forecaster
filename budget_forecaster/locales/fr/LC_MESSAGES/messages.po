@@ -2142,3 +2142,12 @@ msgstr "Valider la catégorie"
 
 msgid "Validate"
 msgstr "Valider"
+
+msgid "End now"
+msgstr "Terminer"
+
+msgid "End today? Later occurrences leave the forecast."
+msgstr "Terminer aujourd'hui ? Les échéances suivantes sortent de la prévision."
+
+msgid "End today? The current period leaves the forecast too."
+msgstr "Terminer aujourd'hui ? La période en cours sort aussi de la prévision."

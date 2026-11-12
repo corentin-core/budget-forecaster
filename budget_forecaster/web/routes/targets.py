@@ -1,11 +1,12 @@
 """Budget and planned-operation management: the /targets list, per-target edit
-pages, and the create / update / delete / split writes.
+pages, and the create / update / delete / end / split writes.
 
 A ``kind`` path segment ("budget" | "planned") selects the target type; both map
 to symmetric ApplicationService methods. Every write refreshes the forecast.
 """
 
 import logging
+from datetime import date
 from typing import NamedTuple
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -28,6 +29,8 @@ from budget_forecaster.web.viewmodels import (
     build_planned_form_from_operation,
     build_target_form,
     build_target_list,
+    can_end_today,
+    ended_today,
     target_form_from_submitted,
 )
 
@@ -211,6 +214,34 @@ async def delete_target(
     else:
         app.delete_budget(target_id)
     refresh_forecast(app)
+    submitted = forms.form_to_dict(await request.form())
+    return RedirectResponse(
+        url=_safe_return_to(submitted.get("return_to")), status_code=303
+    )
+
+
+@router.post("/targets/{kind}/{target_id}/end")
+async def end_target(
+    kind: str,
+    target_id: int,
+    request: Request,
+    app: ApplicationService = Depends(get_app_service),
+) -> Response:
+    """Stop a recurring budget or planned operation today, keeping its past.
+
+    A target that cannot end today, such as one already over, is left as it is:
+    the request comes from a stale page.
+    """
+    _require_kind(kind)
+    today = date.today()
+    target = _get_target(app, kind, target_id)
+    if can_end_today(target, today):
+        ended = ended_today(target, today)
+        if isinstance(ended, PlannedOperation):
+            app.update_planned_operation(ended)
+        else:
+            app.update_budget(ended)
+        refresh_forecast(app)
     submitted = forms.form_to_dict(await request.form())
     return RedirectResponse(
         url=_safe_return_to(submitted.get("return_to")), status_code=303

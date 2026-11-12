@@ -245,7 +245,7 @@
                 hx-target="#backup-preview" hx-swap="innerHTML">{{ _("Restore…") }}</button>
         <a class="btn small icon" href="/settings/backup/download?name={{ b.path.name | urlencode }}"
            aria-label="{{ _('Download backup') }}">↓</a>
-        <form method="post" action="/settings/backup/delete" class="delete-form" data-confirm>
+        <form method="post" action="/settings/backup/delete" class="confirm-form" data-confirm>
           <input type="hidden" name="name" value="{{ b.path.name }}" />
           <button type="button" class="btn danger small icon" data-confirm-trigger
                   aria-label="{{ _('Delete backup') }}">×</button>

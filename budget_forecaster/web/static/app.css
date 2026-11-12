@@ -1806,7 +1806,7 @@ a.link-tag:focus-visible {
 .split > summary::-webkit-details-marker {
   display: none;
 }
-.delete-form {
+.confirm-form {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-8);
