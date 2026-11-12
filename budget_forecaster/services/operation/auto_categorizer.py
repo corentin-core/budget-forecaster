@@ -56,11 +56,15 @@ def _history_categories(
 def _planned_category(
     operation: HistoricOperation, planned_matchers: Iterable[OperationMatcher]
 ) -> Category | None:
-    """The category of the planned operations matching it, unless they disagree."""
+    """The category of the planned operations matching it, unless they disagree.
+
+    A planned operation left uncategorized has no category to give.
+    """
     categories = {
         matcher.operation_range.category
         for matcher in planned_matchers
-        if matcher.match_except_category(operation)
+        if matcher.operation_range.category != Category.UNCATEGORIZED
+        and matcher.match_except_category(operation)
     }
     return categories.pop() if len(categories) == 1 else None
 

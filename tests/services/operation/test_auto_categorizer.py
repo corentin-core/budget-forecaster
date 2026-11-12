@@ -188,6 +188,14 @@ class TestPlanned:
 
         assert _guesses((_op(10, "PRLV SEPA KEREIS"),), matchers) == {}
 
+    def test_uncategorized_planned_operation_gives_way_to_rules(self) -> None:
+        """A planned operation with no category leaves the next sources to decide."""
+        matcher = _planned("Groceries run", {"CARREFOUR"}, Category.UNCATEGORIZED)
+
+        assert _guesses((_op(10, "CB CARREFOUR"),), (matcher,)) == {
+            10: (Category.GROCERIES, CategorySource.RULE)
+        }
+
     def test_planned_operation_without_hints_matches_nothing(self) -> None:
         """Without hints, any operation of the right amount would take the category."""
         matcher = _planned("Rent", set(), Category.RENT)

@@ -114,11 +114,15 @@ def _kept_api_op(
     """The API op that survives a reconciliation, adopting the file's category.
 
     The API source carries no category, so the file's is kept along with how it
-    was set; when the file is uncategorized, or the API op was categorized by
-    hand, the API's own category stands.
+    was set, including a file left uncategorized by hand; when the file is
+    otherwise uncategorized, or the API op was categorized by hand, the API's
+    own category stands.
     """
     if (
-        file_op.category == Category.UNCATEGORIZED
+        (
+            file_op.category == Category.UNCATEGORIZED
+            and not file_op.is_categorized_by_hand
+        )
         or api_op.is_categorized_by_hand
         or (
             file_op.category == api_op.category

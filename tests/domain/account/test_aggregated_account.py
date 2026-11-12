@@ -540,6 +540,29 @@ class TestCrossSourceReconciliation:
         (survivor,) = result.account.operations
         assert survivor.category_source == CategorySource.RULE
 
+    def test_file_op_left_uncategorized_by_hand_stays_so(self) -> None:
+        """The API copy keeps the user's choice, so no guess replaces it later."""
+        file_op = _make_operation(
+            1,
+            "CB CARREFOUR",
+            -42.0,
+            date(2025, 1, 10),
+            category=Category.UNCATEGORIZED,
+            category_source=CategorySource.MANUAL,
+        )
+        current = _make_account(operations=(file_op,))
+        api_op = _make_operation(
+            2, "CARTE CARREFOUR", -42.0, date(2025, 1, 10), source_ref="ref-1"
+        )
+
+        result = AggregatedAccount.update_account(current, self._params((api_op,)))
+
+        (survivor,) = result.account.operations
+        assert (survivor.category, survivor.category_source) == (
+            Category.UNCATEGORIZED,
+            CategorySource.MANUAL,
+        )
+
     def test_manual_category_of_stored_api_op_survives_a_file_import(self) -> None:
         """A file import never overwrites what the user chose on the API op."""
         api_op = _make_operation(
