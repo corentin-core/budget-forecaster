@@ -244,6 +244,7 @@ class TargetFormView(NamedTuple):
     period_unit: str
     end_date: str
     can_split: bool
+    can_end: bool  # a running recurrence that the End button stops today
     keywords: str
     approx_days: str
     approx_ratio: str
@@ -263,6 +264,19 @@ def _end_date_field(range_: DateRangeInterface) -> str:
         if range_.last_date != date.max:
             return range_.last_date.strftime("%Y-%m-%d")
     return ""
+
+
+def can_end_today(target: Target, today: date) -> bool:
+    """Whether ending the target on ``today`` stops a running recurrence.
+
+    Its first occurrence must be over by then, or nothing would be left to keep:
+    deleting is the action for that. One already over would be extended by
+    moving its end to today.
+    """
+    range_ = target.date_range
+    return isinstance(range_, RecurringDateRange) and (
+        range_.base_date_range.last_date <= today < range_.last_date
+    )
 
 
 def build_target_form(
@@ -294,6 +308,7 @@ def build_target_form(
             period_unit=period_unit,
             end_date="",
             can_split=False,
+            can_end=False,
             keywords="",
             approx_days="5",
             approx_ratio="0.05",
@@ -333,6 +348,7 @@ def build_target_form(
         period_unit=period_unit,
         end_date=_end_date_field(target.date_range),
         can_split=not is_new and recurring,
+        can_end=not is_new and can_end_today(target, date.today()),
         keywords=keywords,
         approx_days=approx_days,
         approx_ratio=approx_ratio,
@@ -394,6 +410,7 @@ def build_planned_form_from_operation(operation: HistoricOperation) -> TargetFor
         period_unit=period_unit,
         end_date="",
         can_split=False,
+        can_end=False,
         keywords=name,
         approx_days="5",
         approx_ratio="0.05",
@@ -466,6 +483,7 @@ def target_form_from_submitted(
         period_unit=get("period_unit", "months"),
         end_date=get("end_date", ""),
         can_split=False,
+        can_end=False,
         keywords=get("keywords", ""),
         approx_days=get("approx_days", "5"),
         approx_ratio=get("approx_ratio", "0.05"),
@@ -507,6 +525,15 @@ def _range_label(range_: DateRangeInterface) -> str:
     return f"{start} → {range_.last_date.strftime('%m/%Y')}"
 
 
+def _is_active(range_: DateRangeInterface, today: date) -> bool:
+    """Whether the target still has something ahead of it.
+
+    A target ending today after starting earlier is over, as the End button
+    leaves it; one starting today is not.
+    """
+    return range_.last_date > today or range_.start_date >= today
+
+
 def _target_row(kind: str, target: Target) -> TargetRow:
     return TargetRow(
         kind=kind,
@@ -516,7 +543,7 @@ def _target_row(kind: str, target: Target) -> TargetRow:
         category=target.category.value,
         period_label=_period_label(target.date_range),
         range_label=_range_label(target.date_range),
-        active=target.date_range.last_date >= date.today(),
+        active=_is_active(target.date_range, date.today()),
     )
 
 

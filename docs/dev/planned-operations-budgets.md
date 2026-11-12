@@ -91,8 +91,27 @@ flowchart LR
 
 ApplicationService delegates these calls to ManageTargetsUseCase.
 
+## Ending a Recurrence
+
+`end_planned_operation(operation_id, end_date)` and `end_budget(budget_id, end_date)`
+set the `expiration_date` of a recurring target. The web app's **End now** button calls
+them with today's date.
+
+- **Past kept as it is**: links and decisions on the remaining iterations stay, and no
+  heuristic matching runs again. A full update would delete the automatic links and
+  recreate only those the current keywords still find.
+- **Dropped iterations cleaned**: links to an iteration the target no longer produces
+  are deleted, manual ones included. For a planned operation, so are the decisions on
+  such iterations.
+- **Running budget period**: a budget iteration ending after `end_date` is dropped, so
+  ending a monthly budget mid-month drops the current month.
+
+The button appears only when the first iteration is over and the target has not ended
+yet. Ending earlier would keep nothing, and ending an ended target would extend it.
+
 ## Status Filtering
 
-The `FilterBar` provides a status dropdown with three values: Active, Expired, All.
-Active items are those whose date range has not yet expired; expired items have an end
-date in the past. The status filter determines which items are displayed in the table.
+The management list shows only active targets by default; unticking "active only" shows
+the others too. A target is active when its last date is after today, or when it starts
+today or later. A target ended with **End now** therefore leaves the default list on the
+same day.

@@ -134,16 +134,29 @@
 
   </form>
 
-  <div class="form-actions">
+  <div class="form-actions" data-confirm-strip>
     {% if not form.is_new %}
     <form method="post" action="/targets/{{ form.kind }}/{{ form.target_id }}/delete"
-          class="delete-form" data-confirm>
+          class="confirm-form" data-confirm>
       <input type="hidden" name="return_to" value="{{ return_to }}" />
       <button type="button" class="btn danger" data-confirm-trigger>{{ _("Delete") }}</button>
       <span class="confirm-cluster" hidden>
         <span>{{ _("Delete?") }}</span>
         <button type="button" class="btn" data-confirm-cancel>{{ _("Cancel") }}</button>
         <button type="submit" class="btn danger">{{ _("Confirm") }}</button>
+      </span>
+    </form>
+    {% endif %}
+    {% if form.can_end %}
+    <form method="post" action="/targets/{{ form.kind }}/{{ form.target_id }}/end"
+          class="confirm-form" data-confirm>
+      <input type="hidden" name="return_to" value="{{ return_to }}" />
+      <button type="button" class="btn" data-confirm-trigger>{{ _("End now") }}</button>
+      <span class="confirm-cluster" hidden>
+        <span>{{ _("End today? Later occurrences leave the forecast.") if is_planned
+                 else _("End today? The current period leaves the forecast too.") }}</span>
+        <button type="button" class="btn" data-confirm-cancel>{{ _("Cancel") }}</button>
+        <button type="submit" class="btn primary">{{ _("Confirm") }}</button>
       </span>
     </form>
     {% endif %}

@@ -243,6 +243,12 @@ Editing opens on its own page with a working back button. From there you set the
 category, dates, and recurrence, or delete the item (deletion asks for a confirmation
 inline first). Saving returns you to wherever you came from.
 
+A recurring item that is still running also has an **End now** button, which sets its
+end date to today. Past occurrences and their links stay, and later occurrences leave
+the forecast. For a budget, the current period leaves the forecast too, although it has
+already started. The ended item then drops out of the "active only" list. To end an item
+on another date, fill **End date** instead.
+
 Splitting a recurring item from a chosen date is a separate submission, below the Save
 button: open **Split from a date**, give the date and the new values, then confirm with
 **Split**. Save is paused while that section is open, since it would store the item

@@ -2,6 +2,7 @@
 
 import logging
 from datetime import date
+from typing import TypeVar
 
 from dateutil.relativedelta import relativedelta
 
@@ -35,14 +36,30 @@ from budget_forecaster.services.use_cases.matcher_cache import MatcherCache
 logger = logging.getLogger(__name__)
 
 
-def _produces_iteration(op: PlannedOperation, iteration_date: date) -> bool:
-    """Whether the operation's date range still yields that iteration."""
-    for date_range in op.date_range.iterate_over_date_ranges(from_date=iteration_date):
+_Target = TypeVar("_Target", PlannedOperation, Budget)
+
+
+def _produces_iteration(
+    target: PlannedOperation | Budget, iteration_date: date
+) -> bool:
+    """Whether the target's date range still yields that iteration."""
+    for date_range in target.date_range.iterate_over_date_ranges(
+        from_date=iteration_date
+    ):
         if date_range.start_date == iteration_date:
             return True
         if date_range.start_date > iteration_date:
             return False
     return False
+
+
+def _ended_on(target: _Target, end_date: date) -> _Target:
+    """The target with its recurrence stopped on end_date."""
+    if not isinstance(target.date_range, RecurringDateRange):
+        raise ValueError(f"Only a recurring target can end: {target.description}")
+    return target.replace(
+        date_range=target.date_range.replace(expiration_date=end_date)
+    )
 
 
 class ManageTargetsUseCase:
@@ -366,6 +383,52 @@ class ManageTargetsUseCase:
         )
 
         return new_budget
+
+    def end_planned_operation(
+        self, operation_id: PlannedOperationId, end_date: date
+    ) -> PlannedOperation:
+        """Stop a recurring planned operation on end_date, keeping its past.
+
+        Links and decisions on the iterations that remain are kept as they are,
+        without matching again: only those on the dropped iterations go.
+
+        Raises:
+            PlannedOperationNotFoundError: If the operation doesn't exist.
+            ValueError: If the operation isn't periodic.
+        """
+        original = self._forecast_service.get_planned_operation_by_id(operation_id)
+        ended = self._forecast_service.update_planned_operation(
+            _ended_on(original, end_date)
+        )
+        self._matcher_cache.add_matcher(ended)
+        self._drop_orphan_links(ended)
+        self._drop_orphan_resolutions(ended)
+        logger.info("Ended planned operation %d on %s", operation_id, end_date)
+        return ended
+
+    def end_budget(self, budget_id: BudgetId, end_date: date) -> Budget:
+        """Stop a recurring budget on end_date, keeping its past.
+
+        A period still running on end_date is dropped with the later ones, and so
+        are the links to them.
+
+        Raises:
+            BudgetNotFoundError: If the budget doesn't exist.
+            ValueError: If the budget isn't periodic.
+        """
+        original = self._forecast_service.get_budget_by_id(budget_id)
+        ended = self._forecast_service.update_budget(_ended_on(original, end_date))
+        self._matcher_cache.add_matcher(ended)
+        self._drop_orphan_links(ended)
+        logger.info("Ended budget %d on %s", budget_id, end_date)
+        return ended
+
+    def _drop_orphan_links(self, target: PlannedOperation | Budget) -> None:
+        """Delete the links, manual ones included, to iterations the target no
+        longer produces."""
+        for link in self._operation_link_service.load_links_for_target(target):
+            if not _produces_iteration(target, link.iteration_date):
+                self._operation_link_service.delete_link(link.operation_unique_id)
 
     def _drop_orphan_resolutions(self, op: PlannedOperation) -> None:
         """Forget decisions whose iteration the operation no longer produces.
