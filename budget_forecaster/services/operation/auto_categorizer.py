@@ -68,7 +68,7 @@ def suggest_categories(
     operations: Iterable[HistoricOperation],
     uncategorized: Iterable[HistoricOperation],
 ) -> dict[OperationId, Category]:
-    """The category the user gave most often to each operation's payee.
+    """The category most frequent among the payee's latest manual categorizations.
 
     Looser than the history guess: one manual categorization is enough, and a
     tie goes to the most recent. Only uncategorized operations get a suggestion.

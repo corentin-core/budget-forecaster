@@ -2128,14 +2128,17 @@ msgstr "Sauvegardes, les plus récentes en premier. Une sauvegarde automatique e
 msgid "To review"
 msgstr "À revoir"
 
-msgid "Guessed from the forecast"
-msgstr "Devinée d'après vos prévisions"
 
-msgid "Guessed from your history"
-msgstr "Devinée d'après votre historique"
 
-msgid "Guessed from a rule"
-msgstr "Devinée d'après une règle"
 
 msgid "Suggested:"
 msgstr "Suggestion :"
+
+msgid "{name} (auto)"
+msgstr "{name} (auto)"
+
+msgid "Validate the category"
+msgstr "Valider la catégorie"
+
+msgid "Validate"
+msgstr "Valider"

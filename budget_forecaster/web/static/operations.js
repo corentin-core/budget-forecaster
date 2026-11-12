@@ -55,8 +55,10 @@
   });
 
   // Rows are replaced on filter change / bulk categorize; selection resets.
+  // Rows appended by "show more" must step aside too while rows are selected.
   document.body.addEventListener('htmx:afterSwap', function (e) {
-    if (e.detail.target && e.detail.target.id === 'ledger-area') sync();
+    var id = e.detail.target && e.detail.target.id;
+    if (id === 'ledger-area' || id === 'load-more-row') sync();
   });
 
   sync();

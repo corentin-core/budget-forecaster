@@ -45,12 +45,31 @@ class TestReviewFilter:
 
         assert _row_ids(html) == guessed
 
-    def test_rows_say_where_the_guess_comes_from(self, client: TestClient) -> None:
-        """A guessed row names its source and offers to confirm it."""
+    def test_rows_mark_the_automatic_category(self, client: TestClient) -> None:
+        """An automatic row shows "(auto)" in its dropdown and a validate button."""
         html = client.get("/operations?review=true").text
 
-        assert "Devinée d&#39;après" in html or "Devinée d'après" in html
+        assert "(auto)</option>" in html
         assert "/confirm" in html
+
+    def test_picking_the_plain_entry_validates(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """The plain entry of the same category is a choice of its own."""
+        operation_id = min(_guessed_ids(app))
+        category = _service(app).get_operation_by_id(operation_id).category
+
+        client.post(
+            f"/operations/{operation_id}/categorize",
+            data={"category": category.value},
+            headers=_HX,
+        )
+
+        after = _service(app).get_operation_by_id(operation_id)
+        assert (after.category, after.category_source) == (
+            category,
+            CategorySource.MANUAL,
+        )
 
 
 class TestConfirm:
@@ -104,14 +123,32 @@ class TestConfirm:
     def test_confirm_leaves_a_manual_category_alone(
         self, client: TestClient, app: FastAPI
     ) -> None:
-        """Selecting a manual row along with guessed ones changes nothing on it."""
+        """Selecting a manual row along with a guessed one changes nothing on it."""
         manual = next(
             op for op in _service(app).operations if op.is_categorized_by_hand
         )
+        guessed = min(_guessed_ids(app))
 
-        client.post("/operations/confirm", data={"ids": [str(manual.unique_id)]})
+        client.post(
+            "/operations/confirm",
+            data={"ids": [str(manual.unique_id), str(guessed)]},
+            headers=_HX,
+        )
 
         assert _service(app).get_operation_by_id(manual.unique_id) == manual
+        assert _service(app).get_operation_by_id(guessed).is_categorized_by_hand
+
+    def test_confirm_keeps_the_review_filter(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """The swapped row links back to the filtered ledger."""
+        operation_id = min(_guessed_ids(app))
+
+        response = client.post(
+            f"/operations/{operation_id}/confirm?review=true", headers=_HX
+        )
+
+        assert "review%3Dtrue" in response.text
 
     def test_changing_the_category_ends_the_review(
         self, client: TestClient, app: FastAPI
