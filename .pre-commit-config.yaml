@@ -1,5 +1,5 @@
 default_language_version:
-  # nodeenv cannot parse the alpha that "latest" now resolves to.
+  # Without node and npm on PATH, nodeenv installs "latest", an alpha it cannot parse.
   node: 22.22.0
 repos:
   - repo: https://github.com/PyCQA/autoflake

@@ -171,10 +171,10 @@ Install WSL2 with a recent Ubuntu, then:
 
    Then `wsl --shutdown` from Windows and reopen the distro.
 
-2. **Start WSL on Windows boot** so the services come up without you opening a terminal.
-   WSL stops a distro a few seconds after the last `wsl.exe` process exits, even while
-   systemd services run inside it. The task must therefore keep a `wsl.exe` process
-   running. From PowerShell, with your distro name in place of `Ubuntu`:
+2. **Start WSL at Windows logon** so the services come up without you opening a
+   terminal. WSL stops a distro 15 seconds after the last `wsl.exe` process exits, even
+   while systemd services run inside it. The task must therefore keep a `wsl.exe`
+   process running. From PowerShell, with your distro name in place of `Ubuntu`:
 
    ```powershell
    $action   = New-ScheduledTaskAction -Execute "conhost.exe" -Argument "--headless wsl.exe -d Ubuntu --exec sleep infinity"
@@ -190,9 +190,15 @@ Install WSL2 with a recent Ubuntu, then:
    - The task has no execution time limit, because Task Scheduler stops a task after 3
      days by default.
    - The unlock trigger starts WSL again if it stopped while the session stayed open.
-     `IgnoreNew` skips that start when WSL is already running.
+     `IgnoreNew` skips that start while the task's previous `sleep` is still running.
 
-   After a reboot, `wsl -l -v` shows the distro as `Running`.
+   The task needs a Windows session: after a reboot, nothing starts until you log on.
+   Once logged on, `wsl -l -v` shows the distro as `Running`.
+
+   On WSL 2.6 or later, `instanceIdleTimeout=-1` under `[general]` in
+   `%USERPROFILE%\.wslconfig` turns off the 15-second shutdown. Some endpoint security
+   tools flag `conhost.exe --headless`; with this setting, the task only has to start
+   the distro once, with `wsl.exe -d Ubuntu true`.
 
 3. **Serve from the Windows host, not from WSL.** WSL's virtual NIC drops long-lived
    connections when the host sleeps, so a Tailscale node running inside WSL goes offline
