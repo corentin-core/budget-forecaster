@@ -30,7 +30,6 @@ from budget_forecaster.web.viewmodels import (
     build_target_form,
     build_target_list,
     can_end_today,
-    ended_today,
     target_form_from_submitted,
 )
 
@@ -234,13 +233,11 @@ async def end_target(
     """
     _require_kind(kind)
     today = date.today()
-    target = _get_target(app, kind, target_id)
-    if can_end_today(target, today):
-        ended = ended_today(target, today)
-        if isinstance(ended, PlannedOperation):
-            app.update_planned_operation(ended)
+    if can_end_today(_get_target(app, kind, target_id), today):
+        if kind == _PLANNED:
+            app.end_planned_operation(target_id, today)
         else:
-            app.update_budget(ended)
+            app.end_budget(target_id, today)
         refresh_forecast(app)
     submitted = forms.form_to_dict(await request.form())
     return RedirectResponse(

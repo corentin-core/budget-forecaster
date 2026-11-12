@@ -269,22 +269,14 @@ def _end_date_field(range_: DateRangeInterface) -> str:
 def can_end_today(target: Target, today: date) -> bool:
     """Whether ending the target on ``today`` stops a running recurrence.
 
-    A recurrence not started yet has no past to keep, and one already over would
-    be extended by moving its end to today.
+    Its first occurrence must be over by then, or nothing would be left to keep:
+    deleting is the action for that. One already over would be extended by
+    moving its end to today.
     """
     range_ = target.date_range
     return isinstance(range_, RecurringDateRange) and (
-        range_.start_date <= today < range_.last_date
+        range_.base_date_range.last_date <= today < range_.last_date
     )
-
-
-def ended_today(target: Target, today: date) -> Target:
-    """The target with its recurrence stopped on ``today``.
-
-    Occurrences that finish by ``today`` stay; any later one, a budget period
-    still running included, leaves the forecast.
-    """
-    return target.replace(date_range=target.date_range.replace(expiration_date=today))
 
 
 def build_target_form(
@@ -533,6 +525,15 @@ def _range_label(range_: DateRangeInterface) -> str:
     return f"{start} → {range_.last_date.strftime('%m/%Y')}"
 
 
+def _is_active(range_: DateRangeInterface, today: date) -> bool:
+    """Whether the target still has something ahead of it.
+
+    A target ending today after starting earlier is over, as the End button
+    leaves it; one starting today is not.
+    """
+    return range_.last_date > today or range_.start_date >= today
+
+
 def _target_row(kind: str, target: Target) -> TargetRow:
     return TargetRow(
         kind=kind,
@@ -542,8 +543,7 @@ def _target_row(kind: str, target: Target) -> TargetRow:
         category=target.category.value,
         period_label=_period_label(target.date_range),
         range_label=_range_label(target.date_range),
-        # A target that ends today is over: the End button sets exactly that.
-        active=target.date_range.last_date > date.today(),
+        active=_is_active(target.date_range, date.today()),
     )
 
 

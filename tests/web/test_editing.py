@@ -629,11 +629,7 @@ def _repository(app: FastAPI) -> SqliteRepository:
 
 
 def _linked_running_planned(app: FastAPI) -> PlannedOperation:
-    """A demo planned operation that recurs forever and has matched payments.
-
-    Only one with a single keyword: the demo's other planned operations ask for
-    a second keyword their labels lack, so any save drops their links.
-    """
+    """A demo planned operation that recurs forever and has matched payments."""
     with _repository(app) as repo:
         linked = {link.target_id for link in repo.get_all_links()}
         planned = repo.get_all_planned_operations()
@@ -642,7 +638,6 @@ def _linked_running_planned(app: FastAPI) -> PlannedOperation:
             isinstance(op.date_range, RecurringDay)
             and op.date_range.last_date == date.max
             and op.date_range.start_date < date.today()
-            and len(op.matcher.description_hints) == 1
             and op.id in linked
         ):
             return op
@@ -718,13 +713,16 @@ class TestEndNow:
     def test_the_button_is_offered_on_a_running_recurrence_only(
         self, client: TestClient
     ) -> None:
-        """One-off, not started yet, and already ended targets get no button."""
+        """No button when ending would extend the target or keep nothing of it."""
         start = date.today().replace(day=1) - relativedelta(months=3)
         cases = {
             "Running": {"start_date": start.isoformat()},
             "One-off": {"start_date": start.isoformat(), "recurring": ""},
             "Not yet": {
                 "start_date": (date.today() + relativedelta(months=1)).isoformat()
+            },
+            "First period": {
+                "start_date": (date.today() - relativedelta(days=1)).isoformat()
             },
             "Over": {
                 "start_date": start.isoformat(),
@@ -745,6 +743,7 @@ class TestEndNow:
             "Running": True,
             "One-off": False,
             "Not yet": False,
+            "First period": False,
             "Over": False,
         }
 

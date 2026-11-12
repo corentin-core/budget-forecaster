@@ -739,6 +739,16 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
             operation_id, split_date, new_amount, new_period
         )
 
+    def end_planned_operation(
+        self, operation_id: PlannedOperationId, end_date: date
+    ) -> PlannedOperation:
+        """Stop a recurring planned operation on end_date, keeping its past."""
+        return self._targets_uc.end_planned_operation(operation_id, end_date)
+
+    def end_budget(self, budget_id: BudgetId, end_date: date) -> Budget:
+        """Stop a recurring budget on end_date, keeping its past."""
+        return self._targets_uc.end_budget(budget_id, end_date)
+
     def split_budget_at_date(
         self,
         budget_id: BudgetId,

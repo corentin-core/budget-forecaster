@@ -7,9 +7,14 @@ import pytest
 from dateutil.relativedelta import relativedelta
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.date_range import RecurringDay
+from budget_forecaster.core.date_range import (
+    DateRange,
+    RecurringDateRange,
+    RecurringDay,
+)
 from budget_forecaster.core.types import Category, LinkType
 from budget_forecaster.domain.account.account import Account
+from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
@@ -256,3 +261,138 @@ class TestIterationDecisionsAcrossEdits:
         use_case.update_planned_operation(original.replace(amount=Amount(-820.0)))
 
         assert len(service.get_resolutions_for_planned_operation(original.id)) == 1
+
+
+class TestEndTarget:
+    """Ending a recurrence keeps its past as it is and forgets what follows."""
+
+    @staticmethod
+    def _rent(use_case: ManageTargetsUseCase) -> PlannedOperation:
+        """A monthly rent that no label matches, so links come from the test."""
+        rent = use_case.add_planned_operation(
+            PlannedOperation(
+                record_id=None,
+                description="Rent",
+                amount=Amount(-800.0),
+                category=Category.RENT,
+                date_range=RecurringDay(date(2025, 1, 1), relativedelta(months=1)),
+            ).set_matcher_params(description_hints={"NO SUCH LABEL"})
+        )
+        assert rent.id is not None
+        return rent
+
+    @staticmethod
+    def _link(
+        repository: SqliteRepository,
+        operation_id: int,
+        target: PlannedOperation | Budget,
+        iteration: date,
+        *,
+        is_manual: bool,
+    ) -> None:
+        assert target.id is not None
+        repository.upsert_link(
+            OperationLink(
+                operation_unique_id=operation_id,
+                target_type=(
+                    LinkType.PLANNED_OPERATION
+                    if isinstance(target, PlannedOperation)
+                    else LinkType.BUDGET
+                ),
+                target_id=target.id,
+                iteration_date=iteration,
+                is_manual=is_manual,
+            )
+        )
+
+    def test_past_automatic_links_stay_without_matching_again(
+        self, use_case: ManageTargetsUseCase, repository: SqliteRepository
+    ) -> None:
+        """A link the current keywords would not find again is still kept."""
+        rent = self._rent(use_case)
+        self._link(repository, 1, rent, date(2025, 1, 1), is_manual=False)
+        self._link(repository, 2, rent, date(2025, 2, 1), is_manual=False)
+
+        ended = use_case.end_planned_operation(rent.id or 0, date(2025, 2, 10))
+
+        assert ended.date_range.last_date == date(2025, 2, 10)
+        assert {
+            link.operation_unique_id
+            for link in repository.get_links_for_planned_operation(rent.id or 0)
+        } == {1, 2}
+
+    def test_links_to_dropped_iterations_go_manual_ones_included(
+        self, use_case: ManageTargetsUseCase, repository: SqliteRepository
+    ) -> None:
+        """A link to an iteration that no longer exists would point at nothing."""
+        rent = self._rent(use_case)
+        self._link(repository, 1, rent, date(2025, 1, 1), is_manual=False)
+        self._link(repository, 2, rent, date(2025, 2, 1), is_manual=True)
+
+        use_case.end_planned_operation(rent.id or 0, date(2025, 1, 20))
+
+        assert [
+            link.operation_unique_id
+            for link in repository.get_links_for_planned_operation(rent.id or 0)
+        ] == [1]
+
+    def test_decisions_on_dropped_iterations_go(
+        self, use_case: ManageTargetsUseCase, repository: SqliteRepository
+    ) -> None:
+        """A skipped iteration after the end has nothing left to apply to."""
+        rent = self._rent(use_case)
+        service = IterationResolutionService(repository)
+        service.skip(rent.id or 0, date(2025, 1, 1))
+        service.skip(rent.id or 0, date(2025, 3, 1))
+
+        use_case.end_planned_operation(rent.id or 0, date(2025, 2, 10))
+
+        assert [
+            r.iteration_date
+            for r in service.get_resolutions_for_planned_operation(rent.id or 0)
+        ] == [date(2025, 1, 1)]
+
+    def test_ending_a_budget_drops_its_running_period_and_links(
+        self, use_case: ManageTargetsUseCase, repository: SqliteRepository
+    ) -> None:
+        """The period still running on the end date goes with its links."""
+        budget = use_case.add_budget(
+            Budget(
+                record_id=None,
+                description="Rent budget",
+                amount=Amount(-800.0),
+                category=Category.RENT,
+                date_range=RecurringDateRange(
+                    DateRange(date(2025, 1, 1), relativedelta(months=1)),
+                    relativedelta(months=1),
+                ),
+            )
+        )
+        repository.delete_links_for_target(LinkType.BUDGET, budget.id or 0)
+        self._link(repository, 1, budget, date(2025, 1, 1), is_manual=False)
+        self._link(repository, 2, budget, date(2025, 2, 1), is_manual=False)
+
+        ended = use_case.end_budget(budget.id or 0, date(2025, 2, 10))
+
+        assert [
+            period.start_date for period in ended.date_range.iterate_over_date_ranges()
+        ] == [date(2025, 1, 1)]
+        assert [
+            link.operation_unique_id
+            for link in repository.get_links_for_budget(budget.id or 0)
+        ] == [1]
+
+    def test_a_one_off_target_cannot_end(self, use_case: ManageTargetsUseCase) -> None:
+        """Only a recurrence has an end to move."""
+        budget = use_case.add_budget(
+            Budget(
+                record_id=None,
+                description="Gift",
+                amount=Amount(-50.0),
+                category=Category.GIFTS,
+                date_range=DateRange(date(2025, 1, 1), relativedelta(months=1)),
+            )
+        )
+
+        with pytest.raises(ValueError):
+            use_case.end_budget(budget.id or 0, date(2025, 1, 10))
