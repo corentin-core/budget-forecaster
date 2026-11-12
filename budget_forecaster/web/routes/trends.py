@@ -28,7 +28,12 @@ _DEFAULT_PERIOD = 3
 _SPARK_WIDTH = 600
 _SPARK_HEIGHT = 300
 _SPARK_PADDING = 0.06  # headroom above/below the plotted range
-_SPARK_XTICKS = 4
+# At most this many month ticks on the x-axis; the step between ticks divides a
+# year, so ticks fall on the same months every year (Jan, Apr, Jul, Oct...).
+_SPARK_MAX_XTICKS = 6
+_SPARK_TICK_STEPS = (1, 2, 3, 4, 6, 12)
+# A label centered closer than this to the right edge sticks out of the card.
+_SPARK_TICK_MAX_PCT = 95.0
 _PIE_RADIUS = 78
 _PIE_CIRCUMFERENCE = 2 * pi * _PIE_RADIUS
 _THRESHOLD_MIN = 0.0
@@ -63,6 +68,17 @@ class AxisMark(NamedTuple):
     text: str
 
 
+class AxisTick(NamedTuple):
+    """An x-axis month label, placed at the first sample of that month.
+
+    A minor tick is dropped on a narrow screen, which keeps every other one.
+    """
+
+    left_pct: float
+    text: str
+    minor: bool
+
+
 class Sparkline(NamedTuple):
     """A balance sparkline: polyline, hover points, and axis references."""
 
@@ -73,7 +89,7 @@ class Sparkline(NamedTuple):
     labels: tuple[AxisMark, ...]
     zero: AxisMark | None
     threshold: AxisMark | None
-    x_labels: tuple[str, ...]
+    x_ticks: tuple[AxisTick, ...]
 
 
 class ExpenseSlice(NamedTuple):
@@ -114,13 +130,40 @@ class GroupedExpense(NamedTuple):
     members: tuple[tuple[str, float], ...] = ()
 
 
-def _x_labels(samples: list[tuple[date, float]]) -> tuple[str, ...]:
-    """Evenly spaced date labels for the x-axis (first .. last)."""
+def _short_month(day: date) -> str:
+    """A month as a short translated label, e.g. 'Janv. 26'."""
+    # Same as format_month: the C-locale English name is the msgid.
+    return f"{_(day.strftime('%b'))} {day:%y}"
+
+
+def _x_ticks(samples: list[tuple[date, float]]) -> tuple[AxisTick, ...]:
+    """Month labels for the x-axis, each at the first sample of its month."""
     last = len(samples) - 1
-    indices = sorted(
-        {round(i * last / (_SPARK_XTICKS - 1)) for i in range(_SPARK_XTICKS)}
+    starts: dict[int, int] = {}  # month number since year 0 -> first sample index
+    for index, (day, _balance) in enumerate(samples):
+        starts.setdefault(day.year * 12 + day.month - 1, index)
+    first_month = samples[0][0].year * 12 + samples[0][0].month - 1
+    if samples[0][0].day != 1:
+        del starts[first_month]  # that month began before the curve does
+    if not starts:
+        return (AxisTick(0.0, _short_month(samples[0][0]), False),)
+    span = max(starts) - min(starts) + 1
+    step = next(
+        (s for s in _SPARK_TICK_STEPS if span / s <= _SPARK_MAX_XTICKS),
+        _SPARK_TICK_STEPS[-1],
     )
-    return tuple(format_date(samples[i][0]) for i in indices)
+    ticks = [
+        AxisTick(
+            round(index / last * 100, 1),
+            _short_month(samples[index][0]),
+            month % (2 * step) != 0,
+        )
+        for month, index in starts.items()
+        if month % step == 0 and index / last * 100 <= _SPARK_TICK_MAX_PCT
+    ]
+    if len(ticks) == 1:  # a lone tick stays on a narrow screen
+        ticks[0] = ticks[0]._replace(minor=False)
+    return tuple(ticks)
 
 
 def _sparkline(
@@ -167,7 +210,7 @@ def _sparkline(
         ),
         zero=zero,
         threshold=mark(threshold, format_eur_rounded(threshold, currency)),
-        x_labels=_x_labels(samples),
+        x_ticks=_x_ticks(samples),
     )
 
 

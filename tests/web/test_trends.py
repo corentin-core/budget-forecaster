@@ -18,6 +18,7 @@ from budget_forecaster.web.routes.trends import (
     _period_from,
     _slices,
     _sparkline,
+    _x_ticks,
 )
 
 
@@ -132,8 +133,7 @@ class TestSparkline:
         assert spark.zero is not None  # range spans below and above 0
         assert spark.threshold.text.startswith("50")
         assert spark.threshold.text.endswith("EUR")
-        assert spark.x_labels[0] == "01/01/2026"
-        assert spark.x_labels[-1] == "02/01/2026"
+        assert [tick.left_pct for tick in spark.x_ticks] == [0.0]
 
     def test_none_below_two_points(self) -> None:
         """A single sample yields no sparkline."""
@@ -195,3 +195,61 @@ class TestPeriodFrom:
         assert _period_from("7") == _DEFAULT_PERIOD  # not one of the offered periods
         assert _period_from("abc") == _DEFAULT_PERIOD
         assert _period_from(None) == _DEFAULT_PERIOD
+
+
+def _daily(start: date, end: date) -> list[tuple[date, float]]:
+    """One balance sample per day from start to end inclusive."""
+    return [
+        (start + timedelta(days=offset), 0.0)
+        for offset in range((end - start).days + 1)
+    ]
+
+
+class TestXTicks:
+    """Month labels of the balance curve's x-axis."""
+
+    def test_ticks_on_quarter_months_with_every_other_minor(self) -> None:
+        """A 16-month curve gets a tick every 3 months, at each month's first sample.
+
+        A phone keeps the January and July ticks, the minor ones go.
+        """
+        samples = _daily(date(2026, 7, 12), date(2027, 11, 30))
+        ticks = _x_ticks(samples)
+        assert [(t.text, t.minor) for t in ticks] == [
+            ("Oct 26", True),
+            ("Jan 27", False),
+            ("Apr 27", True),
+            ("Jul 27", False),
+            ("Oct 27", True),
+        ]
+        last = len(samples) - 1
+        october = (date(2026, 10, 1) - date(2026, 7, 12)).days
+        assert ticks[0].left_pct == round(october / last * 100, 1)
+
+    def test_partial_first_month_has_no_tick(self) -> None:
+        """A month the curve enters part-way is not labeled at the left edge."""
+        ticks = _x_ticks(_daily(date(2026, 1, 15), date(2026, 3, 31)))
+        assert [t.text for t in ticks] == ["Feb 26", "Mar 26"]
+
+    def test_curve_inside_one_month_labels_that_month(self) -> None:
+        """With no month start on the curve, its own month is labeled at the left."""
+        ticks = _x_ticks(_daily(date(2026, 1, 10), date(2026, 1, 20)))
+        assert [(t.left_pct, t.text) for t in ticks] == [(0.0, "Jan 26")]
+
+    def test_no_tick_against_the_right_edge(self) -> None:
+        """A month starting at the very end of the curve gets no label."""
+        ticks = _x_ticks(_daily(date(2026, 1, 1), date(2027, 1, 1)))
+        assert ticks[-1].text == "Oct 26"
+
+    def test_lone_tick_is_major(self) -> None:
+        """A single label is kept on a phone, whatever its month."""
+        ticks = _x_ticks(_daily(date(2026, 1, 15), date(2026, 2, 20)))
+        assert [(t.text, t.minor) for t in ticks] == [("Feb 26", False)]
+
+    def test_month_labels_are_translated(self, client: TestClient) -> None:
+        """The French page shows short French month names under the curve."""
+        html = client.get("/trends").text
+        axis = html[html.index('class="x-axis"') :]
+        axis = axis[: axis.index("</div>")]
+        assert "/20" not in axis  # no full dates any more
+        assert any(month in axis for month in ("Janv.", "Avr.", "Juil.", "Oct."))
