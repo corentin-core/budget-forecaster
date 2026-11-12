@@ -64,6 +64,17 @@
 > **Then** the rent operation appears in January's Actual column (not February's), with
 > a cross-month annotation indicating it was paid late
 
+## Multi-Month Budget Counts Each Operation in Its Own Month
+
+> **Given** a holidays budget of 1000 EUR over July and August, -300 EUR spent on July
+> 15th and -500 EUR on August 10th, both linked to the budget, and a balance dated
+> August 10th
+>
+> **When** the user views July and August in the monthly review
+>
+> **Then** July shows -300 EUR actual and nothing remaining, and August shows -500 EUR
+> actual and -200 EUR remaining, without any cross-month annotation
+
 ## Planned Operation Takes Priority Over Budget
 
 > **Given** a monthly grocery budget of 100 EUR and a planned grocery operation of 50
