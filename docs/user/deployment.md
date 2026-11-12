@@ -172,12 +172,27 @@ Install WSL2 with a recent Ubuntu, then:
    Then `wsl --shutdown` from Windows and reopen the distro.
 
 2. **Start WSL on Windows boot** so the services come up without you opening a terminal.
-   Create a Windows Task Scheduler task that runs at logon:
+   WSL stops a distro a few seconds after the last `wsl.exe` process exits, even while
+   systemd services run inside it. The task must therefore keep a `wsl.exe` process
+   running. From PowerShell, with your distro name in place of `Ubuntu`:
 
-   - Program: `wsl.exe`
-   - Arguments: `-d Ubuntu true`
+   ```powershell
+   $action   = New-ScheduledTaskAction -Execute "conhost.exe" -Argument "--headless wsl.exe -d Ubuntu --exec sleep infinity"
+   $logon    = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+   $class    = Get-CimClass -Namespace Root/Microsoft/Windows/TaskScheduler -ClassName MSFT_TaskSessionStateChangeTrigger
+   $unlock   = New-CimInstance -CimClass $class -ClientOnly -Property @{StateChange = 8; UserId = "$env:USERDOMAIN\$env:USERNAME"}
+   $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit ([TimeSpan]::Zero) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -MultipleInstances IgnoreNew
+   Register-ScheduledTask -TaskName "Start Budget WSL" -Action $action -Trigger $logon,$unlock -Settings $settings -Force
+   ```
 
-   This boots the distro (and its systemd services) in the background.
+   - `sleep infinity` keeps the distro and its systemd services running.
+   - `conhost.exe --headless` runs the command without a console window.
+   - The task has no execution time limit, because Task Scheduler stops a task after 3
+     days by default.
+   - The unlock trigger starts WSL again if it stopped while the session stayed open.
+     `IgnoreNew` skips that start when WSL is already running.
+
+   After a reboot, `wsl -l -v` shows the distro as `Running`.
 
 3. **Serve from the Windows host, not from WSL.** WSL's virtual NIC drops long-lived
    connections when the host sleeps, so a Tailscale node running inside WSL goes offline
