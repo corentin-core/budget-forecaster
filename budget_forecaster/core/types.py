@@ -96,6 +96,24 @@ class ImportStats(NamedTuple):
     """Number of duplicate operations that were already in the database."""
 
 
+class CategorySource(enum.StrEnum):
+    """How an operation's category was set.
+
+    Only a manual category is the user's word: the others are guesses the user
+    may review, and a guess never overwrites a manual category.
+    """
+
+    MANUAL = "manual"
+    PLANNED = "planned"
+    """Matched a planned operation's hints, amount and date."""
+
+    HISTORY = "history"
+    """The user's recent categorizations of the same label all agree."""
+
+    RULE = "rule"
+    """A built-in keyword rule, or the bank's own category mapping."""
+
+
 class SyncRunStatus(enum.StrEnum):
     """Outcome of a bank-sync run."""
 

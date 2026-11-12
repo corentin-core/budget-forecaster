@@ -67,6 +67,7 @@ erDiagram
         int account_id FK
         text description
         text category
+        text category_source "manual, planned, history, rule; null if uncategorized"
         timestamp date
         real amount
         text currency
@@ -146,9 +147,10 @@ and date stay distinct (two identical same-day API operations are both kept).
 
 When a file operation and an API operation reconcile, the API operation is kept (cleaner
 description and stable reference) and the file operation is dropped. The API source
-carries no category, so the surviving operation adopts the file's category; the file
-operation's link moves to the survivor, keeping the forecast's actual attributions
-without waiting for a link recompute.
+carries no category, so the surviving operation adopts the file's category and its
+source, unless the user categorized the API operation by hand; the file operation's link
+moves to the survivor, keeping the forecast's actual attributions without waiting for a
+link recompute.
 
 Version 10 applies the same collapse to duplicates already stored in existing databases.
 

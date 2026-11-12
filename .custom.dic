@@ -28,6 +28,8 @@ cancelled
 cancelling
 caplog
 categorizer
+cheque
+cheque's
 ciphertext
 cli
 clôturé
@@ -80,6 +82,7 @@ filesystem
 focusable
 forecasted
 fromisoformat
+fulfils
 gettext
 grey
 greying
@@ -167,6 +170,7 @@ repr
 reproducibility
 restore's
 revenus
+reviewable
 rmul
 rsa
 réel
@@ -214,6 +218,7 @@ unlinking
 unmapped
 unmatchable
 unparseable
+uppercased
 upsert
 upserting
 upserts

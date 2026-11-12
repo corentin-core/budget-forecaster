@@ -5,7 +5,7 @@ from typing import Any
 
 from budget_forecaster.core.amount import Amount
 from budget_forecaster.core.date_range import SingleDay
-from budget_forecaster.core.types import Category, OperationId
+from budget_forecaster.core.types import Category, CategorySource, OperationId
 from budget_forecaster.domain.operation.content_ref import content_ref
 from budget_forecaster.domain.operation.operation_range import OperationRange
 
@@ -25,9 +25,11 @@ class HistoricOperation(OperationRange):
         category: Category,
         operation_date: date,
         source_ref: str | None = None,
+        category_source: CategorySource | None = None,
     ):
         self._unique_id = unique_id
         self._source_ref = source_ref
+        self._category_source = category_source
         super().__init__(description, amount, category, SingleDay(operation_date))
 
     @property
@@ -46,6 +48,16 @@ class HistoricOperation(OperationRange):
         return self._source_ref
 
     @property
+    def category_source(self) -> CategorySource | None:
+        """How the category was set, None when nobody ever set it."""
+        return self._category_source
+
+    @property
+    def is_categorized_by_hand(self) -> bool:
+        """Whether the user set the category, which no guess may overwrite."""
+        return self._category_source == CategorySource.MANUAL
+
+    @property
     def content_ref(self) -> str:
         """Stable dedup key derived from the operation's content."""
         return content_ref(self.description, self.amount, self.operation_date)
@@ -59,6 +71,7 @@ class HistoricOperation(OperationRange):
             category=kwargs.get("category", self.category),
             operation_date=kwargs.get("operation_date", self.operation_date),
             source_ref=kwargs.get("source_ref", self._source_ref),
+            category_source=kwargs.get("category_source", self._category_source),
         )
 
     def __repr__(self) -> str:

@@ -159,6 +159,18 @@ In Opérations, each row carries a category dropdown: change it and the row upda
 the spot. The "N to categorize" badge on the Operations tab counts what is still
 uncategorized and drops as you go.
 
+Imported operations often arrive already categorized. After each import or sync, the app
+guesses a category for every uncategorized operation, from the first of these that
+applies:
+
+1. The category of the planned operation the payment matches.
+2. The category you gave the same payee the last few times, if you always gave the same
+   one.
+3. A built-in list of common payees, such as supermarket chains or the SNCF.
+
+An operation you set back to uncategorized yourself is left alone, and a category you
+chose is never replaced.
+
 An operation's own page carries the same dropdown, on the Catégorie line. It is where
 you have the date, the amount and the link in front of you, so the category can be fixed
 there rather than by finding the row again in the ledger.

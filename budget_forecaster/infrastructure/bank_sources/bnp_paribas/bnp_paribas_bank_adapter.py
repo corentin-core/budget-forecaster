@@ -9,7 +9,7 @@ import pandas as pd
 import yaml
 
 from budget_forecaster.core.amount import Amount
-from budget_forecaster.core.types import Category
+from budget_forecaster.core.types import Category, CategorySource
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.infrastructure.bank_sources.file_export_adapter import (
     FileExportAdapterBase,
@@ -123,6 +123,11 @@ class BnpParibasBankAdapter(FileExportAdapterBase):
                     operation_date=datetime.strptime(
                         row["Date operation"], "%d-%m-%Y"
                     ).date(),
+                    category_source=(
+                        CategorySource.RULE
+                        if category != Category.UNCATEGORIZED
+                        else None
+                    ),
                 )
             )
 

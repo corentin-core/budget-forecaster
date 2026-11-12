@@ -15,13 +15,16 @@ from budget_forecaster.services.import_service import (
 from budget_forecaster.services.operation.operation_link_service import (
     OperationLinkService,
 )
+from budget_forecaster.services.use_cases.auto_categorize import (
+    categorize_pending_operations,
+)
 from budget_forecaster.services.use_cases.matcher_cache import MatcherCache
 
 logger = logging.getLogger(__name__)
 
 
 class ImportUseCase:
-    """Import bank export files and create heuristic links."""
+    """Import bank export files, guess categories and create heuristic links."""
 
     def __init__(
         self,
@@ -48,6 +51,7 @@ class ImportUseCase:
         result = self._import_service.import_file(path, move_to_processed)
 
         if result.success:
+            categorize_pending_operations(self._persistent_account, self._matcher_cache)
             operations = self._persistent_account.account.operations
             if matchers := self._matcher_cache.get_matchers():
                 created_links = self._operation_link_service.create_heuristic_links(
@@ -74,6 +78,7 @@ class ImportUseCase:
         summary = self._import_service.import_from_inbox(on_progress)
 
         if summary.successful_imports > 0:
+            categorize_pending_operations(self._persistent_account, self._matcher_cache)
             operations = self._persistent_account.account.operations
             if matchers := self._matcher_cache.get_matchers():
                 created_links = self._operation_link_service.create_heuristic_links(

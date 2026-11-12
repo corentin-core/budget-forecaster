@@ -96,7 +96,8 @@ Lower-level services handle specific concerns:
 - `ForecastService`: CRUD for planned operations/budgets, report computation
 - `AccountForecaster`/`AccountAnalyzer`: Compute account projections and aggregates
 - `OperationService`/`OperationLinkService`: Manage operations and links
-- `OperationMatcher`/`categorize_operations`: Match and categorize operations
+- `OperationMatcher`: Match operations to planned operations and budgets
+- `auto_categorize`: Guess the category of imported operations nobody categorized
 - `ForecastActualizer`: Adjust forecasts based on linked operations
 
 The **Domain** layer holds pure business entities: accounts, operations, planned

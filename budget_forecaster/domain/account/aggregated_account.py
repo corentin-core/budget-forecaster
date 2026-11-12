@@ -113,17 +113,22 @@ def _kept_api_op(
 ) -> HistoricOperation:
     """The API op that survives a reconciliation, adopting the file's category.
 
-    The API source carries no category, so the file's is kept; when the file is
-    uncategorized the API's own value stands.
+    The API source carries no category, so the file's is kept along with how it
+    was set; when the file is uncategorized, or the API op was categorized by
+    hand, the API's own category stands.
     """
-    category = (
-        file_op.category
-        if file_op.category != Category.UNCATEGORIZED
-        else api_op.category
-    )
-    if category == api_op.category:
+    if (
+        file_op.category == Category.UNCATEGORIZED
+        or api_op.is_categorized_by_hand
+        or (
+            file_op.category == api_op.category
+            and file_op.category_source == api_op.category_source
+        )
+    ):
         return api_op
-    return api_op.replace(category=category)
+    return api_op.replace(
+        category=file_op.category, category_source=file_op.category_source
+    )
 
 
 class _MergeResult(NamedTuple):

@@ -26,9 +26,6 @@ from budget_forecaster.services.account.account_analysis_report import (
 )
 from budget_forecaster.services.account.account_forecaster import AccountForecaster
 from budget_forecaster.services.forecast.forecast_actualizer import ForecastActualizer
-from budget_forecaster.services.operation.operations_categorizer import (
-    categorize_operations,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -68,9 +65,7 @@ class AccountAnalyzer:
         operation_links: tuple[OperationLink, ...] = (),
         iteration_resolutions: tuple[IterationResolution, ...] = (),
     ) -> None:
-        self._account = account._replace(
-            operations=categorize_operations(account.operations, forecast)
-        )
+        self._account = account
         self._forecast = forecast
         self._operation_links = operation_links
         self._iteration_resolutions = iteration_resolutions
