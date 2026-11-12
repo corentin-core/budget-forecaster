@@ -2,7 +2,7 @@
 {% block title %}{{ _("Trends") }} — Budget Forecaster{% endblock %}
 {% block content %}
 <div class="trends-grid">
-  <section class="card">
+  <section class="card balance-card">
     <div class="card-head"><h2>{{ _("Balance evolution") }}</h2></div>
     {% if sparkline %}
       <div class="chart" id="balance-chart"
@@ -35,7 +35,9 @@
         <script type="application/json" id="balance-data">{{ spark_points | tojson }}</script>
       </div>
       <div class="x-axis">
-        {% for label in sparkline.x_labels %}<span>{{ label }}</span>{% endfor %}
+        {% for tick in sparkline.x_ticks %}
+          <span {% if tick.minor %}class="minor" {% endif %}style="left: {{ tick.left_pct }}%">{{ tick.text }}</span>
+        {% endfor %}
       </div>
     {% else %}
       <p class="empty">{{ _("Not enough data") }}</p>

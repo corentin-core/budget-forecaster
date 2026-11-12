@@ -45,10 +45,15 @@
       dot.style.left = px + 'px';
       dot.style.top = py + 'px';
       tooltip.textContent = point.label + ' · ' + point.value;
+      show();
       // Keep the tooltip inside the plot width.
       var half = tooltip.offsetWidth / 2;
       tooltip.style.left = Math.max(dx + half, Math.min(dx + rect.width - half, px)) + 'px';
-      show();
+      // Inside the plot, at the top unless the point is up there too.
+      var gap = 6;
+      var height = tooltip.offsetHeight;
+      var high = py - dy < height + 2 * gap;
+      tooltip.style.top = (high ? dy + rect.height - height - gap : dy + gap) + 'px';
     }
 
     svg.addEventListener('mousemove', function (e) {

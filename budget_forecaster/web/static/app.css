@@ -772,13 +772,26 @@ a.link-tag:focus-visible {
   height: 300px;
   padding-left: var(--axis-gutter);
 }
+/* Each month label is centred on its own date. A margin and not a padding, so
+   that a label's left percent is a share of the plot width alone. */
 .x-axis {
-  display: flex;
-  justify-content: space-between;
-  padding-left: var(--axis-gutter);
-  margin-top: var(--sp-4);
+  position: relative;
+  height: 1.5em;
+  margin: var(--sp-4) 0 0 var(--axis-gutter);
   color: var(--muted);
   font-size: var(--fs-2xs);
+}
+.x-axis span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+/* A phone in portrait keeps every other month label, or they overlap. */
+@media (max-width: 30rem) {
+  .x-axis .minor {
+    display: none;
+  }
 }
 .sparkline {
   width: 100%;
@@ -850,10 +863,12 @@ a.link-tag:focus-visible {
   background: var(--accent);
   pointer-events: none;
 }
+/* Inside the plot, at its top edge, or at its bottom edge when the point is
+   up there (charts.js). Above the plot, it went off screen as soon as the
+   reader scrolled down to see the curve. */
 .chart-tooltip {
   position: absolute;
-  top: -0.4rem;
-  transform: translate(-50%, -100%);
+  transform: translateX(-50%);
   background: var(--text);
   color: var(--text-inverse);
   font-size: var(--fs-2xs);
@@ -1333,10 +1348,18 @@ a.link-tag:focus-visible {
   overflow-wrap: anywhere;
 }
 
-/* Landscape phone: let the balance curve fill the wider screen. */
+/* Landscape phone: the balance card takes the whole height left above the
+   bottom nav, and the curve takes what the card's title and dates leave. */
 @media (orientation: landscape) and (max-height: 500px) {
+  .balance-card {
+    display: flex;
+    flex-direction: column;
+    height: calc(100dvh - var(--nav-total) - 2 * var(--sp-16));
+  }
   .chart {
-    height: 78vh;
+    flex: 1;
+    min-height: 0;
+    height: auto;
   }
 }
 
