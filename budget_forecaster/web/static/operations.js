@@ -9,6 +9,7 @@
   var countEl = bar.querySelector('[data-bulk-count]');
   var categoryEl = bar.querySelector('#bulk-category');
   var applyEl = bar.querySelector('[data-bulk-apply]');
+  var confirmEl = bar.querySelector('[data-bulk-confirm]');
 
   function selected() {
     return document.querySelectorAll('.row-select:checked');
@@ -31,9 +32,10 @@
     var n = selected().length;
     countEl.textContent = n;
     bar.hidden = n === 0;
-    document.querySelectorAll('.row-category').forEach(function (sel) {
-      sel.disabled = n > 0;
+    document.querySelectorAll('.row-category, .row-quick').forEach(function (el) {
+      el.disabled = n > 0;
     });
+    confirmEl.hidden = !document.querySelector('.row-select[data-guessed]:checked');
     syncApply();
     reserve();
   }
@@ -53,8 +55,10 @@
   });
 
   // Rows are replaced on filter change / bulk categorize; selection resets.
+  // Rows appended by "show more" must step aside too while rows are selected.
   document.body.addEventListener('htmx:afterSwap', function (e) {
-    if (e.detail.target && e.detail.target.id === 'ledger-area') sync();
+    var id = e.detail.target && e.detail.target.id;
+    if (id === 'ledger-area' || id === 'load-more-row') sync();
   });
 
   sync();

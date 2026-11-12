@@ -99,6 +99,27 @@ class TestOperationFilter:
         assert len(matches) == 2
         assert all("CARREFOUR" in op.description for op in matches)
 
+    def test_matches_to_review(self) -> None:
+        """The review filter keeps guessed categories only."""
+        operations = {
+            source: HistoricOperation(
+                unique_id=index,
+                description="CB RELAY",
+                amount=Amount(-5.0),
+                category=Category.LEISURE,
+                operation_date=date(2025, 1, 15),
+                category_source=source,
+            )
+            for index, source in enumerate((None, *CategorySource))
+        }
+        filter_ = OperationFilter(to_review_only=True)
+
+        assert {s for s, op in operations.items() if filter_.matches(op)} == {
+            CategorySource.PLANNED,
+            CategorySource.HISTORY,
+            CategorySource.RULE,
+        }
+
     def test_matches_category(
         self, sample_operations: tuple[HistoricOperation, ...]
     ) -> None:
@@ -199,32 +220,6 @@ class TestOperationService:
         assert result.category == Category.ENTERTAINMENT
         mock_account_manager.replace_operation.assert_called_once()
 
-    def test_find_similar_operations(self, service: OperationService) -> None:
-        """find_similar_operations finds operations with common words."""
-        # Get the CARREFOUR operation
-        operation = service.get_operation_by_id(1)
-
-        similar = service.find_similar_operations(operation)
-        # Should find the other CARREFOUR operation (id=4)
-        assert len(similar) >= 1
-        assert any(op.unique_id == 4 for op in similar)
-
-    def test_suggest_category(self, service: OperationService) -> None:
-        """suggest_category suggests based on similar operations."""
-        # The AMAZON operation (OTHER) should get a suggestion if we had
-        # similar categorized operations - but in our test data we don't
-        service.get_operation_by_id(3)
-
-        # For the CARREFOUR MARKET operation, similar CARREFOUR is GROCERIES
-        service.get_operation_by_id(4)
-
-        # Since carrefour_market is already categorized, let's create a test
-        # by checking the CARREFOUR suggestion
-        carrefour = service.get_operation_by_id(1)
-        similar = service.find_similar_operations(carrefour)
-        # op 4 has GROCERIES, so suggestion should be GROCERIES
-        assert len(similar) >= 1
-
     def test_get_category_totals(self, service: OperationService) -> None:
         """get_category_totals returns totals per category."""
         totals = service.get_category_totals()
@@ -271,24 +266,3 @@ class TestOperationServiceGaps:
         result = service.update_operation(3)
         assert result.unique_id == 3
         mock_account_manager.replace_operation.assert_not_called()
-
-    def test_suggest_category_returns_most_common(
-        self, service: OperationService
-    ) -> None:
-        """suggest_category returns the most common category among similar ops."""
-        # CARREFOUR op (id=1) is similar to CARREFOUR MARKET (id=4)
-        # Both are GROCERIES
-        carrefour = service.get_operation_by_id(1)
-
-        suggestion = service.suggest_category(carrefour)
-
-        assert suggestion == Category.GROCERIES
-
-    def test_suggest_category_no_similar(self, service: OperationService) -> None:
-        """suggest_category returns None when no similar operations exist."""
-        # EDF operation (id=5) has no similar operations
-        edf = service.get_operation_by_id(5)
-
-        suggestion = service.suggest_category(edf)
-
-        assert suggestion is None

@@ -32,6 +32,11 @@
              {{ 'checked' if filters.uncategorized }} />
       {{ _("Uncategorized") }}
     </label>
+    <label class="check">
+      <input type="checkbox" name="review" value="true"
+             {{ 'checked' if filters.review }} />
+      {{ _("To review") }}
+    </label>
     <noscript><button type="submit">{{ _("Filter") }}</button></noscript>
   </form>
 
@@ -55,6 +60,13 @@
           hx-include="[name='ids']:checked, #bulk-category, #filter-form"
           hx-target="#ledger-area" hx-swap="innerHTML">
     {{ _("Categorize") }}
+  </button>
+  {# Shown only while an automatic category is among the selected rows. #}
+  <button type="button" class="btn" data-bulk-confirm hidden
+          hx-post="/operations/confirm"
+          hx-include="[name='ids']:checked, #filter-form"
+          hx-target="#ledger-area" hx-swap="innerHTML">
+    {{ _("Validate") }}
   </button>
   <button type="button" class="btn" data-bulk-clear>{{ _("Clear") }}</button>
 </div>

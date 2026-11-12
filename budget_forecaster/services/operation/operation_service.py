@@ -30,7 +30,7 @@ class OperationCategoryUpdate(NamedTuple):
 
 
 @dataclass
-class OperationFilter:
+class OperationFilter:  # pylint: disable=too-many-instance-attributes
     """Filter criteria for operations."""
 
     search_text: str | None = None
@@ -40,6 +40,7 @@ class OperationFilter:
     min_amount: float | None = None
     max_amount: float | None = None
     uncategorized_only: bool = False
+    to_review_only: bool = False
 
     def matches(  # pylint: disable=too-many-return-statements
         self, operation: HistoricOperation
@@ -65,6 +66,9 @@ class OperationFilter:
             return False
 
         if self.uncategorized_only and operation.category != Category.UNCATEGORIZED:
+            return False
+
+        if self.to_review_only and not operation.is_category_guessed:
             return False
 
         return True
@@ -207,64 +211,6 @@ class OperationService:
             OperationNotFoundError: If no operation with the given ID exists.
         """
         return self.update_operation(operation_id, category=category)
-
-    def find_similar_operations(
-        self, operation: HistoricOperation, limit: int = 5
-    ) -> list[HistoricOperation]:
-        """Find operations with similar descriptions.
-
-        Useful for suggesting categories based on past categorizations.
-
-        Args:
-            operation: The operation to find similar ones for.
-            limit: Maximum number of results to return.
-
-        Returns:
-            List of similar operations, excluding the input operation.
-        """
-        # Simple word-based similarity
-        words = set(operation.description.lower().split())
-
-        def similarity_score(other: HistoricOperation) -> int:
-            if other.unique_id == operation.unique_id:
-                return -1
-            other_words = set(other.description.lower().split())
-            return len(words & other_words)
-
-        all_ops = list(self.operations)
-        all_ops.sort(key=similarity_score, reverse=True)
-
-        # Filter out operations with no common words and the operation itself
-        similar = [
-            op
-            for op in all_ops
-            if similarity_score(op) > 0 and op.unique_id != operation.unique_id
-        ]
-        return similar[:limit]
-
-    def suggest_category(self, operation: HistoricOperation) -> Category | None:
-        """Suggest a category based on similar operations.
-
-        Args:
-            operation: The operation to suggest a category for.
-
-        Returns:
-            The most common category among similar operations,
-            or None if no suggestion can be made.
-        """
-        if not (similar := self.find_similar_operations(operation)):
-            return None
-
-        # Find the most common category (excluding UNCATEGORIZED)
-        if not (
-            categories := [
-                op.category for op in similar if op.category != Category.UNCATEGORIZED
-            ]
-        ):
-            return None
-
-        # Return the most frequent category
-        return max(set(categories), key=categories.count)
 
     def get_category_totals(
         self, filter_criteria: OperationFilter | None = None

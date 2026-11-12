@@ -1568,9 +1568,9 @@ a.link-tag:focus-visible {
     width: 7.5rem;
   }
   .ledger .cat {
-    /* Fits the category select plus the link icon beside it; at 13rem the icon
-       spilled out of the cell and the card clipped it. */
-    width: 15rem;
+    /* Fits the category select, the validate button and the link icon beside
+       it: at 15rem an "(auto)" name was cut short. */
+    width: 19rem;
   }
   .ledger .desc {
     overflow-wrap: anywhere;
@@ -1612,11 +1612,44 @@ a.link-tag:focus-visible {
   border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--text);
-  max-width: 12rem;
+  /* The longest name with its "(auto)" mark, such as "Frais professionnels
+     (auto)", fits whole. */
+  max-width: 15rem;
 }
 .row-category:disabled {
   opacity: 0.5;
 }
+/* Validates an automatic category in one click. Unlike the link icon it stays
+   visible: it is the row's pending action, not a secondary one. */
+.validate-action {
+  font: inherit;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--accent);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--sp-4) var(--sp-6);
+  cursor: pointer;
+}
+.validate-action:hover,
+.validate-action:focus-visible {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+/* A suggestion for an uncategorized operation: a line under the category. */
+.cat-review {
+  margin-top: var(--sp-4);
+}
+@media (min-width: 1024px) {
+  /* The ledger's density holds on a pointer screen, as for the select above. */
+  .cat-review .btn {
+    min-height: auto;
+    padding: var(--sp-2) var(--sp-6);
+  }
+}
+
 /* Stands in for the select where the select cannot be shown. Plain muted text:
    the only categorize path open at that moment is the bulk bar. */
 .cat-label {
@@ -1648,7 +1681,7 @@ a.link-tag:focus-visible {
   color: var(--muted);
 }
 .bulk-bar select {
-  /* A floor: the two buttons otherwise squeeze it down to a sliver. */
+  /* A floor: the buttons otherwise squeeze it down to a sliver. */
   flex: 1;
   min-width: 10rem;
   min-height: var(--control-min-h);
@@ -2119,6 +2152,11 @@ a.link-tag:focus-visible {
     min-height: var(--control-min-h);
     font-size: var(--fs-base);
   }
+  /* As tall as the select beside it: a thumb has to hit it. */
+  .validate-action {
+    min-height: var(--control-min-h);
+    min-width: var(--control-min-h);
+  }
   /* Link is reached by tapping the operation (→ detail page); no inline icon. */
   .link-action {
     display: none;
@@ -2131,14 +2169,33 @@ a.link-tag:focus-visible {
   body:has(.bulk-bar:not([hidden])) .cat-label {
     display: block;
   }
-  /* The category comes first, full width; the count and both buttons share the
-     line below it. */
+  body:has(.bulk-bar:not([hidden])) .cat-review {
+    display: none;
+  }
+  /* The category picker and the button that applies it share the first line;
+     the count, Valider and Effacer share the second. */
+  .bulk-bar {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    grid-template-areas:
+      'pick pick apply'
+      'count confirm clear';
+  }
   .bulk-bar select {
-    order: -1;
-    flex-basis: 100%;
+    grid-area: pick;
+    min-width: 0;
+  }
+  .bulk-bar [data-bulk-apply] {
+    grid-area: apply;
   }
   .bulk-count {
-    flex: 1;
+    grid-area: count;
+  }
+  .bulk-bar [data-bulk-confirm] {
+    grid-area: confirm;
+  }
+  .bulk-bar [data-bulk-clear] {
+    grid-area: clear;
   }
 
   .review tr.target-row {

@@ -10,8 +10,6 @@ from datetime import date
 
 from fastapi.testclient import TestClient
 
-from budget_forecaster.web.formatting import category_name
-
 _RECURRING_BUDGET = {
     "description": "Test Budget",
     "amount": "-300",
@@ -246,12 +244,17 @@ class TestCategorize:
 
     def test_category_options_are_alphabetical(self, client: TestClient) -> None:
         """The per-row category dropdown lists categories alphabetically, with
-        accents folded so 'Épargne' sorts with the E's rather than last."""
+        accents folded so 'Épargne' sorts with the E's rather than last. An
+        automatic category's own entry comes first, outside that order."""
         html = client.get("/operations").text
         select = re.search(
             r'<select class="row-category".*?</select>', html, re.S
         ).group(0)
-        labels = re.findall(r"<option[^>]*>([^<]+)</option>", select)
+        labels = [
+            label
+            for label in re.findall(r"<option[^>]*>([^<]+)</option>", select)
+            if not label.endswith("(auto)")
+        ]
 
         def fold(text: str) -> str:
             decomposed = unicodedata.normalize("NFD", text)
@@ -392,11 +395,11 @@ class TestCategorize:
         rows = re.findall(r'<tr id="op-row-\d+".*?</tr>', html, re.S)
         assert rows
         for row in rows[:5]:
-            chosen = re.search(r'<option value="([a-z_]+)" selected', row)
+            chosen = re.search(r'<option value="[a-z_]+" selected>([^<]+)<', row)
             label = re.search(r'class="cat-label">(.*?)</span>\s*</td>', row, re.S)
             assert chosen and label, "a row states no category"
             spoken = re.sub(r"<[^>]+>", "", label.group(1)).strip()
-            assert spoken.endswith(category_name(chosen.group(1)))
+            assert spoken.endswith(chosen.group(1))
 
     def test_bulk_categorize_with_no_category_changes_nothing(
         self, client: TestClient

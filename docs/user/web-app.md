@@ -60,7 +60,7 @@ to start if neither source provides both secrets.
 | Accueil    | Available margin, balance, what is left to categorize, overdue payments, this month, upcoming |
 | Mois       | Per-category planned vs actual for one month; switch months from the URL or the arrows        |
 | Budgets    | All budgets and planned operations, whatever month they fall in; create, edit, split, delete  |
-| Opérations | The full ledger, filterable by search text, category, month, and "uncategorized"              |
+| Opérations | The full ledger, filterable by search text, category, month, "uncategorized" and "to review"  |
 | Tendances  | Balance evolution over time and expense breakdown by category                                 |
 | Réglages   | Bank connection and sync history, manual import, backups, the margin threshold, the theme     |
 
@@ -172,6 +172,16 @@ applies:
 An operation you set back to uncategorized yourself is left alone, and a category you
 chose is never replaced.
 
+An automatic category reads "(auto)" in the dropdown, such as "Courses (auto)", with a ✓
+button beside it that validates it. Picking the plain "Courses" entry of the list
+validates it too, and picking another category replaces it. Either way the category
+becomes yours. Tick "À revoir" in the filter bar to list only the automatic categories
+you have not validated yet.
+
+An operation left uncategorized can offer a "Suggestion" button under its dropdown. It
+proposes the category you gave most often among the last five operations of the same
+payee, and applies it in one click.
+
 An operation's own page carries the same dropdown, on the Catégorie line. It is where
 you have the date, the amount and the link in front of you, so the category can be fixed
 there rather than by finding the row again in the ledger.
@@ -179,12 +189,13 @@ there rather than by finding the row again in the ledger.
 To categorize several at once, tick the rows you want. A bar appears at the bottom with
 a category picker; choose one and apply it to the whole selection. It starts on
 "Choisissez une catégorie…", and "Catégoriser" stays out of reach until you pick one, so
-the selection never takes a category you did not name. On a phone the picker takes a
-line of its own, with the count and both buttons below it. While rows are selected you
-always categorize one way at a time: the per-row dropdowns step aside, disabled on a
-wide screen and replaced on a phone by the category in plain grey text, so you keep
-seeing which rows are already sorted while you choose. Clear the selection to go back to
-per-row editing.
+the selection never takes a category you did not name. When the selection holds
+automatic categories, a "Valider" button validates them all at once. On a phone the
+picker and "Catégoriser" share the first line, with the count, "Valider" and "Effacer"
+below it. While rows are selected you always categorize one way at a time: the per-row
+dropdowns step aside, disabled on a wide screen and replaced on a phone by the category
+in plain grey text, so you keep seeing which rows are already sorted while you choose.
+Clear the selection to go back to per-row editing.
 
 ## Linking an operation
 

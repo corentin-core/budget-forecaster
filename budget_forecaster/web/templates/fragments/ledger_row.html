@@ -6,7 +6,8 @@
     data-href="/operations/{{ row.operation.unique_id }}?return_to={{ back }}">
   <td class="select-cell">
     <input type="checkbox" name="ids" value="{{ row.operation.unique_id }}"
-           class="row-select" aria-label="{{ _('Select operation') }}" />
+           class="row-select" aria-label="{{ _('Select operation') }}"
+           {{ 'data-guessed' if row.operation.is_category_guessed }} />
   </td>
   <td class="date" data-label="{{ _('Date') }}">{{ row.operation.operation_date | frdate }}</td>
   <td class="desc" data-label="{{ _('Description') }}">
@@ -23,22 +24,47 @@
   <td class="num {{ 'positive' if row.operation.amount > 0 else 'negative' }}"
       data-label="{{ _('Amount') }}">{{ row.operation.amount | signed_eur(currency) }}</td>
   <td class="cat" data-label="{{ _('Category') }}">
+    {% set op_id = row.operation.unique_id %}
+    {% set guessed = row.operation.is_category_guessed %}
+    {% set auto_name = _("{name} (auto)").format(
+         name=row.operation.category.value | category_name) %}
+    {% set swap_row = {'hx-target': '#op-row-' ~ op_id, 'hx-swap': 'outerHTML'} %}
     <div class="cat-actions">
       <select class="row-category" name="category"
-              hx-post="/operations/{{ row.operation.unique_id }}/categorize{{ '?' ~ query if query }}"
-              hx-target="#op-row-{{ row.operation.unique_id }}"
-              hx-swap="outerHTML"
+              hx-post="/operations/{{ op_id }}/categorize{{ '?' ~ query if query }}"
+              {{ swap_row | xmlattr }}
               hx-trigger="change"
               aria-label="{{ _('Category') }}">
+        {# An automatic category is its own entry: picking the plain one below
+           validates it, as picking any other replaces it. #}
+        {% if guessed %}
+          <option value="{{ row.operation.category.value }}" selected>{{ auto_name }}</option>
+        {% endif %}
         {% for c in categories %}
-          <option value="{{ c.value }}" {{ 'selected' if row.operation.category == c }}>{{ c.value | category_name }}</option>
+          <option value="{{ c.value }}" {{ 'selected' if row.operation.category == c and not guessed }}>{{ c.value | category_name }}</option>
         {% endfor %}
       </select>
-      <a class="link-action" href="/operations/{{ row.operation.unique_id }}/link?return_to={{ back }}"
+      {% if guessed %}
+        {% set validate = _("Validate the category") %}
+        <button type="button" class="row-quick validate-action"
+                hx-post="/operations/{{ op_id }}/confirm{{ '?' ~ query if query }}"
+                {{ swap_row | xmlattr }}
+                aria-label="{{ validate }}" data-tip="{{ validate }}">✓</button>
+      {% endif %}
+      <a class="link-action" href="/operations/{{ op_id }}/link?return_to={{ back }}"
          aria-label="{{ _('Link') }}">🔗</a>
     </div>
+    {% if row.suggestion %}
+      <div class="cat-review">
+        <button type="button" class="btn small row-quick"
+                hx-post="/operations/{{ op_id }}/categorize{{ '?' ~ query if query }}"
+                hx-vals='{{ {"category": row.suggestion.value} | tojson }}'
+                {{ swap_row | xmlattr }}>{{ _("Suggested:") }} {{ row.suggestion.value | category_name }}</button>
+      </div>
+    {% endif %}
     {# What the select says, for the phone where selecting rows takes it away.
        The prefix is what the select's own label gave a screen reader. #}
-    <span class="cat-label"><span class="sr-only">{{ _("Category:") }} </span>{{ row.operation.category.value | category_name }}</span>
+    <span class="cat-label"><span class="sr-only">{{ _("Category:") }} </span>{{
+      auto_name if guessed else row.operation.category.value | category_name }}</span>
   </td>
 </tr>
