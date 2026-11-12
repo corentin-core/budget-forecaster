@@ -54,6 +54,7 @@ from budget_forecaster.services.import_service import (
     ImportService,
     ImportSummary,
 )
+from budget_forecaster.services.operation.auto_categorizer import suggest_categories
 from budget_forecaster.services.operation.iteration_resolution_service import (
     IterationResolutionService,
 )
@@ -317,6 +318,22 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         """Categorize operations and create heuristic links."""
         return self._categorize_uc.categorize_operations(operation_ids, category)
 
+    def confirm_categories(self, operation_ids: tuple[OperationId, ...]) -> int:
+        """Make the guessed categories of these operations the user's.
+
+        The category does not change, so links stay as they are. Returns the
+        number of operations confirmed.
+        """
+        confirmed = 0
+        for operation_id in operation_ids:
+            operation = self._operation_service.get_operation_by_id(operation_id)
+            if operation.is_category_guessed:
+                self._operation_service.update_operation(
+                    operation_id, category=operation.category
+                )
+                confirmed += 1
+        return confirmed
+
     # -------------------------------------------------------------------------
     # Planned operation CRUD (delegated to ManageTargetsUseCase)
     # -------------------------------------------------------------------------
@@ -386,20 +403,16 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         """Get a single operation by its ID."""
         return self._operation_service.get_operation_by_id(operation_id)
 
-    def suggest_category(self, operation: HistoricOperation) -> Category | None:
-        """Suggest a category based on similar operations."""
-        return self._operation_service.suggest_category(operation)
+    def suggest_categories(
+        self, operations: tuple[HistoricOperation, ...]
+    ) -> dict[OperationId, Category]:
+        """The category the user usually gives each operation's payee."""
+        return suggest_categories(self._operation_service.operations, operations)
 
     @property
     def operations(self) -> tuple[HistoricOperation, ...]:
         """Get all operations from the account."""
         return self._operation_service.operations
-
-    def find_similar_operations(
-        self, operation: HistoricOperation, limit: int = 5
-    ) -> list[HistoricOperation]:
-        """Find operations with similar descriptions."""
-        return self._operation_service.find_similar_operations(operation, limit)
 
     def get_category_totals(
         self, filter_criteria: OperationFilter | None = None

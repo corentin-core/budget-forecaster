@@ -40,6 +40,7 @@ from budget_forecaster.domain.operation.planned_operation import PlannedOperatio
 from budget_forecaster.infrastructure.persistence.sqlite_repository import (
     SqliteRepository,
 )
+from budget_forecaster.services.operation.auto_categorizer import auto_categorize
 
 # ---------------------------------------------------------------------------
 # Reproducibility
@@ -851,18 +852,50 @@ def _add_current_month_ops(
     all_swile_ops.extend(_generate_current_month_swile_operations())
 
 
+GUESS_WINDOW = timedelta(days=12)
+"""The latest operations, whose categories the demo shows as guessed."""
+
+
 def _as_user_categorized(
-    ops: list[HistoricOperation],
+    ops: list[HistoricOperation], links: list[OperationLink]
 ) -> tuple[HistoricOperation, ...]:
-    """Mark the demo's categories as the user's, sorted by date."""
+    """Mark the demo's categories as the user's, sorted by date.
+
+    The latest operations keep the source the import would have given them, when
+    its guess is the demo's category: they fill the ledger's "To review" filter.
+    """
+    recent_from = BALANCE_DATE - GUESS_WINDOW
+    user_ops = tuple(
+        op
+        if op.category == Category.UNCATEGORIZED
+        else op.replace(category_source=CategorySource.MANUAL)
+        for op in ops
+    )
+    pending = tuple(
+        op.replace(category=Category.UNCATEGORIZED, category_source=None)
+        for op in user_ops
+        if op.operation_date >= recent_from and op.category != Category.UNCATEGORIZED
+    )
+    category_of = {op.unique_id: op.category for op in user_ops}
+    linked = {
+        link.operation_unique_id: category_of[link.operation_unique_id]
+        for link in links
+        if link.target_type == LinkType.PLANNED_OPERATION
+        and link.operation_unique_id in category_of
+    }
+    pending_ids = {op.unique_id for op in pending}
+    guesses = {
+        guess.unique_id: guess
+        for guess in auto_categorize(
+            tuple(op for op in user_ops if op.unique_id not in pending_ids) + pending,
+            (),
+            linked,
+        )
+        if guess.category == category_of[guess.unique_id]
+    }
     return tuple(
         sorted(
-            (
-                op
-                if op.category == Category.UNCATEGORIZED
-                else op.replace(category_source=CategorySource.MANUAL)
-                for op in ops
-            ),
+            (guesses.get(op.unique_id, op) for op in user_ops),
             key=lambda o: o.operation_date,
         )
     )
@@ -883,7 +916,7 @@ def _save_accounts(
         balance=bnp_balance,
         currency="EUR",
         balance_date=BALANCE_DATE,
-        operations=_as_user_categorized(bnp_ops),
+        operations=_as_user_categorized(bnp_ops, links),
     )
     repo.upsert_account(bnp_account)
 
@@ -892,7 +925,7 @@ def _save_accounts(
         balance=swile_balance,
         currency="EUR",
         balance_date=BALANCE_DATE,
-        operations=_as_user_categorized(swile_ops),
+        operations=_as_user_categorized(swile_ops, links),
     )
     repo.upsert_account(swile_account)
 

@@ -58,6 +58,11 @@ class HistoricOperation(OperationRange):
         return self._category_source == CategorySource.MANUAL
 
     @property
+    def is_category_guessed(self) -> bool:
+        """Whether the category was guessed at import and not confirmed yet."""
+        return self._category_source not in (None, CategorySource.MANUAL)
+
+    @property
     def content_ref(self) -> str:
         """Stable dedup key derived from the operation's content."""
         return content_ref(self.description, self.amount, self.operation_date)

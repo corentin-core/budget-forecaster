@@ -9,6 +9,7 @@
   var countEl = bar.querySelector('[data-bulk-count]');
   var categoryEl = bar.querySelector('#bulk-category');
   var applyEl = bar.querySelector('[data-bulk-apply]');
+  var confirmEl = bar.querySelector('[data-bulk-confirm]');
 
   function selected() {
     return document.querySelectorAll('.row-select:checked');
@@ -31,9 +32,10 @@
     var n = selected().length;
     countEl.textContent = n;
     bar.hidden = n === 0;
-    document.querySelectorAll('.row-category').forEach(function (sel) {
-      sel.disabled = n > 0;
+    document.querySelectorAll('.row-category, .row-quick').forEach(function (el) {
+      el.disabled = n > 0;
     });
+    confirmEl.hidden = !document.querySelector('.row-select[data-guessed]:checked');
     syncApply();
     reserve();
   }

@@ -32,10 +32,10 @@ def _payee_key(operation: HistoricOperation) -> _PayeeKey | None:
     return signature, operation.amount < 0
 
 
-def _history_categories(
+def _latest_manual_categories(
     operations: Iterable[HistoricOperation],
-) -> dict[_PayeeKey, Category]:
-    """The category each payee's latest manual categorizations agree on."""
+) -> dict[_PayeeKey, list[Category]]:
+    """Each payee's latest manual categorizations, newest first."""
     votes: dict[_PayeeKey, list[HistoricOperation]] = defaultdict(list)
     for operation in operations:
         if (
@@ -44,14 +44,46 @@ def _history_categories(
             and (key := _payee_key(operation)) is not None
         ):
             votes[key].append(operation)
+    return {
+        key: [
+            op.category
+            for op in sorted(voters, key=lambda op: op.operation_date, reverse=True)
+        ][:HISTORY_DEPTH]
+        for key, voters in votes.items()
+    }
 
-    agreed: dict[_PayeeKey, Category] = {}
-    for key, voters in votes.items():
-        latest = sorted(voters, key=lambda op: op.operation_date, reverse=True)
-        categories = {op.category for op in latest[:HISTORY_DEPTH]}
-        if len(latest) >= HISTORY_MIN_VOTES and len(categories) == 1:
-            agreed[key] = categories.pop()
-    return agreed
+
+def _history_categories(
+    operations: Iterable[HistoricOperation],
+) -> dict[_PayeeKey, Category]:
+    """The category each payee's latest manual categorizations agree on."""
+    return {
+        key: latest[0]
+        for key, latest in _latest_manual_categories(operations).items()
+        if len(latest) >= HISTORY_MIN_VOTES and len(set(latest)) == 1
+    }
+
+
+def suggest_categories(
+    operations: Iterable[HistoricOperation],
+    uncategorized: Iterable[HistoricOperation],
+) -> dict[OperationId, Category]:
+    """The category the user gave most often to each operation's payee.
+
+    Looser than the history guess: one manual categorization is enough, and a
+    tie goes to the most recent. Only uncategorized operations get a suggestion.
+    """
+    latest = _latest_manual_categories(operations)
+    suggestions: dict[OperationId, Category] = {}
+    for operation in uncategorized:
+        if operation.category != Category.UNCATEGORIZED:
+            continue
+        if (key := _payee_key(operation)) is None or not (
+            categories := latest.get(key)
+        ):
+            continue
+        suggestions[operation.unique_id] = max(categories, key=categories.count)
+    return suggestions
 
 
 def _planned_category(

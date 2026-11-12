@@ -9,7 +9,10 @@ from budget_forecaster.core.date_range import RecurringDay
 from budget_forecaster.core.types import Category, CategorySource
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
-from budget_forecaster.services.operation.auto_categorizer import auto_categorize
+from budget_forecaster.services.operation.auto_categorizer import (
+    auto_categorize,
+    suggest_categories,
+)
 from budget_forecaster.services.operation.category_rules import rule_category
 from budget_forecaster.services.operation.operation_matcher import OperationMatcher
 
@@ -239,3 +242,51 @@ class TestRules:
     def test_does_not_match_inside_a_word(self) -> None:
         """ESSO does not fire on ESSONNE."""
         assert rule_category("BOULANGERIE ESSONNE") is None
+
+
+class TestSuggestion:
+    """The one-click suggestion is looser than the history guess."""
+
+    def test_one_manual_categorization_is_enough(self) -> None:
+        """A single categorization of the payee is suggested."""
+        operations = (
+            _manual(1, "CB RELAY", Category.LEISURE, days_ago=5),
+            _op(10, "CB RELAY 12/09"),
+        )
+
+        assert suggest_categories(operations, operations) == {10: Category.LEISURE}
+
+    def test_most_frequent_wins_and_a_tie_goes_to_the_latest(self) -> None:
+        """Two against one wins; one against one goes to the newest."""
+        majority = (
+            _manual(1, "CB RELAY", Category.LEISURE, days_ago=1),
+            _manual(2, "CB RELAY", Category.GROCERIES, days_ago=2),
+            _manual(3, "CB RELAY", Category.GROCERIES, days_ago=3),
+            _op(10, "CB RELAY"),
+        )
+        tie = (
+            _manual(1, "CB RELAY", Category.LEISURE, days_ago=1),
+            _manual(2, "CB RELAY", Category.GROCERIES, days_ago=2),
+            _op(10, "CB RELAY"),
+        )
+
+        assert suggest_categories(majority, majority) == {10: Category.GROCERIES}
+        assert suggest_categories(tie, tie) == {10: Category.LEISURE}
+
+    def test_guesses_do_not_suggest(self) -> None:
+        """Only the user's own categorizations are suggested."""
+        operations = (
+            _op(1, "CB RELAY", Category.LEISURE, CategorySource.RULE),
+            _op(10, "CB RELAY"),
+        )
+
+        assert not suggest_categories(operations, operations)
+
+    def test_only_uncategorized_operations_get_one(self) -> None:
+        """A categorized operation needs no suggestion."""
+        operations = (
+            _manual(1, "CB RELAY", Category.LEISURE, days_ago=5),
+            _op(10, "CB RELAY", Category.GROCERIES, CategorySource.HISTORY),
+        )
+
+        assert not suggest_categories(operations, operations)

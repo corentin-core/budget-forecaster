@@ -6,7 +6,8 @@
     data-href="/operations/{{ row.operation.unique_id }}?return_to={{ back }}">
   <td class="select-cell">
     <input type="checkbox" name="ids" value="{{ row.operation.unique_id }}"
-           class="row-select" aria-label="{{ _('Select operation') }}" />
+           class="row-select" aria-label="{{ _('Select operation') }}"
+           {{ 'data-guessed' if row.operation.is_category_guessed }} />
   </td>
   <td class="date" data-label="{{ _('Date') }}">{{ row.operation.operation_date | frdate }}</td>
   <td class="desc" data-label="{{ _('Description') }}">
@@ -37,6 +38,27 @@
       <a class="link-action" href="/operations/{{ row.operation.unique_id }}/link?return_to={{ back }}"
          aria-label="{{ _('Link') }}">🔗</a>
     </div>
+    {% set swap_row = {
+         'hx-target': '#op-row-' ~ row.operation.unique_id, 'hx-swap': 'outerHTML'} %}
+    {% if row.operation.is_category_guessed %}
+      {% set source = row.operation.category_source.value %}
+      <div class="cat-review">
+        <span class="cat-source">{{
+          _("Guessed from the forecast") if source == 'planned'
+          else _("Guessed from your history") if source == 'history'
+          else _("Guessed from a rule") }}</span>
+        <button type="button" class="btn small row-quick"
+                hx-post="/operations/{{ row.operation.unique_id }}/confirm{{ '?' ~ query if query }}"
+                {{ swap_row | xmlattr }}>{{ _("Confirm") }}</button>
+      </div>
+    {% elif row.suggestion %}
+      <div class="cat-review">
+        <button type="button" class="btn small row-quick"
+                hx-post="/operations/{{ row.operation.unique_id }}/categorize{{ '?' ~ query if query }}"
+                hx-vals='{"category": "{{ row.suggestion.value }}"}'
+                {{ swap_row | xmlattr }}>{{ _("Suggested:") }} {{ row.suggestion.value | category_name }}</button>
+      </div>
+    {% endif %}
     {# What the select says, for the phone where selecting rows takes it away.
        The prefix is what the select's own label gave a screen reader. #}
     <span class="cat-label"><span class="sr-only">{{ _("Category:") }} </span>{{ row.operation.category.value | category_name }}</span>

@@ -32,6 +32,7 @@ class OperationRow(NamedTuple):
     target_kind: str  # "budget" | "planned", empty when unlinked
     target_id: int
     target_name: str
+    suggestion: Category | None = None
 
 
 class LedgerFilters(NamedTuple):
@@ -42,6 +43,7 @@ class LedgerFilters(NamedTuple):
     date_from: str
     date_to: str
     uncategorized: bool
+    review: bool
     criteria: OperationFilter
 
 
@@ -67,6 +69,7 @@ def get_filters(
     date_from: str = "",
     date_to: str = "",
     uncategorized: bool = False,
+    review: bool = False,
 ) -> LedgerFilters:
     """Parse the ledger query parameters into filter criteria."""
     criteria = OperationFilter(
@@ -75,8 +78,11 @@ def get_filters(
         date_from=_date(date_from),
         date_to=_date(date_to),
         uncategorized_only=uncategorized,
+        to_review_only=review,
     )
-    return LedgerFilters(search, category, date_from, date_to, uncategorized, criteria)
+    return LedgerFilters(
+        search, category, date_from, date_to, uncategorized, review, criteria
+    )
 
 
 def filters_from_form(form: FormData) -> LedgerFilters:
@@ -87,6 +93,7 @@ def filters_from_form(form: FormData) -> LedgerFilters:
         date_from=str(form.get("date_from", "")),
         date_to=str(form.get("date_to", "")),
         uncategorized=str(form.get("uncategorized", "")) == "true",
+        review=str(form.get("review", "")) == "true",
     )
 
 
@@ -103,6 +110,8 @@ def _query(filters: LedgerFilters) -> str:
         params["date_to"] = filters.date_to
     if filters.uncategorized:
         params["uncategorized"] = "true"
+    if filters.review:
+        params["review"] = "true"
     return urlencode(params)
 
 
@@ -116,10 +125,12 @@ def _rows(
         if p.id is not None
     }
     links = {link.operation_unique_id: link for link in app.get_all_links()}
+    suggestions = app.suggest_categories(operations)
     rows = []
     for operation in operations:
+        suggestion = suggestions.get(operation.unique_id)
         if (link := links.get(operation.unique_id)) is None:
-            rows.append(OperationRow(operation, False, "", 0, ""))
+            rows.append(OperationRow(operation, False, "", 0, "", suggestion))
             continue
         is_budget = link.target_type is LinkType.BUDGET
         names = budgets if is_budget else planned
@@ -130,6 +141,7 @@ def _rows(
                 "budget" if is_budget else "planned",
                 link.target_id,
                 linking.target_display_name(names, link.target_id),
+                suggestion,
             )
         )
     return tuple(rows)
@@ -346,6 +358,56 @@ async def categorize_one(
     )
 
 
+@router.post("/operations/{operation_id}/confirm")
+async def confirm_one(
+    operation_id: int,
+    request: Request,
+    app: ApplicationService = Depends(get_app_service),
+    filters: LedgerFilters = Depends(get_filters),
+) -> Response:
+    """Make an operation's guessed category the user's; swap back its row."""
+    if app.confirm_categories((operation_id,)):
+        app.save_operation_changes()
+    return render_template(
+        request,
+        "fragments/ledger_row.html",
+        active="operations",
+        row=_rows(app, (app.get_operation_by_id(operation_id),))[0],
+        categories=sorted_categories(),
+        currency=app.currency,
+        query=_query(filters),
+    )
+
+
+def _selected_ids(form: FormData) -> tuple[int, ...]:
+    return tuple(
+        int(i)
+        for i in form.getlist("ids")
+        if isinstance(i, str) and i.lstrip("-").isdigit()
+    )
+
+
+def _back_to_ledger(filters: LedgerFilters) -> Response:
+    query = _query(filters)
+    url = f"/operations?{query}" if query else "/operations"
+    return RedirectResponse(url=url, status_code=303)
+
+
+@router.post("/operations/confirm")
+async def confirm_bulk(
+    request: Request,
+    app: ApplicationService = Depends(get_app_service),
+) -> Response:
+    """Confirm the guessed categories of the selected operations."""
+    form = await request.form()
+    filters = filters_from_form(form)
+    if not (ids := _selected_ids(form)):
+        return _back_to_ledger(filters)
+    if app.confirm_categories(ids):
+        app.save_operation_changes()
+    return _ledger_area(request, app, filters)
+
+
 @router.post("/operations/categorize")
 async def categorize_bulk(
     request: Request,
@@ -355,18 +417,18 @@ async def categorize_bulk(
     form = await request.form()
     filters = filters_from_form(form)
     category = _category(str(form.get("bulk_category", "")))
-    ids = tuple(
-        int(i)
-        for i in form.getlist("ids")
-        if isinstance(i, str) and i.lstrip("-").isdigit()
-    )
-    if category is None or not ids:
-        query = _query(filters)
-        url = f"/operations?{query}" if query else "/operations"
-        return RedirectResponse(url=url, status_code=303)
+    if category is None or not (ids := _selected_ids(form)):
+        return _back_to_ledger(filters)
     app.categorize_operations(ids, category)
     app.save_operation_changes()
     refresh_forecast(app)
+    return _ledger_area(request, app, filters)
+
+
+def _ledger_area(
+    request: Request, app: ApplicationService, filters: LedgerFilters
+) -> Response:
+    """The first page of the filtered ledger, with the badge refreshed."""
     matches = app.get_operations(filters.criteria)
     return render_template(
         request,
