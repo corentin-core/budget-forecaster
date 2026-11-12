@@ -32,6 +32,8 @@ _SPARK_PADDING = 0.06  # headroom above/below the plotted range
 # year, so ticks fall on the same months every year (Jan, Apr, Jul, Oct...).
 _SPARK_MAX_XTICKS = 6
 _SPARK_TICK_STEPS = (1, 2, 3, 4, 6, 12)
+# A label centered closer than this to the right edge sticks out of the card.
+_SPARK_TICK_MAX_PCT = 95.0
 _PIE_RADIUS = 78
 _PIE_CIRCUMFERENCE = 2 * pi * _PIE_RADIUS
 _THRESHOLD_MIN = 0.0
@@ -150,15 +152,18 @@ def _x_ticks(samples: list[tuple[date, float]]) -> tuple[AxisTick, ...]:
         (s for s in _SPARK_TICK_STEPS if span / s <= _SPARK_MAX_XTICKS),
         _SPARK_TICK_STEPS[-1],
     )
-    return tuple(
+    ticks = [
         AxisTick(
             round(index / last * 100, 1),
             _short_month(samples[index][0]),
             month % (2 * step) != 0,
         )
         for month, index in starts.items()
-        if month % step == 0
-    )
+        if month % step == 0 and index / last * 100 <= _SPARK_TICK_MAX_PCT
+    ]
+    if len(ticks) == 1:  # a lone tick stays on a narrow screen
+        ticks[0] = ticks[0]._replace(minor=False)
+    return tuple(ticks)
 
 
 def _sparkline(

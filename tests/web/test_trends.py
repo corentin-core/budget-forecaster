@@ -236,6 +236,16 @@ class TestXTicks:
         ticks = _x_ticks(_daily(date(2026, 1, 10), date(2026, 1, 20)))
         assert [(t.left_pct, t.text) for t in ticks] == [(0.0, "Jan 26")]
 
+    def test_no_tick_against_the_right_edge(self) -> None:
+        """A month starting at the very end of the curve gets no label."""
+        ticks = _x_ticks(_daily(date(2026, 1, 1), date(2027, 1, 1)))
+        assert ticks[-1].text == "Oct 26"
+
+    def test_lone_tick_is_major(self) -> None:
+        """A single label is kept on a phone, whatever its month."""
+        ticks = _x_ticks(_daily(date(2026, 1, 15), date(2026, 2, 20)))
+        assert [(t.text, t.minor) for t in ticks] == [("Feb 26", False)]
+
     def test_month_labels_are_translated(self, client: TestClient) -> None:
         """The French page shows short French month names under the curve."""
         html = client.get("/trends").text
