@@ -58,15 +58,33 @@ def _planned(
 def _guesses(
     operations: tuple[HistoricOperation, ...],
     matchers: tuple[OperationMatcher, ...] = (),
+    linked: dict[int, Category] | None = None,
 ) -> dict[int, tuple[Category, CategorySource | None]]:
     return {
         op.unique_id: (op.category, op.category_source)
-        for op in auto_categorize(operations, matchers)
+        for op in auto_categorize(operations, matchers, linked)
     }
 
 
 class TestPriority:
     """Each source applies only when the ones before it have nothing to say."""
+
+    def test_linked_target_wins_over_rules(self) -> None:
+        """A loan payment linked by hand is not read as groceries from its label."""
+        guesses = _guesses(
+            (_op(10, "PRLV SEPA CARREFOUR BANQUE"),),
+            linked={10: Category.HOUSE_LOAN},
+        )
+
+        assert guesses == {10: (Category.HOUSE_LOAN, CategorySource.PLANNED)}
+
+    def test_uncategorized_linked_target_gives_way_to_rules(self) -> None:
+        """A target with no category has none to give."""
+        guesses = _guesses(
+            (_op(10, "CB CARREFOUR"),), linked={10: Category.UNCATEGORIZED}
+        )
+
+        assert guesses == {10: (Category.GROCERIES, CategorySource.RULE)}
 
     def test_planned_operation_wins_over_history_and_rules(self) -> None:
         """An operation fulfilling a planned operation takes its category."""

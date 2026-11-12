@@ -1,15 +1,16 @@
 """Guess the category of operations nobody has categorized by hand.
 
-Sources are tried in order: a planned operation the operation fulfils, then
-the user's own recent categorizations of the same payee, then built-in rules.
+Sources are tried in order: the planned operation or budget the operation is
+linked to, then a planned operation it fulfils, then the user's own recent
+categorizations of the same payee, then built-in rules.
 Only manual categories teach the history: a guess learning from guesses would
 repeat its own mistakes.
 """
 
 from collections import defaultdict
-from typing import Final, Iterable
+from typing import Final, Iterable, Mapping
 
-from budget_forecaster.core.types import Category, CategorySource
+from budget_forecaster.core.types import Category, CategorySource, OperationId
 from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.services.operation.bank_labels import label_signature
 from budget_forecaster.services.operation.category_rules import rule_category
@@ -72,11 +73,14 @@ def _planned_category(
 def auto_categorize(
     operations: tuple[HistoricOperation, ...],
     planned_matchers: tuple[OperationMatcher, ...],
+    linked_categories: Mapping[OperationId, Category] | None = None,
 ) -> tuple[HistoricOperation, ...]:
     """Guess a category for each uncategorized operation not left so by hand.
 
-    Returns only the operations that received a category.
+    `linked_categories` gives the category of the target each linked operation
+    is linked to. Returns only the operations that received a category.
     """
+    linked_categories = linked_categories or {}
     history = _history_categories(operations)
     categorized: list[HistoricOperation] = []
     for operation in operations:
@@ -86,7 +90,11 @@ def auto_categorize(
         ):
             continue
         key = _payee_key(operation)
-        if (category := _planned_category(operation, planned_matchers)) is not None:
+        category: Category | None
+        linked = linked_categories.get(operation.unique_id, Category.UNCATEGORIZED)
+        if linked != Category.UNCATEGORIZED:
+            category, source = linked, CategorySource.PLANNED
+        elif (category := _planned_category(operation, planned_matchers)) is not None:
             source = CategorySource.PLANNED
         elif key is not None and (category := history.get(key)) is not None:
             source = CategorySource.HISTORY

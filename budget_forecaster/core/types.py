@@ -105,7 +105,8 @@ class CategorySource(enum.StrEnum):
 
     MANUAL = "manual"
     PLANNED = "planned"
-    """Matched a planned operation's hints, amount and date."""
+    """Linked to a planned operation or budget, or matched a planned operation's
+    hints, amount and date."""
 
     HISTORY = "history"
     """The user's recent categorizations of the same label all agree."""

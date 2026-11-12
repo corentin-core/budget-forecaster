@@ -185,7 +185,9 @@ so an imported payment can only reach its planned operation once it is categoriz
 flowchart TD
     OP[Uncategorized operation] --> MANUAL{Left uncategorized by hand?}
     MANUAL -->|Yes| KEEP[Left alone]
-    MANUAL -->|No| PLANNED{One planned operation matches hints, amount and date?}
+    MANUAL -->|No| LINKED{Linked to a categorized planned operation or budget?}
+    LINKED -->|Yes| L[The target's category, source planned]
+    LINKED -->|No| PLANNED{One planned operation matches hints, amount and date?}
     PLANNED -->|Yes| P[Its category, source planned]
     PLANNED -->|No| HISTORY{Last 5 manual categorizations of the payee agree, at least 3?}
     HISTORY -->|Yes| H[That category, source history]

@@ -163,10 +163,11 @@ Imported operations often arrive already categorized. After each import or sync,
 guesses a category for every uncategorized operation, from the first of these that
 applies:
 
-1. The category of the planned operation the payment matches.
-2. The category you gave the same payee the last few times, if you always gave the same
+1. The category of the planned operation or budget you linked the payment to.
+2. The category of the planned operation the payment matches.
+3. The category you gave the same payee the last few times, if you always gave the same
    one.
-3. A built-in list of common payees, such as supermarket chains or the SNCF.
+4. A built-in list of common payees, such as supermarket chains or the SNCF.
 
 An operation you set back to uncategorized yourself is left alone, and a category you
 chose is never replaced.

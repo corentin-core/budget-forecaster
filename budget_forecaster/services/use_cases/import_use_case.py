@@ -51,7 +51,11 @@ class ImportUseCase:
         result = self._import_service.import_file(path, move_to_processed)
 
         if result.success:
-            categorize_pending_operations(self._persistent_account, self._matcher_cache)
+            categorize_pending_operations(
+                self._persistent_account,
+                self._matcher_cache,
+                self._operation_link_service,
+            )
             operations = self._persistent_account.account.operations
             if matchers := self._matcher_cache.get_matchers():
                 created_links = self._operation_link_service.create_heuristic_links(
@@ -78,7 +82,11 @@ class ImportUseCase:
         summary = self._import_service.import_from_inbox(on_progress)
 
         if summary.successful_imports > 0:
-            categorize_pending_operations(self._persistent_account, self._matcher_cache)
+            categorize_pending_operations(
+                self._persistent_account,
+                self._matcher_cache,
+                self._operation_link_service,
+            )
             operations = self._persistent_account.account.operations
             if matchers := self._matcher_cache.get_matchers():
                 created_links = self._operation_link_service.create_heuristic_links(
