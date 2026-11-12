@@ -24,7 +24,9 @@ from budget_forecaster.core.types import (
 from budget_forecaster.domain.account.account_interface import AccountInterface
 from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.domain.operation.historic_operation import HistoricOperation
 from budget_forecaster.domain.operation.iteration_resolution import IterationResolution
+from budget_forecaster.domain.operation.link_attribution import linked_month
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.i18n import _
@@ -224,11 +226,18 @@ def _cross_month_annotation(
 
 def _build_link_index(
     operation_links: tuple[OperationLink, ...],
+    operations: tuple[HistoricOperation, ...],
+    budgets: tuple[Budget, ...],
 ) -> dict[OperationId, tuple[date, OperationLink]]:
     """Build a map from operation_unique_id to (linked month, link)."""
+    dates = {op.unique_id: op.operation_date for op in operations}
     return {
-        link.operation_unique_id: (link.iteration_date.replace(day=1), link)
+        link.operation_unique_id: (
+            linked_month(link, dates[link.operation_unique_id], budgets),
+            link,
+        )
         for link in operation_links
+        if link.operation_unique_id in dates
     }
 
 
@@ -750,27 +759,30 @@ class ForecastService:  # pylint: disable=too-many-public-methods
         operation_links: tuple[OperationLink, ...],
     ) -> tuple[AttributedOperationDetail, ...]:
         """Collect operations attributed to a category/month (link-aware)."""
-        op_to_link = _build_link_index(operation_links)
+        operations_of_account = self._account_provider.account.operations
+        op_to_link = _build_link_index(
+            operation_links, operations_of_account, forecast.budgets
+        )
         target_names = _build_target_name_index(forecast)
 
         operations: list[AttributedOperationDetail] = []
-        for op in self._account_provider.account.operations:
+        for op in operations_of_account:
             if op.category != category:
                 continue
 
             link_entry = op_to_link.get(op.unique_id)
-            linked_month = link_entry[0] if link_entry is not None else None
+            attributed_month = link_entry[0] if link_entry is not None else None
 
-            if linked_month is not None and linked_month != month_start:
+            if attributed_month is not None and attributed_month != month_start:
                 continue
-            if linked_month is None and not (
+            if attributed_month is None and not (
                 month_start <= op.operation_date <= month_end
             ):
                 continue
 
             annotation = (
                 _cross_month_annotation(op.operation_date, month_start, month_end)
-                if linked_month is not None
+                if attributed_month is not None
                 else ""
             )
             link = _resolve_link_info(link_entry, target_names)

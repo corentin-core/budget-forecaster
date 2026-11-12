@@ -661,6 +661,57 @@ class TestForecastActualizerWithLinks:
         assert january_budgets[0].amount == -70.0  # -100 - (-30) = -70
 
 
+def test_budget_link_from_an_older_period_shape_still_consumes() -> None:
+    """A link dated Aug 1, made when the budget was monthly, consumes Jul-Aug."""
+    holidays = Account(
+        name="Test",
+        balance=5000.0,
+        currency="EUR",
+        balance_date=date(2025, 8, 20),
+        operations=(
+            HistoricOperation(
+                unique_id=1,
+                description="Train",
+                amount=Amount(-300.0),
+                category=Category.LEISURE,
+                operation_date=date(2025, 7, 15),
+            ),
+            HistoricOperation(
+                unique_id=2,
+                description="Hotel",
+                amount=Amount(-500.0),
+                category=Category.LEISURE,
+                operation_date=date(2025, 8, 10),
+            ),
+        ),
+    )
+    budget = Budget(
+        record_id=1,
+        description="Holidays",
+        amount=Amount(-1000.0),
+        category=Category.LEISURE,
+        date_range=DateRange(date(2025, 7, 1), relativedelta(months=2)),
+    )
+    links = tuple(
+        OperationLink(
+            operation_unique_id=op_id,
+            target_type=LinkType.BUDGET,
+            target_id=1,
+            iteration_date=iteration_date,
+            is_manual=True,
+        )
+        for op_id, iteration_date in ((1, date(2025, 7, 1)), (2, date(2025, 8, 1)))
+    )
+
+    actualized = ForecastActualizer(holidays, operation_links=links)(
+        Forecast(operations=(), budgets=(budget,))
+    )
+
+    assert [(b.amount, b.date_range.start_date) for b in actualized.budgets] == [
+        (-200.0, date(2025, 8, 21))
+    ]
+
+
 class TestForecastActualizerGaps:
     """Additional tests covering remaining uncovered paths."""
 

@@ -191,6 +191,10 @@ Monthly groceries budget: 400 EUR
 
 If linked operations exceed the budget, the remaining amount goes negative (overspent).
 
+A budget spanning several months, such as a holidays budget over July and August, counts
+each linked operation in the month it was paid. What is left is computed over the whole
+period: spending 800 of 1000 EUR in July leaves 200 EUR for August.
+
 ## Monthly Summary
 
 The monthly review shows a per-category summary with these columns:

@@ -506,6 +506,189 @@ class TestComputeBudgetForecast:
         assert march["Forecast"] == -300.0
 
 
+def _holidays_account(
+    balance_date: date, spending: tuple[tuple[date, float], ...]
+) -> Account:
+    """Return an account whose operations are holiday spending."""
+    return Account(
+        name="Test",
+        balance=5000.0,
+        currency="EUR",
+        balance_date=balance_date,
+        operations=tuple(
+            HistoricOperation(
+                unique_id=index,
+                description=f"Holidays {index}",
+                amount=Amount(amount),
+                category=Category.LEISURE,
+                operation_date=day,
+            )
+            for index, (day, amount) in enumerate(spending, start=1)
+        ),
+    )
+
+
+def _holidays_budget_forecast(holidays: Account) -> dict[str, dict[str, float]]:
+    """Compute July and August for a -1000 budget over both, every op linked."""
+    budget = Budget(
+        record_id=1,
+        description="Holidays",
+        amount=Amount(-1000.0),
+        category=Category.LEISURE,
+        date_range=DateRange(date(2025, 7, 1), relativedelta(months=2)),
+    )
+    links = tuple(
+        OperationLink(
+            operation_unique_id=op.unique_id,
+            target_type=LinkType.BUDGET,
+            target_id=1,
+            iteration_date=date(2025, 7, 1),
+        )
+        for op in holidays.operations
+    )
+    analyzer = AccountAnalyzer(holidays, Forecast((), (budget,)), links)
+    df = analyzer.compute_budget_forecast(date(2025, 7, 1), date(2025, 8, 31))
+    row = df.loc[str(Category.LEISURE)]
+    return {
+        month: {column: row[f"2025-{month}-01"][column] for column in _COLUMNS}
+        for month in ("07", "08")
+    }
+
+
+_COLUMNS = ("TotalPlanned", "Actual", "Forecast")
+
+
+class TestMultiMonthBudget:
+    """A budget period spanning two months, with linked operations in both."""
+
+    def test_each_operation_counts_in_its_own_month(self) -> None:
+        """800 of 1000 spent: July and August keep their own spending."""
+        holidays = _holidays_account(
+            date(2025, 8, 10),
+            ((date(2025, 7, 15), -300.0), (date(2025, 8, 10), -500.0)),
+        )
+
+        result = _holidays_budget_forecast(holidays)
+
+        # Remaining 200 lands in August, the only part of the period not over
+        assert result == {
+            "07": {"TotalPlanned": -500, "Actual": -300, "Forecast": -300},
+            "08": {"TotalPlanned": -500, "Actual": -500, "Forecast": -700},
+        }
+
+    def test_overspending_leaves_nothing_for_later_months(self) -> None:
+        """900 spent in July leaves 100, and August spends 300: nothing remains."""
+        holidays = _holidays_account(
+            date(2025, 8, 10),
+            ((date(2025, 7, 15), -900.0), (date(2025, 8, 10), -300.0)),
+        )
+
+        result = _holidays_budget_forecast(holidays)
+
+        assert result["07"]["Forecast"] == -900
+        assert result["08"]["Forecast"] == -300
+
+    def test_remaining_spread_over_days_left(self) -> None:
+        """Balance on July 20: the 700 left spreads over July 21 to August 31."""
+        holidays = _holidays_account(date(2025, 7, 20), ((date(2025, 7, 15), -300.0),))
+
+        result = _holidays_budget_forecast(holidays)
+
+        # 42 days left: 11 in July, 31 in August
+        assert result["07"]["Forecast"] == round(-300 - 700 * 11 / 42)
+        assert result["08"]["Forecast"] == round(-700 * 31 / 42)
+
+    def test_operation_before_period_counts_in_first_month(self) -> None:
+        """An operation paid before the period counts in the period's first month."""
+        holidays = _holidays_account(date(2025, 8, 10), ((date(2025, 6, 28), -300.0),))
+        budget = Budget(
+            record_id=1,
+            description="Holidays",
+            amount=Amount(-1000.0),
+            category=Category.LEISURE,
+            date_range=DateRange(date(2025, 7, 1), relativedelta(months=2)),
+        )
+        link = OperationLink(
+            operation_unique_id=1,
+            target_type=LinkType.BUDGET,
+            target_id=1,
+            iteration_date=date(2025, 7, 1),
+        )
+        analyzer = AccountAnalyzer(holidays, Forecast((), (budget,)), (link,))
+
+        df = analyzer.compute_budget_forecast(date(2025, 6, 1), date(2025, 8, 31))
+
+        # June has nothing left to show, so the table has no column for it
+        assert {month.strftime("%m") for month, _ in df.columns} == {"07", "08"}
+        assert df.loc[str(Category.LEISURE)]["2025-07-01"]["Actual"] == -300
+
+
+class TestEditedBudget:
+    """Links made before a budget was edited still consume its periods."""
+
+    def test_link_from_an_older_period_shape_still_consumes(self) -> None:
+        """A link dated Aug 1, made when the budget was monthly, consumes Jul-Aug."""
+        holidays = _holidays_account(
+            date(2025, 8, 20),
+            ((date(2025, 7, 15), -300.0), (date(2025, 8, 10), -500.0)),
+        )
+        budget = Budget(
+            record_id=1,
+            description="Holidays",
+            amount=Amount(-1000.0),
+            category=Category.LEISURE,
+            date_range=RecurringDateRange(
+                DateRange(date(2025, 7, 1), relativedelta(months=2)),
+                relativedelta(months=2),
+            ),
+        )
+        links = tuple(
+            OperationLink(
+                operation_unique_id=op_id,
+                target_type=LinkType.BUDGET,
+                target_id=1,
+                iteration_date=iteration_date,
+                is_manual=True,
+            )
+            for op_id, iteration_date in ((1, date(2025, 7, 1)), (2, date(2025, 8, 1)))
+        )
+        analyzer = AccountAnalyzer(holidays, Forecast((), (budget,)), links)
+
+        df = analyzer.compute_budget_forecast(date(2025, 7, 1), date(2025, 8, 31))
+
+        row = df.loc[str(Category.LEISURE)]
+        assert row["2025-07-01"]["Forecast"] == -300
+        assert row["2025-08-01"]["Forecast"] == -700
+
+    def test_period_longer_than_its_recurrence_keeps_its_remaining(self) -> None:
+        """Three-month periods starting every month all count in March."""
+        empty = Account(
+            name="Test",
+            balance=5000.0,
+            currency="EUR",
+            balance_date=date(2025, 3, 10),
+            operations=(),
+        )
+        budget = Budget(
+            record_id=1,
+            description="Rolling",
+            amount=Amount(-300.0),
+            category=Category.LEISURE,
+            date_range=RecurringDateRange(
+                DateRange(date(2025, 1, 1), relativedelta(months=3)),
+                relativedelta(months=1),
+            ),
+        )
+        analyzer = AccountAnalyzer(empty, Forecast((), (budget,)))
+
+        df = analyzer.compute_budget_forecast(date(2025, 3, 1), date(2025, 4, 30))
+
+        # Each period spreads its 300 over its days from March 11: the January
+        # period ends in March, the February one in April, the March one in May
+        march = df.loc[str(Category.LEISURE)]["2025-03-01"]
+        assert march["Forecast"] == round(-300 - 300 * 21 / 51 - 300 * 21 / 82)
+
+
 class TestComputeBudgetStatistics:
     """Tests for compute_budget_statistics."""
 

@@ -189,9 +189,17 @@ per-month breakdown. The enriched version includes:
 - **Source distinction** — Each planned amount tracks whether it comes from a budget
   envelope or a planned operation
 
-Link-aware attribution means operations are attributed to the month of their **linked
-iteration**, not their bank date. An operation paid early (e.g. rent paid on Jan 25 for
-the Feb iteration) appears in February's actual column.
+Link-aware attribution follows `linked_month` (`domain/operation/link_attribution.py`),
+shared with the category detail. An operation linked to a planned operation counts in
+the month of its **linked iteration**, not its bank date. An operation paid early (e.g.
+rent paid on Jan 25 for the Feb iteration) appears in February's actual column. An
+operation linked to a budget counts in **its own month**, clamped into the budget period
+it is linked to, since a budget period is a window rather than a due date.
+
+What is left of a budget is computed over its whole period: the budget amount minus
+everything linked to that period, never below zero. That amount is spread by days from
+the day after the balance date to the end of the period, as `ForecastActualizer` does. A
+period already over keeps its leftover spread over its whole span.
 
 ### Category Detail
 

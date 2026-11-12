@@ -8,11 +8,17 @@ from typing import NamedTuple
 import pandas as pd
 from dateutil.relativedelta import relativedelta
 
-from budget_forecaster.core.date_range import RecurringDateRange
+from budget_forecaster.core.amount import Amount
+from budget_forecaster.core.date_range import (
+    DateRange,
+    DateRangeInterface,
+    RecurringDateRange,
+)
 from budget_forecaster.core.types import (
     BudgetColumn,
     BudgetId,
     Category,
+    IterationDate,
     LinkType,
     OperationId,
     PlannedOperationId,
@@ -20,6 +26,10 @@ from budget_forecaster.core.types import (
 from budget_forecaster.domain.account.account import Account
 from budget_forecaster.domain.forecast.forecast import Forecast
 from budget_forecaster.domain.operation.iteration_resolution import IterationResolution
+from budget_forecaster.domain.operation.link_attribution import (
+    budget_period_start,
+    linked_month,
+)
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.services.account.account_analysis_report import (
     AccountAnalysisReport,
@@ -40,7 +50,7 @@ class _LinkIndexes(NamedTuple):
 
     op_to_linked_month: dict[OperationId, date]
     realized_iterations: dict[PlannedOperationId, set[date]]
-    budget_linked_amounts: defaultdict[tuple[BudgetId, date], float]
+    budget_linked_amounts: defaultdict[tuple[BudgetId, IterationDate], float]
 
 
 def _increment(
@@ -227,14 +237,17 @@ class AccountAnalyzer:
         """Build indexes from operation links for link-aware attribution."""
         op_to_linked_month: dict[OperationId, date] = {}
         realized_iterations: dict[PlannedOperationId, set[date]] = {}
-        budget_linked_amounts: defaultdict[tuple[BudgetId, date], float] = defaultdict(
-            float
-        )
-        op_amounts = {op.unique_id: op.amount for op in self._account.operations}
+        budget_linked_amounts: defaultdict[
+            tuple[BudgetId, IterationDate], float
+        ] = defaultdict(float)
+        operations = {op.unique_id: op for op in self._account.operations}
 
         for link in self._operation_links:
-            linked_month = link.iteration_date.replace(day=1)
-            op_to_linked_month[link.operation_unique_id] = linked_month
+            if (operation := operations.get(link.operation_unique_id)) is None:
+                continue
+            op_to_linked_month[link.operation_unique_id] = linked_month(
+                link, operation.operation_date, self._forecast.budgets
+            )
 
             match link.target_type:
                 case LinkType.PLANNED_OPERATION:
@@ -242,8 +255,18 @@ class AccountAnalyzer:
                         link.iteration_date
                     )
                 case LinkType.BUDGET:
-                    op_amount = op_amounts.get(link.operation_unique_id, 0.0)
-                    budget_linked_amounts[link.target_id, linked_month] += op_amount
+                    budget = next(
+                        (b for b in self._forecast.budgets if b.id == link.target_id),
+                        None,
+                    )
+                    period_start = (
+                        budget_period_start(budget, link.iteration_date)
+                        if budget is not None
+                        else link.iteration_date
+                    )
+                    budget_linked_amounts[
+                        link.target_id, period_start
+                    ] += operation.amount
 
         return _LinkIndexes(
             op_to_linked_month, realized_iterations, budget_linked_amounts
@@ -363,28 +386,62 @@ class AccountAnalyzer:
         months: pd.DatetimeIndex,
         link_indexes: _LinkIndexes,
     ) -> None:
-        """Fill _UNREALIZED with not-yet-realized budget amounts."""
-        for ts in months:
-            month_start = ts.date()
-            month_end = month_start + relativedelta(months=1) - timedelta(days=1)
+        """Fill _UNREALIZED with what is left of each budget period.
 
-            for budget in self._forecast.budgets:
-                budget_amount = budget.amount_on_period(month_start, month_end)
-                if not budget_amount or budget.id is None:
+        What is left is computed over the whole period, then spread over the
+        days of the period that are not over yet.
+        """
+        if months.empty:
+            return
+        report_start = months[0].date()
+        report_end = months[-1].date() + relativedelta(months=1) - timedelta(days=1)
+
+        for budget in self._forecast.budgets:
+            if budget.id is None:
+                continue
+            # From the first period: one longer than the recurrence still covers later months
+            for period in budget.date_range.iterate_over_date_ranges():
+                if period.is_expired(report_start):
                     continue
+                if period.is_future(report_end):
+                    break
                 consumed = abs(
-                    link_indexes.budget_linked_amounts[budget.id, month_start]
+                    link_indexes.budget_linked_amounts[budget.id, period.start_date]
                 )
-                remaining = max(0.0, abs(budget_amount) - consumed)
+                if (remaining := max(0.0, abs(budget.amount) - consumed)) == 0.0:
+                    continue
                 # Preserve the sign: expenses are negative, income is positive
-                if unrealized := -remaining if budget_amount < 0 else remaining:
-                    _increment(
-                        budget_data,
-                        budget.category,
-                        month_start,
-                        BudgetColumn.UNREALIZED_INTERNAL,
-                        unrealized,
+                left = budget.replace(
+                    date_range=self._remaining_window(period),
+                    amount=Amount(
+                        -remaining if budget.amount < 0 else remaining,
+                        budget.currency,
+                    ),
+                )
+                for ts in months:
+                    month_start = ts.date()
+                    month_end = (
+                        month_start + relativedelta(months=1) - timedelta(days=1)
                     )
+                    if unrealized := left.amount_on_period(month_start, month_end):
+                        _increment(
+                            budget_data,
+                            budget.category,
+                            month_start,
+                            BudgetColumn.UNREALIZED_INTERNAL,
+                            unrealized,
+                        )
+
+    def _remaining_window(self, period: DateRangeInterface) -> DateRangeInterface:
+        """Return the days of a budget period that are not over yet.
+
+        A period already over keeps its whole span, so its leftover stays visible
+        in its own months.
+        """
+        start = max(period.start_date, self._account.balance_date + timedelta(days=1))
+        if start > period.last_date:
+            return period
+        return DateRange(start, relativedelta(days=(period.last_date - start).days + 1))
 
     @staticmethod
     def _finalize_projected(budget_data: _BudgetData) -> None:
