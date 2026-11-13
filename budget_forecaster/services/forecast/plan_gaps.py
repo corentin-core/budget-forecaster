@@ -142,11 +142,15 @@ class _Gaps:
         return self._items[key]
 
     def items(self) -> tuple[GapItem, ...]:
-        """The items away from the plan, largest gap first."""
+        """The items away from the plan in some month, largest gap first.
+
+        An item whose months cancel out over the window stays: the month totals
+        need it.
+        """
         kept = [
             item.freeze()
             for item in self._items.values()
-            if round(sum(item.actual) - sum(item.planned), 2) != 0
+            if any(round(a - p, 2) for a, p in zip(item.actual, item.planned))
         ]
         return tuple(sorted(kept, key=lambda item: abs(item.total), reverse=True))
 
@@ -274,10 +278,14 @@ def _add_planned_operations(
     month: date,
     index: int,
 ) -> None:
-    """Count each occurrence of the month as paid at its amount or not paid."""
+    """Count each occurrence of the month as paid at its amount or not paid.
+
+    A payment linked to a day the planned operation no longer has, because its
+    day changed, pays an unpaid occurrence of the same month.
+    """
     month_end = _month_end(month)
     for op_id, planned_op in planned_ops.items():
-        amount = float(planned_op.amount)
+        unpaid: list[IterationDate] = []
         for occurrence in planned_op.date_range.iterate_over_date_ranges(
             from_date=month
         ):
@@ -286,10 +294,31 @@ def _add_planned_operations(
             if day > month_end:
                 break
             if operations_paid := paid.pop((op_id, day), []):
-                item = gaps.item(GapCause.OTHER_AMOUNT, planned_op.category, planned_op)
-                item.actual[index] += sum(float(op.amount) for op in operations_paid)
-                item.operation_count += len(operations_paid)
+                _count_paid(gaps, planned_op, index, operations_paid)
+            else:
+                unpaid.append(day)
+        moved = sorted(
+            day
+            for (paid_op, day) in paid
+            if paid_op == op_id and month <= day <= month_end
+        )
+        for day in unpaid:
+            if moved:
+                _count_paid(gaps, planned_op, index, paid.pop((op_id, moved.pop(0))))
             else:
                 item = gaps.item(GapCause.NOT_PAID, planned_op.category, planned_op)
                 item.missed.append(day)
-            item.planned[index] += amount
+                item.planned[index] += float(planned_op.amount)
+
+
+def _count_paid(
+    gaps: _Gaps,
+    planned_op: PlannedOperation,
+    index: int,
+    operations_paid: list[HistoricOperation],
+) -> None:
+    """Count one paid occurrence: its planned amount against what paid it."""
+    item = gaps.item(GapCause.OTHER_AMOUNT, planned_op.category, planned_op)
+    item.planned[index] += float(planned_op.amount)
+    item.actual[index] += sum(float(op.amount) for op in operations_paid)
+    item.operation_count += len(operations_paid)

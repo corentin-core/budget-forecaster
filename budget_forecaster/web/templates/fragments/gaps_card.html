@@ -19,7 +19,9 @@
   {% else %}
     <p class="gaps-headline">
       {%- if gaps.months == 1 -%}{{ _("Last month ended") }}{%- else -%}{{ _("Over the last {n} months, each month ended on average").format(n=gaps.months) }}{%- endif %}
-      {% if gaps.average < 0 -%}
+      {% if gaps.average | round == 0 -%}
+        <strong>{{ _("on plan") }}</strong>.
+      {%- elif gaps.average < 0 -%}
         <strong class="negative">{{ _("{amount} below plan").format(amount=gaps.average | abs | eur0(currency)) }}</strong>.
       {%- else -%}
         <strong class="positive">{{ _("{amount} above plan").format(amount=gaps.average | eur0(currency)) }}</strong>.
@@ -62,6 +64,8 @@
     {% if not full_list and gaps.item_count > gaps.rows | length %}
       <a class="gaps-more" href="/trends/gaps?months={{ gaps.period }}&cause={{ gaps.cause }}">{{ _("See all ({n})").format(n=gaps.item_count) }} ›</a>
     {% endif %}
+    {% elif gaps.cause %}
+    <p class="empty">{{ _("Nothing weighs for this cause.") }}</p>
     {% else %}
     <p class="empty">{{ _("Every month followed the plan.") }}</p>
     {% endif %}

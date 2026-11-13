@@ -182,3 +182,43 @@ class TestCauses:
         budget = _only(gaps.items, GapCause.BUDGET)
         assert budget.planned == (-500.0, -500.0)
         assert round(budget.total) == 100
+
+
+class TestMonthTotals:
+    """What the month bars add up."""
+
+    def test_item_cancelling_out_still_counts_each_month(self) -> None:
+        """Overspent one month and underspent the next: both months show it."""
+        gaps = compute_plan_gaps(
+            (_op(1, date(2026, 7, 10), -450.0), _op(2, date(2026, 8, 10), -350.0)),
+            Forecast(operations=(), budgets=(_budget(),)),
+            (
+                _link(1, LinkType.BUDGET, 1, _JULY),
+                _link(2, LinkType.BUDGET, 1, _AUGUST),
+            ),
+            _MONTHS,
+        )
+
+        assert gaps.month_totals() == (-50.0, 50.0)
+        assert gaps.average() == 0.0
+
+    def test_payment_kept_on_a_day_the_operation_left(self) -> None:
+        """A payment linked to the old day pays the occurrence of its month."""
+        # Due on the 8th now; the July payment stays linked to the 5th.
+        moved = PlannedOperation(
+            record_id=2,
+            description="Electricity",
+            amount=Amount(-85.0, "EUR"),
+            category=Category.ELECTRICITY,
+            date_range=RecurringDay(date(2026, 7, 8), relativedelta(months=1)),
+        )
+        gaps = compute_plan_gaps(
+            (_op(1, date(2026, 7, 5), -85.0, Category.ELECTRICITY),),
+            Forecast(operations=(moved,), budgets=()),
+            (_link(1, LinkType.PLANNED_OPERATION, 2, date(2026, 7, 5)),),
+            _MONTHS,
+        )
+
+        unpaid = _only(gaps.items, GapCause.NOT_PAID)
+        assert unpaid.missed == (date(2026, 8, 8),)
+        assert not [i for i in gaps.items if i.cause is GapCause.OTHER_AMOUNT]

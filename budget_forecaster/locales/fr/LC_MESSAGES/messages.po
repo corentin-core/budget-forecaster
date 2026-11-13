@@ -2287,3 +2287,15 @@ msgstr "{count} échéance(s) sans paiement, la dernière le {date}"
 
 msgid "{count} operation(s), {total} over {n} months"
 msgstr "{count} opération(s), {total} sur {n} mois"
+
+msgid "less received than planned"
+msgstr "moins reçu que prévu"
+
+msgid "more received than planned"
+msgstr "plus reçu que prévu"
+
+msgid "on plan"
+msgstr "dans le prévu"
+
+msgid "Nothing weighs for this cause."
+msgstr "Rien ne pèse pour cette cause."

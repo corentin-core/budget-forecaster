@@ -80,10 +80,15 @@ class AccountAnalyzer:
         self._operation_links = operation_links
         self._iteration_resolutions = iteration_resolutions
 
-    def compute_report(self, start_date: date, end_date: date) -> AccountAnalysisReport:
+    def compute_report(
+        self, start_date: date, end_date: date, months_start: date | None = None
+    ) -> AccountAnalysisReport:
+        """Compute an account analysis report between two dates.
+
+        months_start, when earlier than start_date, extends the per-category
+        monthly figures back to it, and only them.
         """
-        Compute an account analysis report between two dates.
-        """
+        budget_start = min(start_date, months_start or start_date)
         return AccountAnalysisReport(
             balance_date=self._account.balance_date,
             start_date=start_date,
@@ -93,7 +98,7 @@ class AccountAnalyzer:
             balance_evolution_per_day=self.compute_balance_evolution_per_day(
                 start_date, end_date
             ),
-            budget_forecast=self.compute_budget_forecast(start_date, end_date),
+            budget_forecast=self.compute_budget_forecast(budget_start, end_date),
             budget_statistics=self.compute_budget_statistics(start_date, end_date),
         )
 

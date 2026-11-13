@@ -8,6 +8,7 @@ from dateutil.relativedelta import relativedelta
 from budget_forecaster.domain.operation.budget import Budget
 from budget_forecaster.i18n import _
 from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.services.forecast.forecast_service import REVIEWED_MONTHS
 from budget_forecaster.services.forecast.plan_gaps import GapCause, GapItem, PlanGaps
 from budget_forecaster.web.formatting import (
     category_name,
@@ -16,7 +17,7 @@ from budget_forecaster.web.formatting import (
     format_short_month,
 )
 
-GAP_PERIODS = (3, 6, 12)
+GAP_PERIODS = (3, 6, REVIEWED_MONTHS)
 DEFAULT_GAP_MONTHS = 6
 CARD_ROWS = 7
 
@@ -162,7 +163,13 @@ def _row(item: GapItem, gaps: PlanGaps, currency: str) -> GapRow:
         else category_name(item.category.value)
     )
     cause = _cause_labels()[item.cause][1]
-    if item.cause is GapCause.BUDGET:
+    if item.cause is GapCause.BUDGET and sum(item.planned) > 0:
+        cause = (
+            _("less received than planned")
+            if item.total < 0
+            else _("more received than planned")
+        )
+    elif item.cause is GapCause.BUDGET:
         cause = _("budget over") if item.total < 0 else _("budget under")
     return GapRow(
         name=name,
