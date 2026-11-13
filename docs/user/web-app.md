@@ -159,9 +159,11 @@ month. Tap a cause to list only its gaps below, and tap it again to see every ca
 largest gaps, all causes mixed, each with a line such as "470 EUR dépensés en moyenne
 pour 400 EUR prévus, dépassé 6 mois sur 6". A budget or a planned payment opens its edit
 page, which lists its operations. An unplanned category opens Opérations filtered on
-that category, those months and unlinked operations. **Tout voir** lists every gap, and
-each bar of **Écart de chaque mois** opens that month in Mois. The plan is the current
-one: a budget edited in place rewrites its own past gaps, while a split keeps them.
+that category, those months and unlinked operations. **Retour** at the top of that list
+goes back to the card, also from an operation opened there. **Tout voir** lists every
+gap, and each bar of **Écart de chaque mois** opens that month in Mois. The plan is the
+current one: a budget edited in place rewrites its own past gaps, while a split keeps
+them.
 
 The expense breakdown donut folds small categories into a single grey **Other
 categories** slice. A slider below the donut sets the cutoff: any category below that
@@ -268,11 +270,13 @@ on another date, fill **End date** instead.
 Below the form, **Opérations rattachées** lists the operations the item counted over the
 last six months, newest first. **Voir plus** goes back six more months. For a planned
 operation, each occurrence shows the operation that paid it, or says how many days late
-it is, or that it was never linked, postponed or forgotten. The next occurrence shows as
-upcoming. A late occurrence has a **Lier…** button to the same picker as the Accueil
-card. For a budget, each period shows what it spent against the budget amount. Tap a
-period to list its operations; only the running one starts open. Each operation opens
-its own page.
+it is, or that it was never linked, postponed or forgotten. A paid occurrence reads
+"comme prévu", or shows the amount paid against the amount planned. The next occurrence
+shows as upcoming. A late or unlinked occurrence has a **Lier…** button to the same
+picker as the Accueil card. For a budget, each period shows what it spent against the
+budget amount. Tap a period to list its operations; only the running one starts open.
+**Chercher les opérations non liées** opens Opérations on the budget's category, that
+period and its unlinked operations. Each operation opens its own page.
 
 Splitting a recurring item from a chosen date is a separate submission, below the Save
 button: open **Split from a date**, give the date and the new values, then confirm with

@@ -152,6 +152,7 @@ def _url(item: GapItem, gaps: PlanGaps) -> str:
             "date_from": gaps.months[0].isoformat(),
             "date_to": last_day.isoformat(),
             "unlinked": "true",
+            "return_to": "/trends#gaps",
         }
     )
 

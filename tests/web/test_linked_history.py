@@ -21,6 +21,7 @@ from budget_forecaster.domain.operation.iteration_resolution import (
 )
 from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
+from budget_forecaster.web.formatting import format_eur
 from budget_forecaster.web.linked_history import (
     HISTORY_STEP_MONTHS,
     MAX_HISTORY_MONTHS,
@@ -256,6 +257,7 @@ class TestBudget:
 
         period = next(o for o in history.occurrences if o.start == date(2026, 7, 1))
         assert period.label == "01/07/2026 → 31/08/2026"
+        assert period.end == date(2026, 8, 31)
         assert period.total == -90.0
 
     def test_refund_is_not_spending(self) -> None:
@@ -342,3 +344,30 @@ class TestEditPage:
         card = card[card.index('id="linked"') :]
         assert "linked-state not_linked late" in card
         assert f"/overdue/{op_id}/{iteration}/link" in card
+
+    def test_paid_occurrence_compares_with_the_plan(self, client: TestClient) -> None:
+        """A payment that differs from the plan shows both amounts."""
+        card = client.get("/targets/planned/1").text
+        card = card[card.index('id="linked"') :]
+
+        assert f"pour {format_eur(3200.0, 'EUR')} prévus" in card
+
+    def test_every_unlinked_occurrence_offers_the_picker(
+        self, client: TestClient
+    ) -> None:
+        """An unlinked occurrence past the Accueil window still has "Lier…"."""
+        card = client.get("/targets/planned/1?history=24").text
+        card = card[card.index('id="linked"') :]
+
+        assert card.count("Non lié") == card.count("/link?return_to=")
+
+    def test_budget_period_searches_the_ledger(self, client: TestClient) -> None:
+        """A period opens the ledger on its unlinked operations, with a way back."""
+        card = client.get("/targets/budget/1").text
+        card = card[card.index('id="linked"') :]
+        start = card.index('href="/operations?category=') + len('href="')
+        url = card[start : card.index('"', start)].replace("&amp;", "&")
+
+        ledger = client.get(url).text
+        assert "unlinked=true" in url
+        assert 'class="back"><a href="/targets/budget/1?' in ledger

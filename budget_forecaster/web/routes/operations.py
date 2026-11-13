@@ -46,6 +46,8 @@ class LedgerFilters(NamedTuple):
     review: bool
     unlinked: bool
     criteria: OperationFilter
+    # The page that opened the ledger, kept through every link out of it.
+    return_to: str = ""
 
 
 def _date(value: str) -> date | None:
@@ -73,6 +75,7 @@ def get_filters(  # pylint: disable=too-many-arguments,too-many-positional-argum
     uncategorized: bool = False,
     review: bool = False,
     unlinked: bool = False,
+    return_to: str = "",
 ) -> LedgerFilters:
     """Parse the ledger query parameters into filter criteria."""
     criteria = OperationFilter(
@@ -84,7 +87,15 @@ def get_filters(  # pylint: disable=too-many-arguments,too-many-positional-argum
         to_review_only=review,
     )
     return LedgerFilters(
-        search, category, date_from, date_to, uncategorized, review, unlinked, criteria
+        search,
+        category,
+        date_from,
+        date_to,
+        uncategorized,
+        review,
+        unlinked,
+        criteria,
+        safe_local_path(return_to, ""),
     )
 
 
@@ -98,6 +109,7 @@ def filters_from_form(form: FormData) -> LedgerFilters:
         uncategorized=str(form.get("uncategorized", "")) == "true",
         review=str(form.get("review", "")) == "true",
         unlinked=str(form.get("unlinked", "")) == "true",
+        return_to=str(form.get("return_to", "")),
     )
 
 
@@ -118,6 +130,8 @@ def _query(filters: LedgerFilters) -> str:
         params["review"] = "true"
     if filters.unlinked:
         params["unlinked"] = "true"
+    if filters.return_to:
+        params["return_to"] = filters.return_to
     return urlencode(params)
 
 

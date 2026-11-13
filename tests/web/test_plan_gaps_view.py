@@ -135,3 +135,39 @@ class TestUnlinkedFilter:
         ).text
 
         assert "unlinked=true" in html
+
+
+class TestWayBack:
+    """The ledger opened from the card leads back to it."""
+
+    def test_unplanned_row_opens_the_ledger_with_a_way_back(
+        self, client: TestClient
+    ) -> None:
+        """The ledger link of an unplanned row carries the card as its return."""
+        card = client.get("/trends/gaps").text
+        start = card.index('href="/operations?') + len('href="')
+        url = card[start : card.index('"', start)].replace("&amp;", "&")
+
+        ledger = client.get(url).text
+        assert '<p class="back"><a href="/trends#gaps">' in ledger
+        assert 'name="return_to" value="/trends#gaps"' in ledger
+
+    def test_operation_detail_returns_to_the_same_ledger(
+        self, client: TestClient
+    ) -> None:
+        """An operation opened from that ledger goes back to it, return included."""
+        ledger = client.get("/operations?return_to=/trends%23gaps").text
+        start = ledger.index('href="/operations/') + len('href="')
+        detail = client.get(ledger[start : ledger.index('"', start)]).text
+        start = detail.index('<p class="back"><a href="') + len(
+            '<p class="back"><a href="'
+        )
+        back = detail[start : detail.index('"', start)].replace("&amp;", "&")
+
+        assert '<p class="back"><a href="/trends#gaps">' in client.get(back).text
+
+    def test_outside_return_is_dropped(self, client: TestClient) -> None:
+        """Only a page of the app can be the return."""
+        ledger = client.get("/operations?return_to=https://example.com").text
+
+        assert 'class="back"' not in ledger
