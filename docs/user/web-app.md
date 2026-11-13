@@ -249,6 +249,15 @@ the forecast. For a budget, the current period leaves the forecast too, although
 already started. The ended item then drops out of the "active only" list. To end an item
 on another date, fill **End date** instead.
 
+Below the form, **Opérations rattachées** lists the operations the item counted over the
+last six months, newest first. **Voir plus** goes back six more months. For a planned
+operation, each occurrence shows the operation that paid it, or says how many days late
+it is, or that it was never linked, postponed or forgotten. The next occurrence shows as
+upcoming. A late occurrence has a **Lier…** button to the same picker as the Accueil
+card. For a budget, each period shows what it spent against the budget amount. Tap a
+period to list its operations; only the running one starts open. Each operation opens
+its own page.
+
 Splitting a recurring item from a chosen date is a separate submission, below the Save
 button: open **Split from a date**, give the date and the new values, then confirm with
 **Split**. Save is paused while that section is open, since it would store the item

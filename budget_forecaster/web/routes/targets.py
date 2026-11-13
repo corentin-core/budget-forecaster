@@ -19,6 +19,11 @@ from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.web import forms, linking
 from budget_forecaster.web.dependencies import get_app_service, refresh_forecast
 from budget_forecaster.web.formatting import sorted_categories
+from budget_forecaster.web.linked_history import (
+    HISTORY_STEP_MONTHS,
+    LinkedHistory,
+    build_linked_history,
+)
 from budget_forecaster.web.redirects import safe_local_path
 from budget_forecaster.web.rendering import render_template
 from budget_forecaster.web.viewmodels import (
@@ -38,6 +43,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _PLANNED = "planned"
+# Ten years of history, so a hand-typed URL cannot ask for an endless walk.
+_MAX_HISTORY_MONTHS = 120
 
 
 def _safe_return_to(value: str | None) -> str:
@@ -351,6 +358,21 @@ def _link_source(
         )
 
 
+def _linked_history(
+    request: Request, app: ApplicationService, form: TargetFormView
+) -> LinkedHistory | None:
+    """What a stored target counted, over the months the history query asks for."""
+    if form.is_new or form.target_id is None:
+        return None
+    try:
+        months = int(request.query_params.get("history", HISTORY_STEP_MONTHS))
+    except ValueError:
+        months = HISTORY_STEP_MONTHS
+    months = min(max(months, 1), _MAX_HISTORY_MONTHS)
+    target = _get_target(app, form.kind, form.target_id)
+    return build_linked_history(app, target, months)
+
+
 def _render_edit(
     request: Request,
     app: ApplicationService,
@@ -378,5 +400,6 @@ def _render_edit(
         currency=app.currency,
         decided=decided,
         seed=seed,
+        history=_linked_history(request, app, form),
         status_code=422 if error else 200,
     )

@@ -1,0 +1,64 @@
+{% if history %}
+{% set here = ('/targets/' ~ form.kind ~ '/' ~ form.target_id ~ '?return_to=' ~ (return_to | urlencode)) %}
+{% set back = here | urlencode %}
+{% macro operation_lines(occ) %}
+  {% for op in occ.operations %}
+  <a class="linked-op row-hover" href="/operations/{{ op.operation_id }}?return_to={{ back }}">
+    <span class="date">{{ op.operation_date | frdate }}</span>
+    <span class="desc">{{ op.description }}</span>
+    <span class="num {{ 'positive' if op.amount > 0 else 'negative' }}">{{ op.amount | signed_eur(currency) }}</span>
+  </a>
+  {% endfor %}
+{% endmacro %}
+<section class="card linked-card" id="linked">
+  <div class="card-head"><h2>{{ _("Linked operations") }}</h2></div>
+  {% if history.occurrences %}
+  <ul class="linked-list">
+    {% for occ in history.occurrences %}
+    <li>
+      {% if form.is_planned %}
+      <div class="linked-head">
+        <span class="linked-when">{{ occ.label }}</span>
+        <span class="linked-state {{ occ.state.value }}{{ ' late' if occ.days_late is not none }}">
+          {%- if occ.state.value == "upcoming" -%}
+            {{ _("Upcoming") }} · {{ occ.planned | signed_eur(currency) }}
+          {%- elif occ.days_late -%}
+            {{ _("{n} d late").format(n=occ.days_late) }}
+          {%- elif occ.state.value == "not_linked" -%}
+            {{ _("Not linked") }}
+          {%- elif occ.state.value == "postponed" -%}
+            {{ _("postponed to {date}").format(date=occ.postponed_to | frdate) }}
+          {%- elif occ.state.value == "skipped" -%}
+            {{ _("forgotten") }}
+          {%- endif -%}
+        </span>
+      </div>
+      {{ operation_lines(occ) }}
+      {% if occ.days_late is not none %}
+      <a class="btn small" href="/overdue/{{ form.target_id }}/{{ occ.start }}/link?return_to={{ back }}">{{ _("Link…") }}</a>
+      {% endif %}
+      {% else %}
+      {# A budget period holds many operations: only the running one is open. #}
+      <details class="linked-period" {{ 'open' if occ.state.value == 'in_progress' }}>
+        <summary class="linked-head">
+          <span class="linked-when">{{ occ.label }}</span>
+          <span class="linked-state">
+            {{ _("{spent} of {planned}").format(spent=occ.total | abs | eur0(currency), planned=occ.planned | abs | eur0(currency)) }}
+            · {{ _("{} operation(s)").format(occ.operations | length) }}
+          </span>
+        </summary>
+        {{ operation_lines(occ) }}
+      </details>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">{{ _("Nothing in the last months") }}</p>
+  {% endif %}
+  {% if history.more_months %}
+  <a class="btn small linked-more"
+     href="/targets/{{ form.kind }}/{{ form.target_id }}?history={{ history.more_months }}&return_to={{ return_to | urlencode }}#linked">{{ _("Show more") }}</a>
+  {% endif %}
+</section>
+{% endif %}

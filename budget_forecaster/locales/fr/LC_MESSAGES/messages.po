@@ -2186,3 +2186,16 @@ msgstr "Terminer aujourd'hui ? Les échéances suivantes sortent de la prévisio
 
 msgid "End today? The current period leaves the forecast too."
 msgstr "Terminer aujourd'hui ? La période en cours sort aussi de la prévision."
+
+# ============================================================
+# Target edit: linked operations
+# ============================================================
+
+msgid "Linked operations"
+msgstr "Opérations rattachées"
+
+msgid "{spent} of {planned}"
+msgstr "{spent} sur {planned}"
+
+msgid "Nothing in the last months"
+msgstr "Rien sur les derniers mois"

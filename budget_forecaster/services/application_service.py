@@ -428,6 +428,12 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         """Get all operation links."""
         return self._operation_link_service.get_all_links()
 
+    def get_links_for_target(
+        self, target: PlannedOperation | Budget
+    ) -> tuple[OperationLink, ...]:
+        """Get the links that count operations for a planned operation or budget."""
+        return self._operation_link_service.load_links_for_target(target)
+
     def get_link_for_operation(self, operation_id: int) -> OperationLink | None:
         """Get the link for a specific operation."""
         return self._operation_link_service.get_link_for_operation(operation_id)

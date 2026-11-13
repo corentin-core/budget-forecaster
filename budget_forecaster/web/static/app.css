@@ -2486,6 +2486,75 @@ details[open] > .overdue-summary .overdue-caret::before {
 }
 
 /* --- decided occurrences on a planned operation --- */
+/* --- Target edit: operations counted, occurrence by occurrence --- */
+.linked-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.linked-list > li {
+  padding: var(--sp-8) 0;
+  border-bottom: 1px solid var(--border);
+}
+.linked-list > li:last-child {
+  border-bottom: none;
+}
+.linked-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--sp-4) var(--sp-12);
+}
+.linked-when {
+  font-weight: 600;
+}
+.linked-state {
+  color: var(--muted);
+}
+.linked-state.late {
+  color: var(--warn);
+  font-weight: 600;
+}
+/* Date, label, amount on one line; the label takes what is left and wraps. */
+.linked-op {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: var(--sp-12);
+  align-items: baseline;
+  padding: var(--sp-6) var(--sp-4);
+  min-height: var(--control-min-h);
+  border-radius: var(--radius-sm);
+}
+.linked-op .date {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.linked-op .desc {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.linked-period > summary {
+  cursor: pointer;
+  list-style: none;
+  min-height: var(--control-min-h);
+  align-items: center;
+}
+.linked-period > summary::-webkit-details-marker {
+  display: none;
+}
+.linked-period > summary .linked-when::before {
+  content: '▸ ';
+  color: var(--muted);
+}
+.linked-period[open] > summary .linked-when::before {
+  content: '▾ ';
+}
+.linked-list .btn.small {
+  margin-top: var(--sp-6);
+}
+.linked-more {
+  margin-top: var(--sp-12);
+}
 .decided-list {
   list-style: none;
   margin: 0;
