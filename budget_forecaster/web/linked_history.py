@@ -25,6 +25,8 @@ from budget_forecaster.services.application_service import ApplicationService
 from budget_forecaster.web.formatting import format_date, format_month
 
 HISTORY_STEP_MONTHS = 6
+# Ten years, so a hand-typed URL cannot ask for an endless walk.
+MAX_HISTORY_MONTHS = 120
 
 
 class OccurrenceState(StrEnum):
@@ -56,14 +58,16 @@ class Occurrence(NamedTuple):
     operations: tuple[LinkedOperation, ...]
     total: float
     planned: float
+    consumed: float  # what went the budget's way, never negative
     postponed_to: date | None
     days_late: int | None  # set while the Accueil card still lists it
 
 
 class LinkedHistory(NamedTuple):
-    """The occurrences shown, and the window to ask for to see older ones."""
+    """The occurrences shown, the window they cover, and the one showing older ones."""
 
     occurrences: tuple[Occurrence, ...]
+    months: int
     more_months: int | None
 
 
@@ -122,8 +126,9 @@ def _occurrence(  # pylint: disable=too-many-arguments
         label=label,
         state=state,
         operations=tuple(operations),
-        total=sum(op.amount for op in operations),
+        total=(total := sum(op.amount for op in operations)),
         planned=planned,
+        consumed=max(0.0, total if planned > 0 else -total),
         postponed_to=postponed_to,
         days_late=days_late,
     )
@@ -201,7 +206,7 @@ def _budget_periods(
             break
         if period.last_date < since:
             continue
-        operations = linked.get(period.start_date, [])
+        operations = linked.pop(period.start_date, [])
         if period.last_date >= balance_date:
             state = OccurrenceState.IN_PROGRESS
         elif operations:
@@ -213,6 +218,12 @@ def _budget_periods(
                 period.start_date, _period_label(period), state, operations, amount
             )
         )
+    # A link left outside every period by a date change keeps its operations.
+    rows.extend(
+        _occurrence(day, format_date(day), OccurrenceState.LINKED, operations, amount)
+        for day, operations in linked.items()
+        if day >= since
+    )
     return rows
 
 
@@ -224,18 +235,23 @@ def build_linked_history(
     Args:
         app: The application service.
         target: A stored planned operation or budget.
-        months: How many months back from the balance date the window covers.
+        months: How many months back the window covers, from the balance date or
+            from the end of a target that ended before it. Capped at
+            MAX_HISTORY_MONTHS.
 
     Returns:
         The occurrences, and the window that shows older ones, if any are left.
     """
-    since = _window_start(app.balance_date, months)
+    months = min(max(months, 1), MAX_HISTORY_MONTHS)
+    since = _window_start(min(app.balance_date, target.date_range.last_date), months)
     if isinstance(target, Budget):
         rows = _budget_periods(app, target, since)
     else:
         rows = _planned_occurrences(app, target, since)
-    has_older = target.date_range.start_date < since
+    first = next(iter(target.date_range.iterate_over_date_ranges()))
+    has_older = first.last_date < since and months < MAX_HISTORY_MONTHS
     return LinkedHistory(
         occurrences=tuple(sorted(rows, key=lambda row: row.start, reverse=True)),
+        months=months,
         more_months=months + HISTORY_STEP_MONTHS if has_older else None,
     )

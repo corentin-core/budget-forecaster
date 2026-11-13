@@ -23,6 +23,7 @@ from budget_forecaster.domain.operation.operation_link import OperationLink
 from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.web.linked_history import (
     HISTORY_STEP_MONTHS,
+    MAX_HISTORY_MONTHS,
     OccurrenceState,
     build_linked_history,
 )
@@ -86,13 +87,15 @@ def _link(op_id: int, target_type: LinkType, iteration: date) -> OperationLink:
     )
 
 
-def _rent(start: date = date(2026, 1, 5)) -> PlannedOperation:
+def _rent(
+    start: date = date(2026, 1, 5), until: date | None = None
+) -> PlannedOperation:
     return PlannedOperation(
         record_id=1,
         description="Rent",
         amount=Amount(-800.0, "EUR"),
         category=Category.RENT,
-        date_range=RecurringDay(start, relativedelta(months=1)),
+        date_range=RecurringDay(start, relativedelta(months=1), until),
     )
 
 
@@ -190,6 +193,29 @@ class TestPlannedOperation:
 
         assert history.more_months is None
 
+    def test_ended_target_shows_its_last_months(self) -> None:
+        """The window of an ended target ends where the target ends."""
+        app = _FakeApp(operations=(), links=())
+        history = build_linked_history(
+            app, _rent(date(2020, 1, 5), until=date(2024, 6, 30)), 2  # type: ignore[arg-type]
+        )
+
+        assert [o.start for o in history.occurrences] == [
+            date(2024, 6, 5),
+            date(2024, 5, 5),
+        ]
+        assert history.more_months == 2 + HISTORY_STEP_MONTHS
+
+    def test_no_show_more_at_the_cap(self) -> None:
+        """At the widest window, asking for more would reload the same page."""
+        app = _FakeApp(operations=(), links=())
+        history = build_linked_history(
+            app, _rent(date(2000, 1, 5)), MAX_HISTORY_MONTHS + 50  # type: ignore[arg-type]
+        )
+
+        assert history.months == MAX_HISTORY_MONTHS
+        assert history.more_months is None
+
 
 class TestBudget:
     """One row per period, with what was spent against the budget."""
@@ -231,6 +257,63 @@ class TestBudget:
         period = next(o for o in history.occurrences if o.start == date(2026, 7, 1))
         assert period.label == "01/07/2026 → 31/08/2026"
         assert period.total == -90.0
+
+    def test_refund_is_not_spending(self) -> None:
+        """A refund larger than the spending leaves nothing consumed."""
+        app = _FakeApp(
+            operations=(
+                _operation(10, date(2026, 8, 3), -50.0),
+                _operation(11, date(2026, 8, 9), 80.0),
+            ),
+            links=(
+                _link(10, LinkType.BUDGET, date(2026, 8, 1)),
+                _link(11, LinkType.BUDGET, date(2026, 8, 1)),
+            ),
+        )
+        history = build_linked_history(app, _groceries(), 2)  # type: ignore[arg-type]
+
+        august = next(o for o in history.occurrences if o.start == date(2026, 8, 1))
+        assert (august.total, august.consumed) == (30.0, 0.0)
+
+    def test_link_outside_every_period(self) -> None:
+        """A link a date change left outside the periods keeps its operation."""
+        app = _FakeApp(
+            operations=(_operation(10, date(2026, 9, 2), -40.0),),
+            links=(_link(10, LinkType.BUDGET, date(2025, 12, 15)),),
+        )
+        # Ten-day periods from the 1st: the 15th falls between two of them.
+        budget = Budget(
+            record_id=1,
+            description="Groceries",
+            amount=Amount(-400.0, "EUR"),
+            category=Category.GROCERIES,
+            date_range=RecurringDateRange(
+                DateRange(date(2025, 12, 1), relativedelta(days=10)),
+                relativedelta(months=1),
+            ),
+        )
+        history = build_linked_history(app, budget, 12)  # type: ignore[arg-type]
+
+        orphan = [o for o in history.occurrences if o.start == date(2025, 12, 15)]
+        assert [op.operation_id for op in orphan[0].operations] == [10]
+
+    def test_straddling_period_offers_nothing_older(self) -> None:
+        """A first period already shown in full leaves nothing to show more of."""
+        app = _FakeApp(operations=(), links=())
+        budget = Budget(
+            record_id=1,
+            description="Holidays",
+            amount=Amount(-1000.0, "EUR"),
+            category=Category.GROCERIES,
+            date_range=RecurringDateRange(
+                DateRange(date(2026, 7, 1), relativedelta(months=2)),
+                relativedelta(months=2),
+            ),
+        )
+        history = build_linked_history(app, budget, 2)  # type: ignore[arg-type]
+
+        assert date(2026, 7, 1) in [o.start for o in history.occurrences]
+        assert history.more_months is None
 
 
 class TestEditPage:

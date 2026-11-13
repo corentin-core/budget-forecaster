@@ -1,5 +1,5 @@
 {% if history %}
-{% set here = ('/targets/' ~ form.kind ~ '/' ~ form.target_id ~ '?return_to=' ~ (return_to | urlencode)) %}
+{% set here = ('/targets/' ~ form.kind ~ '/' ~ form.target_id ~ '?history=' ~ history.months ~ '&return_to=' ~ (return_to | urlencode) ~ '#linked') %}
 {% set back = here | urlencode %}
 {% macro operation_lines(occ) %}
   {% for op in occ.operations %}
@@ -43,7 +43,7 @@
         <summary class="linked-head">
           <span class="linked-when">{{ occ.label }}</span>
           <span class="linked-state">
-            {{ _("{spent} of {planned}").format(spent=occ.total | abs | eur0(currency), planned=occ.planned | abs | eur0(currency)) }}
+            {{ _("{spent} of {planned}").format(spent=occ.consumed | eur0(currency), planned=occ.planned | abs | eur0(currency)) }}
             · {{ _("{} operation(s)").format(occ.operations | length) }}
           </span>
         </summary>

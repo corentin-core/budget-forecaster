@@ -43,8 +43,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _PLANNED = "planned"
-# Ten years of history, so a hand-typed URL cannot ask for an endless walk.
-_MAX_HISTORY_MONTHS = 120
 
 
 def _safe_return_to(value: str | None) -> str:
@@ -368,7 +366,6 @@ def _linked_history(
         months = int(request.query_params.get("history", HISTORY_STEP_MONTHS))
     except ValueError:
         months = HISTORY_STEP_MONTHS
-    months = min(max(months, 1), _MAX_HISTORY_MONTHS)
     target = _get_target(app, form.kind, form.target_id)
     return build_linked_history(app, target, months)
 

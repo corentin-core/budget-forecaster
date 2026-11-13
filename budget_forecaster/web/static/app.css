@@ -2485,7 +2485,6 @@ details[open] > .overdue-summary .overdue-caret::before {
   padding: var(--sp-6);
 }
 
-/* --- decided occurrences on a planned operation --- */
 /* --- Target edit: operations counted, occurrence by occurrence --- */
 .linked-list {
   list-style: none;
@@ -2555,6 +2554,7 @@ details[open] > .overdue-summary .overdue-caret::before {
 .linked-more {
   margin-top: var(--sp-12);
 }
+/* --- decided occurrences on a planned operation --- */
 .decided-list {
   list-style: none;
   margin: 0;
