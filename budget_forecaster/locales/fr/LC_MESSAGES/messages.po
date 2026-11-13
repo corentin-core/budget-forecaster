@@ -2199,3 +2199,91 @@ msgstr "{spent} sur {planned}"
 
 msgid "Nothing in the last months"
 msgstr "Rien sur les derniers mois"
+
+# ============================================================
+# Trends: gaps to plan
+# ============================================================
+
+msgid "Gaps to plan"
+msgstr "Écarts au prévu"
+
+msgid "No month is over yet to compare with the plan."
+msgstr "Pas encore de mois terminé à comparer au prévu."
+
+msgid "Last month ended"
+msgstr "Le mois dernier a fini"
+
+msgid "Over the last {n} months, each month ended on average"
+msgstr "Sur les {n} derniers mois écoulés, chaque mois a fini en moyenne"
+
+msgid "{amount} below plan"
+msgstr "{amount} sous le prévu"
+
+msgid "{amount} above plan"
+msgstr "{amount} au-dessus du prévu"
+
+msgid "By cause, per month"
+msgstr "Par cause, par mois"
+
+msgid "What weighs most"
+msgstr "Ce qui pèse le plus"
+
+msgid "Every gap"
+msgstr "Tous les écarts"
+
+msgid "See all ({n})"
+msgstr "Tout voir ({n})"
+
+msgid "Every month followed the plan."
+msgstr "Chaque mois a suivi le prévu."
+
+msgid "Gap of each month"
+msgstr "Écart de chaque mois"
+
+msgid "Unplanned spending"
+msgstr "Dépenses non prévues"
+
+msgid "unplanned spending"
+msgstr "dépense non prévue"
+
+msgid "Paid another amount"
+msgstr "Payées à un autre montant"
+
+msgid "paid another amount"
+msgstr "payée à un autre montant"
+
+msgid "Unplanned income"
+msgstr "Revenus non prévus"
+
+msgid "unplanned income"
+msgstr "revenu non prévu"
+
+msgid "Planned, never paid"
+msgstr "Prévues jamais payées"
+
+msgid "planned, never paid"
+msgstr "prévue jamais payée"
+
+msgid "budget over"
+msgstr "budget dépassé"
+
+msgid "budget under"
+msgstr "budget pas épuisé"
+
+msgid "{actual} received on average for {planned} planned"
+msgstr "{actual} reçus en moyenne pour {planned} prévus"
+
+msgid "{actual} spent on average for {planned} planned"
+msgstr "{actual} dépensés en moyenne pour {planned} prévus"
+
+msgid ", over in {over} months out of {n}"
+msgstr ", dépassé {over} mois sur {n}"
+
+msgid "{actual} paid on average for {planned} planned"
+msgstr "{actual} payés en moyenne pour {planned} prévus"
+
+msgid "{count} occurrence(s) without payment, the last on {date}"
+msgstr "{count} échéance(s) sans paiement, la dernière le {date}"
+
+msgid "{count} operation(s), {total} over {n} months"
+msgstr "{count} opération(s), {total} sur {n} mois"

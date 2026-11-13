@@ -18,6 +18,14 @@ from budget_forecaster.web.formatting import (
     format_date,
     format_eur,
     format_eur_rounded,
+    format_short_month,
+)
+from budget_forecaster.web.plan_gaps_view import (
+    CARD_ROWS,
+    DEFAULT_GAP_MONTHS,
+    build_gap_card,
+    gap_cause,
+    gap_period,
 )
 from budget_forecaster.web.rendering import render_template
 
@@ -130,12 +138,6 @@ class GroupedExpense(NamedTuple):
     members: tuple[tuple[str, float], ...] = ()
 
 
-def _short_month(day: date) -> str:
-    """A month as a short translated label, e.g. 'Janv. 26'."""
-    # Same as format_month: the C-locale English name is the msgid.
-    return f"{_(day.strftime('%b'))} {day:%y}"
-
-
 def _x_ticks(samples: list[tuple[date, float]]) -> tuple[AxisTick, ...]:
     """Month labels for the x-axis, each at the first sample of its month."""
     last = len(samples) - 1
@@ -146,7 +148,7 @@ def _x_ticks(samples: list[tuple[date, float]]) -> tuple[AxisTick, ...]:
     if samples[0][0].day != 1:
         del starts[first_month]  # that month began before the curve does
     if not starts:
-        return (AxisTick(0.0, _short_month(samples[0][0]), False),)
+        return (AxisTick(0.0, format_short_month(samples[0][0]), False),)
     span = max(starts) - min(starts) + 1
     step = next(
         (s for s in _SPARK_TICK_STEPS if span / s <= _SPARK_MAX_XTICKS),
@@ -155,7 +157,7 @@ def _x_ticks(samples: list[tuple[date, float]]) -> tuple[AxisTick, ...]:
     ticks = [
         AxisTick(
             round(index / last * 100, 1),
-            _short_month(samples[index][0]),
+            format_short_month(samples[index][0]),
             month % (2 * step) != 0,
         )
         for month, index in starts.items()
@@ -337,10 +339,56 @@ async def trends(
         sparkline=sparkline,
         spark_points=spark_points,
         breakdown=breakdown,
+        gaps=build_gap_card(app, DEFAULT_GAP_MONTHS),
         currency=app.currency,
         period=period,
         periods=_PERIODS,
         threshold=app.expense_breakdown_threshold,
+    )
+
+
+@router.get("/trends/gaps")
+async def plan_gaps(
+    request: Request,
+    app: ApplicationService = Depends(get_app_service),
+    months: str = "",
+    cause: str = "",
+) -> Response:
+    """Render every gap to the plan over the chosen months."""
+    return render_template(
+        request,
+        "plan_gaps.html",
+        active="trends",
+        gaps=build_gap_card(
+            app, gap_period(months), limit=None, cause=gap_cause(cause)
+        ),
+        full_list=True,
+        currency=app.currency,
+    )
+
+
+@router.get("/trends/gaps/card")
+async def plan_gaps_card(
+    request: Request,
+    app: ApplicationService = Depends(get_app_service),
+    months: str = "",
+    full: str = "",
+    cause: str = "",
+) -> Response:
+    """Re-render the gaps card for another period or cause."""
+    full_list = full == "1"
+    return render_template(
+        request,
+        "fragments/gaps_card.html",
+        active="trends",
+        gaps=build_gap_card(
+            app,
+            gap_period(months),
+            limit=None if full_list else CARD_ROWS,
+            cause=gap_cause(cause),
+        ),
+        full_list=full_list,
+        currency=app.currency,
     )
 
 

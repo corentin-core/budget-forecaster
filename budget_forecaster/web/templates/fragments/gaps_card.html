@@ -1,0 +1,80 @@
+{# The "Gaps to plan" card. full_list renders every item, on its own page. #}
+{% set card_url = '/trends/gaps/card?' ~ ('full=1&' if full_list else '') %}
+<section class="card gaps-card" id="gaps">
+  <div class="card-head">
+    <h2>{{ _("Gaps to plan") }}</h2>
+    {% if gaps.periods | length > 1 %}
+    <div class="period-switch">
+      {% for option in gaps.periods %}
+        <a hx-get="{{ card_url }}months={{ option }}&cause={{ gaps.cause }}"
+           hx-target="#gaps" hx-swap="outerHTML"
+           class="{{ 'active' if option == gaps.period }}">{{ option }}{{ _("m") }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  {% if not gaps.months %}
+    <p class="empty">{{ _("No month is over yet to compare with the plan.") }}</p>
+  {% else %}
+    <p class="gaps-headline">
+      {%- if gaps.months == 1 -%}{{ _("Last month ended") }}{%- else -%}{{ _("Over the last {n} months, each month ended on average").format(n=gaps.months) }}{%- endif %}
+      {% if gaps.average < 0 -%}
+        <strong class="negative">{{ _("{amount} below plan").format(amount=gaps.average | abs | eur0(currency)) }}</strong>.
+      {%- else -%}
+        <strong class="positive">{{ _("{amount} above plan").format(amount=gaps.average | eur0(currency)) }}</strong>.
+      {%- endif %}
+    </p>
+
+    {% if gaps.chips %}
+    {# A chip filters the list on its cause; picking it again shows every cause. #}
+    <ul class="gaps-chips" aria-label="{{ _('By cause, per month') }}">
+      {% for chip in gaps.chips %}
+      <li>
+        <button type="button" class="gaps-chip" aria-pressed="{{ 'true' if chip.active else 'false' }}"
+                hx-get="{{ card_url }}months={{ gaps.period }}&cause={{ '' if chip.active else chip.key }}"
+                hx-target="#gaps" hx-swap="outerHTML">
+          <span class="gaps-swatch" style="background: {{ chip.color }}"></span>{{ chip.label }} <b>{{ chip.average | signed_eur0(currency) }}</b>
+        </button>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if gaps.rows %}
+    <h3 class="gaps-subhead">{{ _("What weighs most") if not full_list else _("Every gap") }}</h3>
+    <ul class="gaps-list">
+      {% for row in gaps.rows %}
+      <li>
+        <a class="gaps-row" href="{{ row.url }}">
+          <span class="gaps-swatch" style="background: {{ row.color }}"></span>
+          <span class="gaps-body">
+            <span class="gaps-name">{{ row.name }}</span>
+            <span class="gaps-cause">· {{ row.cause }}</span>
+            <span class="gaps-diag">{{ row.diagnosis }}</span>
+          </span>
+          <span class="gaps-amount">{{ row.average | signed_eur0(currency) }}<small>{{ _("per month") }}</small></span>
+          <span class="gaps-chevron" aria-hidden="true">›</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% if not full_list and gaps.item_count > gaps.rows | length %}
+      <a class="gaps-more" href="/trends/gaps?months={{ gaps.period }}&cause={{ gaps.cause }}">{{ _("See all ({n})").format(n=gaps.item_count) }} ›</a>
+    {% endif %}
+    {% else %}
+    <p class="empty">{{ _("Every month followed the plan.") }}</p>
+    {% endif %}
+
+    <h3 class="gaps-subhead">{{ _("Gap of each month") }}</h3>
+    <div class="gaps-bars">
+      {% for bar in gaps.bars %}
+      <a class="gaps-bar" href="{{ bar.url }}" aria-label="{{ bar.label }} : {{ bar.total | signed_eur0(currency) }}">
+        <span class="gaps-plot"><span class="gaps-zero" style="top: {{ gaps.zero_pct }}%"></span><span class="gaps-fill {{ 'negative-fill' if bar.total < 0 }}" style="top: {{ bar.top_pct }}%; height: {{ bar.height_pct }}%"></span></span>
+        <span class="gaps-bar-label">{{ bar.label }}</span>
+        <b class="{{ 'negative' if bar.total < 0 else 'positive' }}">{{ bar.total | signed_eur0(currency) }}</b>
+      </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>

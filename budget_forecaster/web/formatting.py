@@ -45,6 +45,13 @@ def format_signed_eur(amount: float, currency: str = "EUR") -> str:
     return f"{sign}{_group_thousands(whole)},{frac}{_NBSP}{currency}"
 
 
+def format_signed_eur_rounded(amount: float, currency: str = "EUR") -> str:
+    """Format an amount without decimals and with its sign, e.g. '+80 EUR'."""
+    rounded = round(amount)
+    sign = "-" if rounded < 0 else "+"
+    return f"{sign}{_group_thousands(str(abs(rounded)))}{_NBSP}{currency}"
+
+
 def format_date(value: date) -> str:
     """Format a date as dd/mm/YYYY."""
     return value.strftime("%d/%m/%Y")
@@ -64,6 +71,12 @@ def format_sync_error(error: str | None) -> str:
     if error and error.startswith("NoConsentError"):
         return _("Consent expired or missing")
     return _("Sync failed")
+
+
+def format_short_month(value: date) -> str:
+    """Format a month as a short translated label, e.g. 'Janv. 26'."""
+    # Same as format_month: the C-locale English name is the msgid.
+    return f"{_(value.strftime('%b'))} {value:%y}"
 
 
 def format_month(value: date) -> str:
@@ -118,6 +131,7 @@ def register_filters(env: Environment) -> None:
     env.filters["eur"] = format_eur
     env.filters["eur0"] = format_eur_rounded
     env.filters["signed_eur"] = format_signed_eur
+    env.filters["signed_eur0"] = format_signed_eur_rounded
     env.filters["frdate"] = format_date
     env.filters["frdatetime"] = format_datetime
     env.filters["sync_error"] = format_sync_error

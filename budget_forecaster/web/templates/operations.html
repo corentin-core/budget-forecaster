@@ -37,6 +37,11 @@
              {{ 'checked' if filters.review }} />
       {{ _("To review") }}
     </label>
+    <label class="check">
+      <input type="checkbox" name="unlinked" value="true"
+             {{ 'checked' if filters.unlinked }} />
+      {{ _("Not linked") }}
+    </label>
     <noscript><button type="submit">{{ _("Filter") }}</button></noscript>
   </form>
 

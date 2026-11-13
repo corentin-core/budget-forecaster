@@ -55,14 +55,14 @@ to start if neither source provides both secrets.
 
 ## Sections
 
-| Section    | What it shows                                                                                 |
-| ---------- | --------------------------------------------------------------------------------------------- |
-| Accueil    | Available margin, balance, what is left to categorize, overdue payments, this month, upcoming |
-| Mois       | Per-category planned vs actual for one month; switch months from the URL or the arrows        |
-| Budgets    | All budgets and planned operations, whatever month they fall in; create, edit, split, delete  |
-| Opérations | The full ledger, filterable by search text, category, month, "uncategorized" and "to review"  |
-| Tendances  | Balance evolution over time and expense breakdown by category                                 |
-| Réglages   | Bank connection and sync history, manual import, backups, the margin threshold, the theme     |
+| Section    | What it shows                                                                                              |
+| ---------- | ---------------------------------------------------------------------------------------------------------- |
+| Accueil    | Available margin, balance, what is left to categorize, overdue payments, this month, upcoming              |
+| Mois       | Per-category planned vs actual for one month; switch months from the URL or the arrows                     |
+| Budgets    | All budgets and planned operations, whatever month they fall in; create, edit, split, delete               |
+| Opérations | The full ledger, filterable by search text, category, month, "uncategorized", "to review" and "not linked" |
+| Tendances  | Balance evolution over time, gaps to plan of past months, and expense breakdown by category                |
+| Réglages   | Bank connection and sync history, manual import, backups, the margin threshold, the theme                  |
 
 Navigation is a bottom bar on phones and a left sidebar on wider screens, each tab with
 an icon.
@@ -147,11 +147,27 @@ whatever the sync left out — the page warns that what you are looking for may 
 the missing. Editing the series stays available too, for the same reason: a wrong
 recurrence is wrong whatever the sync brought back.
 
-On Tendances, the expense breakdown donut folds small categories into a single grey
-**Other categories** slice. A slider below the donut sets the cutoff: any category below
-that share of the period total is folded in, and the donut re-renders live as you drag.
-Set it to 0% to show every category separately. The folded categories and their amounts
-are listed under the Other slice in the legend. The setting is remembered across visits.
+On Tendances, **Écarts au prévu** compares the last 3, 6 or 12 months that are over with
+the plan. The current month is left out, and so is any month before the first one the
+account covers in full. The headline gives how far below or above the plan a month ended
+on average. Under it, the gap splits into five causes: budgets overspent or left
+unspent, planned payments made at another amount, planned payments never made, unplanned
+spending and unplanned income. The causes add up to what the Mois view shows month by
+month. Tap a cause to list only its gaps below, and tap it again to see every cause.
+
+**Ce qui pèse le plus** lists the budgets, planned payments and categories behind the
+largest gaps, all causes mixed, each with a line such as "470 EUR dépensés en moyenne
+pour 400 EUR prévus, dépassé 6 mois sur 6". A budget or a planned payment opens its edit
+page, which lists its operations. An unplanned category opens Opérations filtered on
+that category, those months and unlinked operations. **Tout voir** lists every gap, and
+each bar of **Écart de chaque mois** opens that month in Mois. The plan is the current
+one: a budget edited in place rewrites its own past gaps, while a split keeps them.
+
+The expense breakdown donut folds small categories into a single grey **Other
+categories** slice. A slider below the donut sets the cutoff: any category below that
+share of the period total is folded in, and the donut re-renders live as you drag. Set
+it to 0% to show every category separately. The folded categories and their amounts are
+listed under the Other slice in the legend. The setting is remembered across visits.
 
 ## Categorizing operations
 

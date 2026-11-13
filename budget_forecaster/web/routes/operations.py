@@ -44,6 +44,7 @@ class LedgerFilters(NamedTuple):
     date_to: str
     uncategorized: bool
     review: bool
+    unlinked: bool
     criteria: OperationFilter
 
 
@@ -63,13 +64,15 @@ def _category(value: str) -> Category | None:
         return None
 
 
-def get_filters(
+# One argument per query parameter: FastAPI reads the ledger filters from them.
+def get_filters(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     search: str = "",
     category: str = "",
     date_from: str = "",
     date_to: str = "",
     uncategorized: bool = False,
     review: bool = False,
+    unlinked: bool = False,
 ) -> LedgerFilters:
     """Parse the ledger query parameters into filter criteria."""
     criteria = OperationFilter(
@@ -81,7 +84,7 @@ def get_filters(
         to_review_only=review,
     )
     return LedgerFilters(
-        search, category, date_from, date_to, uncategorized, review, criteria
+        search, category, date_from, date_to, uncategorized, review, unlinked, criteria
     )
 
 
@@ -94,6 +97,7 @@ def filters_from_form(form: FormData) -> LedgerFilters:
         date_to=str(form.get("date_to", "")),
         uncategorized=str(form.get("uncategorized", "")) == "true",
         review=str(form.get("review", "")) == "true",
+        unlinked=str(form.get("unlinked", "")) == "true",
     )
 
 
@@ -112,7 +116,20 @@ def _query(filters: LedgerFilters) -> str:
         params["uncategorized"] = "true"
     if filters.review:
         params["review"] = "true"
+    if filters.unlinked:
+        params["unlinked"] = "true"
     return urlencode(params)
+
+
+def _matching(
+    app: ApplicationService, filters: LedgerFilters
+) -> tuple[HistoricOperation, ...]:
+    """The operations the filters keep, newest first."""
+    matches = app.get_operations(filters.criteria)
+    if not filters.unlinked:
+        return matches
+    linked = {link.operation_unique_id for link in app.get_all_links()}
+    return tuple(op for op in matches if op.unique_id not in linked)
 
 
 def _rows(
@@ -155,7 +172,7 @@ async def list_operations(
     offset: int = 0,
 ) -> Response:
     """Render the ledger page, or a fragment for filter/pagination requests."""
-    matches = app.get_operations(filters.criteria)
+    matches = _matching(app, filters)
     total = len(matches)
     rows = _rows(app, matches[offset : offset + _PAGE_SIZE])
     next_offset = offset + _PAGE_SIZE
@@ -429,7 +446,7 @@ def _ledger_area(
     request: Request, app: ApplicationService, filters: LedgerFilters
 ) -> Response:
     """The first page of the filtered ledger, with the badge refreshed."""
-    matches = app.get_operations(filters.criteria)
+    matches = _matching(app, filters)
     return render_template(
         request,
         "fragments/area_and_badge.html",
