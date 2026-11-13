@@ -70,6 +70,12 @@ def _amount_value(client: TestClient, budget_id: int) -> str:
 class TestTargetCrud:
     """Create, edit, split and delete budgets and planned operations."""
 
+    def test_edit_page_leads_back(self, client: TestClient) -> None:
+        """The top of the form goes back to the page that opened it."""
+        html = client.get("/targets/budget/1?return_to=/trends%23gaps").text
+
+        assert '<p class="back"><a href="/trends#gaps">' in html
+
     def test_create_budget_appears_in_list(self, client: TestClient) -> None:
         """A created budget shows up on the management page."""
         response = client.post(

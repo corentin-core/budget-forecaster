@@ -18,6 +18,7 @@
 
 {% block content %}
 <section class="card form-page">
+  <p class="back"><a href="{{ return_to }}">‹ {{ _("Back") }}</a></p>
   <h1>{{ (_("New") if form.is_new else _("Edit")) }} — {{ label }}</h1>
 
   {% if error %}<p class="form-error" role="alert">{{ error }}</p>{% endif %}
@@ -203,5 +204,5 @@
 {% include "fragments/linked_operations.html" %}
 {% include "fragments/decided_iterations.html" %}
 
-<script src="/static/targets.js" defer></script>
+<script src="{{ static('targets.js') }}" defer></script>
 {% endblock %}

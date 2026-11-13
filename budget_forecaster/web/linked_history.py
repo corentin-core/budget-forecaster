@@ -61,6 +61,7 @@ class Occurrence(NamedTuple):
     consumed: float  # what went the budget's way, never negative
     postponed_to: date | None
     days_late: int | None  # set while the Accueil card still lists it
+    end: date | None  # the last day of a budget period, None otherwise
 
 
 class LinkedHistory(NamedTuple):
@@ -120,6 +121,7 @@ def _occurrence(  # pylint: disable=too-many-arguments
     *,
     postponed_to: date | None = None,
     days_late: int | None = None,
+    end: date | None = None,
 ) -> Occurrence:
     return Occurrence(
         start=start,
@@ -131,6 +133,7 @@ def _occurrence(  # pylint: disable=too-many-arguments
         consumed=max(0.0, total if planned > 0 else -total),
         postponed_to=postponed_to,
         days_late=days_late,
+        end=end,
     )
 
 
@@ -215,7 +218,12 @@ def _budget_periods(
             state = OccurrenceState.NOT_LINKED
         rows.append(
             _occurrence(
-                period.start_date, _period_label(period), state, operations, amount
+                period.start_date,
+                _period_label(period),
+                state,
+                operations,
+                amount,
+                end=period.last_date,
             )
         )
     # A link left outside every period by a date change keeps its operations.

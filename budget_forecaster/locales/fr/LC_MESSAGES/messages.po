@@ -2299,3 +2299,12 @@ msgstr "dans le prévu"
 
 msgid "Nothing weighs for this cause."
 msgstr "Rien ne pèse pour cette cause."
+
+msgid "as planned"
+msgstr "comme prévu"
+
+msgid "{paid} for {planned} planned"
+msgstr "{paid} pour {planned} prévus"
+
+msgid "Find unlinked operations"
+msgstr "Chercher les opérations non liées"

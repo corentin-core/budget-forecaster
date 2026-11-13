@@ -577,15 +577,15 @@ class TestListingWindow:
         assert _DESCRIPTION not in card
         assert card.count('class="overdue-item"') == before
 
-    def test_its_actions_go_with_it(self, client: TestClient, app: FastAPI) -> None:
-        """No route acts on a row the card no longer offers."""
+    def test_only_linking_goes_on(self, client: TestClient, app: FastAPI) -> None:
+        """A row the card no longer offers can be linked, not decided on."""
         gone = _create_unmatched(
             client, app, days_before_balance=63, amount="-321", recurring=False
         )
 
         assert (
             client.get(f"/overdue/{gone.op_id}/{gone.iteration}/link").status_code
-            == 404
+            == 200
         )
         assert (
             client.post(f"/overdue/{gone.op_id}/{gone.iteration}/skip").status_code

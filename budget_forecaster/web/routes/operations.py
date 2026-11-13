@@ -46,6 +46,8 @@ class LedgerFilters(NamedTuple):
     review: bool
     unlinked: bool
     criteria: OperationFilter
+    # The page that opened the ledger, kept through every link out of it.
+    return_to: str = ""
 
 
 def _date(value: str) -> date | None:
@@ -73,6 +75,7 @@ def get_filters(  # pylint: disable=too-many-arguments,too-many-positional-argum
     uncategorized: bool = False,
     review: bool = False,
     unlinked: bool = False,
+    return_to: str = "",
 ) -> LedgerFilters:
     """Parse the ledger query parameters into filter criteria."""
     criteria = OperationFilter(
@@ -84,7 +87,15 @@ def get_filters(  # pylint: disable=too-many-arguments,too-many-positional-argum
         to_review_only=review,
     )
     return LedgerFilters(
-        search, category, date_from, date_to, uncategorized, review, unlinked, criteria
+        search,
+        category,
+        date_from,
+        date_to,
+        uncategorized,
+        review,
+        unlinked,
+        criteria,
+        safe_local_path(return_to, ""),
     )
 
 
@@ -98,6 +109,7 @@ def filters_from_form(form: FormData) -> LedgerFilters:
         uncategorized=str(form.get("uncategorized", "")) == "true",
         review=str(form.get("review", "")) == "true",
         unlinked=str(form.get("unlinked", "")) == "true",
+        return_to=str(form.get("return_to", "")),
     )
 
 
@@ -118,6 +130,8 @@ def _query(filters: LedgerFilters) -> str:
         params["review"] = "true"
     if filters.unlinked:
         params["unlinked"] = "true"
+    if filters.return_to:
+        params["return_to"] = filters.return_to
     return urlencode(params)
 
 
@@ -251,13 +265,15 @@ async def link_page(
 
 
 @router.get("/operations/{operation_id}/link/candidates")
-async def link_candidates(
+# One argument per query parameter, as get_filters reads the ledger's.
+async def link_candidates(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     operation_id: int,
     request: Request,
     app: ApplicationService = Depends(get_app_service),
     target_type: str = "planned",
     q: str = "",
     show_all: bool = Query(default=False, alias="all"),
+    return_to: str = "/operations",
 ) -> Response:
     """Return the filtered candidate list fragment (search / show-all)."""
     operation = app.get_operation_by_id(operation_id)
@@ -272,17 +288,20 @@ async def link_candidates(
         hidden_count=hidden,
         target_type=target_type,
         currency=app.currency,
+        return_to=_safe_back(return_to),
     )
 
 
 @router.get("/operations/{operation_id}/link/iterations")
-async def link_iterations(
+# One argument per query parameter, as get_filters reads the ledger's.
+async def link_iterations(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     operation_id: int,
     request: Request,
     app: ApplicationService = Depends(get_app_service),
     target_type: str = "planned",
     target_id: int = 0,
     offset: int = 0,
+    return_to: str = "/operations",
 ) -> Response:
     """Render the iteration picker fragment for a chosen target."""
     operation = app.get_operation_by_id(operation_id)
@@ -300,6 +319,7 @@ async def link_iterations(
         iterations=iterations,
         best_iso=best_iso,
         target_name=target.description,
+        return_to=_safe_back(return_to),
     )
 
 
@@ -322,18 +342,24 @@ async def create_link(
         return back
     app.create_manual_link(operation, target, iteration_date)
     refresh_forecast(app)
-    return RedirectResponse(url="/operations", status_code=303)
+    return RedirectResponse(
+        url=_safe_back(str(form.get("return_to", ""))), status_code=303
+    )
 
 
 @router.post("/operations/{operation_id}/unlink")
 async def unlink(
     operation_id: int,
+    request: Request,
     app: ApplicationService = Depends(get_app_service),
 ) -> Response:
     """Remove the operation's link."""
+    form = await request.form()
     app.delete_link(operation_id)
     refresh_forecast(app)
-    return RedirectResponse(url="/operations", status_code=303)
+    return RedirectResponse(
+        url=_safe_back(str(form.get("return_to", ""))), status_code=303
+    )
 
 
 @router.post("/operations/{operation_id}/categorize")

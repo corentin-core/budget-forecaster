@@ -24,6 +24,14 @@
             {{ _("Upcoming") }} · {{ occ.planned | signed_eur(currency) }}
           {%- elif occ.days_late -%}
             {{ _("{n} d late").format(n=occ.days_late) }}
+          {%- elif occ.state.value == "linked" -%}
+            {%- if (occ.total | round(2)) == (occ.planned | round(2)) -%}
+              {{ _("as planned") }}
+            {%- else -%}
+              {#- A refund on an expense keeps its sign, so it does not read as a payment. -#}
+              {%- set paid = occ.total | abs | eur(currency) if (occ.total > 0) == (occ.planned > 0) else occ.total | signed_eur(currency) -%}
+              {{ _("{paid} for {planned} planned").format(paid=paid, planned=occ.planned | abs | eur(currency)) }}
+            {%- endif -%}
           {%- elif occ.state.value == "not_linked" -%}
             {{ _("Not linked") }}
           {%- elif occ.state.value == "postponed" -%}
@@ -34,7 +42,7 @@
         </span>
       </div>
       {{ operation_lines(occ) }}
-      {% if occ.days_late is not none %}
+      {% if occ.days_late is not none or occ.state.value == "not_linked" %}
       <a class="btn small" href="/overdue/{{ form.target_id }}/{{ occ.start }}/link?return_to={{ back }}">{{ _("Link…") }}</a>
       {% endif %}
       {% else %}
@@ -48,6 +56,9 @@
           </span>
         </summary>
         {{ operation_lines(occ) }}
+        {% if occ.end %}
+        <a class="btn small" href="/operations?{{ {'category': form.category_value, 'date_from': occ.start.isoformat(), 'date_to': occ.end.isoformat(), 'unlinked': 'true', 'return_to': here} | urlencode }}">{{ _("Find unlinked operations") }}</a>
+        {% endif %}
       </details>
       {% endif %}
     </li>

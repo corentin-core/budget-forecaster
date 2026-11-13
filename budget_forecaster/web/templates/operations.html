@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}{{ _("Operations") }} — Budget Forecaster{% endblock %}
 {% block content %}
+{% if filters.return_to %}
+<p class="back"><a href="{{ filters.return_to }}">‹ {{ _("Back") }}</a></p>
+{% endif %}
 <section class="card">
   <form class="filters" id="filter-form"
         hx-get="/operations"
@@ -42,6 +45,9 @@
              {{ 'checked' if filters.unlinked }} />
       {{ _("Not linked") }}
     </label>
+    {% if filters.return_to %}
+    <input type="hidden" name="return_to" value="{{ filters.return_to }}" />
+    {% endif %}
     <noscript><button type="submit">{{ _("Filter") }}</button></noscript>
   </form>
 
@@ -76,5 +82,5 @@
   <button type="button" class="btn" data-bulk-clear>{{ _("Clear") }}</button>
 </div>
 
-<script src="/static/operations.js" defer></script>
+<script src="{{ static('operations.js') }}" defer></script>
 {% endblock %}

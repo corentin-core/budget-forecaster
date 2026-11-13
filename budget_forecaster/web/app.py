@@ -8,10 +8,12 @@ Run with: uvicorn --factory budget_forecaster.web.app:create_app
 """
 
 import asyncio
+import hashlib
 import logging
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
+from functools import cache
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -139,9 +141,21 @@ def _swile_enroll_bookmarklet() -> str:
     return path.read_text(encoding="utf-8").strip() if path.exists() else ""
 
 
+@cache
+def static_url(name: str) -> str:
+    """The URL of a static file, with a hash of its content.
+
+    The hash changes when a deploy changes the file, so a browser fetches the new
+    version instead of reusing the one it cached.
+    """
+    content = (_PACKAGE_DIR / "static" / name).read_bytes()
+    return f"/static/{name}?v={hashlib.sha256(content).hexdigest()[:12]}"
+
+
 def _build_templates() -> Jinja2Templates:
     templates = Jinja2Templates(directory=str(_PACKAGE_DIR / "templates"))
     templates.env.globals["_"] = _
+    templates.env.globals["static"] = static_url
     templates.env.globals["swile_enroll_bookmarklet"] = _swile_enroll_bookmarklet()
     formatting.register_filters(templates.env)
     return templates

@@ -1,12 +1,13 @@
 {% set base = "/operations/" ~ operation_id ~ "/link/iterations" %}
+{% set back = return_to | urlencode %}
 <div class="iter-picker">
   <div class="iter-nav">
     <button type="button" class="btn small"
-            hx-get="{{ base }}?target_type={{ target_type }}&target_id={{ target_id }}&offset={{ offset - 1 }}"
+            hx-get="{{ base }}?target_type={{ target_type }}&target_id={{ target_id }}&offset={{ offset - 1 }}&return_to={{ back }}"
             hx-target="#iter-slot" hx-swap="innerHTML">‹</button>
     <span class="iter-window">{{ window }}</span>
     <button type="button" class="btn small"
-            hx-get="{{ base }}?target_type={{ target_type }}&target_id={{ target_id }}&offset={{ offset + 1 }}"
+            hx-get="{{ base }}?target_type={{ target_type }}&target_id={{ target_id }}&offset={{ offset + 1 }}&return_to={{ back }}"
             hx-target="#iter-slot" hx-swap="innerHTML">›</button>
   </div>
 
@@ -16,6 +17,7 @@
   <form method="post" action="/operations/{{ operation_id }}/link">
     <input type="hidden" name="target_type" value="{{ target_type }}" />
     <input type="hidden" name="target_id" value="{{ target_id }}" />
+    <input type="hidden" name="return_to" value="{{ return_to }}" />
     <ul class="iter-list">
       {% for it in iterations %}
       <li>
