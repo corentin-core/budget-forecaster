@@ -965,7 +965,7 @@ def generate_demo_db(
 ) -> None:
     """Populate a SQLite database with demo data (no file exports).
 
-    Useful for benchmarks and tests that need a realistic dataset.
+    Useful for tests that need a realistic dataset.
 
     Args:
         db_path: Path for the SQLite database file.
