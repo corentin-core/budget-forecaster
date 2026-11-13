@@ -2308,3 +2308,21 @@ msgstr "{paid} pour {planned} prévus"
 
 msgid "Find unlinked operations"
 msgstr "Chercher les opérations non liées"
+
+msgid "Set the budget to {amount}"
+msgstr "Passer le budget à {amount}"
+
+msgid "Set the planned amount to {amount}"
+msgstr "Passer le montant prévu à {amount}"
+
+msgid "Stop planning it"
+msgstr "Ne plus prévoir"
+
+msgid "From {date}: {old} → {new}. Past months keep their plan."
+msgstr "À partir du {date} : {old} → {new}. Les mois passés gardent leur prévu."
+
+msgid "Adjust…"
+msgstr "Ajuster…"
+
+msgid "Create a monthly budget of {amount}"
+msgstr "Créer un budget mensuel de {amount}"

@@ -165,6 +165,21 @@ gap, and each bar of **Écart de chaque mois** opens that month in Mois. The pla
 current one: a budget edited in place rewrites its own past gaps, while a split keeps
 them.
 
+A button under a row corrects the plan when the fix is clear. A row whose gap is under 5
+EUR a month gets no button.
+
+| Button                       | Shown when                                                |
+| ---------------------------- | --------------------------------------------------------- |
+| Passer le budget à X         | the budget was off the same way at least one month in two |
+| Passer le montant prévu à X  | the latest payment differs from the planned amount        |
+| Ne plus prévoir              | the last two occurrences were never paid                  |
+| Créer un budget mensuel de X | an unplanned category came back at least one month in two |
+
+The first three buttons ask for confirmation on the card before they change anything. A
+new amount goes through a split, from the first occurrence of the current month or
+later, so past months keep their plan. **Ajuster…** opens the same split on the edit
+page, to change its values first. The last button opens the new budget form, filled in.
+
 The expense breakdown donut folds small categories into a single grey **Other
 categories** slice. A slider below the donut sets the cutoff: any category below that
 share of the period total is folded in, and the donut re-renders live as you drag. Set

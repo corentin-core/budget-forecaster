@@ -150,7 +150,7 @@
     {% endif %}
     {% if form.can_end %}
     <form method="post" action="/targets/{{ form.kind }}/{{ form.target_id }}/end"
-          class="confirm-form" data-confirm>
+          class="confirm-form" id="end" data-confirm>
       <input type="hidden" name="return_to" value="{{ return_to }}" />
       <button type="button" class="btn" data-confirm-trigger>{{ _("End now") }}</button>
       <span class="confirm-cluster" hidden>
@@ -170,18 +170,20 @@
   {# Below the actions on purpose: the split is its own submission, and Save
      ignores these fields. Opening it takes over as the page's primary action. #}
   {% if not form.is_new and form.can_split %}
-  <details class="split" data-split-section>
+  <details class="split" id="split" data-split-section {{ 'open' if split }}>
     <summary class="btn">{{ _("Split from a date") }}</summary>
     <form method="post" action="/targets/{{ form.kind }}/{{ form.target_id }}/split">
       <input type="hidden" name="return_to" value="{{ return_to }}" />
       <p class="hint">{{ _("New values apply from the split date onward.") }}</p>
       <label class="field">
         <span>{{ _("Split date") }}</span>
-        <input type="date" name="split_date" required />
+        <input type="date" name="split_date" required
+               value="{{ split.split_date if split }}" />
       </label>
       <label class="field">
         <span>{{ _("New amount") }} ({{ _("optional") }})</span>
-        <input type="number" name="split_amount" step="0.01" />
+        <input type="number" name="split_amount" step="0.01"
+               value="{{ split.amount if split }}" />
       </label>
       <div class="field">
         <span>{{ _("New period") }}</span>

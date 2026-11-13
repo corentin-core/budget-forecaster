@@ -121,6 +121,25 @@ class TestCauses:
         assert [item.cause for item in gaps.items] == [GapCause.NOT_PAID]
         assert gaps.month_totals() == (0.0, 85.0)
 
+    def test_latest_payment_of_a_planned_operation(self) -> None:
+        """What paid the latest occurrence, whatever order the links come in."""
+        gaps = compute_plan_gaps(
+            (
+                _op(1, date(2026, 7, 6), -110.0, Category.ELECTRICITY),
+                _op(2, date(2026, 8, 5), -60.0, Category.ELECTRICITY),
+                _op(3, date(2026, 8, 6), -35.0, Category.ELECTRICITY),
+            ),
+            Forecast(operations=(_electricity(),), budgets=()),
+            (
+                _link(2, LinkType.PLANNED_OPERATION, 2, date(2026, 8, 5)),
+                _link(3, LinkType.PLANNED_OPERATION, 2, date(2026, 8, 5)),
+                _link(1, LinkType.PLANNED_OPERATION, 2, date(2026, 7, 5)),
+            ),
+            _MONTHS,
+        )
+
+        assert _only(gaps.items, GapCause.OTHER_AMOUNT).latest_paid == -95.0
+
     def test_unlinked_operations_by_category_and_sign(self) -> None:
         """Unlinked spending and income are unplanned, per category."""
         gaps = compute_plan_gaps(
@@ -222,3 +241,44 @@ class TestMonthTotals:
         unpaid = _only(gaps.items, GapCause.NOT_PAID)
         assert unpaid.missed == (date(2026, 8, 8),)
         assert not [i for i in gaps.items if i.cause is GapCause.OTHER_AMOUNT]
+
+    def test_payment_kept_on_a_day_the_operation_left_is_the_latest(self) -> None:
+        """A payment on the old day still tells what the latest occurrence cost."""
+        moved = PlannedOperation(
+            record_id=2,
+            description="Electricity",
+            amount=Amount(-85.0, "EUR"),
+            category=Category.ELECTRICITY,
+            date_range=RecurringDay(date(2026, 7, 8), relativedelta(months=1)),
+        )
+        gaps = compute_plan_gaps(
+            (
+                _op(1, date(2026, 7, 8), -85.0, Category.ELECTRICITY),
+                _op(2, date(2026, 8, 5), -97.0, Category.ELECTRICITY),
+            ),
+            Forecast(operations=(moved,), budgets=()),
+            (
+                _link(1, LinkType.PLANNED_OPERATION, 2, date(2026, 7, 8)),
+                _link(2, LinkType.PLANNED_OPERATION, 2, date(2026, 8, 5)),
+            ),
+            _MONTHS,
+        )
+
+        assert _only(gaps.items, GapCause.OTHER_AMOUNT).latest_paid == -97.0
+
+    def test_latest_payment_may_come_after_the_window(self) -> None:
+        """A payment of the current month is the newest amount to plan."""
+        gaps = compute_plan_gaps(
+            (
+                _op(1, date(2026, 7, 6), -110.0, Category.ELECTRICITY),
+                _op(2, date(2026, 9, 5), -92.0, Category.ELECTRICITY),
+            ),
+            Forecast(operations=(_electricity(),), budgets=()),
+            (
+                _link(1, LinkType.PLANNED_OPERATION, 2, date(2026, 7, 5)),
+                _link(2, LinkType.PLANNED_OPERATION, 2, date(2026, 9, 5)),
+            ),
+            _MONTHS,
+        )
+
+        assert _only(gaps.items, GapCause.OTHER_AMOUNT).latest_paid == -92.0

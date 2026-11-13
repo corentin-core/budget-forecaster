@@ -985,6 +985,20 @@ a.link-tag:focus-visible {
   color: var(--muted);
   font-size: var(--fs-lg);
 }
+/* Under the row, aligned with its name: the swatch and its gap make 20px. */
+.gaps-fix {
+  display: inline-block;
+  margin: 0 0 var(--sp-10) var(--sp-20);
+}
+/* The question takes its own line, the answers wrap below it on a phone. */
+.gaps-fix .confirm-cluster:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+}
+.gaps-question {
+  flex-basis: 100%;
+  font-size: var(--fs-sm);
+}
 .gaps-more {
   display: inline-block;
   margin-top: var(--sp-8);
