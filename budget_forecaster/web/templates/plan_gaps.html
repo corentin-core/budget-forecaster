@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Gaps to plan") }} — Budget Forecaster{% endblock %}
+{% block content %}
+<p class="back"><a href="/trends#gaps">‹ {{ _("Trends") }}</a></p>
+{% include "fragments/gaps_card.html" %}
+{% endblock %}

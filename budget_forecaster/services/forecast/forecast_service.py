@@ -38,6 +38,9 @@ from budget_forecaster.services.account.account_analysis_report import (
 )
 from budget_forecaster.services.account.account_analyzer import AccountAnalyzer
 
+# Months that are over, before the current one, the monthly review reaches back to.
+REVIEWED_MONTHS = 12
+
 logger = logging.getLogger(__name__)
 
 
@@ -517,7 +520,12 @@ class ForecastService:  # pylint: disable=too-many-public-methods
             operation_links,
             iteration_resolutions,
         )
-        self._report = analyzer.compute_report(start_date, end_date)
+        current = min(date.today(), self._account_provider.account.balance_date)
+        self._report = analyzer.compute_report(
+            start_date,
+            end_date,
+            months_start=current.replace(day=1) - relativedelta(months=REVIEWED_MONTHS),
+        )
 
         return self._report
 

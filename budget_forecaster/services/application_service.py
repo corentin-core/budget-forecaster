@@ -49,6 +49,7 @@ from budget_forecaster.services.forecast.iteration_lifecycle import (
     derive_past_iterations,
     index_resolutions,
 )
+from budget_forecaster.services.forecast.plan_gaps import PlanGaps, compute_plan_gaps
 from budget_forecaster.services.import_service import (
     ImportResult,
     ImportService,
@@ -649,6 +650,31 @@ class ApplicationService:  # pylint: disable=too-many-instance-attributes,too-ma
         """
         links = self._operation_link_service.get_all_links()
         return self._forecast_service.get_category_detail(category, month, links)
+
+    def get_plan_gaps(self, months: int) -> PlanGaps:
+        """Why the last months that are over ended away from the plan.
+
+        The window holds the months before the balance date's month, and none
+        before the first month the account covers in full.
+        """
+        if not (operations := self.operations):
+            return PlanGaps(months=(), items=())
+        first_day = min(op.operation_date for op in operations)
+        first_full = first_day.replace(day=1)
+        if first_day.day != 1:
+            first_full += relativedelta(months=1)
+        current = self.balance_date.replace(day=1)
+        window = tuple(
+            month
+            for back in range(months, 0, -1)
+            if (month := current - relativedelta(months=back)) >= first_full
+        )
+        return compute_plan_gaps(
+            operations,
+            self._forecast_service.load_forecast(),
+            self._operation_link_service.get_all_links(),
+            window,
+        )
 
     def get_category_statistics(self) -> list[tuple[str, float, float]]:
         """Get category statistics from the report."""
