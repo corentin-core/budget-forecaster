@@ -45,6 +45,9 @@ class GapItem(NamedTuple):
     actual: tuple[float, ...]
     operation_count: int
     missed: tuple[IterationDate, ...]
+    latest_paid: float | None = None
+    """What paid the latest occurrence of a planned operation, even one after
+    the window: the amount to plan from now on."""
 
     @property
     def gaps(self) -> tuple[float, ...]:
@@ -198,6 +201,7 @@ def compute_plan_gaps(
         all_budgets=forecast.budgets,
     )
     read = _read_links(gaps, plan, operations, links)
+    latest = _latest_payments(read.paid)
     for index, month in enumerate(months):
         _add_planned_operations(gaps, plan.planned_ops, read.paid, month, index)
         for budget in plan.budgets.values():
@@ -208,7 +212,30 @@ def compute_plan_gaps(
 
     _add_stale_payments(gaps, plan, read.paid)
     _add_unplanned(gaps, operations, read)
-    return PlanGaps(months=months, items=gaps.items())
+    return PlanGaps(
+        months=months, items=tuple(_with_latest(i, latest) for i in gaps.items())
+    )
+
+
+def _with_latest(item: GapItem, latest: dict[int, float]) -> GapItem:
+    """A planned operation paid at another amount, with its latest payment."""
+    if item.cause is not GapCause.OTHER_AMOUNT or item.target is None:
+        return item
+    if item.target.id is None:
+        return item
+    return item._replace(latest_paid=latest.get(item.target.id))
+
+
+def _latest_payments(paid: _Paid) -> dict[int, float]:
+    """What paid the latest paid occurrence of each planned operation."""
+    latest: dict[int, IterationDate] = {}
+    for op_id, iteration in paid:
+        if iteration > latest.get(op_id, date.min):
+            latest[op_id] = iteration
+    return {
+        op_id: sum(float(op.amount) for op in paid[op_id, iteration])
+        for op_id, iteration in latest.items()
+    }
 
 
 def _read_links(

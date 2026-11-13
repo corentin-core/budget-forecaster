@@ -1,20 +1,35 @@
 """Tests for the "Gaps to plan" card, its full list and the ledger filter it uses."""
 
+import re
 from datetime import date
+from html import unescape
 from pathlib import Path
 
 import pandas as pd
+from dateutil.relativedelta import relativedelta
 from fastapi.testclient import TestClient
 
-from budget_forecaster.core.types import BudgetColumn
+from budget_forecaster.core.amount import Amount
+from budget_forecaster.core.date_range import (
+    DateRange,
+    RecurringDateRange,
+    RecurringDay,
+)
+from budget_forecaster.core.types import BudgetColumn, Category
+from budget_forecaster.domain.operation.budget import Budget
+from budget_forecaster.domain.operation.planned_operation import PlannedOperation
 from budget_forecaster.infrastructure.bootstrap import open_repository
 from budget_forecaster.infrastructure.config import Config
 from budget_forecaster.services.account.account_analyzer import AccountAnalyzer
 from budget_forecaster.services.application_service import ApplicationService
+from budget_forecaster.services.forecast.plan_gaps import GapCause, GapItem, PlanGaps
 from budget_forecaster.web.app import _build_app_service
 from budget_forecaster.web.plan_gaps_view import (
     CARD_ROWS,
     DEFAULT_GAP_MONTHS,
+    GapFix,
+    _fix,
+    _FixContext,
     _useful_periods,
     gap_cause,
     gap_period,
@@ -72,6 +87,37 @@ class TestCard:
         assert card.count('class="gaps-row"') <= CARD_ROWS
         assert 'href="/targets/' in card or 'href="/operations?' in card
         assert 'href="/month/' in card
+
+    def test_fix_is_confirmed_on_the_card(self, client: TestClient) -> None:
+        """A fix posts its split from the card, and comes back to it."""
+        card = client.get("/trends/gaps?months=12").text
+        form = re.search(
+            r'<form method="post" action="([^"]+/split)" class="gaps-fix".*?</form>',
+            card,
+            re.S,
+        )
+        assert form is not None
+        fields = {
+            name: unescape(value)
+            for name, value in re.findall(
+                r'name="([^"]+)" value="([^"]*)"', form.group(0)
+            )
+        }
+
+        response = client.post(form.group(1), data=fields, follow_redirects=False)
+
+        assert response.status_code == 303
+        assert response.headers["location"].startswith("/trends/gaps?months=")
+
+    def test_adjust_opens_the_split_filled_in(self, client: TestClient) -> None:
+        """ "Adjust…" opens the same change on the edit page, to retouch it."""
+        card = client.get("/trends/gaps?months=12").text
+        start = card.index('class="action-link" href="') + len(
+            'class="action-link" href="'
+        )
+        url = card[start : card.index('"', start)].replace("&amp;", "&")
+
+        assert "data-split-section open" in client.get(url).text
 
     def test_full_list(self, client: TestClient) -> None:
         """The full list has every item and no "see all" link."""
@@ -177,3 +223,295 @@ class TestWayBack:
         html = client.get("/trends/gaps?months=3").text
 
         assert "return_to=%2Ftrends%2Fgaps%3Fmonths%3D3" in html
+
+
+_MONTHS = tuple(date(2026, month, 1) for month in (7, 8, 9, 10))
+_TODAY = date(2026, 11, 13)
+_CONTEXT = _FixContext(
+    currency="EUR",
+    back="/trends#gaps",
+    today=_TODAY,
+    month=date(2026, 11, 1),
+    window_end=date(2026, 10, 31),
+)
+
+
+def _groceries_budget(amount: float = -400.0) -> Budget:
+    return Budget(
+        record_id=1,
+        description="Groceries",
+        amount=Amount(amount, "EUR"),
+        category=Category.GROCERIES,
+        date_range=RecurringDateRange(
+            DateRange(date(2026, 1, 1), relativedelta(months=1)),
+            relativedelta(months=1),
+        ),
+    )
+
+
+def _electricity(last: date | None = None) -> PlannedOperation:
+    return PlannedOperation(
+        record_id=2,
+        description="Electricity",
+        amount=Amount(-85.0, "EUR"),
+        category=Category.ELECTRICITY,
+        date_range=RecurringDay(date(2026, 1, 5), relativedelta(months=1), last),
+    )
+
+
+def _item(
+    cause: GapCause,
+    actual: tuple[float, ...],
+    *,
+    target: Budget | PlannedOperation | None = None,
+    planned: tuple[float, ...] = (0.0,) * 4,
+    missed: tuple[date, ...] = (),
+    latest_paid: float | None = None,
+) -> GapItem:
+    return GapItem(
+        cause=cause,
+        category=Category.GROCERIES,
+        target=target,
+        planned=planned,
+        actual=actual,
+        operation_count=len(actual),
+        missed=missed,
+        latest_paid=latest_paid,
+    )
+
+
+def _fix_of(item: GapItem) -> GapFix | None:
+    return _fix(item, PlanGaps(_MONTHS, (item,)), _CONTEXT)
+
+
+class TestFixes:
+    """The button under a row, when the correction is clear."""
+
+    def test_budget_over_most_months_is_set_to_its_average(self) -> None:
+        """The split opens from this month at the average spent."""
+        fix = _fix_of(
+            _item(
+                GapCause.BUDGET,
+                (-470.0, -500.0, -380.0, -530.0),
+                target=_groceries_budget(),
+                planned=(-400.0,) * 4,
+            )
+        )
+
+        split = (
+            ("split_date", "2026-11-01"),
+            ("split_amount", "-470"),
+            ("return_to", "/trends#gaps"),
+        )
+        assert fix == GapFix(
+            label="Set the budget to 470\u00a0EUR",
+            question="From 01/11/2026: 400\u00a0EUR → 470\u00a0EUR."
+            " Past months keep their plan.",
+            action="/targets/budget/1/split",
+            fields=split,
+            url="/targets/budget/1?split_date=2026-11-01&split_amount=-470"
+            "&return_to=%2Ftrends%23gaps#split",
+        )
+
+    def test_yearly_budget_is_set_by_the_year(self) -> None:
+        """The months hold a twelfth of a yearly budget; the fix is yearly."""
+        yearly = Budget(
+            record_id=3,
+            description="Clothes",
+            amount=Amount(-1200.0, "EUR"),
+            category=Category.CLOTHING,
+            date_range=RecurringDateRange(
+                DateRange(date(2026, 1, 1), relativedelta(years=1)),
+                relativedelta(years=1),
+            ),
+        )
+        monthly_plan = tuple(-1200.0 * days / 365 for days in (31, 31, 30, 31))
+        fix = _fix_of(
+            _item(
+                GapCause.BUDGET,
+                tuple(1.5 * planned for planned in monthly_plan),
+                target=yearly,
+                planned=monthly_plan,
+            )
+        )
+
+        assert fix is not None
+        assert ("split_amount", "-1800") in fix.fields
+        # A yearly budget takes the new amount from its next year.
+        assert fix.question.startswith("From 01/01/2027: 1\u202f200\u00a0EUR")
+
+    def test_budget_off_both_ways_gets_no_fix(self) -> None:
+        """One big month over is not a budget set too low."""
+        assert (
+            _fix_of(
+                _item(
+                    GapCause.BUDGET,
+                    (-900.0, -390.0, -380.0, -370.0),
+                    target=_groceries_budget(),
+                    planned=(-400.0,) * 4,
+                )
+            )
+            is None
+        )
+
+    def test_budget_already_at_its_average_gets_no_fix(self) -> None:
+        """Rounded to the euro, the average is the amount already planned."""
+        assert (
+            _fix_of(
+                _item(
+                    GapCause.BUDGET,
+                    (-410.0, -390.0, -401.0, -400.0),
+                    target=_groceries_budget(),
+                    planned=(-400.0,) * 4,
+                )
+            )
+            is None
+        )
+
+    def test_ended_budget_gets_no_fix(self) -> None:
+        """A budget with no period left to split keeps its past as it is."""
+        ended = _groceries_budget().split_at(date(2026, 11, 1))[0]
+
+        assert (
+            _fix_of(
+                _item(
+                    GapCause.BUDGET,
+                    (-470.0,) * 4,
+                    target=ended,
+                    planned=(-400.0,) * 4,
+                )
+            )
+            is None
+        )
+
+    def test_planned_amount_follows_the_latest_payment(self) -> None:
+        """The split takes what paid the latest occurrence, to the cent."""
+        fix = _fix_of(
+            _item(
+                GapCause.OTHER_AMOUNT,
+                (-85.0, -85.0, -95.5, -95.5),
+                target=_electricity(),
+                planned=(-85.0,) * 4,
+                latest_paid=-95.5,
+            )
+        )
+
+        assert fix == GapFix(
+            label="Set the planned amount to 96\u00a0EUR",
+            question="From 05/11/2026: 85\u00a0EUR → 95,50\u00a0EUR."
+            " Past months keep their plan.",
+            action="/targets/planned/2/split",
+            fields=(
+                ("split_date", "2026-11-01"),
+                ("split_amount", "-95.50"),
+                ("return_to", "/trends#gaps"),
+            ),
+            url="/targets/planned/2?split_date=2026-11-01&split_amount=-95.50"
+            "&return_to=%2Ftrends%23gaps#split",
+        )
+
+    def test_small_gap_gets_no_fix(self) -> None:
+        """Two euros a month is not worth changing the plan for."""
+        assert (
+            _fix_of(
+                _item(
+                    GapCause.OTHER_AMOUNT,
+                    (-87.0,) * 4,
+                    target=_electricity(),
+                    planned=(-85.0,) * 4,
+                    latest_paid=-87.0,
+                )
+            )
+            is None
+        )
+
+    def test_latest_payment_on_plan_gets_no_fix(self) -> None:
+        """A gap the latest payment no longer shows needs no new amount."""
+        assert (
+            _fix_of(
+                _item(
+                    GapCause.OTHER_AMOUNT,
+                    (-95.0, -85.0, -85.0, -85.0),
+                    target=_electricity(),
+                    planned=(-85.0,) * 4,
+                    latest_paid=-85.0,
+                )
+            )
+            is None
+        )
+
+    def test_two_last_occurrences_unpaid_offers_to_end(self) -> None:
+        """The edit page opens on its End button."""
+        fix = _fix_of(
+            _item(
+                GapCause.NOT_PAID,
+                (0.0,) * 4,
+                target=_electricity(),
+                planned=(0.0, 0.0, -85.0, -85.0),
+                missed=(date(2026, 9, 5), date(2026, 10, 5)),
+            )
+        )
+
+        assert fix == GapFix(
+            label="Stop planning it",
+            question="End today? Later occurrences leave the forecast.",
+            action="/targets/planned/2/end",
+            fields=(("return_to", "/trends#gaps"),),
+        )
+
+    def test_one_unpaid_occurrence_is_not_an_end(self) -> None:
+        """A single miss before a payment is a missed link, not a stopped payment."""
+        assert (
+            _fix_of(
+                _item(
+                    GapCause.NOT_PAID,
+                    (0.0,) * 4,
+                    target=_electricity(),
+                    planned=(0.0, 0.0, -85.0, 0.0),
+                    missed=(date(2026, 9, 5),),
+                )
+            )
+            is None
+        )
+
+    def test_planned_operation_already_ended_gets_no_end(self) -> None:
+        """Nothing is left to end."""
+        assert (
+            _fix_of(
+                _item(
+                    GapCause.NOT_PAID,
+                    (0.0,) * 4,
+                    target=_electricity(last=date(2026, 10, 5)),
+                    planned=(0.0, 0.0, -85.0, -85.0),
+                    missed=(date(2026, 9, 5), date(2026, 10, 5)),
+                )
+            )
+            is None
+        )
+
+    def test_unplanned_spending_most_months_gets_a_budget(self) -> None:
+        """The new budget takes the category and the average per month."""
+        fix = _fix_of(_item(GapCause.UNPLANNED_EXPENSE, (-100.0, 0.0, -150.0, -230.0)))
+
+        assert fix == GapFix(
+            label="Create a monthly budget of 120\u00a0EUR",
+            url="/targets/budget/new?category=GROCERIES&amount=-120"
+            "&return_to=%2Ftrends%23gaps",
+        )
+
+    def test_one_off_spending_gets_no_budget(self) -> None:
+        """A single month of spending is not a habit."""
+        assert (
+            _fix_of(_item(GapCause.UNPLANNED_EXPENSE, (-480.0, 0.0, 0.0, 0.0))) is None
+        )
+
+    def test_uncategorized_spending_gets_no_budget(self) -> None:
+        """The fix there is to categorize, not to plan."""
+        assert (
+            _fix_of(
+                _item(GapCause.UNPLANNED_EXPENSE, (-100.0,) * 4)._replace(
+                    category=Category.UNCATEGORIZED
+                )
+            )
+            is None
+        )

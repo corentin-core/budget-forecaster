@@ -58,6 +58,22 @@
           <span class="gaps-amount">{{ row.average | signed_eur0(currency) }}<small>{{ _("per month") }}</small></span>
           <span class="gaps-chevron" aria-hidden="true">›</span>
         </a>
+        {% if row.fix and row.fix.action %}
+        <form method="post" action="{{ row.fix.action }}" class="gaps-fix" data-confirm>
+          {% for name, value in row.fix.fields %}
+          <input type="hidden" name="{{ name }}" value="{{ value }}" />
+          {% endfor %}
+          <button type="button" class="btn small" data-confirm-trigger>{{ row.fix.label }}</button>
+          <span class="confirm-cluster" hidden>
+            <span class="gaps-question">{{ row.fix.question }}</span>
+            <button type="button" class="btn small" data-confirm-cancel>{{ _("Cancel") }}</button>
+            <button type="submit" class="btn small primary">{{ _("Confirm") }}</button>
+            {% if row.fix.url %}<a class="action-link" href="{{ row.fix.url }}">{{ _("Adjust…") }}</a>{% endif %}
+          </span>
+        </form>
+        {% elif row.fix %}
+        <a class="btn small gaps-fix" href="{{ row.fix.url }}">{{ row.fix.label }}</a>
+        {% endif %}
       </li>
       {% endfor %}
     </ul>

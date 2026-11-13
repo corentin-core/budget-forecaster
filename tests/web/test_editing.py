@@ -775,3 +775,41 @@ class TestEndNow:
         with _repository(app) as repo:
             budget = repo.get_budget_by_id(budget_id)
         assert budget.date_range.last_date == end
+
+
+class TestPrefilledFromAGap:
+    """The forms a fix button of the gaps card opens."""
+
+    def test_split_opens_with_its_date_and_amount(self, client: TestClient) -> None:
+        """A split date in the query opens the split section, filled in."""
+        client.post("/targets/budget", data=_RECURRING_BUDGET, follow_redirects=False)
+        budget_id = _budget_id(client, "Test Budget")
+
+        html = client.get(
+            f"/targets/budget/{budget_id}?split_date=2026-11-01&split_amount=-470"
+        ).text
+
+        assert 'id="split" data-split-section open' in html
+        assert re.search(r'name="split_date"[^>]*value="2026-11-01"', html)
+        assert re.search(r'name="split_amount"[^>]*value="-470"', html)
+
+    def test_bad_split_values_leave_the_section_closed(
+        self, client: TestClient
+    ) -> None:
+        """A split date that is not a date opens nothing."""
+        client.post("/targets/budget", data=_RECURRING_BUDGET, follow_redirects=False)
+        budget_id = _budget_id(client, "Test Budget")
+
+        html = client.get(f"/targets/budget/{budget_id}?split_date=soon").text
+
+        assert "data-split-section open" not in html
+
+    def test_new_budget_from_an_amount(self, client: TestClient) -> None:
+        """An amount makes a monthly budget of the category, from this month."""
+        html = client.get("/targets/budget/new?category=GROCERIES&amount=-120").text
+
+        first_day = date.today().replace(day=1).isoformat()
+        assert re.search(r'name="amount"[^>]*value="-120"', html)
+        assert re.search(rf'name="start_date"[^>]*value="{first_day}"', html)
+        assert re.search(r'id="recurring-toggle"[^>]*checked', html)
+        assert re.search(r'name="description"[^>]*value="Alimentation"', html)

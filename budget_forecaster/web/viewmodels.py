@@ -361,6 +361,27 @@ def build_target_form(
     )
 
 
+class SplitSeed(NamedTuple):
+    """The values the split section opens with."""
+
+    split_date: str
+    amount: str
+
+
+def monthly_budget_form(
+    form: TargetFormView, amount: str, today: date
+) -> TargetFormView:
+    """A new budget form turned into a monthly budget of amount from this month."""
+    return form._replace(
+        description=Category[form.category].display_name
+        if form.category in Category.__members__
+        else "",
+        amount=amount,
+        start_date=today.replace(day=1).isoformat(),
+        recurring=True,
+    )
+
+
 class DuplicateHint(NamedTuple):
     """An existing planned operation that may already be this payment."""
 

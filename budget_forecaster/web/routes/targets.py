@@ -6,6 +6,7 @@ to symmetric ApplicationService methods. Every write refreshes the forecast.
 """
 
 import logging
+import math
 from datetime import date
 from typing import NamedTuple
 
@@ -28,6 +29,7 @@ from budget_forecaster.web.redirects import safe_local_path
 from budget_forecaster.web.rendering import render_template
 from budget_forecaster.web.viewmodels import (
     OperationSeed,
+    SplitSeed,
     Target,
     TargetFormView,
     build_operation_seed,
@@ -35,6 +37,7 @@ from budget_forecaster.web.viewmodels import (
     build_target_form,
     build_target_list,
     can_end_today,
+    monthly_budget_form,
     target_form_from_submitted,
 )
 
@@ -152,13 +155,20 @@ async def new_target(
     return_to: str = "/targets",
     from_operation: int = 0,
 ) -> Response:
-    """Render the create form, seeded from an operation when one is given."""
+    """Render the create form, seeded from an operation when one is given.
+
+    A budget given an amount starts as a monthly budget from the current month.
+    """
     _require_kind(kind)
     operation = None
     if kind == _PLANNED:
         operation = _source_operation(app, from_operation)
     if operation is None:
         form = build_target_form(kind, None, default_category=category)
+        if kind != _PLANNED and _is_amount(
+            amount := request.query_params.get("amount", "")
+        ):
+            form = monthly_budget_form(form, amount, date.today())
         seed = None
     else:
         form = build_planned_form_from_operation(operation)
@@ -174,11 +184,29 @@ async def edit_target(
     app: ApplicationService = Depends(get_app_service),
     return_to: str = "/targets",
 ) -> Response:
-    """Render the edit form for an existing budget or planned operation."""
+    """Render the edit form for an existing budget or planned operation.
+
+    A split date opens the split section with that date and amount filled in.
+    """
     _require_kind(kind)
     target = _get_target(app, kind, target_id)
     form = build_target_form(kind, target, default_category="OTHER")
     return _render_edit(request, app, form, _safe_return_to(return_to))
+
+
+def _is_amount(raw: str) -> bool:
+    try:
+        return math.isfinite(float(raw))
+    except ValueError:
+        return False
+
+
+def _is_date(raw: str) -> bool:
+    try:
+        date.fromisoformat(raw)
+    except ValueError:
+        return False
+    return True
 
 
 @router.post("/targets/{kind}")
@@ -370,6 +398,15 @@ def _linked_history(
     return build_linked_history(app, target, months)
 
 
+def _split_seed(request: Request, form: TargetFormView) -> SplitSeed | None:
+    """The values a split opens with, when the page was asked to open it."""
+    split_date = request.query_params.get("split_date", "")
+    if not form.can_split or not _is_date(split_date):
+        return None
+    amount = request.query_params.get("split_amount", "")
+    return SplitSeed(split_date, amount if _is_amount(amount) else "")
+
+
 def _render_edit(
     request: Request,
     app: ApplicationService,
@@ -397,6 +434,7 @@ def _render_edit(
         currency=app.currency,
         decided=decided,
         seed=seed,
+        split=_split_seed(request, form),
         history=_linked_history(request, app, form),
         status_code=422 if error else 200,
     )
