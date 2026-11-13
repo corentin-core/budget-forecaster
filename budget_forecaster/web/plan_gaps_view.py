@@ -139,12 +139,10 @@ def _diagnosis(item: GapItem, gaps: PlanGaps, currency: str) -> str:
             )
 
 
-def _url(item: GapItem, gaps: PlanGaps) -> str:
+def _url(item: GapItem, gaps: PlanGaps, back: str) -> str:
     if item.target is not None:
         kind = "budget" if isinstance(item.target, Budget) else "planned"
-        return f"/targets/{kind}/{item.target.id}?" + urlencode(
-            {"return_to": "/trends#gaps"}
-        )
+        return f"/targets/{kind}/{item.target.id}?" + urlencode({"return_to": back})
     last_day = gaps.months[-1] + relativedelta(months=1, days=-1)
     return "/operations?" + urlencode(
         {
@@ -152,12 +150,12 @@ def _url(item: GapItem, gaps: PlanGaps) -> str:
             "date_from": gaps.months[0].isoformat(),
             "date_to": last_day.isoformat(),
             "unlinked": "true",
-            "return_to": "/trends#gaps",
+            "return_to": back,
         }
     )
 
 
-def _row(item: GapItem, gaps: PlanGaps, currency: str) -> GapRow:
+def _row(item: GapItem, gaps: PlanGaps, currency: str, back: str) -> GapRow:
     name = (
         item.target.description
         if item.target is not None
@@ -178,7 +176,7 @@ def _row(item: GapItem, gaps: PlanGaps, currency: str) -> GapRow:
         color=_COLORS[item.cause],
         diagnosis=_diagnosis(item, gaps, currency),
         average=gaps.average((item,)),
-        url=_url(item, gaps),
+        url=_url(item, gaps, back),
     )
 
 
@@ -242,6 +240,13 @@ def build_gap_card(
         if round(gaps.average((item,))) != 0 and cause in (None, item.cause)
     ]
     items = worth if limit is None else worth[:limit]
+    # The full list comes back to itself; the card, to the Tendances page.
+    back = (
+        "/trends/gaps?"
+        + urlencode({"months": period, "cause": cause.value if cause else ""})
+        if limit is None
+        else "/trends#gaps"
+    )
     return GapCard(
         months=len(gaps.months),
         period=period,
@@ -259,7 +264,7 @@ def build_gap_card(
             for chip, color in _COLORS.items()
             if round(averages[chip]) != 0
         ),
-        rows=tuple(_row(item, gaps, app.currency) for item in items),
+        rows=tuple(_row(item, gaps, app.currency, back) for item in items),
         item_count=len(worth),
         bars=_bars(gaps),
         zero_pct=round(_scale(gaps)[1], 1),

@@ -26,7 +26,7 @@
 
   <input type="search" class="candidate-search" name="q" value="{{ query }}"
          placeholder="{{ _('Search an operation…') }}"
-         hx-get="{{ base }}/link/candidates"
+         hx-get="{{ base }}/link/candidates?return_to={{ return_to | urlencode }}"
          hx-target="#candidate-list" hx-swap="innerHTML"
          hx-trigger="keyup changed delay:300ms, search" />
 
@@ -34,6 +34,8 @@
     {% include "fragments/operation_candidate_list.html" %}
   </div>
 
+  {# An older occurrence is out of the forecast already: only linking it changes anything. #}
+  {% if in_card %}
   <div class="settle-rest">
     <p class="hint">{{ _("None of them? Then the payment did not happen yet.") }}</p>
     {% if card.sync_broken %}
@@ -80,5 +82,6 @@
     <p class="muted-note">{{ _("A payment made in cash has no operation to link: forgetting it is the answer.") }}</p>
     {% endif %}
   </div>
+  {% endif %}
 </section>
 {% endblock %}

@@ -265,13 +265,15 @@ async def link_page(
 
 
 @router.get("/operations/{operation_id}/link/candidates")
-async def link_candidates(
+# One argument per query parameter, as get_filters reads the ledger's.
+async def link_candidates(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     operation_id: int,
     request: Request,
     app: ApplicationService = Depends(get_app_service),
     target_type: str = "planned",
     q: str = "",
     show_all: bool = Query(default=False, alias="all"),
+    return_to: str = "/operations",
 ) -> Response:
     """Return the filtered candidate list fragment (search / show-all)."""
     operation = app.get_operation_by_id(operation_id)
@@ -286,17 +288,20 @@ async def link_candidates(
         hidden_count=hidden,
         target_type=target_type,
         currency=app.currency,
+        return_to=_safe_back(return_to),
     )
 
 
 @router.get("/operations/{operation_id}/link/iterations")
-async def link_iterations(
+# One argument per query parameter, as get_filters reads the ledger's.
+async def link_iterations(  # pylint: disable=too-many-arguments,too-many-positional-arguments
     operation_id: int,
     request: Request,
     app: ApplicationService = Depends(get_app_service),
     target_type: str = "planned",
     target_id: int = 0,
     offset: int = 0,
+    return_to: str = "/operations",
 ) -> Response:
     """Render the iteration picker fragment for a chosen target."""
     operation = app.get_operation_by_id(operation_id)
@@ -314,6 +319,7 @@ async def link_iterations(
         iterations=iterations,
         best_iso=best_iso,
         target_name=target.description,
+        return_to=_safe_back(return_to),
     )
 
 
@@ -336,18 +342,24 @@ async def create_link(
         return back
     app.create_manual_link(operation, target, iteration_date)
     refresh_forecast(app)
-    return RedirectResponse(url="/operations", status_code=303)
+    return RedirectResponse(
+        url=_safe_back(str(form.get("return_to", ""))), status_code=303
+    )
 
 
 @router.post("/operations/{operation_id}/unlink")
 async def unlink(
     operation_id: int,
+    request: Request,
     app: ApplicationService = Depends(get_app_service),
 ) -> Response:
     """Remove the operation's link."""
+    form = await request.form()
     app.delete_link(operation_id)
     refresh_forecast(app)
-    return RedirectResponse(url="/operations", status_code=303)
+    return RedirectResponse(
+        url=_safe_back(str(form.get("return_to", ""))), status_code=303
+    )
 
 
 @router.post("/operations/{operation_id}/categorize")

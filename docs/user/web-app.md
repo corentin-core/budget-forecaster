@@ -223,7 +223,7 @@ candidate targets ranked by how well they match, each with its match score and a
 such as "même montant". Pick a target and its dated occurrences appear below; the best
 match is preselected. Step the window with the arrows when the occurrence you want is
 further out. Confirm to create the link, or use "Délier" on an already-linked operation
-to remove it.
+to remove it. Either way, you land back on the operation.
 
 ## Forecasting a payment you just saw
 

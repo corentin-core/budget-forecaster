@@ -28,7 +28,9 @@
             {%- if (occ.total | round(2)) == (occ.planned | round(2)) -%}
               {{ _("as planned") }}
             {%- else -%}
-              {{ _("{paid} for {planned} planned").format(paid=occ.total | abs | eur(currency), planned=occ.planned | abs | eur(currency)) }}
+              {#- A refund on an expense keeps its sign, so it does not read as a payment. -#}
+              {%- set paid = occ.total | abs | eur(currency) if (occ.total > 0) == (occ.planned > 0) else occ.total | signed_eur(currency) -%}
+              {{ _("{paid} for {planned} planned").format(paid=paid, planned=occ.planned | abs | eur(currency)) }}
             {%- endif -%}
           {%- elif occ.state.value == "not_linked" -%}
             {{ _("Not linked") }}
@@ -54,7 +56,9 @@
           </span>
         </summary>
         {{ operation_lines(occ) }}
-        <a class="btn small" href="/operations?{{ {'category': form.category, 'date_from': occ.start.isoformat(), 'date_to': occ.end.isoformat(), 'unlinked': 'true', 'return_to': here} | urlencode }}">{{ _("Find unlinked operations") }}</a>
+        {% if occ.end %}
+        <a class="btn small" href="/operations?{{ {'category': form.category_value, 'date_from': occ.start.isoformat(), 'date_to': occ.end.isoformat(), 'unlinked': 'true', 'return_to': here} | urlencode }}">{{ _("Find unlinked operations") }}</a>
+        {% endif %}
       </details>
       {% endif %}
     </li>

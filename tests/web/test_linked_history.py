@@ -1,5 +1,6 @@
 """Tests for the operations listed on a budget or planned operation page."""
 
+import re
 from datetime import date
 from typing import NamedTuple
 
@@ -370,4 +371,5 @@ class TestEditPage:
 
         ledger = client.get(url).text
         assert "unlinked=true" in url
+        assert re.search(r'value="groceries"\s*selected', ledger)
         assert 'class="back"><a href="/targets/budget/1?' in ledger

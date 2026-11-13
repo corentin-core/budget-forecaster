@@ -61,7 +61,7 @@ class Occurrence(NamedTuple):
     consumed: float  # what went the budget's way, never negative
     postponed_to: date | None
     days_late: int | None  # set while the Accueil card still lists it
-    end: date  # the last day of a budget period, the start for an occurrence
+    end: date | None  # the last day of a budget period, None otherwise
 
 
 class LinkedHistory(NamedTuple):
@@ -133,7 +133,7 @@ def _occurrence(  # pylint: disable=too-many-arguments
         consumed=max(0.0, total if planned > 0 else -total),
         postponed_to=postponed_to,
         days_late=days_late,
-        end=end or start,
+        end=end,
     )
 
 

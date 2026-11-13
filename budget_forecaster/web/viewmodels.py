@@ -249,6 +249,12 @@ class TargetFormView(NamedTuple):
     approx_days: str
     approx_ratio: str
 
+    @property
+    def category_value(self) -> str:
+        """The category as the ledger's filter reads it, empty if unknown."""
+        member = Category.__members__.get(self.category)
+        return member.value if member is not None else ""
+
 
 def _amount_field(value: float) -> str:
     return f"{float(value):g}"

@@ -143,14 +143,14 @@ class TestWayBack:
     def test_unplanned_row_opens_the_ledger_with_a_way_back(
         self, client: TestClient
     ) -> None:
-        """The ledger link of an unplanned row carries the card as its return."""
+        """The ledger link of an unplanned row carries the list as its return."""
         card = client.get("/trends/gaps").text
         start = card.index('href="/operations?') + len('href="')
         url = card[start : card.index('"', start)].replace("&amp;", "&")
 
         ledger = client.get(url).text
-        assert '<p class="back"><a href="/trends#gaps">' in ledger
-        assert 'name="return_to" value="/trends#gaps"' in ledger
+        assert '<p class="back"><a href="/trends/gaps?months=' in ledger
+        assert 'name="return_to" value="/trends/gaps?months=' in ledger
 
     def test_operation_detail_returns_to_the_same_ledger(
         self, client: TestClient
@@ -171,3 +171,9 @@ class TestWayBack:
         ledger = client.get("/operations?return_to=https://example.com").text
 
         assert 'class="back"' not in ledger
+
+    def test_full_list_rows_come_back_to_it(self, client: TestClient) -> None:
+        """A row of the full list returns to that list, not to the card."""
+        html = client.get("/trends/gaps?months=3").text
+
+        assert "return_to=%2Ftrends%2Fgaps%3Fmonths%3D3" in html

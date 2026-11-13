@@ -551,3 +551,70 @@ class TestFailedSync:
 
         assert response.status_code == 303
         assert _link_target(client, candidate) == picker.description
+
+
+class TestOlderOccurrence:
+    """An unpaid occurrence the card no longer lists can still be linked."""
+
+    def test_every_lier_button_of_the_target_page_opens(
+        self, client: TestClient, app: FastAPI
+    ) -> None:
+        """The planned operation's page offers Lier only where the picker opens."""
+        picker = _create_unmatched(
+            client, app, amount="-42.50", days_before_balance=150
+        )
+        page = client.get(f"/targets/planned/{picker.op_id}?history=12").text
+        buttons = re.findall(rf"/overdue/{picker.op_id}/[\d-]+/link", page)
+
+        assert f"/overdue/{picker.op_id}/{picker.iteration}/link" in buttons
+        assert all(client.get(path).status_code == 200 for path in buttons)
+
+    def test_it_offers_no_decision(self, client: TestClient, app: FastAPI) -> None:
+        """Postpone and forget belong to the card; an old occurrence is only linked."""
+        picker = _create_unmatched(
+            client, app, amount="-42.50", days_before_balance=150
+        )
+
+        assert "/postpone" not in picker.page()
+
+    def test_linking_settles_it(self, client: TestClient, app: FastAPI) -> None:
+        """Once paid, the occurrence is no longer offered."""
+        picker = _create_unmatched(
+            client, app, amount="-42.50", days_before_balance=150
+        )
+        candidate = picker.candidate_ids(picker.list_fragment(all="true"))[0]
+
+        assert picker.link(candidate).status_code == 303
+        assert client.get(picker.path).status_code == 404
+
+
+class TestWayBack:
+    """The pickers keep the page that opened them through every reload."""
+
+    def test_show_all_keeps_the_return(self, picker: Picker) -> None:
+        """The reloaded list confirms back to the page that opened the picker."""
+        html = picker.list_fragment(all="true", return_to="/targets/planned/1")
+
+        assert 'name="return_to" value="/targets/planned/1"' in html
+
+    def test_link_from_an_operation_returns_where_asked(
+        self, client: TestClient
+    ) -> None:
+        """Linking from an operation lands on the page that opened the picker."""
+        listing = client.get("/operations").text
+        operation_id = re.findall(r'href="/operations/(\d+)\?', listing)[0]
+        page = client.get(f"/operations/{operation_id}/link?return_to=/trends").text
+
+        response = client.post(
+            f"/operations/{operation_id}/link",
+            data={
+                "target_type": "budget",
+                "target_id": str(_a_budget_id(client)),
+                "iteration_date": date.today().replace(day=1).isoformat(),
+                "return_to": "/trends",
+            },
+            follow_redirects=False,
+        )
+
+        assert "return_to=/trends" in page
+        assert response.headers["location"] == "/trends"

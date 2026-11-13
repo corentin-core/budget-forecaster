@@ -9,7 +9,8 @@ see moves with their decision without a full page reload. Submitted from the
 picker page, which has none of those, they redirect instead.
 """
 
-from datetime import date
+from contextlib import suppress
+from datetime import date, timedelta
 from typing import Any, NamedTuple
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -41,6 +42,8 @@ class _Target(NamedTuple):
 
     card: OverdueCard
     row: OverdueRow
+    in_card: bool = True
+    """False for an older unpaid occurrence: it can be linked, not decided on."""
 
 
 def _parse_iteration_date(raw: str) -> date:
@@ -85,6 +88,59 @@ def _find_row(
     if row is None:
         raise HTTPException(status_code=404)
     return _Target(card, row)
+
+
+def _occurs_on(app: ApplicationService, op_id: PlannedOperationId, day: date) -> bool:
+    """Whether the planned operation has an occurrence starting on day."""
+    planned = app.get_planned_operation_by_id(op_id)
+    for occurrence in planned.date_range.iterate_over_date_ranges(from_date=day):
+        if occurrence.start_date >= day:
+            return occurrence.start_date == day
+    return False
+
+
+def _find_unpaid(
+    request: Request,
+    app: ApplicationService,
+    op_id: PlannedOperationId,
+    iteration_date: date,
+) -> _Target:
+    """Locate an occurrence a payment can be linked to, 404 otherwise.
+
+    The card's rows, plus the past occurrences it no longer lists that nothing
+    paid and no decision settled: the planned operation's page offers to link
+    those too.
+    """
+    with suppress(HTTPException):
+        return _find_row(request, app, op_id, iteration_date)
+    planned = app.get_planned_operation_by_id(op_id)
+    settled = any(
+        link.iteration_date == iteration_date
+        for link in app.get_links_for_target(planned)
+    ) or any(
+        decision.iteration_date == iteration_date
+        for decision in app.get_iteration_resolutions(op_id)
+    )
+    if (
+        settled
+        or iteration_date > app.balance_date
+        or not _occurs_on(app, op_id, iteration_date)
+    ):
+        raise HTTPException(status_code=404)
+    card = build_overdue_card(app, sync_broken=_sync_broken(request))
+    row = OverdueRow(
+        planned_operation_id=op_id,
+        iteration_date=iteration_date,
+        description=planned.description,
+        amount=float(planned.amount),
+        currency=app.currency,
+        days_overdue=(app.balance_date - iteration_date).days,
+        counted_on=None,
+        postponed_to=None,
+        next_iteration=None,
+        earliest_postpone=iteration_date + timedelta(days=1),
+    )
+    return _Target(card, row, in_card=False)
 
 
 def _find_target(
@@ -148,7 +204,7 @@ def _picker_context(
     asked: PickerQuery,
 ) -> dict[str, Any]:
     """Everything the picker page and its list fragment render."""
-    target = _find_row(request, app, op_id, iteration_date)
+    target = _find_unpaid(request, app, op_id, iteration_date)
     planned = app.get_planned_operation_by_id(op_id)
     candidates = linking.build_operation_candidates(
         app, planned, iteration_date, asked.query
@@ -159,6 +215,7 @@ def _picker_context(
     return {
         "card": target.card,
         "row": target.row,
+        "in_card": target.in_card,
         "candidates": shown,
         "hidden_count": hidden,
         "query": asked.query,
@@ -215,7 +272,7 @@ async def create_link(
 ) -> Response:
     """Count an operation for this iteration, replacing any link it carried."""
     parsed = _parse_iteration_date(iteration_date)
-    _find_row(request, app, op_id, parsed)
+    _find_unpaid(request, app, op_id, parsed)
     planned = app.get_planned_operation_by_id(op_id)
     submitted = forms.form_to_dict(await request.form())
     try:
