@@ -50,7 +50,7 @@
         <button type="submit" class="btn primary" id="bank-submit" disabled>{{ _("Continue") }} →</button>
       </div>
     </form>
-    <script src="/static/bank.js" defer></script>
+    <script src="{{ static('bank.js') }}" defer></script>
   {% else %}
     <p class="empty">{{ _("No banks available right now. Try again in a moment.") }}</p>
     <div class="form-actions">
