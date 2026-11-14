@@ -2400,9 +2400,9 @@ a.link-tag:focus-visible {
   grid-template-columns: auto 1fr;
   gap: var(--sp-6) var(--sp-16);
   margin: 0;
-  /* The rows holding a control are taller than their label, which would leave
-     the label hanging at the top edge. */
-  align-items: center;
+  /* The label is smaller than its value: centred, it would sit higher than the
+     text beside it. A select's baseline is its text, so its row lines up too. */
+  align-items: baseline;
 }
 .detail-grid dt {
   color: var(--muted);

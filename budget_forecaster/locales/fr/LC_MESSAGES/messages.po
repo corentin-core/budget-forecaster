@@ -603,6 +603,9 @@ msgstr "Historique"
 msgid "Plan"
 msgstr "Prévoir"
 
+msgid "Linked to"
+msgstr "Lié à"
+
 msgid "Date must be after first iteration"
 msgstr "La date doit être après la première itération"
 

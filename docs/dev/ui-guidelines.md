@@ -25,6 +25,15 @@ The sizes, colours and spacing come from the tokens at the top of `app.css`.
 A tool has no fill, so a toolbar reads as one row. A filled button is kept for the
 moment the user commits, after a form or a question.
 
+## Forms and detail pages
+
+A form puts each label above its field, such as the edit page of a budget. A field then
+takes the whole width of a phone, which a date or an amount needs.
+
+A detail page puts each label beside its value, in a `.detail-grid`, such as the page of
+an operation. Its values are short and mostly read, so one line each keeps the page to a
+glance. A value that is also a control, such as the category select, stays on its line.
+
 ## Toolbars
 
 A toolbar holds the actions on one object, as the last thing on its card. For example,
