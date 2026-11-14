@@ -2397,7 +2397,7 @@ a.link-tag:focus-visible {
 }
 .detail-grid {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: var(--sp-6) var(--sp-16);
   margin: 0;
   /* The label is smaller than its value: centred, it would sit higher than the
@@ -2408,16 +2408,17 @@ a.link-tag:focus-visible {
   color: var(--muted);
   font-size: var(--fs-sm);
 }
+/* Values line up on their right edge, the category select included. */
 .detail-grid dd {
   margin: 0;
+  text-align: right;
 }
 /* The one editable line of the detail grid, so it wears the form-control look
-   rather than the ledger's dense one. Capped: the grid column is the width left
-   over, which a category name never needs. 1rem keeps iOS from zooming the page
-   when the select takes focus. */
+   rather than the ledger's dense one. It fills its column, so its right edge
+   is the one the values line up on. 1rem keeps iOS from zooming the page when
+   the select takes focus. */
 .detail-category {
   width: 100%;
-  max-width: 16rem;
   min-height: var(--control-min-h);
   padding: var(--sp-8);
   border: 1px solid var(--border);
