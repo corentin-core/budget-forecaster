@@ -16,11 +16,12 @@
     <input type="hidden" name="submitted" value="1" />
     <div class="search-row">
       <input type="search" name="q" placeholder="{{ _('Search...') }}" value="{{ query }}" />
-      {{ filter_toggle([category, not active_only] | select | list | length) }}
+      {% set active_filters = [category, not active_only] | select | list | length %}
+      {{ filter_toggle(active_filters) }}
       <a class="btn tool" href="/targets/{{ kind }}/new?return_to={{ base | urlencode }}">
         {{- icon("add") }}<span>{{ _("Add") }}</span></a>
     </div>
-    <div class="filter-panel" id="filter-panel" hidden>
+    <div class="filter-panel" id="filter-panel" {{ 'hidden' if not active_filters }}>
     <select name="category">
       <option value="">{{ _("All categories") }}</option>
       {% for c in categories %}

@@ -1,3 +1,4 @@
+{% from "macros/icons.html" import icon with context %}
 {% set month_str = detail.month.strftime('%Y-%m') %}
 {% set return_to = '/month/' ~ month_str ~ '?open=' ~ detail.category %}
 {% set rt = return_to | urlencode %}
@@ -5,8 +6,8 @@
   <div class="cat-detail-head">
     <h3>{{ _("Budgets & planned") }}</h3>
     <span class="add-menu">
-      <a class="btn small" href="/targets/budget/new?category={{ detail.category_key }}&return_to={{ rt }}">{{ _("+ Budget") }}</a>
-      <a class="btn small" href="/targets/planned/new?category={{ detail.category_key }}&return_to={{ rt }}">{{ _("+ Planned") }}</a>
+      <a class="btn small" href="/targets/budget/new?category={{ detail.category_key }}&return_to={{ rt }}">{{ icon("add") }}{{ _("Budget") }}</a>
+      <a class="btn small" href="/targets/planned/new?category={{ detail.category_key }}&return_to={{ rt }}">{{ icon("add") }}{{ _("Planned item") }}</a>
     </span>
   </div>
 

@@ -2016,8 +2016,8 @@ a.link-tag:focus-visible {
 .confirm-cluster[hidden] {
   display: none;
 }
-/* An icon always sits next to its visible label: left of it in a button or a
-   link, above it in a toolbar. */
+/* An icon sits next to its visible label: left of it in a button or a link,
+   above it in a toolbar. A table row's repeated actions are the exception. */
 .icon {
   flex: none;
   width: 1.1em;
@@ -2713,6 +2713,7 @@ details[open] > .overdue-summary .overdue-caret::before {
   border-top: 0;
 }
 .overdue-actions .btn.small,
+.overdue-panel .btn.small,
 .decided-head .btn.small,
 .postpone-form .btn.small {
   padding: var(--sp-10) var(--sp-14);

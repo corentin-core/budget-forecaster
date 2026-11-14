@@ -20,7 +20,7 @@
              value="{{ filters.search }}" />
       {{ filter_toggle(active_filters) }}
     </div>
-    <div class="filter-panel" id="filter-panel" hidden>
+    <div class="filter-panel" id="filter-panel" {{ 'hidden' if not active_filters }}>
     <select name="category">
       <option value="">{{ _("All categories") }}</option>
       {% for category in categories %}

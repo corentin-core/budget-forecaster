@@ -34,10 +34,12 @@
     sync();
   });
 
-  // With its button gone, a plain form applies each change as it is made.
+  // With its button gone, a plain GET form applies a picked option or a tick
+  // at once. A text field already submits on Enter, and submitting it on blur
+  // would reload the page under the tap that left it.
   document.querySelectorAll('form[data-autosubmit]').forEach(function (form) {
-    form.addEventListener('change', function () {
-      form.requestSubmit();
+    form.addEventListener('change', function (event) {
+      if (event.target.matches('select, input[type=checkbox]')) form.requestSubmit();
     });
   });
 })();

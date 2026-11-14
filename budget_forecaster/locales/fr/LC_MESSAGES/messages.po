@@ -1538,11 +1538,11 @@ msgstr "Expire bientôt"
 
 # --- Web editing (#305) ---
 
-msgid "+ Budget"
-msgstr "+ Budget"
+msgid "Budget"
+msgstr "Budget"
 
-msgid "+ Planned"
-msgstr "+ Planifié"
+msgid "Planned item"
+msgstr "Planifié"
 
 msgid "Amount tolerance"
 msgstr "Tolérance de montant"

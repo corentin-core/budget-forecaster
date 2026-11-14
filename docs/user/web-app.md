@@ -271,7 +271,7 @@ The month drill-down and the Budgets tab both edit the same items.
   (an annual budget, say). Budgets and planned operations sit under their own sub-tabs;
   each list has a search box and an **Ajouter** button. **Filtrer** opens the category
   filter and "Actifs seulement", ticked by default (untick it to see expired items). The
-  number on **Filtrer** counts the filters that narrow the list.
+  number on **Filtrer** counts the filters changed from their default.
 
 Editing opens on its own page with a working back button. From there you set the amount,
 category, dates, and recurrence. One row of buttons closes the page: **Supprimer**,

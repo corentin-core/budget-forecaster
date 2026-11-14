@@ -1,6 +1,6 @@
 {# The app's only icon set: line icons on a 24-unit grid, drawn in the text
-   colour so a button keeps its own. Every icon sits next to a visible label;
-   see docs/dev/ui-guidelines.md for which action takes which icon. #}
+   colour so a button keeps its own. See docs/dev/ui-guidelines.md for which
+   action takes which icon, and when one may go without its label. #}
 {% set ICONS = {
   "add": '<path d="M12 5v14M5 12h14"/>',
   "back": '<path d="M19 12H5M11 18l-6-6 6-6"/>',
@@ -31,10 +31,11 @@
   <p class="back"><a href="{{ url }}">{{ icon("back") }}{{ label }}</a></p>
 {%- endmacro %}
 
-{# Opens the filter panel of its form; filters.js keeps the count current. #}
+{# Opens the filter panel of its form, which starts open while a filter is
+   active; filters.js keeps the count current. #}
 {% macro filter_toggle(active) -%}
   <button type="button" class="btn tool filter-toggle" data-filter-toggle
-          aria-controls="filter-panel" aria-expanded="false">
+          aria-controls="filter-panel" aria-expanded="{{ 'true' if active else 'false' }}">
     {{- icon("filter") }}<span>{{ _("Filter") }}</span>
     <span class="filter-count" {{ 'hidden' if not active }}>{{ active }}</span>
   </button>

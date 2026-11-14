@@ -83,3 +83,11 @@ class TestFilterCount:
         """Ticked by default, "active only" counts once it is cleared."""
         assert self._count(client.get("/targets").text) is None
         assert self._count(client.get("/targets?submitted=1").text) == "1"
+
+    def test_an_active_filter_opens_the_panel(self, client: TestClient) -> None:
+        """A list narrowed by a folded filter would not say by what."""
+        assert '<div class="filter-panel" id="filter-panel" hidden' in (
+            client.get("/operations").text
+        )
+        page = client.get("/operations?date_from=2026-01-01").text
+        assert '<div class="filter-panel" id="filter-panel" >' in page

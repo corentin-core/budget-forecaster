@@ -96,8 +96,10 @@ or strip that asked it, through `confirm.js`.
 ## Filters
 
 A list page keeps its search in sight and folds the other filters behind **Filtrer**.
-The number on the button counts the filters that narrow the list, so a short list does
-not pass for the whole ledger. `filters.js` keeps it current as the filters change. A
+The number on the button counts the filters changed from their default, so a short list
+does not pass for the whole ledger. While that number is above zero, the page opens with
+the filters unfolded. `filters.js` keeps the number current as the filters change. A
 checkbox ticked by default, such as "Actifs seulement", carries `data-filter-default`,
-so it counts once it is unticked. A form with no submit button carries `data-autosubmit`
-and applies each change as it is made.
+so it counts once it is unticked. A plain GET form with no submit button carries
+`data-autosubmit`, and applies a picked option or a tick at once; its search applies on
+Enter.
