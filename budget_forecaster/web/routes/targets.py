@@ -213,6 +213,7 @@ async def target_history(
         months = HISTORY_STEP_MONTHS
     back = _safe_return_to(return_to)
     edit = f"/targets/{kind}/{target_id}"
+    here = f"{request.url.path}?{request.url.query}"
     return render_template(
         request,
         "target_history.html",
@@ -220,11 +221,12 @@ async def target_history(
         form=form,
         return_to=back,
         # Opened from the edit page, Edit goes back to it rather than stacking
-        # a second edit page on top of the first.
+        # a second edit page on top of the first. Otherwise the form comes
+        # back here.
         edit_url=(
             back
             if back.split("?")[0] == edit
-            else f"{edit}?{urlencode({'return_to': back})}"
+            else f"{edit}?{urlencode({'return_to': here})}"
         ),
         currency=app.currency,
         history=build_linked_history(app, target, months),

@@ -285,12 +285,19 @@ class TestToolbar:
         assert 'id="linked"' in history
         assert history.count('href="/targets/planned/1?return_to=/targets"') == 2
 
-    def test_history_from_elsewhere_edits_with_its_way_back(
+    def test_history_from_elsewhere_edits_then_comes_back(
         self, client: TestClient
     ) -> None:
-        """Opened from another page, Edit keeps that page as the way back."""
+        """Opened from another page, the form comes back to the history."""
         history = client.get("/targets/planned/1/history?return_to=/trends").text
-        assert 'href="/targets/planned/1?return_to=%2Ftrends"' in history
+        found = re.search(r'href="(/targets/planned/1\?return_to=[^"]+)"', history)
+        assert found, "the history page should link to the form"
+
+        form = client.get(found.group(1).replace("&amp;", "&")).text
+        assert (
+            '<p class="back"><a href="/targets/planned/1/history?return_to=/trends">'
+            in form
+        )
 
 
 class TestCategorize:

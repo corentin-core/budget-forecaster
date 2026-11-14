@@ -2048,6 +2048,12 @@ a.link-tag:focus-visible {
   width: 1.25rem;
   height: 1.25rem;
 }
+/* Below the narrowest phone, a label is cut rather than run into the next. */
+.btn.tool > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .target-actions > .confirm-form,
 .target-actions .split {
   flex: 1 1 0;
