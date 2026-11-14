@@ -255,7 +255,7 @@ class TestToolbar:
         """Delete sits furthest from Save, the tools in between."""
         client.post("/targets/budget", data=_RECURRING_BUDGET, follow_redirects=False)
         page = client.get(f"/targets/budget/{_budget_id(client, 'Test Budget')}").text
-        toolbar = page[page.index('class="target-actions"') :]
+        toolbar = page[page.index('class="toolbar"') :]
 
         assert (
             toolbar.index("/delete")
@@ -268,7 +268,7 @@ class TestToolbar:
     def test_new_target_offers_save_only(self, client: TestClient) -> None:
         """Nothing exists yet to end, split, delete or look back on."""
         page = client.get("/targets/budget/new").text
-        toolbar = page[page.index('class="target-actions"') :]
+        toolbar = page[page.index('class="toolbar"') :]
         toolbar = toolbar[: toolbar.index("</div>")]
 
         assert "data-save-button" in toolbar

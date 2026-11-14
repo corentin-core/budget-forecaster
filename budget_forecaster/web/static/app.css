@@ -2016,15 +2016,26 @@ a.link-tag:focus-visible {
 .confirm-cluster[hidden] {
   display: none;
 }
-/* The edit page's one toolbar: an icon over its label for each tool, Save at
-   the far end. An open split hides the other tools and takes the whole width. */
-.target-actions {
+/* An icon sits next to its visible label: left of it in a button or a link,
+   above it in a toolbar. A table row's repeated actions are the exception. */
+.icon {
+  flex: none;
+  width: 1.1em;
+  height: 1.1em;
+}
+.btn:has(> .icon) {
+  gap: var(--sp-6);
+}
+/* A toolbar holds the actions on one object, as the last thing on its card:
+   the destructive one first, the expected one last. A question or an open
+   section hides the other tools while it is up. */
+.toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-4);
-  margin-top: var(--sp-24);
-  padding-top: var(--sp-16);
+  margin-top: var(--sp-16);
+  padding-top: var(--sp-12);
   border-top: 1px solid var(--border);
 }
 /* Equal shares of the row, so five tools fit a phone. A tool shows its edge
@@ -2035,18 +2046,19 @@ a.link-tag:focus-visible {
   flex-direction: column;
   gap: var(--sp-4);
   padding: var(--sp-6) 0;
+  background: transparent;
   font-size: var(--fs-2xs);
   font-weight: 500;
   white-space: nowrap;
   border-color: transparent;
 }
+.btn.tool > .icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
 /* The longest label gets the room it needs on a narrow phone. */
 .btn.tool.save {
   flex-grow: 1.4;
-}
-.tool-icon {
-  width: 1.25rem;
-  height: 1.25rem;
 }
 /* Below the narrowest phone, a label is cut rather than run into the next. */
 .btn.tool > span {
@@ -2054,26 +2066,65 @@ a.link-tag:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.target-actions > .confirm-form,
-.target-actions .split {
+.toolbar > form,
+.toolbar > details {
   flex: 1 1 0;
   min-width: 0;
   margin: 0;
 }
-.target-actions > .confirm-form > .btn.tool,
-.target-actions .split > summary {
+.toolbar > form > .btn.tool,
+.toolbar > details > summary {
   width: 100%;
-}
-.target-actions .split > summary {
   margin-bottom: 0;
 }
-.target-actions .split[open] {
+.toolbar > details[open] {
   flex-basis: 100%;
 }
-.target-actions .split[open] > summary {
+.toolbar > details[open] > summary {
   margin-bottom: var(--sp-8);
 }
-.target-actions:has(.split[open]) > :not(.split) {
+.toolbar:has(> details[open]) > :not(details[open]) {
+  display: none;
+}
+
+/* A list page's search, with its other filters folded behind one button that
+   counts the active ones. */
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  width: 100%;
+}
+.search-row > input[type='search'] {
+  flex: 1;
+}
+.search-row > .btn.tool {
+  flex: none;
+  padding: var(--sp-4) var(--sp-8);
+}
+.filter-toggle {
+  position: relative;
+}
+.filter-count {
+  position: absolute;
+  top: 0;
+  right: var(--sp-4);
+  min-width: 1rem;
+  padding: 0 var(--sp-4);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: var(--fs-2xs);
+  line-height: 1.4;
+}
+.filter-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+  width: 100%;
+}
+.filter-panel[hidden],
+.filter-count[hidden] {
   display: none;
 }
 
@@ -2135,38 +2186,26 @@ a.link-tag:focus-visible {
   color: var(--accent);
   box-shadow: var(--shadow-sm);
 }
-.list-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--sp-8);
-}
-.list-head h2 {
-  font-size: var(--fs-base);
-  margin: 0;
-}
 .target-row.inactive {
   opacity: 0.55;
 }
 
 /* --- Link flow --- */
 .link-page h1,
-.op-detail h1 {
+.op-detail h1,
+.history-head h1 {
   font-size: var(--fs-md);
   margin: var(--sp-4) 0 var(--sp-16);
-}
-.op-detail .actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-8);
 }
 .back {
   margin: 0 0 var(--sp-8);
   font-size: var(--fs-sm);
 }
 /* Going back is an action, not a label. */
-.back a,
-.back-link a {
+.back a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-4);
   color: var(--accent);
 }
 .op-summary {
@@ -2358,27 +2397,28 @@ a.link-tag:focus-visible {
 }
 .detail-grid {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: var(--sp-6) var(--sp-16);
   margin: 0;
-  /* The rows holding a control are taller than their label, which would leave
-     the label hanging at the top edge. */
-  align-items: center;
+  /* The label is smaller than its value: centred, it would sit higher than the
+     text beside it. A select's baseline is its text, so its row lines up too. */
+  align-items: baseline;
 }
 .detail-grid dt {
   color: var(--muted);
   font-size: var(--fs-sm);
 }
+/* Values line up on their right edge, the category select included. */
 .detail-grid dd {
   margin: 0;
+  text-align: right;
 }
 /* The one editable line of the detail grid, so it wears the form-control look
-   rather than the ledger's dense one. Capped: the grid column is the width left
-   over, which a category name never needs. 1rem keeps iOS from zooming the page
-   when the select takes focus. */
+   rather than the ledger's dense one. It fills its column, so its right edge
+   is the one the values line up on. 1rem keeps iOS from zooming the page when
+   the select takes focus. */
 .detail-category {
   width: 100%;
-  max-width: 16rem;
   min-height: var(--control-min-h);
   padding: var(--sp-8);
   border: 1px solid var(--border);
@@ -2489,10 +2529,6 @@ a.link-tag:focus-visible {
   align-items: center;
   gap: var(--sp-10);
 }
-.back-link {
-  font-size: var(--fs-sm);
-  margin-bottom: var(--sp-4);
-}
 .bank-list {
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -2540,9 +2576,6 @@ a.link-tag:focus-visible {
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-}
-.btn.small.icon {
-  line-height: 1;
 }
 .backup-preview {
   margin-top: var(--sp-16);
@@ -2674,19 +2707,14 @@ details[open] > .overdue-summary .overdue-caret::before {
   min-height: var(--control-min-h);
   margin-top: var(--sp-4);
 }
-/* A group for the confirm question to replace, not a box: its two buttons wrap
-   with the rest of the strip instead of taking a line of their own. */
-.overdue-decisions {
-  display: contents;
-}
-/* Only where the strip has room to spare: pushed right on a narrow screen, it
-   lands alone on a line of its own. */
-@media (min-width: 1024px) {
-  .overdue-edit {
-    margin-left: auto;
-  }
+/* The panel is already set apart from its row, so its toolbar takes no rule. */
+.overdue-panel > .toolbar {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
 }
 .overdue-actions .btn.small,
+.overdue-panel .btn.small,
 .decided-head .btn.small,
 .postpone-form .btn.small {
   padding: var(--sp-10) var(--sp-14);

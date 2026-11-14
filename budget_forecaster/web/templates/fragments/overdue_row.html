@@ -1,3 +1,4 @@
+{% from "macros/icons.html" import icon with context %}
 {# The row is the disclosure: what and how much is all it takes to recognize an
    occurrence, and the issues it can take are one tap away, not repeated down
    the card. Open when the user was already acting on it, closed on arrival. #}
@@ -15,21 +16,17 @@
     </summary>
     {# A broken sync does not take the edit away: the recurrence is often what
        needs fixing. #}
-    <div class="overdue-panel overdue-actions">
-      <a class="btn small primary"
-         href="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/link">{{ _("Link…") }}</a>
+    <div class="overdue-panel">
       {% if card.sync_broken %}
-        <span class="muted-note">{{ _("Sync before deciding") }}</span>
-      {% else %}
-      <div class="overdue-decisions" data-confirm-strip>
-        <button class="btn small" type="button"
-                hx-get="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/postpone"
-                hx-target="#overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}"
-                hx-swap="outerHTML">{{ _("Postpone…") }}</button>
+      <p class="muted-note">{{ _("Sync before deciding") }}</p>
+      {% endif %}
+      <div class="toolbar" data-confirm-strip>
+        {% if not card.sync_broken %}
         <form hx-post="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/skip"
               hx-target="#overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}"
-              hx-swap="outerHTML" class="inline" data-confirm>
-          <button type="button" class="btn small danger" data-confirm-trigger>{{ _("Forget") }}</button>
+              hx-swap="outerHTML" class="confirm-form" data-confirm>
+          <button type="button" class="btn tool danger" data-confirm-trigger>
+            {{ icon("forget") }}<span>{{ _("Forget") }}</span></button>
           <span class="confirm-cluster" hidden>
             <span class="confirm-question">
               {{ _("Forget it?") }}
@@ -39,9 +36,17 @@
             <button type="submit" class="btn small danger">{{ _("Confirm") }}</button>
           </span>
         </form>
+        <button class="btn tool" type="button"
+                hx-get="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/postpone"
+                hx-target="#overdue-{{ row.planned_operation_id }}-{{ row.iteration_date }}"
+                hx-swap="outerHTML">{{ icon("postpone") }}<span>{{ _("Postpone…") }}</span></button>
+        {% endif %}
+        <a class="btn tool" href="/targets/planned/{{ row.planned_operation_id }}?return_to=/">
+          {{ icon("edit") }}<span>{{ _("Edit") }}</span></a>
+        <a class="btn tool"
+           href="/overdue/{{ row.planned_operation_id }}/{{ row.iteration_date }}/link">
+          {{ icon("link") }}<span>{{ _("Link…") }}</span></a>
       </div>
-      {% endif %}
-      <a class="btn small overdue-edit" href="/targets/planned/{{ row.planned_operation_id }}?return_to=/">{{ _("Edit the planned operation") }}</a>
     </div>
   </details>
 </li>

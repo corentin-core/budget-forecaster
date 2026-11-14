@@ -118,7 +118,7 @@ def _link_target(client: TestClient, operation_id: int) -> str:
     """What the operation's detail page says counts it, or an empty string."""
     html = client.get(f"/operations/{operation_id}").text
     found = re.search(
-        r"<dd>\s*<a[^>]*>([^<]*)</a>\s*<form[^>]*/unlink", html, re.DOTALL
+        r'<dd>\s*<a href="/targets/[^"]*">([^<]*)</a>\s*</dd>', html, re.DOTALL
     )
     return found.group(1).strip() if found else ""
 
@@ -131,7 +131,7 @@ class TestSeededForm:
         operation = _unlinked(client)
         page = client.get(f"/operations/{operation.operation_id}").text
         assert f"/targets/planned/new?from_operation={operation.operation_id}" in page
-        assert "Créer une opération planifiée" in page
+        assert ">Prévoir<" in page
 
     def test_seeds_a_monthly_operation_from_the_operation(
         self, client: TestClient

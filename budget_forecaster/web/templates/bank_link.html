@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% from "macros/icons.html" import icon, back with context %}
 {% block title %}{{ (_("Renew bank connection") if renew else _("Link a bank")) }} — Budget Forecaster{% endblock %}
 
 {% block content %}
 <section class="card form-page">
-  <p class="back-link"><a href="/settings">← {{ _("Settings") }}</a></p>
+  {{ back("/settings", _("Settings")) }}
   <h1>{{ (_("Renew bank connection") if renew else _("Link a bank")) }}</h1>
 
   <p class="hint">

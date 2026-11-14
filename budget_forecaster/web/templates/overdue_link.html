@@ -1,9 +1,10 @@
 {% extends "base.html" %}
+{% from "macros/icons.html" import icon, back with context %}
 {% set base = "/overdue/" ~ row.planned_operation_id ~ "/" ~ row.iteration_date %}
 {% block title %}{{ _("Find this payment") }} — Budget Forecaster{% endblock %}
 {% block content %}
 <section class="card link-page">
-  <p class="back"><a href="{{ return_to }}">‹ {{ _("Back") }}</a></p>
+  {{ back(return_to, _("Back")) }}
   <h1>{{ _("Find this payment among your operations") }}</h1>
 
   {# The row's own wording, so the user recognizes what they tapped. #}
