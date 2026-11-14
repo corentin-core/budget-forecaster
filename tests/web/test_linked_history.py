@@ -319,12 +319,12 @@ class TestBudget:
         assert history.more_months is None
 
 
-class TestEditPage:
-    """The card on the edit page of the demo database."""
+class TestHistoryPage:
+    """The card on the history page of the demo database."""
 
     def test_budget_page_lists_its_operations(self, client: TestClient) -> None:
         """Each linked operation opens its detail page."""
-        html = client.get("/targets/budget/1").text
+        html = client.get("/targets/budget/1/history").text
 
         card = html[html.index('id="linked"') :]
         assert "/operations/" in card
@@ -332,8 +332,8 @@ class TestEditPage:
 
     def test_history_is_bounded(self, client: TestClient) -> None:
         """A hand-typed window, too wide or not a number, still renders."""
-        assert client.get("/targets/planned/1?history=100000").status_code == 200
-        assert client.get("/targets/planned/1?history=abc").status_code == 200
+        assert client.get("/targets/planned/1/history?months=100000").status_code == 200
+        assert client.get("/targets/planned/1/history?months=abc").status_code == 200
 
     def test_late_occurrence_says_how_late(self, client: TestClient) -> None:
         """An occurrence on the Accueil card reads as late and offers the picker."""
@@ -341,14 +341,14 @@ class TestEditPage:
         start = home.index("/overdue/") + len("/overdue/")
         op_id, iteration = home[start:].split("/link")[0].split("/")
 
-        card = client.get(f"/targets/planned/{op_id}").text
+        card = client.get(f"/targets/planned/{op_id}/history").text
         card = card[card.index('id="linked"') :]
         assert "linked-state not_linked late" in card
         assert f"/overdue/{op_id}/{iteration}/link" in card
 
     def test_paid_occurrence_compares_with_the_plan(self, client: TestClient) -> None:
         """A payment that differs from the plan shows both amounts."""
-        card = client.get("/targets/planned/1").text
+        card = client.get("/targets/planned/1/history").text
         card = card[card.index('id="linked"') :]
 
         assert f"pour {format_eur(3200.0, 'EUR')} prévus" in card
@@ -357,14 +357,14 @@ class TestEditPage:
         self, client: TestClient
     ) -> None:
         """An unlinked occurrence past the Accueil window still has "Lier…"."""
-        card = client.get("/targets/planned/1?history=24").text
+        card = client.get("/targets/planned/1/history?months=24").text
         card = card[card.index('id="linked"') :]
 
         assert card.count("Non lié") == card.count("/link?return_to=")
 
     def test_budget_period_searches_the_ledger(self, client: TestClient) -> None:
         """A period opens the ledger on its unlinked operations, with a way back."""
-        card = client.get("/targets/budget/1").text
+        card = client.get("/targets/budget/1/history").text
         card = card[card.index('id="linked"') :]
         start = card.index('href="/operations?category=') + len('href="')
         url = card[start : card.index('"', start)].replace("&amp;", "&")
@@ -372,4 +372,4 @@ class TestEditPage:
         ledger = client.get(url).text
         assert "unlinked=true" in url
         assert re.search(r'value="groceries"\s*selected', ledger)
-        assert 'class="back"><a href="/targets/budget/1?' in ledger
+        assert 'class="back"><a href="/targets/budget/1/history?' in ledger

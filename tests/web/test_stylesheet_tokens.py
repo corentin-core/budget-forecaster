@@ -182,6 +182,13 @@ def test_the_selected_row_still_states_its_category() -> None:
     assert f"{selecting} .cat-label {{ display: block" in css
 
 
+def test_a_hidden_confirm_form_stays_hidden() -> None:
+    """A strip hides its other actions while a question is up; the form's own
+    display rule would otherwise beat the hidden attribute."""
+    css = " ".join(STYLESHEET.read_text().split())
+    assert ".confirm-form[hidden], .confirm-cluster[hidden] { display: none" in css
+
+
 def test_motion_goes_through_the_duration_tokens() -> None:
     """A duration written at a use site is one prefers-reduced-motion cannot
     switch off."""

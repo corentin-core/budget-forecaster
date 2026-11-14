@@ -111,8 +111,8 @@ def _margin(client: TestClient) -> float:
 
 
 def _decided_section(client: TestClient, op_id: int) -> str:
-    """The decided-occurrences markup on a planned operation's edit page."""
-    html = client.get(f"/targets/planned/{op_id}").text
+    """The decided-occurrences markup on a planned operation's history page."""
+    html = client.get(f"/targets/planned/{op_id}/history").text
     start = html.find('class="card decided-card"')
     return html[start : html.find("</section>", start)] if start > 0 else ""
 
@@ -563,7 +563,7 @@ class TestOlderOccurrence:
         picker = _create_unmatched(
             client, app, amount="-42.50", days_before_balance=150
         )
-        page = client.get(f"/targets/planned/{picker.op_id}?history=12").text
+        page = client.get(f"/targets/planned/{picker.op_id}/history?months=12").text
         buttons = re.findall(rf"/overdue/{picker.op_id}/[\d-]+/link", page)
 
         assert f"/overdue/{picker.op_id}/{picker.iteration}/link" in buttons

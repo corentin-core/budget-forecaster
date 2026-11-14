@@ -9,6 +9,7 @@ import logging
 import math
 from datetime import date
 from typing import NamedTuple
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
@@ -22,7 +23,6 @@ from budget_forecaster.web.dependencies import get_app_service, refresh_forecast
 from budget_forecaster.web.formatting import sorted_categories
 from budget_forecaster.web.linked_history import (
     HISTORY_STEP_MONTHS,
-    LinkedHistory,
     build_linked_history,
 )
 from budget_forecaster.web.redirects import safe_local_path
@@ -192,6 +192,46 @@ async def edit_target(
     target = _get_target(app, kind, target_id)
     form = build_target_form(kind, target, default_category="OTHER")
     return _render_edit(request, app, form, _safe_return_to(return_to))
+
+
+@router.get("/targets/{kind}/{target_id}/history")
+async def target_history(
+    kind: str,
+    target_id: int,
+    request: Request,
+    app: ApplicationService = Depends(get_app_service),
+    return_to: str = "/targets",
+) -> Response:
+    """List what a budget or planned operation counted, month by month, and the
+    decisions taken on its occurrences."""
+    _require_kind(kind)
+    target = _get_target(app, kind, target_id)
+    form = build_target_form(kind, target, default_category="OTHER")
+    try:
+        months = int(request.query_params.get("months", HISTORY_STEP_MONTHS))
+    except ValueError:
+        months = HISTORY_STEP_MONTHS
+    back = _safe_return_to(return_to)
+    edit = f"/targets/{kind}/{target_id}"
+    here = f"{request.url.path}?{request.url.query}"
+    return render_template(
+        request,
+        "target_history.html",
+        active="targets",
+        form=form,
+        return_to=back,
+        # Opened from the edit page, Edit goes back to it rather than stacking
+        # a second edit page on top of the first. Otherwise the form comes
+        # back here.
+        edit_url=(
+            back
+            if back.split("?")[0] == edit
+            else f"{edit}?{urlencode({'return_to': here})}"
+        ),
+        currency=app.currency,
+        history=build_linked_history(app, target, months),
+        decided=(app.get_iteration_resolutions(target_id) if form.is_planned else ()),
+    )
 
 
 def _is_amount(raw: str) -> bool:
@@ -384,20 +424,6 @@ def _link_source(
         )
 
 
-def _linked_history(
-    request: Request, app: ApplicationService, form: TargetFormView
-) -> LinkedHistory | None:
-    """What a stored target counted, over the months the history query asks for."""
-    if form.is_new or form.target_id is None:
-        return None
-    try:
-        months = int(request.query_params.get("history", HISTORY_STEP_MONTHS))
-    except ValueError:
-        months = HISTORY_STEP_MONTHS
-    target = _get_target(app, form.kind, form.target_id)
-    return build_linked_history(app, target, months)
-
-
 def _split_seed(request: Request, form: TargetFormView) -> SplitSeed | None:
     """The values a split opens with, when the page was asked to open it."""
     split_date = request.query_params.get("split_date", "")
@@ -417,11 +443,6 @@ def _render_edit(
     seed: OperationSeed | None = None,
 ) -> Response:
     categories = tuple((cat.name, cat.display_name) for cat in sorted_categories())
-    decided = (
-        app.get_iteration_resolutions(form.target_id)
-        if form.is_planned and form.target_id is not None
-        else ()
-    )
     return render_template(
         request,
         "target_edit.html",
@@ -432,9 +453,7 @@ def _render_edit(
         return_to=return_to,
         error=error,
         currency=app.currency,
-        decided=decided,
         seed=seed,
         split=_split_seed(request, form),
-        history=_linked_history(request, app, form),
         status_code=422 if error else 200,
     )
