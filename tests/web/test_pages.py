@@ -247,7 +247,7 @@ class TestReachingTheNamedTarget:
 
         target = client.get(to_target.group(1).replace("&amp;", "&"))
         assert target.status_code == 200
-        back_to_operation = re.search(r'class="btn" href="([^"]+)"', target.text)
+        back_to_operation = re.search(r'<p class="back"><a href="([^"]+)"', target.text)
         assert back_to_operation, "the target page should offer a way back"
         assert back_to_operation.group(1).startswith(operation_url.split("?")[0])
 

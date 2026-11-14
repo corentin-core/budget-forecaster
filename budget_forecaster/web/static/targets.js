@@ -25,10 +25,8 @@
   const splitSection = document.querySelector('[data-split-section]');
   const saveButton = document.querySelector('[data-save-button]');
   if (splitSection && saveButton) {
-    const note = splitSection.querySelector('[data-split-note]');
     const syncSplit = function () {
       saveButton.disabled = splitSection.open;
-      if (note) note.hidden = !splitSection.open;
     };
     syncSplit();
     splitSection.addEventListener('toggle', syncSplit);

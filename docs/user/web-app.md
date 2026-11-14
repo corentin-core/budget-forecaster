@@ -131,7 +131,7 @@ its new date with where it came from. **Oublier** declares that the payment neve
 happened; the confirmation tells you how much comes back to your margin first. Both are
 on the overdue row as well, and the margin at the top of Accueil updates with your
 decision. **Rétablir** undoes it — right away on the row, or later from the planned
-operation's own page, which lists every occurrence you decided about. Linking the
+operation's **Historique**, which lists every occurrence you decided about. Linking the
 payment afterwards drops the decision from that list: the operation settles the
 occurrence, so there is nothing left to undo. A payment made in cash has no operation to
 link, so forgetting it is the answer there.
@@ -157,13 +157,13 @@ month. Tap a cause to list only its gaps below, and tap it again to see every ca
 
 **Ce qui pèse le plus** lists the budgets, planned payments and categories behind the
 largest gaps, all causes mixed, each with a line such as "470 EUR dépensés en moyenne
-pour 400 EUR prévus, dépassé 6 mois sur 6". A budget or a planned payment opens its edit
-page, which lists its operations. An unplanned category opens Opérations filtered on
-that category, those months and unlinked operations. **Retour** at the top of that list
-goes back to the card, also from an operation opened there. **Tout voir** lists every
-gap, and each bar of **Écart de chaque mois** opens that month in Mois. The plan is the
-current one: a budget edited in place rewrites its own past gaps, while a split keeps
-them.
+pour 400 EUR prévus, dépassé 6 mois sur 6". A budget or a planned payment opens its
+**Historique**, which lists its operations and links to its form. An unplanned category
+opens Opérations filtered on that category, those months and unlinked operations.
+**Retour** at the top of that list goes back to the card, also from an operation opened
+there. **Tout voir** lists every gap, and each bar of **Écart de chaque mois** opens
+that month in Mois. The plan is the current one: a budget edited in place rewrites its
+own past gaps, while a split keeps them.
 
 A button under a row corrects the plan when the fix is clear. A row whose gap is under 5
 EUR a month gets no button.
@@ -273,32 +273,35 @@ The month drill-down and the Budgets tab both edit the same items.
   (untick "active only" to see expired ones).
 
 Editing opens on its own page with a working back button. From there you set the amount,
-category, dates, and recurrence, or delete the item (deletion asks for a confirmation
-inline first). Saving returns you to wherever you came from.
+category, dates, and recurrence. One row of buttons closes the page: **Supprimer**,
+**Terminer**, **Scinder**, **Historique** and **Enregistrer**. Supprimer and Terminer
+ask for a confirmation in place of the row first. Saving returns you to wherever you
+came from.
 
-A recurring item that is still running also has an **End now** button, which sets its
-end date to today. Past occurrences and their links stay, and later occurrences leave
-the forecast. For a budget, the current period leaves the forecast too, although it has
-already started. The ended item then drops out of the "active only" list. To end an item
-on another date, fill **End date** instead.
+**Terminer**, on a recurring item that is still running, sets its end date to today.
+Past occurrences and their links stay, and later occurrences leave the forecast. For a
+budget, the current period leaves the forecast too, although it has already started. The
+ended item then drops out of the "active only" list. To end an item on another date,
+fill **End date** instead.
 
-Below the form, **Opérations rattachées** lists the operations the item counted over the
-last six months, newest first. **Voir plus** goes back six more months. For a planned
-operation, each occurrence shows the operation that paid it, or says how many days late
-it is, or that it was never linked, postponed or forgotten. A paid occurrence reads
-"comme prévu", or shows the amount paid against the amount planned. The next occurrence
-shows as upcoming. A late or unlinked occurrence has a **Lier…** button to the same
-picker as the Accueil card. For a budget, each period shows what it spent against the
-budget amount. Tap a period to list its operations; only the running one starts open.
-**Chercher les opérations non liées** opens Opérations on the budget's category, that
-period and its unlinked operations. Each operation opens its own page.
+**Historique** opens a page of its own. **Opérations rattachées** lists the operations
+the item counted over the last six months, newest first. **Voir plus** goes back six
+more months. For a planned operation, each occurrence shows the operation that paid it,
+or says how many days late it is, or that it was never linked, postponed or forgotten. A
+paid occurrence reads "comme prévu", or shows the amount paid against the amount
+planned. The next occurrence shows as upcoming. A late or unlinked occurrence has a
+**Lier…** button to the same picker as the Accueil card. For a budget, each period shows
+what it spent against the budget amount. Tap a period to list its operations; only the
+running one starts open. **Chercher les opérations non liées** opens Opérations on the
+budget's category, that period and its unlinked operations. Each operation opens its own
+page. For a planned operation, **Échéances traitées** follows, with the postponed and
+forgotten occurrences and their **Rétablir**. **Modifier** goes back to the form.
 
-Splitting a recurring item from a chosen date is a separate submission, below the Save
-button: open **Split from a date**, give the date and the new values, then confirm with
-**Split**. Save is paused while that section is open, since it would store the item
-unchanged and drop what you typed there. The original segment stops the day before the
-split and keeps its history; the new one runs from the split date onward, so both appear
-in the list.
+Splitting a recurring item from a chosen date is a separate submission: tap **Scinder**,
+give the date and the new values, then confirm with the **Scinder** button under them.
+The other buttons hide while that section is open, and tapping **Scinder** at the top
+closes it. The original segment stops the day before the split and keeps its history;
+the new one runs from the split date onward, so both appear in the list.
 
 ## Linking a bank
 

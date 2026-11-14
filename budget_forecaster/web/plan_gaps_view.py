@@ -165,7 +165,9 @@ def _diagnosis(item: GapItem, gaps: PlanGaps, currency: str) -> str:
 def _url(item: GapItem, gaps: PlanGaps, back: str) -> str:
     if item.target is not None:
         kind = "budget" if isinstance(item.target, Budget) else "planned"
-        return f"/targets/{kind}/{item.target.id}?" + urlencode({"return_to": back})
+        return f"/targets/{kind}/{item.target.id}/history?" + urlencode(
+            {"return_to": back}
+        )
     last_day = gaps.months[-1] + relativedelta(months=1, days=-1)
     return "/operations?" + urlencode(
         {

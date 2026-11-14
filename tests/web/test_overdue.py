@@ -134,8 +134,8 @@ def _margin_value(client: TestClient) -> float:
 
 
 def _decided_section(client: TestClient, op_id: int) -> str:
-    """The decided-occurrences markup on a planned operation's edit page."""
-    html = client.get(f"/targets/planned/{op_id}").text
+    """The decided-occurrences markup on a planned operation's history page."""
+    html = client.get(f"/targets/planned/{op_id}/history").text
     start = html.find('class="card decided-card"')
     return html[start : html.find("</section>", start)] if start > 0 else ""
 
@@ -431,7 +431,7 @@ class TestRestore:
     def test_reachable_from_the_planned_operation(
         self, client: TestClient, overdue: Overdue
     ) -> None:
-        """Past the immediate undo, decisions live on the edit page."""
+        """Past the immediate undo, decisions live on the history page."""
         client.post(f"/overdue/{overdue.op_id}/{overdue.iteration}/skip")
 
         decided = _decided_section(client, overdue.op_id)

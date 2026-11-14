@@ -239,14 +239,58 @@ class TestTargetCrud:
         }
         assert "-400" in amounts
 
-    def test_split_section_sits_below_save(self, client: TestClient) -> None:
-        """Save submits the form above it and ignores the split fields, so the
-        split section comes after the actions and owns its own primary button."""
+    def test_split_owns_its_submit(self, client: TestClient) -> None:
+        """Save submits the target form and ignores the split fields, so the
+        split section carries a submit button of its own."""
         client.post("/targets/budget", data=_RECURRING_BUDGET, follow_redirects=False)
         page = client.get(f"/targets/budget/{_budget_id(client, 'Test Budget')}").text
-        assert page.index("data-save-button") < page.index("data-split-section")
         split_form = re.search(r"data-split-section.*?</details>", page, re.S).group(0)
         assert 'class="btn primary"' in split_form
+
+
+class TestToolbar:
+    """One row of tools at the bottom of the edit page."""
+
+    def test_delete_first_save_last(self, client: TestClient) -> None:
+        """Delete sits furthest from Save, the tools in between."""
+        client.post("/targets/budget", data=_RECURRING_BUDGET, follow_redirects=False)
+        page = client.get(f"/targets/budget/{_budget_id(client, 'Test Budget')}").text
+        toolbar = page[page.index('class="target-actions"') :]
+
+        assert (
+            toolbar.index("/delete")
+            < toolbar.index("/end")
+            < toolbar.index("data-split-section")
+            < toolbar.index("/history")
+            < toolbar.index("data-save-button")
+        )
+
+    def test_new_target_offers_save_only(self, client: TestClient) -> None:
+        """Nothing exists yet to end, split, delete or look back on."""
+        page = client.get("/targets/budget/new").text
+        toolbar = page[page.index('class="target-actions"') :]
+        toolbar = toolbar[: toolbar.index("</div>")]
+
+        assert "data-save-button" in toolbar
+        assert not re.search(r"/(delete|end|split|history)\b", toolbar)
+
+    def test_history_opens_and_comes_back(self, client: TestClient) -> None:
+        """The history page lists the linked operations; Edit returns to the
+        page that opened the history, so the two never loop."""
+        page = client.get("/targets/planned/1?return_to=/targets").text
+        found = re.search(r'href="(/targets/planned/1/history\?[^"]+)"', page)
+        assert found, "the edit page should open the history"
+
+        history = client.get(found.group(1).replace("&amp;", "&")).text
+        assert 'id="linked"' in history
+        assert history.count('href="/targets/planned/1?return_to=/targets"') == 2
+
+    def test_history_from_elsewhere_edits_with_its_way_back(
+        self, client: TestClient
+    ) -> None:
+        """Opened from another page, Edit keeps that page as the way back."""
+        history = client.get("/targets/planned/1/history?return_to=/trends").text
+        assert 'href="/targets/planned/1?return_to=%2Ftrends"' in history
 
 
 class TestCategorize:

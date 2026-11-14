@@ -88,6 +88,15 @@ class TestCard:
         assert 'href="/targets/' in card or 'href="/operations?' in card
         assert 'href="/month/' in card
 
+    def test_target_rows_open_the_history(self, client: TestClient) -> None:
+        """A budget or planned row opens what it counted, not its form."""
+        html = client.get("/trends").text
+        card = html[html.index('id="gaps"') : html.index('id="breakdown"')]
+        rows = re.findall(r'class="gaps-row" href="(/targets/[^"?]+)', card)
+
+        assert rows, "the demo should have a budget or planned row"
+        assert all(path.endswith("/history") for path in rows)
+
     def test_fix_is_confirmed_on_the_card(self, client: TestClient) -> None:
         """A fix posts its split from the card, and comes back to it."""
         card = client.get("/trends/gaps?months=12").text

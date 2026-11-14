@@ -1999,17 +1999,87 @@ a.link-tag:focus-visible {
 }
 .confirm-form {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-8);
   margin: 0;
 }
 .confirm-cluster {
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-8);
 }
+/* A strip hides its other actions while a question is up, and the display
+   rules above would otherwise beat the hidden attribute. */
+.confirm-form[hidden],
 .confirm-cluster[hidden] {
   display: none;
+}
+/* The edit page's one toolbar: an icon over its label for each tool, Save at
+   the far end. An open split hides the other tools and takes the whole width. */
+.target-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4);
+  margin-top: var(--sp-24);
+  padding-top: var(--sp-16);
+  border-top: 1px solid var(--border);
+}
+/* Equal shares of the row, so five tools fit a phone. A tool shows its edge
+   on hover alone. */
+.btn.tool {
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-6) 0;
+  font-size: var(--fs-2xs);
+  font-weight: 500;
+  white-space: nowrap;
+  border-color: transparent;
+}
+/* The longest label gets the room it needs on a narrow phone. */
+.btn.tool.save {
+  flex-grow: 1.4;
+}
+.tool-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.target-actions > .confirm-form,
+.target-actions .split {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+}
+.target-actions > .confirm-form > .btn.tool,
+.target-actions .split > summary {
+  width: 100%;
+}
+.target-actions .split > summary {
+  margin-bottom: 0;
+}
+.target-actions .split[open] {
+  flex-basis: 100%;
+}
+.target-actions .split[open] > summary {
+  margin-bottom: var(--sp-8);
+}
+.target-actions:has(.split[open]) > :not(.split) {
+  display: none;
+}
+
+/* The history page's header: what the target is, and the way to edit it. */
+.history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8);
+  margin: 0;
+  color: var(--muted);
 }
 
 /* --- /targets management list --- */

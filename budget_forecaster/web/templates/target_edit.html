@@ -16,6 +16,25 @@
   </div>
 {% endmacro %}
 
+{# Line icons drawn on a 24-unit grid in the text colour, so a button keeps
+   its own colour. The label under each one says what it does. #}
+{% macro icon(name) -%}
+  <svg class="tool-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none"
+       stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  {%- if name == "delete" -%}
+    <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>
+  {%- elif name == "end" -%}
+    <path d="M3 12h13M11 7l5 5-5 5M20 5v14"/>
+  {%- elif name == "split" -%}
+    <circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.1 8.1 20 20M8.1 15.9 20 4"/>
+  {%- elif name == "history" -%}
+    <path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/>
+  {%- elif name == "save" -%}
+    <path d="M5 3h11l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM7 21v-7h10v7M7 3v5h8"/>
+  {%- endif -%}
+  </svg>
+{%- endmacro %}
+
 {% block content %}
 <section class="card form-page">
   <p class="back"><a href="{{ return_to }}">‹ {{ _("Back") }}</a></p>
@@ -135,76 +154,74 @@
 
   </form>
 
-  <div class="form-actions" data-confirm-strip>
+  {# One toolbar, Save at the right end and Delete at the left, furthest from
+     it. A question or an open split hides the other tools while it is up. The
+     split is its own submission, and Save ignores its fields. #}
+  {% set self_url = '/targets/' ~ form.kind ~ '/' ~ form.target_id ~ '?return_to=' ~ (return_to | urlencode) %}
+  <div class="target-actions" data-confirm-strip>
     {% if not form.is_new %}
     <form method="post" action="/targets/{{ form.kind }}/{{ form.target_id }}/delete"
           class="confirm-form" data-confirm>
       <input type="hidden" name="return_to" value="{{ return_to }}" />
-      <button type="button" class="btn danger" data-confirm-trigger>{{ _("Delete") }}</button>
+      <button type="button" class="btn tool danger" data-confirm-trigger>
+        {{ icon("delete") }}<span>{{ _("Delete") }}</span></button>
       <span class="confirm-cluster" hidden>
         <span>{{ _("Delete?") }}</span>
-        <button type="button" class="btn" data-confirm-cancel>{{ _("Cancel") }}</button>
-        <button type="submit" class="btn danger">{{ _("Confirm") }}</button>
+        <button type="button" class="btn small" data-confirm-cancel>{{ _("Cancel") }}</button>
+        <button type="submit" class="btn small danger">{{ _("Confirm") }}</button>
       </span>
     </form>
-    {% endif %}
     {% if form.can_end %}
     <form method="post" action="/targets/{{ form.kind }}/{{ form.target_id }}/end"
           class="confirm-form" id="end" data-confirm>
       <input type="hidden" name="return_to" value="{{ return_to }}" />
-      <button type="button" class="btn" data-confirm-trigger>{{ _("End now") }}</button>
+      <button type="button" class="btn tool" data-confirm-trigger>
+        {{ icon("end") }}<span>{{ _("End now") }}</span></button>
       <span class="confirm-cluster" hidden>
         <span>{{ _("End today? Later occurrences leave the forecast.") if is_planned
                  else _("End today? The current period leaves the forecast too.") }}</span>
-        <button type="button" class="btn" data-confirm-cancel>{{ _("Cancel") }}</button>
-        <button type="submit" class="btn primary">{{ _("Confirm") }}</button>
+        <button type="button" class="btn small" data-confirm-cancel>{{ _("Cancel") }}</button>
+        <button type="submit" class="btn small primary">{{ _("Confirm") }}</button>
       </span>
     </form>
     {% endif %}
-    <span class="actions-spacer"></span>
-    <a class="btn" href="{{ return_to }}">{{ _("Cancel") }}</a>
-    <button type="submit" class="btn primary" form="target-form"
-            data-save-button>{{ _("Save") }}</button>
+    {% if form.can_split %}
+    <details class="split" id="split" data-split-section {{ 'open' if split }}>
+      <summary class="btn tool">{{ icon("split") }}<span>{{ _("Split") }}</span></summary>
+      <form method="post" action="/targets/{{ form.kind }}/{{ form.target_id }}/split">
+        <input type="hidden" name="return_to" value="{{ return_to }}" />
+        <p class="hint">{{ _("New values apply from the split date onward.") }}</p>
+        <label class="field">
+          <span>{{ _("Split date") }}</span>
+          <input type="date" name="split_date" required
+                 value="{{ split.split_date if split }}" />
+        </label>
+        <label class="field">
+          <span>{{ _("New amount") }} ({{ _("optional") }})</span>
+          <input type="number" name="split_amount" step="0.01"
+                 value="{{ split.amount if split }}" />
+        </label>
+        <div class="field">
+          <span>{{ _("New period") }}</span>
+          {{ duration_fields("split_period", form.period_value, form.period_unit) }}
+        </div>
+        {% if form.has_duration %}
+        <div class="field">
+          <span>{{ _("New duration") }}</span>
+          {{ duration_fields("split_duration", form.duration_value, form.duration_unit) }}
+        </div>
+        {% endif %}
+        <button type="submit" class="btn primary">{{ _("Split") }}</button>
+      </form>
+    </details>
+    {% endif %}
+    <a class="btn tool" href="/targets/{{ form.kind }}/{{ form.target_id }}/history?return_to={{ self_url | urlencode }}">
+      {{ icon("history") }}<span>{{ _("History") }}</span></a>
+    {% endif %}
+    <button type="submit" class="btn tool save" form="target-form"
+            data-save-button>{{ icon("save") }}<span>{{ _("Save") }}</span></button>
   </div>
-
-  {# Below the actions on purpose: the split is its own submission, and Save
-     ignores these fields. Opening it takes over as the page's primary action. #}
-  {% if not form.is_new and form.can_split %}
-  <details class="split" id="split" data-split-section {{ 'open' if split }}>
-    <summary class="btn">{{ _("Split from a date") }}</summary>
-    <form method="post" action="/targets/{{ form.kind }}/{{ form.target_id }}/split">
-      <input type="hidden" name="return_to" value="{{ return_to }}" />
-      <p class="hint">{{ _("New values apply from the split date onward.") }}</p>
-      <label class="field">
-        <span>{{ _("Split date") }}</span>
-        <input type="date" name="split_date" required
-               value="{{ split.split_date if split }}" />
-      </label>
-      <label class="field">
-        <span>{{ _("New amount") }} ({{ _("optional") }})</span>
-        <input type="number" name="split_amount" step="0.01"
-               value="{{ split.amount if split }}" />
-      </label>
-      <div class="field">
-        <span>{{ _("New period") }}</span>
-        {{ duration_fields("split_period", form.period_value, form.period_unit) }}
-      </div>
-      {% if form.has_duration %}
-      <div class="field">
-        <span>{{ _("New duration") }}</span>
-        {{ duration_fields("split_duration", form.duration_value, form.duration_unit) }}
-      </div>
-      {% endif %}
-      {# Revealed by the script that actually pauses Save, so it never lies. #}
-      <p class="hint" data-split-note hidden>{{ _("Saving is paused while this section is open.") }}</p>
-      <button type="submit" class="btn primary">{{ _("Split") }}</button>
-    </form>
-  </details>
-  {% endif %}
 </section>
-
-{% include "fragments/linked_operations.html" %}
-{% include "fragments/decided_iterations.html" %}
 
 <script src="{{ static('targets.js') }}" defer></script>
 {% endblock %}
