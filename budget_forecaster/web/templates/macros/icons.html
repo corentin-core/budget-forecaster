@@ -1,0 +1,41 @@
+{# The app's only icon set: line icons on a 24-unit grid, drawn in the text
+   colour so a button keeps its own. Every icon sits next to a visible label;
+   see docs/dev/ui-guidelines.md for which action takes which icon. #}
+{% set ICONS = {
+  "add": '<path d="M12 5v14M5 12h14"/>',
+  "back": '<path d="M19 12H5M11 18l-6-6 6-6"/>',
+  "delete": '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>',
+  "download": '<path d="M12 3v12M7 10l5 5 5-5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>',
+  "edit": '<path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/>',
+  "end": '<path d="M3 12h13M11 7l5 5-5 5M20 5v14"/>',
+  "filter": '<path d="M3 5h18l-7 8v6l-4 2v-8z"/>',
+  "forget": '<path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM5.6 5.6l12.8 12.8"/>',
+  "history": '<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/>',
+  "import": '<path d="M12 15V3M7 8l5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>',
+  "link": '<path d="M10 14a4 4 0 0 0 5.7 0l3.5-3.5a4 4 0 0 0-5.7-5.7L12 6.3M14 10a4 4 0 0 0-5.7 0l-3.5 3.5a4 4 0 0 0 5.7 5.7l1.5-1.5"/>',
+  "plan": '<path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M12 13v5M9.5 15.5h5"/>',
+  "postpone": '<path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M9 15h6M13 13l2 2-2 2"/>',
+  "save": '<path d="M5 3h11l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM7 21v-7h10v7M7 3v5h8"/>',
+  "split": '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.1 8.1 20 20M8.1 15.9 20 4"/>',
+  "sync": '<path d="M20 12a8 8 0 0 1-14 5.3L4 15M4 12a8 8 0 0 1 14-5.3L20 9M20 4v5h-5M4 20v-5h5"/>',
+  "unlink": '<path d="M10 14a4 4 0 0 0 5.7 0l3.5-3.5a4 4 0 0 0-5.7-5.7L12 6.3M14 10a4 4 0 0 0-5.7 0l-3.5 3.5a4 4 0 0 0 5.7 5.7l1.5-1.5M3 3l18 18"/>',
+} %}
+
+{% macro icon(name) -%}
+  <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" fill="none"
+       stroke="currentColor" stroke-width="2" stroke-linecap="round"
+       stroke-linejoin="round">{{ ICONS[name] | safe }}</svg>
+{%- endmacro %}
+
+{% macro back(url, label) -%}
+  <p class="back"><a href="{{ url }}">{{ icon("back") }}{{ label }}</a></p>
+{%- endmacro %}
+
+{# Opens the filter panel of its form; filters.js keeps the count current. #}
+{% macro filter_toggle(active) -%}
+  <button type="button" class="btn tool filter-toggle" data-filter-toggle
+          aria-controls="filter-panel" aria-expanded="false">
+    {{- icon("filter") }}<span>{{ _("Filter") }}</span>
+    <span class="filter-count" {{ 'hidden' if not active }}>{{ active }}</span>
+  </button>
+{%- endmacro %}

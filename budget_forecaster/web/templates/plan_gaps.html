@@ -1,6 +1,7 @@
 {% extends "base.html" %}
+{% from "macros/icons.html" import icon, back with context %}
 {% block title %}{{ _("Gaps to plan") }} — Budget Forecaster{% endblock %}
 {% block content %}
-<p class="back"><a href="/trends#gaps">‹ {{ _("Trends") }}</a></p>
+{{ back("/trends#gaps", _("Trends")) }}
 {% include "fragments/gaps_card.html" %}
 {% endblock %}

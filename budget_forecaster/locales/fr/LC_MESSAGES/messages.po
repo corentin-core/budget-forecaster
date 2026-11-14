@@ -600,6 +600,9 @@ msgstr "Modifications enregistrées"
 msgid "History"
 msgstr "Historique"
 
+msgid "Plan"
+msgstr "Prévoir"
+
 msgid "Date must be after first iteration"
 msgstr "La date doit être après la première itération"
 

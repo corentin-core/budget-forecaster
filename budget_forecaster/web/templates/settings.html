@@ -1,4 +1,5 @@
 {% extends "base.html" %} {% block title %}{{ _("Settings") }} — Budget Forecaster{% endblock %} {% block content %}
+{% from "macros/icons.html" import icon with context %}
 {% if flash %}
 {% set flash_kind = "linked" if flash.value in ["linked", "swile-linked"] else ("error" if flash.value in ["error", "swile-error"] else flash.value) %}
 <div class="banner banner-{{ flash_kind }}" role="status">
@@ -31,8 +32,8 @@
     <h2>{{ _("Sync") }}</h2>
     {% if any_connected %}
     <form method="post" action="/settings/sync"
-          onsubmit="var b=this.querySelector('button'); b.disabled=true; b.textContent='{{ _('Syncing…') }}';">
-      <button type="submit" class="btn">{{ _("Sync now") }}</button>
+          onsubmit="var b=this.querySelector('button'); b.disabled=true; b.querySelector('span').textContent='{{ _('Syncing…') }}';">
+      <button type="submit" class="btn">{{ icon("sync") }}<span>{{ _("Sync now") }}</span></button>
     </form>
     {% endif %}
   </div>
@@ -175,7 +176,7 @@
         hx-encoding="multipart/form-data" hx-target="#import-result"
         hx-swap="innerHTML" hx-on::after-request="this.reset()">
     <input type="file" name="file" accept=".xls,.zip" required />
-    <button type="submit" class="btn primary">{{ _("Import") }}</button>
+    <button type="submit" class="btn primary">{{ icon("import") }}{{ _("Import") }}</button>
   </form>
   <div id="import-result" aria-live="polite"></div>
 </section>
@@ -243,12 +244,12 @@
         <button type="button" class="btn small"
                 hx-get="/settings/backup/preview?name={{ b.path.name | urlencode }}"
                 hx-target="#backup-preview" hx-swap="innerHTML">{{ _("Restore…") }}</button>
-        <a class="btn small icon" href="/settings/backup/download?name={{ b.path.name | urlencode }}"
-           aria-label="{{ _('Download backup') }}">↓</a>
+        <a class="btn small" href="/settings/backup/download?name={{ b.path.name | urlencode }}"
+           aria-label="{{ _('Download backup') }}">{{ icon("download") }}</a>
         <form method="post" action="/settings/backup/delete" class="confirm-form" data-confirm>
           <input type="hidden" name="name" value="{{ b.path.name }}" />
-          <button type="button" class="btn danger small icon" data-confirm-trigger
-                  aria-label="{{ _('Delete backup') }}">×</button>
+          <button type="button" class="btn danger small" data-confirm-trigger
+                  aria-label="{{ _('Delete backup') }}">{{ icon("delete") }}</button>
           <span class="confirm-cluster" hidden>
             <span>{{ _("Delete?") }}</span>
             <button type="button" class="btn small" data-confirm-cancel>{{ _("Cancel") }}</button>

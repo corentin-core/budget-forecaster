@@ -1,10 +1,11 @@
 {% extends "base.html" %}
+{% from "macros/icons.html" import icon, back with context %}
 {% block title %}{{ operation.description }} — Budget Forecaster{% endblock %}
 {% block content %}
 {# Coming back from the target lands here, with this page's own back link intact. #}
 {% set self_url = '/operations/' ~ operation.unique_id ~ '?return_to=' ~ (return_to | urlencode) %}
 <section class="card op-detail">
-  <p class="back"><a href="{{ return_to }}">‹ {{ _("Back") }}</a></p>
+  {{ back(return_to, _("Back")) }}
   <h1>{{ operation.description }}</h1>
 
   <dl class="detail-grid">
@@ -18,20 +19,24 @@
     <dd>
       {% if current %}
         <a href="/targets/{{ current.kind }}/{{ current.target_id }}?return_to={{ self_url | urlencode }}">{{ current.target_name }}</a>
-        <form method="post" action="/operations/{{ operation.unique_id }}/unlink" class="inline">
-          <input type="hidden" name="return_to" value="{{ self_url }}" />
-          <button type="submit" class="btn danger small">{{ _("Unlink") }}</button>
-        </form>
       {% else %}
         {{ _("Not linked") }}
       {% endif %}
     </dd>
   </dl>
 
-  {# Both actions come back here, where the Link line names the target that won. #}
-  <p class="actions">
-    <a class="btn primary" href="/operations/{{ operation.unique_id }}/link?return_to={{ self_url | urlencode }}">{{ _("Link…") }}</a>
-    <a class="btn" href="/targets/planned/new?from_operation={{ operation.unique_id }}&return_to={{ self_url | urlencode }}">{{ _("Create planned operation") }}</a>
-  </p>
+  {# Every action comes back here, where the Link line names the target that won. #}
+  <div class="toolbar">
+    {% if current %}
+    <form method="post" action="/operations/{{ operation.unique_id }}/unlink">
+      <input type="hidden" name="return_to" value="{{ self_url }}" />
+      <button type="submit" class="btn tool danger">{{ icon("unlink") }}<span>{{ _("Unlink") }}</span></button>
+    </form>
+    {% endif %}
+    <a class="btn tool" href="/targets/planned/new?from_operation={{ operation.unique_id }}&return_to={{ self_url | urlencode }}">
+      {{ icon("plan") }}<span>{{ _("Plan") }}</span></a>
+    <a class="btn tool" href="/operations/{{ operation.unique_id }}/link?return_to={{ self_url | urlencode }}">
+      {{ icon("link") }}<span>{{ _("Link…") }}</span></a>
+  </div>
 </section>
 {% endblock %}

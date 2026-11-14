@@ -55,14 +55,14 @@ to start if neither source provides both secrets.
 
 ## Sections
 
-| Section    | What it shows                                                                                              |
-| ---------- | ---------------------------------------------------------------------------------------------------------- |
-| Accueil    | Available margin, balance, what is left to categorize, overdue payments, this month, upcoming              |
-| Mois       | Per-category planned vs actual for one month; switch months from the URL or the arrows                     |
-| Budgets    | All budgets and planned operations, whatever month they fall in; create, edit, split, delete               |
-| Opérations | The full ledger, filterable by search text, category, month, "uncategorized", "to review" and "not linked" |
-| Tendances  | Balance evolution over time, gaps to plan of past months, and expense breakdown by category                |
-| Réglages   | Bank connection and sync history, manual import, backups, the margin threshold, the theme                  |
+| Section    | What it shows                                                                                                |
+| ---------- | ------------------------------------------------------------------------------------------------------------ |
+| Accueil    | Available margin, balance, what is left to categorize, overdue payments, this month, upcoming                |
+| Mois       | Per-category planned vs actual for one month; switch months from the URL or the arrows                       |
+| Budgets    | All budgets and planned operations, whatever month they fall in; create, edit, split, delete                 |
+| Opérations | The full ledger, searchable; **Filtrer** adds category, dates, "uncategorized", "to review" and "not linked" |
+| Tendances  | Balance evolution over time, gaps to plan of past months, and expense breakdown by category                  |
+| Réglages   | Bank connection and sync history, manual import, backups, the margin threshold, the theme                    |
 
 Navigation is a bottom bar on phones and a left sidebar on wider screens, each tab with
 an icon.
@@ -102,11 +102,11 @@ its amount. Tapping it unfolds the issues that occurrence can take, so a card ho
 three of them stays a list rather than a wall of buttons. Cancelling a date or undoing a
 decision leaves the row open, since another decision is usually coming.
 
-**Modifier l'opération planifiée**, the last of those issues, opens the planned
-operation itself, for when the payment keeps arriving late or off-amount and the
-recurrence is what needs fixing. It edits the whole series, not the occurrence in front
-of you — for a single date, **Reporter** is the tool, and the edit page can split the
-recurrence from a date. Names in the Accueil upcoming list open the same page.
+**Modifier**, among those issues, opens the planned operation itself, for when the
+payment keeps arriving late or off-amount and the recurrence is what needs fixing. It
+edits the whole series, not the occurrence in front of you — for a single date,
+**Reporter** is the tool, and the edit page can split the recurrence from a date. Names
+in the Accueil upcoming list open the same page.
 
 **Lier…** is the first thing to try. Most often the payment did happen and the matcher
 did not recognize it, so the page lists the operations that could be it, best first,
@@ -208,7 +208,7 @@ chose is never replaced.
 An automatic category reads "(auto)" in the dropdown, such as "Courses (auto)", with a ✓
 button beside it that validates it. Picking the plain "Courses" entry of the list
 validates it too, and picking another category replaces it. Either way the category
-becomes yours. Tick "À revoir" in the filter bar to list only the automatic categories
+becomes yours. Tick "À revoir" behind **Filtrer** to list only the automatic categories
 you have not validated yet.
 
 An operation left uncategorized can offer a "Suggestion" button under its dropdown. It
@@ -243,12 +243,12 @@ to remove it. Either way, you land back on the operation.
 ## Forecasting a payment you just saw
 
 A recurring payment showing up in the ledger for the first time can become a planned
-operation without retyping it. Open the operation, then "Créer une opération planifiée":
-the form arrives filled from the payment — amount, category, its own date as the start
-date, monthly recurrence — and named after the one word of the bank label that says who
-was paid, with the raw label kept underneath so you can rename it. "Reconnaître par"
-holds that same word as the keyword future payments must contain; trim it to what will
-come back every month, since a reference number or a month never will.
+operation without retyping it. Open the operation, then **Prévoir**: the form arrives
+filled from the payment — amount, category, its own date as the start date, monthly
+recurrence — and named after the one word of the bank label that says who was paid, with
+the raw label kept underneath so you can rename it. "Reconnaître par" holds that same
+word as the keyword future payments must contain; trim it to what will come back every
+month, since a reference number or a month never will.
 
 Saving links the payment to the first occurrence, so it counts straight away. An
 operation already linked to something else keeps that link. You land back on the
@@ -269,8 +269,9 @@ The month drill-down and the Budgets tab both edit the same items.
 - **All of them**: the Budgets tab lists every budget and planned operation, whatever
   month they fall in — the place to reach items that don't appear in the current month
   (an annual budget, say). Budgets and planned operations sit under their own sub-tabs;
-  each list has a search box, a category filter, and shows only active items by default
-  (untick "active only" to see expired ones).
+  each list has a search box and an **Ajouter** button. **Filtrer** opens the category
+  filter and "Actifs seulement", ticked by default (untick it to see expired items). The
+  number on **Filtrer** counts the filters that narrow the list.
 
 Editing opens on its own page with a working back button. From there you set the amount,
 category, dates, and recurrence. One row of buttons closes the page: **Supprimer**,

@@ -1,8 +1,9 @@
 {% extends "base.html" %}
+{% from "macros/icons.html" import icon, back with context %}
 {% block title %}{{ _("Link operation") }} — Budget Forecaster{% endblock %}
 {% block content %}
 <section class="card link-page">
-  <p class="back"><a href="{{ return_to }}">‹ {{ _("Back") }}</a></p>
+  {{ back(return_to, _("Back")) }}
   <h1>{{ _("Link operation") }}</h1>
 
   <div class="op-summary">
@@ -17,7 +18,7 @@
     {{ _("Currently linked to") }}: <strong>{{ current.target_name }}</strong>
     <form method="post" action="/operations/{{ operation.unique_id }}/unlink" class="inline">
       <input type="hidden" name="return_to" value="{{ return_to }}" />
-      <button type="submit" class="btn danger small">{{ _("Unlink") }}</button>
+      <button type="submit" class="btn danger small">{{ icon("unlink") }}{{ _("Unlink") }}</button>
     </form>
   </div>
   {% endif %}
