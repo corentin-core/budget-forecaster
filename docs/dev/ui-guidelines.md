@@ -32,7 +32,8 @@ takes the whole width of a phone, which a date or an amount needs.
 
 A detail page puts each label beside its value, in a `.detail-grid`, such as the page of
 an operation. Its values are short and mostly read, so one line each keeps the page to a
-glance. A value that is also a control, such as the category select, stays on its line.
+glance. A value that is also a control, such as the category select, stays on its line
+and fills it, and the other values line up on its right edge.
 
 ## Toolbars
 
