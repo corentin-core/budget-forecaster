@@ -338,8 +338,9 @@ class TestHistoryPage:
     def test_late_occurrence_says_how_late(self, client: TestClient) -> None:
         """An occurrence on the Accueil card reads as late and offers the picker."""
         home = client.get("/").text
-        start = home.index("/overdue/") + len("/overdue/")
-        op_id, iteration = home[start:].split("/link")[0].split("/")
+        found = re.search(r"/overdue/(\d+)/([\d-]+)/link", home)
+        assert found, "the demo should have an overdue occurrence"
+        op_id, iteration = found.groups()
 
         card = client.get(f"/targets/planned/{op_id}/history").text
         card = card[card.index('id="linked"') :]

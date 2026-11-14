@@ -1,14 +1,15 @@
 {% extends "base.html" %}
+{% from "macros/icons.html" import icon, back with context %}
 {% set label = _("planned operation") if form.is_planned else _("budget") %}
 {% block title %}{{ form.description }} — {{ _("History") }}{% endblock %}
 
 {% block content %}
 <section class="card history-head">
-  <p class="back"><a href="{{ return_to }}">‹ {{ _("Back") }}</a></p>
+  {{ back(return_to, _("Back")) }}
   <h1>{{ form.description }}</h1>
   <p class="history-meta">
     <span>{{ label | capitalize }} · {{ form.amount | float | signed_eur(currency) }}</span>
-    <a class="btn small" href="{{ edit_url }}">{{ _("Edit") }}</a>
+    <a class="btn small" href="{{ edit_url }}">{{ icon("edit") }}{{ _("Edit") }}</a>
   </p>
 </section>
 

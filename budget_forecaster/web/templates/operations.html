@@ -1,8 +1,9 @@
 {% extends "base.html" %}
+{% from "macros/icons.html" import icon, back, filter_toggle with context %}
 {% block title %}{{ _("Operations") }} — Budget Forecaster{% endblock %}
 {% block content %}
 {% if filters.return_to %}
-<p class="back"><a href="{{ filters.return_to }}">‹ {{ _("Back") }}</a></p>
+{{ back(filters.return_to, _("Back")) }}
 {% endif %}
 <section class="card">
   <form class="filters" id="filter-form"
@@ -11,8 +12,15 @@
         hx-swap="innerHTML"
         hx-replace-url="true"
         hx-trigger="submit, change, keyup changed delay:300ms from:input[name=search]">
-    <input type="search" name="search" placeholder="{{ _('Search...') }}"
-           value="{{ filters.search }}" />
+    {% set active_filters = [filters.category, filters.date_from, filters.date_to,
+                             filters.uncategorized, filters.review, filters.unlinked]
+                            | select | list | length %}
+    <div class="search-row">
+      <input type="search" name="search" placeholder="{{ _('Search...') }}"
+             value="{{ filters.search }}" />
+      {{ filter_toggle(active_filters) }}
+    </div>
+    <div class="filter-panel" id="filter-panel" {{ 'hidden' if not active_filters }}>
     <select name="category">
       <option value="">{{ _("All categories") }}</option>
       {% for category in categories %}
@@ -45,6 +53,7 @@
              {{ 'checked' if filters.unlinked }} />
       {{ _("Not linked") }}
     </label>
+    </div>
     {% if filters.return_to %}
     <input type="hidden" name="return_to" value="{{ filters.return_to }}" />
     {% endif %}
@@ -83,4 +92,5 @@
 </div>
 
 <script src="{{ static('operations.js') }}" defer></script>
+<script src="{{ static('filters.js') }}" defer></script>
 {% endblock %}

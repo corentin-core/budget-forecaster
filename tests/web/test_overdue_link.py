@@ -121,7 +121,7 @@ def _link_target(client: TestClient, operation_id: int) -> str:
     """What the operation's detail page says counts it, or an empty string."""
     html = client.get(f"/operations/{operation_id}").text
     found = re.search(
-        r"<dd>\s*<a[^>]*>([^<]*)</a>\s*<form[^>]*/unlink", html, re.DOTALL
+        r'<dd>\s*<a href="/targets/[^"]*">([^<]*)</a>\s*</dd>', html, re.DOTALL
     )
     return found.group(1).strip() if found else ""
 

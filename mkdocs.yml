@@ -43,6 +43,7 @@ nav:
       - Account: dev/account.md
       - Planned Operations & Budgets: dev/planned-operations-budgets.md
       - Persistence: dev/persistence.md
+      - UI guidelines: dev/ui-guidelines.md
       - Contributing: dev/contributing.md
   - Quality:
       - Operation Links: quality/operation-links.md

@@ -1,20 +1,27 @@
 {% extends "base.html" %}
+{% from "macros/icons.html" import icon, filter_toggle with context %}
 {% block title %}{{ _("Budgets & planned") }} — Budget Forecaster{% endblock %}
 
 {% block content %}
 {% set kind = "planned" if view == "planned" else "budget" %}
 {% set base = "/targets?view=planned" if view == "planned" else "/targets" %}
-{% set add_label = _("+ Planned") if view == "planned" else _("+ Budget") %}
 <section class="targets-page">
   <nav class="seg" aria-label="{{ _('Budgets & planned') }}">
     <a class="{{ 'active' if view != 'planned' }}" href="/targets">{{ _("Budgets") }}</a>
     <a class="{{ 'active' if view == 'planned' }}" href="/targets?view=planned">{{ _("Planned operations") }}</a>
   </nav>
 
-  <form class="filters" method="get" action="/targets">
+  <form class="filters" method="get" action="/targets" data-autosubmit>
     <input type="hidden" name="view" value="{{ view }}" />
     <input type="hidden" name="submitted" value="1" />
-    <input type="search" name="q" placeholder="{{ _('Search...') }}" value="{{ query }}" />
+    <div class="search-row">
+      <input type="search" name="q" placeholder="{{ _('Search...') }}" value="{{ query }}" />
+      {% set active_filters = [category, not active_only] | select | list | length %}
+      {{ filter_toggle(active_filters) }}
+      <a class="btn tool" href="/targets/{{ kind }}/new?return_to={{ base | urlencode }}">
+        {{- icon("add") }}<span>{{ _("Add") }}</span></a>
+    </div>
+    <div class="filter-panel" id="filter-panel" {{ 'hidden' if not active_filters }}>
     <select name="category">
       <option value="">{{ _("All categories") }}</option>
       {% for c in categories %}
@@ -22,16 +29,14 @@
       {% endfor %}
     </select>
     <label class="check">
-      <input type="checkbox" name="active" value="true" {{ 'checked' if active_only }} />
+      <input type="checkbox" name="active" value="true" data-filter-default
+             {{ 'checked' if active_only }} />
       {{ _("Active only") }}
     </label>
-    <button type="submit" class="btn">{{ _("Filter") }}</button>
+    </div>
   </form>
 
   <div class="card">
-    <div class="list-head">
-      <a class="btn primary" href="/targets/{{ kind }}/new?return_to={{ base | urlencode }}">{{ add_label }}</a>
-    </div>
     {% if rows %}
     <table class="review targets">
       <thead>
@@ -64,4 +69,5 @@
   </div>
 </section>
 <script src="{{ static('targets.js') }}" defer></script>
+<script src="{{ static('filters.js') }}" defer></script>
 {% endblock %}
